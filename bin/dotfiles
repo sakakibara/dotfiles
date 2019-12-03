@@ -150,7 +150,7 @@ main() {
   init "${cmds[@]}"
 
   # Set backup_dir variable
-  backup_dir="${DOTFILES}/backup/$(date "+%Y-%m-%d_%H-%M-%S")"
+  backup_dir="${DOTFILES}/backup/$(date "+%Y-%m-%dT%H:%M:%S%Z")"
 
   # Set the default blacklist to prevent unlinking
   set_blacklist
@@ -630,7 +630,7 @@ backup() {
   local base dest dir
 
   # Set the backup_dir variable if it isn't
-  backup_dir="${backup_dir:-${DOTFILES}/backup/$(date "+%Y-%m-%d_%H-%M-%S")}"
+  backup_dir="${backup_dir:-${DOTFILES}/backup/$(date "+%Y-%m-%dT%H:%M:%S%Z")}"
 
   dest="${backup_dir}/$1"
   dir="${dest%/*}"
