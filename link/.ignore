@@ -1,0 +1,8 @@
+.DS_Store
+.env/
+.venv/
+.eggs/
+*.egg-info/
+*_cache/
+venv/
+node_modules/

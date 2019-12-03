@@ -1,0 +1,46 @@
+[credential]
+	helper = osxkeychain
+[filter "lfs"]
+	required = true
+	clean = git-lfs clean %f
+	smudge = git-lfs smudge %f
+[core]
+	autocrlf = input
+	whitespace = fix,space-before-tab,tab-in-indent,trailing-space
+	excludesfile = ~/.gitignore_global
+[apply]
+	whitespace = fix
+[push]
+	default = simple
+[alias]
+	br = branch
+	ci = commit
+	co = checkout
+	df = diff
+	g = grep -I
+	lg = log -p
+	rb = rbranch
+	rv = review
+	st = status
+[color]
+	ui = auto
+[color "branch"]
+	current = yellow reverse
+	local = yellow
+	remote = green
+[color "diff"]
+	meta = yellow bold
+	frag = magenta bold
+	old = red bold
+	new = green bold
+[color "status"]
+	added = yellow
+	changed = green
+	untracked = cyan
+[merge]
+	log = true
+	tool = nvimdiff
+[mergetool]
+	prompt = true
+[mergetool "nvimdiff"]
+	cmd = nvim -d $BASE $LOCAL $REMOTE $MERGED -c '$wincmd w' -c 'wincmd J'

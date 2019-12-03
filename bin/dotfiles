@@ -1,0 +1,1057 @@
+#!/usr/bin/env bash
+#
+# Dotfiles: https://github.com/sakakibara/dotfiles
+# Sync dotfiles and run installation scripts
+
+#; ****** SETTINGS ******
+DOTFILES="${DOTFILES:-${HOME}/.dotfiles}"
+DOTFILES_USER="${DOTFILES_USER:-sakakibara}"
+DOTFILES_SHELL="${DOTFILES_SHELL:-fish}"
+
+#; ****** UTILITY FUNCTIONS ******
+# Check if the script is run directly
+is_dotfiles_bin() { [[ "${0##*/}" == dotfiles ]]; }
+
+# Return false if it is not the specified OS
+is_cygwin() { [[ "$(uname)" == CYGWIN* ]]; }
+is_linux() { [[ "$(uname)" == Linux ]]; }
+is_macos() { [[ "$(uname)" == Darwin ]]; }
+
+# Echo current operating system
+# Giving an argument of 1 inverts the result
+get_os() {
+  local os
+
+  for os in cygwin linux macos; do
+    "is_${os}"; [[ "$?" == "${1:-0}" ]] && echo "${os}"
+  done
+}
+
+# Find the relative path from $1 to $2
+# Taken from https://unix.stackexchange.com/a/269303
+get_relpath() {
+  local down pos ref
+
+  pos="${1%%/}"
+  ref="${2%%/}"
+  down=''
+
+  while :; do
+    test "${pos}" = '/' && break
+    case "${ref}" in "${pos}/"*) break;; esac
+    down="../${down}"
+    pos="${pos%/*}"
+  done
+
+  echo "${down}${ref##"${pos}/"}"
+}
+
+# Add an entry to the front of existing PATH if it doesn't already exist
+path_prepend() {
+  if [[ ":${PATH}:" != *":$1:"* ]]; then
+    PATH="$1${PATH:+":${PATH}"}"
+  fi
+}
+
+# Add an entry to the end of existing PATH if it doesn't already exist
+path_append() {
+  if [[ ":${PATH}:" != *":$1:"* ]]; then
+    PATH="${PATH:+"${PATH}:"}$1"
+  fi
+}
+
+# Taken from https://stackoverflow.com/a/2315459
+# shellcheck disable=SC2206
+array_diff() {
+  set -o noglob
+
+  local i j skip
+
+  if [[ $# -gt 0 ]]; then
+    local array_new=() array_cur=() array_out=()
+    array_new=($1) array_cur=($2)
+  fi
+
+  array_out=()
+  for i in "${array_new[@]}"; do
+    skip=
+    for j in "${array_cur[@]}"; do
+      [[ "${i}" == "${j}" ]] && { skip=1; break; }
+    done
+    [[ -z "${skip}" ]] && array_out+=("${i}")
+  done
+  echo "${array_out[@]}"
+
+  set +o noglob
+}
+
+# If the script is being sourced, abort here
+[[ -n "${BASH_SOURCE[0]}" && "${BASH_SOURCE[0]}" != "$0" ]] && return
+
+#; ****** DOTFILES SCRIPT ******
+set -o errexit -o pipefail
+
+# Display the version
+version() { local version; version=0.0.1; echo "dotfiles ${version}"; }
+
+# Usage to be displayed with help command
+usage() {
+  cat << EOF
+Usage: dotfiles <command>
+
+Multiple commands can be given to run multiple tasks at once.
+Defaults to clean, copy, link and src, if no <command> is given.
+Unless --no-update option is given, dotfiles command will always
+try to update the repository.
+
+Commands marked with asterisk(*) cannot be used together with any
+other commands.
+
+Options:
+  -h, --help        Show this help message
+  -v, --version     Show version
+  -n, --no-update   Skip update
+  -f, --force       Blacklist is ignored when unlinking files
+
+Commands:
+  clean      Removes stale symlinks
+  link       Symlinks files in link folder to \$HOME
+  copy       Copies files in copy folder to \$HOME
+  src        Source shell scripts in src folder
+  sync       Alias for clean & link
+  unlink     Removes symlinks created by link command
+  help*      Show help
+  version*   Show version
+  update*    Updates dotfiles without running any other commands
+
+See the README for documentation.
+https://github.com/sakakibara/dotfiles
+EOF
+}
+
+# Entry point for dotfiles command
+main() {
+  local echoed clt_tmp backup backup_dir no_update timer
+  local cmds=() menu_options=() menu_selects=() blacklist=()
+
+  # Set up trap function
+  trap cleanup EXIT
+
+  # Try to avoid having to type in the passwords over and over
+  keep_sudo
+
+  # Try to resolve dependencies. Exit if the requirement isn't met by the end
+  dependency || exit 1
+
+  # Parse argument options, and add valid commands to cmds array
+  parse "$@"
+
+  # Initialize dotfiles
+  init "${cmds[@]}"
+
+  # Set backup_dir variable
+  backup_dir="${DOTFILES}/backup/$(date "+%Y-%m-%d_%H-%M-%S")"
+
+  # Set the default blacklist to prevent unlinking
+  set_blacklist
+
+  # Set the menu prompt's wait time to be longer for the very first run
+  timer=5; is_dotfiles_bin || timer=15
+
+  # Parse arguments to run commands
+  commands "${cmds[@]}"
+
+  # Display a message if any backups are created
+  if [[ -n "${backup}" ]]; then
+    msg_heading "Backups were moved to ${backup_dir#${DOTFILES}/}"
+  fi
+
+  # Chsh to given shell in the very first run
+  is_dotfiles_bin || set_shell "${DOTFILES_SHELL}"
+
+  msg_heading "Done"
+}
+
+# Attempt to keep sudo timestamp refreshed
+keep_sudo() {
+  while true; do
+    sudo -n true; sleep 10; kill -0 "$$" || exit
+  done 2>/dev/null &
+}
+
+# Decorative echo
+msg_heading() {
+  if [[ -n "${echoed}" ]]; then echo ''; else echoed=1; fi
+  echo -e "\\033[1m$*\\033[0m"
+}
+msg_success() { echo -e "  \\033[1;32m✔\\033[0m  $*"; }
+msg_error() { echo -e "  \\033[1;31m✖\\033[0m  $*"; }
+msg_arrow() { echo -e "  \\033[1;34m➜\\033[0m  $*"; }
+msg_uncheck() { echo -e " \\033[37m[ ]\\033[0m $*"; }
+msg_check() { echo -e " \\033[37m[\\033[1;32m✔\\033[0m\\033[37m]\\033[0m $*"; }
+
+# Get macos version without the micro version
+get_macos_version() {
+  local version
+
+  version="$(sw_vers -productVersion)"
+
+  echo "${version%.*}"
+}
+
+# Check and try to resolve dependencies return false if it fails
+dependency() {
+  # Check if command line tools are installed and try to install it if it isn't
+  if is_macos && ! xcode-select -p &>/dev/null; then
+    msg_heading "Installing command line tools"
+    install_clt
+    if ! xcode-select -p &>/dev/null; then
+      msg_error "Installation has failed"
+      return 1
+    fi
+  fi
+
+  # Abort if git isn't installed
+  if ! command -v git &>/dev/null; then
+    msg_error "Git isn't installed"
+    return 1
+  fi
+}
+
+# Install the command line tools on macos
+install_clt() {
+  local macos_version clt_macos_version clt_sort_opt clt_label
+
+  macos_version="$(get_macos_version)"
+
+  # Set the macos version to determine the required command line tools version
+  if [[ "${macos_version}" == "10.9" ]]; then
+    clt_macos_version="Mavericks"
+  else
+    clt_macos_version="${macos_version}"
+  fi
+
+  # Use the version sort option if it's available
+  if (( $(bc -l <<< "${macos_version} >= 10.13") )); then
+    clt_sort_opt="-V"
+  else
+    clt_sort_opt="--"
+  fi
+
+  # Create a temporary file to get the softwareupdate command working
+  clt_tmp="/tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress"
+  sudo touch "${clt_tmp}"
+
+  clt_label="$(softwareupdate -l \
+    | grep -B 1 -E 'Command Line (Developer|Tools)' \
+    | awk -F'*' '/^ +\\*/ {print $2}' \
+    | grep "${clt_macos_version}" \
+    | sort "${clt_sort_opt}" \
+    | sed 's/^ *//' \
+    | tail -n1 \
+    | tr -d '\n')"
+
+  # Attempt to install command line tools
+  if [[ -n "${clt_label}" ]]; then
+    sudo softwareupdate -i "${clt_label}" --verbose
+    sudo xcode-select --switch "/Library/Developer/CommandLineTools"
+  fi
+}
+
+# Splits short options like "-unf" to "-u", "-n" and "-f"
+split_shortopt() {
+  local i opt
+
+  opt="${1:1}"
+
+  for (( i=0; i<${#opt}; i++ )); do
+    opts+=("-${opt:${i}:1}")
+  done
+}
+
+# Parse arguments
+parse() {
+  local opt arg
+  local opts=() args=()
+
+  # Parse arguments into options and command arguments
+  while [[ $# -gt 0 ]]; do
+    # Everything after "--" should be considered as commands
+    if [[ -n "${ignore}" ]]; then
+      args+=("$1")
+    else
+      case "$1" in
+        -[a-zA-Z]*)
+          split_shortopt "$1"
+          ;;
+        --[a-zA-Z]*)
+          opts+=("$1")
+          ;;
+        --)
+          ignore=1;
+          ;;
+        *)
+          args+=("$1")
+      esac
+    fi
+    shift
+  done
+
+  # Parse the options and commands
+  parse_opts && parse_cmds
+}
+
+# Parse options
+parse_opts() {
+  # Set the options or add the commands into args array
+  for opt in "${opts[@]}"; do
+    case "${opt}" in
+      -h|--help)
+        args+=("help")
+        ;;
+      -v|--version)
+        args+=("version")
+        ;;
+      -n|--no-update)
+        no_update=1
+        ;;
+      -f|--force)
+        force=1
+        ;;
+      *)
+        echo "Unknown option: ${opt}" >&2
+        exit 1
+        ;;
+    esac
+  done
+
+}
+
+# Parse commands
+parse_cmds() {
+  # Run an exclusive command or store the commands to $cmds array
+  for arg in "${args[@]}"; do
+    case "${arg}" in
+      help)
+        usage && exit
+        ;;
+      version)
+        version && exit
+        ;;
+      update)
+        if [[ -n "${no_update}" ]]; then
+          echo "Error: no-update flag can't be used together with update command."
+          exit 1
+        fi
+        update && exit
+        ;;
+      link|copy|src|unlink|clean|sync)
+        cmds+=("${arg}")
+        ;;
+      *)
+        echo "Unknown command: ${arg}" >&2
+        exit 1
+        ;;
+    esac
+  done
+}
+
+# Initialize dotfiles
+init() {
+  # Clone dotfiles if it doesn't exist
+  if [[ ! -d "${DOTFILES}" ]]; then
+    msg_heading "Cloning dotfiles repository"
+    git clone --recursive \
+      "https://github.com/${DOTFILES_USER}/dotfiles.git" "${DOTFILES}"
+    cd "${DOTFILES}" || exit 1
+  fi
+  [[ -z "${no_update}" ]] && update "$@"
+}
+
+# Set blacklist array
+set_blacklist() {
+  local shellfiles=()
+
+  # Set the default blacklist
+  blacklist=("${HOME}/.terminfo" "${HOME}/.profile")
+
+  # Additional blacklist entries for the current login shell
+  case "${SHELL}" in
+    */bash)
+      shellfiles=(
+      "${HOME}/.bashrc"
+      "${HOME}/.bash_profile"
+      "${HOME}/.bash_login"
+      )
+      ;;
+    */zsh)
+      shellfiles=(
+      "${HOME}/.zshrc"
+      "${HOME}/.zshenv"
+      "${HOME}/.zlogin"
+      "${HOME}/.zprofile"
+      )
+      ;;
+    */fish)
+      shellfiles=(
+      "${HOME}/.config/fish/config.fish"
+      "${HOME}/.config/fish/functions/fish_prompt.fish"
+      )
+      ;;
+  esac
+
+  # Add the shell specific blacklist if it exists
+  if [[ "${#shellfiles[@]}" -ne 0 ]]; then
+    blacklist=("${blacklist[@]}" "${shellfiles[@]}")
+  fi
+}
+
+# Update dotfiles
+update() {
+  local prev_head
+
+  msg_heading "Updating dotfiles"
+
+  cd "${DOTFILES}" || exit 1
+  prev_head="$(git rev-parse HEAD)"
+  git pull
+  if [[ "$(git rev-parse HEAD)" != "${prev_head}" ]]; then
+    if is_dotfiles_bin; then
+      msg_heading "Changes detected, restarting the script"
+      exec "$0" "--no-update" "$@"
+    else
+      msg_heading "Changes detected, please re-run the script"
+      exit
+    fi
+  fi
+}
+
+# Run the commands
+commands() {
+  local cmd
+
+  if [[ -z "$*" ]]; then
+    all
+  else
+    for cmd; do
+      "${cmd}"
+    done
+  fi
+}
+all() { is_dotfiles_bin && clean; link; copy; src; }
+link() { perform link; [[ "${DOTFILES_SHELL}" == fish ]] && perform fish; }
+copy() { perform copy; }
+src() { perform src; }
+unlink() { perform unlink; }
+clean() { perform clean; }
+sync() { perform clean; perform link; }
+
+
+#; ****** DOTFILES UTILITY FUNCTIONS ******
+# Trim leading dotfiles path, or the home path
+trim_path() {
+  if [[ "$1" == "${DOTFILES}"/*/* ]]; then
+    echo "${1#${DOTFILES}/*/}"
+    return 0
+  elif [[ "$1" == "${HOME}"/* ]]; then
+    echo "${1#${HOME}/}"
+    return 0
+  fi
+  return 1
+}
+
+# Return true if given directory is empty
+is_empty_dir() {
+  if [[ -z "$(ls -A "$1" 2>/dev/null)" ]]; then
+    return 0
+  fi
+  return 1
+}
+
+# Creates the directory if the parent directory for the given path is missing
+mkdir_if_missing() {
+  local dir shortname
+
+  # Get the parent directory path from the given path
+  dir="${1%/*}"
+  shortname="${dir/${HOME}/~}"
+
+  if [[ ! -d "${dir}" ]]; then
+    if mkdir -p "${dir}"; then
+      msg_success "Created ${shortname} directory."
+      return 0
+    else
+      msg_error "Failed to create ${shortname} directory."
+      return 1
+    fi
+  fi
+  return 0
+}
+
+# Deletes the parent directory of given file path if it is empty
+rmdir_if_empty() {
+  local dir shortname
+
+  # Get the parent directory path from the given path
+  dir="${1%/*}"
+  shortname="${dir/${HOME}/~}"
+
+  if is_empty_dir "${dir}"; then
+    if rmdir "${dir}"; then
+      msg_success "Successfully deleted ${shortname} directory."
+      return 0
+    else
+      msg_error "Failed to delete ${shortname} directory."
+      return 1
+    fi
+  fi
+  return 0
+}
+
+# Checks the given path against the path set in the blacklist array
+is_blacklisted() {
+  local file
+
+  # If the blacklist target is a directory, check if $1 is inside it
+  # If the blacklist target is a file, then check that $1 is not it
+  for file in "${blacklist[@]}"; do
+    if [[ -d "${file}" ]]; then
+      if [[ "$1" == "${file}"/* ]]; then
+        echo "target is inside a protected directory"
+        return 0
+      fi
+    elif [[ -f "${file}" ]]; then
+      if [[ "$1" == "${file}" ]]; then
+        echo "target is a protected file"
+        return 0
+      fi
+    fi
+  done
+  return 1
+}
+
+# Slightly safer removal of files
+remove() {
+  local i trash prompt answer base dest digits timestamp rand
+
+  # Abort if the target is outside of home directory
+  [[ ! "$1" == "${HOME}"/* ]] && return 1
+
+  # Set the default trash path according to Apple/XDG specification
+  if is_macos; then
+    trash="${trash:-${HOME}/.Trash}"
+  else
+    trash="${trash:-${XDG_DATA_HOME:-${HOME}/.local/share}/Trash}"
+  fi
+
+  # Ask to create the trash directory if it doesn't exist
+  if [[ ! -d "${trash}" ]]; then
+    prompt="Trash directory not found. Create it? (y/n Enter when done): "
+    read -rp "${prompt}" answer
+    case "${answer::1}" in
+      y|Y)
+        mkdir -p "${trash}"
+        ;;
+      *)
+        echo "There's no trash directory. Aborting."
+        return 1
+        ;;
+    esac
+  fi
+
+  # Set the destination path within the trash
+  base="${trash}/${1##*/}"
+  dest="${base}"
+
+  # If the target file is a symlink, it is assumed as safe to delete
+  if [[ -L "$1" ]]; then
+    rm -f "$1"
+  else
+    # Digits to format to
+    digits=000
+    # Attempts at least 60 times
+    for (( i=0; i<=60; i++ )); do
+      # If there is already a file at destination path, try with different name
+      if [[ -e "${dest}" ]]; then
+        timestamp="$(date "+%H-%M-%S")"
+        rand=$((RANDOM % 1000))
+        dest="${base} ${timestamp}-${digits:${#rand}:${#digits}}${rand}"
+      else
+        mv "$1" "${dest}"
+        break
+      fi
+    done
+  fi
+}
+
+# Add a line to a file
+# $1 = line string
+# $2 = the file path
+record_add() {
+  local dir
+
+  # Get the parent directory path from the given path
+  dir="${2%/*}"
+
+  # Create directory if it doesn't exist
+  [[ -d "${dir}" ]] || mkdir -p "${dir}"
+
+  # Add the record only if it doesn't exist already, and sort it if needed
+  if [[ -e "$2" ]]; then
+    grep -Fqx "$1" "$2" || echo "$1" >> "$2"
+  else
+    echo "$1" >> "$2"
+  fi
+}
+
+# Remove a line from a file
+# $1 = line string
+# $2 = the file path
+record_remove() {
+  local args=()
+
+  # Remove the record from the record file
+  if [[ -e "$2" ]]; then
+    if is_macos; then
+      args+=("''")
+    fi
+    args+=("\\:$1:d" "$2")
+    sed -i "${args[@]}"
+  fi
+
+  # If the record file is an empty file, might as well delete it
+  if [[ ! -s "$2" ]]; then
+    rm -f "$2"
+  fi
+}
+
+# Back up the file at $2 path if it exists
+backup() {
+  local base dest dir
+
+  # Set the backup_dir variable if it isn't
+  backup_dir="${backup_dir:-${DOTFILES}/backup/$(date "+%Y-%m-%d_%H-%M-%S")}"
+
+  dest="${backup_dir}/$1"
+  dir="${dest%/*}"
+  shortname="${2/${HOME}/~}"
+
+  # Create backup directory if it doesn't exist
+  [[ -d "${dir}" ]] || mkdir -p "${dir}"
+
+  if mv "$2" "${dest}"; then
+    msg_success "Backed up ${shortname}."
+  else
+    msg_error "Failed to move ${shortname} to backup directory."
+    return 1
+  fi
+}
+
+# Displays an interactive menu
+# $1 = prompt message
+# $2 = timeout length
+menu() {
+  local exitcode i n nums prompt
+  exitcode=0
+
+  if [[ -n "$2" ]]; then
+    _menu_draws "$1"
+    read -rst "$2" -n 1 -p "Press ENTER or wait $2 seconds to continue, or press any other key to edit."
+    exitcode="$?"
+    echo ''
+  fi
+  if [[ "${exitcode}" -eq 0 && -n "${REPLY}" ]]; then
+    prompt="Toggle options, \"-\" to clear (Separete options with spaces): "
+    while _menu_draws "$1" 1 && read -rp "${prompt}" && [[ -n "${REPLY}" ]]; do
+      IFS=" " read -ra nums <<< "${REPLY}"
+      _menu_adds "${nums[@]}"
+    done
+  fi
+  _menu_adds
+}
+_menu_iter() {
+  local fn i sel state
+
+  fn="$1"; shift
+
+  for i in "${!menu_options[@]}"; do
+    state=0
+    for sel in "${menu_selects[@]}"; do
+      [[ "${sel}" == "${menu_options[i]}" ]] && { state=1; break; }
+    done
+    "${fn}" "${state}" "${i}" "$@"
+  done
+}
+_menu_draws() {
+  msg_heading "$1"
+  _menu_iter _menu_draw "$2"
+}
+_menu_draw() {
+  local modes=()
+
+  modes=(uncheck check)
+
+  if [[ "$3" ]]; then
+    "msg_${modes[$1]}" "$(printf '%2d) %s\n' $(($2+1)) "${menu_options[$2]}")"
+  else
+    "msg_${modes[$1]}" "${menu_options[$2]}"
+  fi
+}
+_menu_adds() {
+  _menu_result=()
+  [[ ! "$*" =~ ^-$ ]] && _menu_iter _menu_add "$@"
+  menu_selects=("${_menu_result[@]}")
+}
+_menu_add() {
+  local state i n match keep
+
+  state="$1"; shift
+  i="$1"; shift
+
+  for n in "$@"; do
+    if [[ "${n}" =~ ^[0-9]+$ ]] && (( n-1 == i )); then
+      match=1; [[ "${state}" == 0 ]] && keep=1
+    fi
+  done
+  [[ -z "${match}" && "${state}" == 1 || -n "${keep}" ]] || return 0
+  _menu_result+=("${menu_options[i]}")
+}
+
+# Iterator
+perform() {
+  local data dir file base skip
+  local files=()
+
+  # Set the record file name
+  if declare -f "$1_target" &>/dev/null; then
+    target="$("$1_target")"
+  else
+    target="$1"
+  fi
+
+  # Set path of record files to the path recommended by the XDG specification
+  data="${XDG_DATA_HOME:-${HOME}/.local/share}/dotfiles/${target}"
+  dir="${DOTFILES}/$1"
+
+  # If $1_heading function is declared, run the function to print heading
+  declare -f "$1_heading" &>/dev/null && "$1_heading"
+
+  # Get the list of files to iterate through
+  if [[ -d "${dir}" ]]; then
+    while IFS= read -rd $'\0' file; do
+      files+=("${file}")
+    done < <(find "${dir}" -mindepth "1" \( -type f -or -type l \) -print0 | sort -z)
+  fi
+
+  # If $1_files function is declared, run the function to filter the files
+  declare -f "$1_files" &>/dev/null && "$1_files" "${data}"
+
+  # If there is no file to iterate through, abort
+  if [[ "${#files[@]}" -eq 0 ]]; then
+    declare -f "$1_none" &>/dev/null && "$1_none"
+    return
+  fi
+
+  # Iterate through the files
+  for file in "${files[@]}"; do
+    base="$(trim_path "${file}")"
+
+    # Abort if trim_path fails to work e.g. file was outside of $HOME
+    [[ -z "${base}" ]] && return 1
+
+    # If $1_dest function is declared, run the function to set destination
+    if declare -f "$1_dest" &>/dev/null; then
+      dest="$("$1_dest" "${base}")"
+    else
+      dest="${HOME}/${base}"
+    fi
+
+    # Run _test function only if it is declared
+    if declare -f "$1_test" &>/dev/null; then
+      # If $1_test function returns a string, skip file and print that message
+      skip="$("$1_test" "${file}" "${dest}")"
+      if [[ -n "${skip}" ]]; then
+        msg_arrow "Skipping ${dest/${HOME}/~}, ${skip}."
+        continue
+      fi
+      # Backup the file if it already exists and is not a symlink
+      if [[ ! -L "${dest}" && -e "${dest}" ]]; then
+        # If the backup succeeds set backup flag to 1
+        backup "${base}" "${dest}" && backup=1
+      fi
+    fi
+
+    if "$1_do" "${file}" "${dest}"; then
+      # Keep the record to $data on success if record function is declared
+      if declare -f "$1_record" &>/dev/null; then
+        "$1_record" "${dest}" "${data}"
+      fi
+    fi
+  done
+}
+
+#; ****** LINK COMMAND FUNCTIONS ******
+link_heading() { msg_heading "Linking files into home directory"; }
+link_test() { [[ "$1" -ef "$2" ]] && echo "same file"; }
+link_none() { msg_arrow "There's no file to link"; }
+link_do() {
+  local relpath shortname
+
+  # Get the relative path to use for symlinking
+  relpath="$(get_relpath "${2%/*}" "$1")"
+  shortname="${2/${HOME}/~}"
+
+  mkdir_if_missing "$2"
+
+  if ln -sf "${relpath}" "$2"; then
+    msg_success "Linked ${shortname}."
+  else
+    msg_error "Failed to link ${shortname}."
+  fi
+}
+link_record() { record_add "$1" "$2"; }
+
+#; ****** FISH COMMAND FUNCTIONS ******
+fish_target() { echo "link"; }
+fish_heading() { msg_heading "Linking fish files into home directory"; }
+fish_dest() { echo "${HOME}/.config/fish/$1"; }
+fish_test() { [[ "$1" -ef "$2" ]] && echo "same file"; }
+fish_none() { msg_arrow "There's no fish files to link"; }
+fish_do() {
+  local relpath shortname
+
+  # Get the relative path to use for symlinking
+  relpath="$(get_relpath "${2%/*}" "$1")"
+  shortname="${2/${HOME}/~}"
+
+  mkdir_if_missing "$2"
+
+  if ln -sf "${relpath}" "$2"; then
+    msg_success "Linked ${shortname}."
+  else
+    msg_error "Failed to link ${shortname}."
+  fi
+}
+fish_record() { record_add "$1" "$2"; }
+
+#; ****** COPY COMMAND FUNCTIONS ******
+copy_heading() { msg_heading "Copying files into home directory"; }
+copy_test() {
+  # If the file already exists, compare the contents
+  if [[ -e "$2" ]] && cmp -s "$1" "$2"; then
+    echo "same file"
+  elif [[ "$2" -nt "$1" ]]; then
+    echo "destination file newer"
+  fi
+}
+copy_none() { msg_arrow "There's no file to copy"; }
+copy_do() {
+  local shortname
+
+  shortname="${2/${HOME}/~}"
+
+  mkdir_if_missing "$2"
+
+  if cp "$1" "$2"; then
+    msg_success "Copied ${shortname}."
+    return 0
+  else
+    msg_error "Failed to copy ${shortname}."
+    return 1
+  fi
+}
+copy_record() { record_add "$1" "$2"; }
+
+#; ****** UNLINK COMMAND FUNCTIONS ******
+unlink_target() { echo "link"; }
+unlink_heading() { msg_heading "Unlinking files from home directory"; }
+unlink_files() {
+  # Reset the files array as it's content is irrelevant to this operation
+  files=()
+
+  # Get the list of files from the record file
+  if [[ -s "$1" ]]; then
+    while IFS= read -r file; do
+      files+=("${file}")
+    done < "$1"
+  fi
+}
+unlink_test() {
+  local result
+
+  # Check if the target file is blacklisted or inside a blacklisted directory
+  if [[ -z "${force}" ]]; then
+    result="$(is_blacklisted "$2")"
+    if [[ -n "${result}" ]]; then
+      echo "${result}"
+      return
+    fi
+  fi
+  [[ ! -L "$2" ]] && echo "target file is not a symlink"
+}
+unlink_none() { msg_arrow "There's no files to unlink"; }
+unlink_do() {
+  local shortname
+
+  shortname="${2/${HOME}/~}"
+
+  if remove "$1"; then
+    msg_success "Unlinked ${shortname}." && rmdir_if_empty "$1"
+    return 0
+  else
+    msg_error "Failed to unlink ${shortname}."
+    return 1
+  fi
+}
+unlink_record() { record_remove "$1" "$2"; }
+
+#; ****** CLEAN COMMAND FUNCTIONS ******
+clean_target() { echo "link"; }
+clean_heading() { msg_heading "Checking for stale symlinks in home"; }
+clean_files() {
+  # Reset the files array as it's content is irrelevant to this operation
+  files=()
+
+  if [[ -s "$1" ]]; then
+    while IFS= read -r file; do
+      # Check if the file is a broken symlink
+      if [[ -L "${file}" && ! -e "${file}" ]]; then
+        files+=("${file}")
+      fi
+    done < "$1"
+  fi
+}
+clean_none() { msg_arrow "There's no broken symlink."; }
+clean_do() {
+  local shortname
+
+  shortname="${2/${HOME}/~}"
+
+  if remove "$1"; then
+    msg_success "Unlinked ${shortname}." && rmdir_if_empty "$1"
+    return 0
+  else
+    msg_error "Failed to unlink ${shortname}."
+    return 1
+  fi
+}
+clean_record() { record_remove "$1" "$2"; }
+
+#; ****** SRC COMMAND FUNCTIONS ******
+src_files() {
+  local i dir os file exclude
+  local oses=()
+
+  dir="${files[0]%/*}"
+
+  # Reset menu_options and menu_selects array
+  menu_options=(); menu_selects=()
+
+  # Check if there is any files to iterate through
+  if [[ ! "${#files[@]}" -eq 0 ]]; then
+    # Get the list of os names to exclude
+    while IFS= read -r os; do
+      oses+=("${os}");
+    done < <(get_os 1)
+
+    # Populate menu_options array
+    for file in "${files[@]}"; do
+      unset exclude
+      for os in "${oses[@]}"; do
+        [[ "${file}" =~  (^|[^a-z])${os}($|[^a-z]) ]] && { exclude=1; break; }
+      done
+      [[ "${exclude}" ]] || menu_options+=("${file##*/}")
+    done
+
+    # Read data_file if it exists, or default to all
+    if [[ -e "$1" ]]; then
+      while IFS= read -r file; do
+        menu_selects+=("${file}")
+      done < "$1"
+    else
+      for file in "${menu_options[@]}"; do menu_selects+=("${file}"); done
+    fi
+
+    # Prompt a user with a menu to select which scripts to run
+    menu "Source the following scripts?" "${timer}"
+  else
+    msg_heading "Sourcing scripts from src directory"
+  fi
+
+  # Reset files array
+  files=()
+  mkdir_if_missing "$1"
+  [[ -e "$1" ]] && rm -f "$1"
+  touch "$1"
+  for file in "${menu_selects[@]}"; do
+    # Write out data file
+    echo "${file}" >> "$1"
+    files+=("${dir}/${file}")
+  done
+}
+src_none() { msg_arrow "There's no files to source"; }
+src_do() {
+  msg_heading "Sourcing ${1##*/}"
+  # shellcheck source=/dev/null
+  source "$1"
+}
+
+#; ****** CHSH FUNCTIONS ******
+# Change the login shell to the given shell if not already
+set_shell() {
+  local shell_path
+
+  # Re-enable keep_sudo in case it has been disabled
+  keep_sudo
+
+  # Get the path of the shell command given
+  shell_path="$(command -v "$1")"
+
+  # Abort if the specified shell is already the current shell
+  [[ "${SHELL}" == "${shell_path}" ]] && return 0
+
+  # Abort if the specified shell doesn't exist in path
+  if [[ -z "${shell_path}" ]]; then
+    msg_error "$1 does not exist in path." && return 1
+  fi
+
+  # Make sure the shell is in /etc/shells
+  if add_shell "${shell_path}"; then
+    msg_heading "Making ${shell_path} your default shell"
+    if chsh -s "${shell_path}" &>/dev/null; then
+      msg_success "Remember to exit and restart all your shells afterwards."
+      # Update the shell variable
+      export SHELL="${shell_path}"
+    else
+      msg_error "Failed to change the login shell to ${shell_path}"
+    fi
+  fi
+}
+
+# If given shell exists in /etc/shells, return true
+# If not, then add the shell to /etc/shells
+add_shell() {
+  # Check if the shell path is in /etc/shells, and add it if it isn't
+  if ! grep -Fqx "$1" "/etc/shells"; then
+    msg_heading "Adding $1 to the list of acceptable shells"
+    if echo "$1" | sudo tee -a "/etc/shells" &>/dev/null; then
+      msg_success "Successfully added $1 to /etc/shells."
+      return 0
+    else
+      msg_error "Failed to add $1 to /etc/shells."
+      return 1
+    fi
+  fi
+  return 0
+}
+
+#; ****** TRAP FUNCTION ******
+# Cleanup temporary files and directories created in the script
+cleanup() {
+  # Delete the temporary file made for the softwareupdate command if it exists
+  if [[ -e "${clt_tmp}" ]]; then
+    sudo rm -f "${clt_tmp}"
+  fi
+}
+
+main "$@" || exit 1
