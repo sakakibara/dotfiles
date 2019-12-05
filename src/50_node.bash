@@ -5,7 +5,7 @@ fi
 
 # Install Node
 if [[ "$(command -v nodenv)" ]]; then
-  versions=(10.14.2)
+  versions=(12.13.1)
 
   for version in "${versions[@]}"; do
     nodenv install --skip-existing "${version}"
