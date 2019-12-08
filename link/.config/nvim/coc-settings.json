@@ -1,0 +1,16 @@
+{
+    "emmet.includeLanguages": {"vue": "html", "htmldjango": "html"},
+    "javascript.suggest.enabled": false,
+    "tsserver.npm": "~/.nodenv/shims/npm",
+    "diagnostic.displayByAle": true,
+    "languageserver": {
+        "golang": {
+            "command": "gopls",
+            "rootPatterns": ["go.mod", ".vim/", ".git/", ".hg/"],
+            "filetypes": ["go"],
+            "initializationOptions": {
+                "usePlaceholders": true
+            }
+        }
+    }
+}
