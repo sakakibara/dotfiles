@@ -120,8 +120,7 @@ Plug 'thinca/vim-zenspace'
 Plug 'chrisbra/Colorizer',
       \ { 'on': ['ColorHighlight', 'RGB2Term', 'HSL2RGB', 'Term2RGB',
       \ 'ColorContrast', 'ColorSwapFgBg', 'ColorToggle'] }
-" Plug 'morhetz/gruvbox'
-Plug 'neocryses/gruvbox'
+Plug 'gruvbox-community/gruvbox'
 Plug 'vim-airline/vim-airline'
 
 " Miscellaneous Plugins
