@@ -71,6 +71,7 @@ if status --is-login
   abbr -a zb z -b
 
   # Add path
+  path_prepend $HOME/.local/bin
   path_prepend $HOME/.composer/vendor/bin
   path_prepend $GOPATH/bin
   path_prepend /usr/local/bin /usr/local/sbin $DOTFILES/bin
