@@ -65,11 +65,6 @@ if status --is-login
   abbr -a .... cd ../../..
   abbr -a ..... cd ../../../..
   abbr -a -- - cd -
-  abbr -a d cd ~/Dropbox
-  abbr -a dl cd ~/Downloads
-  abbr -a dt cd ~/Desktop
-  abbr -a c cd ~/Code
-  abbr -a dot cd $DOTFILES
   abbr -a zz z -c
   abbr -a zi z -i
   abbr -a zf z -I
