@@ -76,6 +76,10 @@ if status --is-login
   path_prepend $GOPATH/bin
   path_prepend /usr/local/bin /usr/local/sbin $DOTFILES/bin
 
+  # Keybind
+  bind \e\cP history-token-search-backward
+  bind \e\cN history-token-search-forward
+
   # Completions
   complete -c git -w hub
 end
