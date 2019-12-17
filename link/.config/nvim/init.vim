@@ -139,6 +139,7 @@ Plug 'moll/vim-bbye', { 'on': ['Bdelete', 'Bwipeout'] }
 Plug 'kana/vim-altercmd'
 Plug 'tpope/vim-dispatch'
 Plug 'vim-voom/VOoM'
+Plug 'dhruvasagar/vim-table-mode'
 
 call plug#end()
 let g:plug_window = "vertical new"
@@ -779,6 +780,8 @@ autocmd rc FileType css let b:coc_additional_keywords = ["-"]
 autocmd rc FileType html let b:coc_additional_keywords = ["-"]
 autocmd rc FileType vue let b:coc_additional_keywords = ["-"]
 
+autocmd BufWritePre *.go :call CocAction('runCommand', 'editor.action.organizeImport')
+
 """" Fugitive
 
 nnoremap <silent> <Leader>gs :15Gstatus<CR>
@@ -910,3 +913,7 @@ silent! call altercmd#define('bw[ipeout]', 'Bwipeout')
 
 let g:voom_ft_modes = {'markdown': 'markdown'}
 nnoremap <silent> <Leader>vv :VoomToggle<CR>
+
+"""" Vim-Table
+
+autocmd rc FileType markdown let b:table_mode_corner = '|'

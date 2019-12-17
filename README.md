@@ -48,7 +48,6 @@ Will add support for linux systems in the future.
 | `etc`     | Files in this folder just exists. Nothing will be done to the files inside.                                                            |
 | `link`    | Files inside this directory will be symlinked to `$HOME`.                                                                              |
 | `src`     | Contains scripts that can be run through dotfiles command.                                                                             |
-| `fish`    | If `DOTFILES_SHELL` is set to fish, clean, link and unlink command will also work on this folder.                                      |
 
 ## Usage
 

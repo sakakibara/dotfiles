@@ -439,7 +439,7 @@ commands() {
   fi
 }
 all() { is_dotfiles_bin && clean; link; copy; src; }
-link() { perform link; [[ "${DOTFILES_SHELL}" == fish ]] && perform fish; }
+link() { perform link; }
 copy() { perform copy; }
 src() { perform src; }
 unlink() { perform unlink; }
@@ -810,29 +810,6 @@ link_do() {
   fi
 }
 link_record() { record_add "$1" "$2"; }
-
-#; ****** FISH COMMAND FUNCTIONS ******
-fish_target() { echo "link"; }
-fish_heading() { msg_heading "Linking fish files into home directory"; }
-fish_dest() { echo "${HOME}/.config/fish/$1"; }
-fish_test() { [[ "$1" -ef "$2" ]] && echo "same file"; }
-fish_none() { msg_arrow "There's no fish files to link"; }
-fish_do() {
-  local relpath shortname
-
-  # Get the relative path to use for symlinking
-  relpath="$(get_relpath "${2%/*}" "$1")"
-  shortname="${2/${HOME}/~}"
-
-  mkdir_if_missing "$2"
-
-  if ln -sf "${relpath}" "$2"; then
-    msg_success "Linked ${shortname}."
-  else
-    msg_error "Failed to link ${shortname}."
-  fi
-}
-fish_record() { record_add "$1" "$2"; }
 
 #; ****** COPY COMMAND FUNCTIONS ******
 copy_heading() { msg_heading "Copying files into home directory"; }
