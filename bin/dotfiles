@@ -745,7 +745,13 @@ os_trim() {
   local base os
 
   os="$(get_os)"
-  base="${1/.${os}/}"
+  if [[ "$1" == *."${os}".* ]]; then
+    base="${1/.${os}./.}"
+  elif [[ "$1" == *."${os}" ]]; then
+    base="${1%.${os}}"
+  else
+    base="$1"
+  fi
 
   echo "${HOME}/${base}"
 }
