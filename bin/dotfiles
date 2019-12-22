@@ -96,7 +96,7 @@ array_diff() {
 set -o errexit -o pipefail
 
 # Display the version
-version() { local version; version=0.1.0; echo "dotfiles ${version}"; }
+version() { local version; version=0.1.1; echo "dotfiles ${version}"; }
 
 # Usage to be displayed with help command
 usage() {
