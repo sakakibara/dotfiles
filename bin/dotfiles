@@ -980,7 +980,7 @@ clean_do() {
 clean_record() { record_remove "$1" "$2"; }
 
 #; ****** SRC COMMAND FUNCTIONS ******
-src_filter() { 
+src_filter() {
   if os_filter "$1"; then
     return 0
   else
