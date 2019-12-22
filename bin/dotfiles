@@ -23,7 +23,11 @@ get_os() {
   local os
 
   for os in cygwin linux macos; do
-    "is_${os}"; [[ "$?" == "${1:-0}" ]] && echo "${os}"
+    if "is_${os}"; then
+      [[ -z "$1" ]] && echo "${os}"
+    else
+      [[ -n "$1" ]] && echo "${os}"
+    fi
   done
 }
 
