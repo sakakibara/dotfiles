@@ -136,7 +136,7 @@ EOF
 # Entry point for dotfiles command
 main() {
   local echoed clt_tmp backup backup_dir no_update timer
-  local cmds=() menu_options=() menu_selects=() blacklist=()
+  local cmds=() menu_options=() menu_selects=() oses=() blacklist=()
 
   # Set up trap function
   trap cleanup EXIT
@@ -155,6 +155,9 @@ main() {
 
   # Set backup_dir variable
   backup_dir="${DOTFILES}/backup/$(date "+%Y-%m-%dT%H:%M:%S%Z")"
+
+  # Set the oses to exclude from processing
+  set_oses
 
   # Set the default blacklist to prevent unlinking
   set_blacklist
@@ -370,6 +373,15 @@ init() {
     cd "${DOTFILES}" || exit 1
   fi
   [[ -z "${no_update}" ]] && update "$@"
+}
+
+# Set oses array
+set_oses() {
+  local os
+  # Get the list of os names to exclude
+  while IFS= read -r os; do
+    oses+=("${os}");
+  done < <(get_os 1)
 }
 
 # Set blacklist array
@@ -721,10 +733,27 @@ _menu_add() {
   _menu_result+=("${menu_options[i]}")
 }
 
+os_filter() {
+  local os
+
+  for os in "${oses[@]}"; do
+    [[ "${1##*/}" =~  \.${os}($|\.) ]] && return 1
+  done
+  return 0
+}
+os_trim() {
+  local base os
+
+  os="$(get_os)"
+  base="${1/.${os}/}"
+
+  echo "${HOME}/${base}"
+}
+
 # Iterator
 perform() {
-  local data dir file base skip
-  local files=()
+  local data dir candidate file exclude base skip
+  local candidates=() files=()
 
   # Set the record file name
   if declare -f "$1_target" &>/dev/null; then
@@ -742,9 +771,21 @@ perform() {
 
   # Get the list of files to iterate through
   if [[ -d "${dir}" ]]; then
-    while IFS= read -rd $'\0' file; do
-      files+=("${file}")
+    while IFS= read -rd $'\0' candidate; do
+      candidates+=("${candidate}")
     done < <(find "${dir}" -mindepth "1" \( -type f -or -type l \) -print0 | sort -z)
+  fi
+
+  # Check if there is any files to iterate through
+  if [[ ! "${#candidates[@]}" -eq 0 ]]; then
+    # Populate menu_options array
+    for file in "${candidates[@]}"; do
+      unset exclude
+      if declare -f "$1_filter" &>/dev/null; then
+        "$1_filter" "${file}" || exclude=1
+      fi
+      [[ "${exclude}" ]] || files+=("${file}")
+    done
   fi
 
   # If $1_files function is declared, run the function to filter the files
@@ -796,8 +837,18 @@ perform() {
 
 #; ****** LINK COMMAND FUNCTIONS ******
 link_heading() { msg_heading "Linking files into home directory"; }
-link_test() { [[ "$1" -ef "$2" ]] && echo "same file"; }
+link_filter() {
+  if os_filter "$1"; then
+    return 0
+  else
+    return 1
+  fi
+}
 link_none() { msg_arrow "There's no file to link"; }
+link_dest() {
+  os_trim "$1"
+}
+link_test() { [[ "$1" -ef "$2" ]] && echo "same file"; }
 link_do() {
   local relpath shortname
 
@@ -817,6 +868,17 @@ link_record() { record_add "$1" "$2"; }
 
 #; ****** COPY COMMAND FUNCTIONS ******
 copy_heading() { msg_heading "Copying files into home directory"; }
+copy_filter() {
+  if os_filter "$1"; then
+    return 0
+  else
+    return 1
+  fi
+}
+copy_none() { msg_arrow "There's no file to copy"; }
+copy_dest() {
+  os_trim "$1"
+}
 copy_test() {
   # If the file already exists, compare the contents
   if [[ -e "$2" ]] && cmp -s "$1" "$2"; then
@@ -825,7 +887,6 @@ copy_test() {
     echo "destination file newer"
   fi
 }
-copy_none() { msg_arrow "There's no file to copy"; }
 copy_do() {
   local shortname
 
@@ -919,9 +980,15 @@ clean_do() {
 clean_record() { record_remove "$1" "$2"; }
 
 #; ****** SRC COMMAND FUNCTIONS ******
+src_filter() { 
+  if os_filter "$1"; then
+    return 0
+  else
+    return 1
+  fi
+}
 src_files() {
-  local i dir os file exclude
-  local oses=()
+  local dir file
 
   dir="${files[0]%/*}"
 
@@ -930,19 +997,8 @@ src_files() {
 
   # Check if there is any files to iterate through
   if [[ ! "${#files[@]}" -eq 0 ]]; then
-    # Get the list of os names to exclude
-    while IFS= read -r os; do
-      oses+=("${os}");
-    done < <(get_os 1)
-
-    # Populate menu_options array
-    for file in "${files[@]}"; do
-      unset exclude
-      for os in "${oses[@]}"; do
-        [[ "${file}" =~  (^|[^a-z])${os}($|[^a-z]) ]] && { exclude=1; break; }
-      done
-      [[ "${exclude}" ]] || menu_options+=("${file##*/}")
-    done
+    # Copy the file names of files array elements into menu_options
+    for file in "${files[@]}"; do menu_options+=("${file##*/}"); done
 
     # Read data_file if it exists, or default to all
     if [[ -e "$1" ]]; then

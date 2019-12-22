@@ -49,6 +49,33 @@ Will add support for linux systems in the future.
 | `link`    | Files inside this directory will be symlinked to `$HOME`.                                                                              |
 | `src`     | Contains scripts that can be run through dotfiles command.                                                                             |
 
+## Operating System Specific files
+
+For files specific to a particular operating system, you can name it in following convention.
+
+Original file name:
+```
+show_desktop.fish
+```
+
+To make the file macos specific, name it as
+```
+show_desktop.macos.fish
+```
+or
+```
+show_desktop.fish.macos
+```
+
+Either way works, but the support for putting the OS name as suffix is for files that have no file extension.  
+e.g.
+```
+.gitconfig
+```
+
+This condition applies to files under `link`, `copy` and `src` directories.
+Operating systems currently supported are `macos`, `cygwin` and `ubuntu`.
+
 ## Usage
 
 ```
