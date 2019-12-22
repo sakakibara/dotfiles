@@ -35,6 +35,8 @@ Following things will be automatically installed by the [dotfiles][dotfiles] scr
 
 Supported operating systems:
 * macOS
+* linux
+* cygwin
 
 Will add support for linux systems in the future.
 
@@ -74,7 +76,7 @@ e.g.
 ```
 
 This condition applies to files under `link`, `copy` and `src` directories.
-Operating systems currently supported are `macos`, `cygwin` and `ubuntu`.
+Operating systems currently supported are `macos`, `linux` and `cygwin`.
 
 ## Usage
 
