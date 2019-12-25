@@ -435,7 +435,7 @@ autocmd TermOpen term://* if expand('%') !~# "term://.*#FZF"
 autocmd rc BufWritePre * call s:auto_mkdir(expand('<afile>:p:h'), v:cmdbang)
 function! s:auto_mkdir(dir, force) abort
   if a:dir !~# '://' && !isdirectory(a:dir) &&
-        \ (a:force || input("'" . a:dir . "' does not exist. Create? [y/N]")
+        \ (a:force || input("'" . a:dir . "' does not exist. Create? [y/N] ")
         \ =~? '^y\%[es]$')
     call mkdir(iconv(a:dir, &encoding, &termencoding), 'p')
   endif
