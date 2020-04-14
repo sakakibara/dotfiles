@@ -31,7 +31,7 @@ asdf_install_plugins() {
   # shellcheck disable=SC2207
   installs=($(array_diff "${langs[*]}" "${plugins[*]}"))
   
-  if [[ ! "${#installs[@]}" -eq 0 ]]; then
+  if [[ "${#installs[@]}" -gt 0 ]]; then
     msg_heading "Installing asdf plugins: ${installs[*]}"
     for i in "${installs[@]}"; do
       asdf plugin-add "${i}"
