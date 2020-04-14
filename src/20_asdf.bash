@@ -21,7 +21,7 @@ asdf_install_plugins() {
   local installs=()
 
   while IFS= read -r line; do
-    langs=("${line%% *}")
+    langs+=("${line%% *}")
   done < "${HOME}/${ASDF_CONFIG_FILE:-.tool-versions}"
 
   while IFS= read -r plugin; do
