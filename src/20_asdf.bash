@@ -46,6 +46,4 @@ asdf_install_plugins() {
   fi
 }
 
-msg_heading "Updating asdf"
-asdf update
 asdf_install_plugins
