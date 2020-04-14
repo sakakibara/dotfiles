@@ -16,9 +16,7 @@ fi
 
 asdf_install_plugins() {
   local plugin i
-  local plugins=()
-  local langs=()
-  local installs=()
+  local plugins=() langs=() installs=()
 
   while IFS= read -r line; do
     langs+=("${line%% *}")
