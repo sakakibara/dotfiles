@@ -1,8 +1,8 @@
 # Install asdf
 if [[ ! "$(command -v asdf)" && ! -d "${HOME}/.asdf" ]]; then
-    msg_heading "Installing asdf"
-    git clone https://github.com/asdf-vm/asdf.git ~/.asdf
-    (cd "${HOME}/.asdf" && git checkout "$(git describe --abbrev=0 --tags)")
+  msg_heading "Installing asdf"
+  git clone https://github.com/asdf-vm/asdf.git ~/.asdf
+  (cd "${HOME}/.asdf" && git checkout "$(git describe --abbrev=0 --tags)")
 
     # Asdf initialization
     # shellcheck source=/dev/null
