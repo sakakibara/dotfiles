@@ -3,10 +3,12 @@ if [[ ! "$(command -v asdf)" && ! -d "${HOME}/.asdf" ]]; then
   msg_heading "Installing asdf"
   git clone https://github.com/asdf-vm/asdf.git ~/.asdf
   (cd "${HOME}/.asdf" && git checkout "$(git describe --abbrev=0 --tags)")
-
-    # Asdf initialization
-    # shellcheck source=/dev/null
-    source "${HOME}/.asdf/asdf.sh"
+  # Asdf initialization
+  # shellcheck source=/dev/null
+  source "${HOME}/.asdf/asdf.sh"
+else
+  msg_heading "Updating asdf"
+  asdf update
 fi
 
 # Exit if, for some reason, asdf is not installed
