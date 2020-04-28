@@ -16,13 +16,28 @@ is_dotfiles_bin() { [[ "${0##*/}" == dotfiles ]]; }
 is_cygwin() { [[ "$(uname)" == CYGWIN* ]]; }
 is_linux() { [[ "$(uname)" == Linux ]]; }
 is_macos() { [[ "$(uname)" == Darwin ]]; }
+is_wsl() {
+  is_linux && [[ -f "/proc/version" ]] && grep -q "Microsoft" /proc/version
+}
+is_debian() {
+  is_linux || return 1
+  # shellcheck disable=SC1091
+  if [[ -f "/etc/os-release" ]]; then
+    [[ "$(awk -F= '$1=="ID" { print $2 ;}' "/etc/os-release")" == debian ]]
+  else
+    return 1
+  fi
+}
+is_debian_wsl() {
+  is_debian && is_wsl
+}
 
 # Echo current operating system
 # Giving an argument of 1 inverts the result
 get_os() {
   local os
 
-  for os in cygwin linux macos; do
+  for os in cygwin linux macos wsl debian debian_wsl; do
     if "is_${os}"; then
       [[ -z "$1" ]] && echo "${os}"
     else
