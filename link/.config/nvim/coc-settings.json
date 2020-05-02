@@ -1,6 +1,7 @@
 {
     "emmet.includeLanguages": {"vue": "html", "htmldjango": "html"},
     "tailwindCSS.emmetCompletions": true,
+    "python.jediEnabled": false,
     "javascript.suggest.enabled": false,
     "tsserver.npm": "~/.nodenv/shims/npm",
     "diagnostic.displayByAle": true,
