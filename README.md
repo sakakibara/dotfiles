@@ -21,24 +21,24 @@ Running the appropriate one-liner will start the installation process, such as c
 ### One-liner for macos
 
 **If your shell is either bash or zsh**
-```sh
+```bash
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/sakakibara/dotfiles/master/bin/dotfiles)"
 ```
 
 **If your shell is fish**
-```sh
+```fish
 bash (curl -fsSL  https://raw.githubusercontent.com/sakakibara/dotfiles/master/bin/dotfiles | psub)
 ```
 
 ### One-liner for linux
 
 **If your shell is either bash or zsh**
-```sh
+```bash
 bash -c "$(wget -qO- https://raw.githubusercontent.com/sakakibara/dotfiles/master/bin/dotfiles)"
 ```
 
 **If your shell is fish**
-```sh
+```fish
 bash (wget -qO-  https://raw.githubusercontent.com/sakakibara/dotfiles/master/bin/dotfiles | psub)
 ```
 
