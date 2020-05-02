@@ -15,7 +15,7 @@ There's also `unlink` command to easily remove dotfiles symlinks from any machin
 
 Requirements: bash, git, curl or wget
 
-Installation of the dotfiles is as easy as pasting the following one-liner.
+Installation of the dotfiles is as easy as pasting the following one-liner.  
 Running the appropriate one-liner will start the installation process, such as cloning the repository, symlinking the files from `link` directory, copying the files from `copy` directory, then running initialization scripts from `src` directory.
 
 ### One-liner for macos
@@ -87,10 +87,7 @@ show_desktop.fish.macos
 ```
 
 Either way works, but the support for putting the OS name as suffix is for files that have no file extension.  
-e.g.
-```
-.gitconfig
-```
+e.g. `.gitconfig`
 
 This condition applies to files under `link`, `copy` and `src` directories.
 Operating systems currently supported are `macos`, `linux` and `cygwin`.
