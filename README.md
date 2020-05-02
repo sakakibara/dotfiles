@@ -152,7 +152,7 @@ DOTFILES_USER="${DOTFILES_USER:-dummy_account}"
 DOTFILES_SHELL="${DOTFILES_SHELL:-bash}"
 ```
 
-For the above user, one-liner installation would be
+For the above user, one-liner installation using curl would be
 
 ```sh
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/dummy_account/dotfiles/master/bin/dotfiles)"
