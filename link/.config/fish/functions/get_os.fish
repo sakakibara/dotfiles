@@ -3,7 +3,7 @@ function get_os -d "Get the current OS name"
   switch (uname)
   case Darwin
     set os macos
-  case CYGWIN*
+  case CYGWIN'*'
     set os cygwin
   case Linux
     if test -f /etc/os-release
