@@ -8,7 +8,7 @@ set -x LANG en_US.UTF-8
 set -x LC_ALL en_US.UTF-8
 
 # Run if fish is invoked as a login shell
-if status --is-login
+if status --is-interactive
   # Disable greeting message
   set fish_greeting
 
