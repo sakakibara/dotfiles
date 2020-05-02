@@ -410,7 +410,7 @@ set_excl_oses() {
   # Set the list of os names to exclude
   for candidate in "${candidates[@]}"; do
     if [[ "${OS}" != "${candidate}" ]]; then
-      ecxl_oses+=("${candidate}")
+      excl_oses+=("${candidate}")
     fi
   done
 }
