@@ -1,5 +1,5 @@
 # Abort if not macOS
-is_macos || return 1
+[[ "${OS}" == "macos" ]] || return 1
 
 # Initialize composer
 path_prepend "${HOME}/.composer/vendor/bin"

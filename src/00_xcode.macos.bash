@@ -1,5 +1,5 @@
 # Abort if not macOS
-is_macos || return 1
+[[ "${OS}" == "macos" ]] || return 1
 
 # https://github.com/joyent/node/issues/3681
 # https://github.com/mxcl/homebrew/issues/10245

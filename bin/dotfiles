@@ -8,43 +8,48 @@ DOTFILES="${DOTFILES:-${HOME}/.dotfiles}"
 DOTFILES_USER="${DOTFILES_USER:-sakakibara}"
 DOTFILES_SHELL="${DOTFILES_SHELL:-fish}"
 
-#; ****** UTILITY FUNCTIONS ******
-# Check if the script is run directly
-is_dotfiles_bin() { [[ "${0##*/}" == dotfiles ]]; }
-
-# Return false if it is not the specified OS
-is_cygwin() { [[ "$(uname)" == CYGWIN* ]]; }
-is_linux() { [[ "$(uname)" == Linux ]]; }
-is_macos() { [[ "$(uname)" == Darwin ]]; }
-is_wsl() {
-  is_linux && [[ -f "/proc/version" ]] && grep -q "Microsoft" /proc/version
-}
-is_debian() {
-  is_linux || return 1
-  # shellcheck disable=SC1091
-  if [[ -f "/etc/os-release" ]]; then
-    [[ "$(awk -F= '$1=="ID" { print $2 ;}' "/etc/os-release")" == debian ]]
-  else
-    return 1
-  fi
-}
-is_debian_wsl() {
-  is_debian && is_wsl
-}
-
-# Echo current operating system
-# Giving an argument of 1 inverts the result
+#; ****** DETERMINE OPERATING SYSTEM ******
 get_os() {
   local os
 
-  for os in cygwin linux macos wsl debian debian_wsl; do
-    if "is_${os}"; then
-      [[ -z "$1" ]] && echo "${os}"
-    else
-      [[ -n "$1" ]] && echo "${os}"
-    fi
-  done
+  case "$(uname)" in
+    Darwin)
+      os="macos"
+      ;;
+    CYGWIN*)
+      os="cygwin"
+      ;;
+    Linux)
+      if [[ -f "/etc/os-release" ]]; then
+        os="$(awk -F= '$1=="ID" { print tolower($2) ;}' "/etc/os-release")"
+      elif command -v lsb_release &>/dev/null; then
+        os="$(lsb_release -si)"
+      elif [[ -f "/etc/lsb-release" ]]; then
+        os="$(awk -F= '$1=="DISTRIB_ID" { print tolower($2) ;}' \
+          "/etc/lsb-release")"
+      elif [[ -f /etc/debian_version ]]; then
+        os="debian"
+      fi
+
+      if [[ -n "${os}" && -f "/proc/version" ]] \
+        && grep -q "Microsoft" "/proc/version"; then
+        os="${os}_wsl"
+      fi
+      ;;
+  esac
+
+  if [[ -n "${os}" ]]; then
+    echo "${os}"
+    return 0
+  fi
+  return 1
 }
+
+OS="$(get_os)"
+
+#; ****** UTILITY FUNCTIONS ******
+# Check if the script is run directly
+is_dotfiles_bin() { [[ "${0##*/}" == dotfiles ]]; }
 
 # Find the relative path from $1 to $2
 # Taken from https://unix.stackexchange.com/a/269303
@@ -151,7 +156,7 @@ EOF
 # Entry point for dotfiles command
 main() {
   local echoed clt_tmp backup backup_dir no_update timer
-  local cmds=() menu_options=() menu_selects=() oses=() blacklist=()
+  local cmds=() menu_options=() menu_selects=() excl_oses=() blacklist=()
 
   # Set up trap function
   trap cleanup EXIT
@@ -171,8 +176,8 @@ main() {
   # Set backup_dir variable
   backup_dir="${DOTFILES}/backup/$(date "+%Y-%m-%dT%H:%M:%S%Z")"
 
-  # Set the oses to exclude from processing
-  set_oses
+  # Set the excl_oses to exclude from processing
+  set_excl_oses
 
   # Set the default blacklist to prevent unlinking
   set_blacklist
@@ -224,7 +229,7 @@ get_macos_version() {
 # Check and try to resolve dependencies return false if it fails
 dependency() {
   # Check if command line tools are installed and try to install it if it isn't
-  if is_macos && ! xcode-select -p &>/dev/null; then
+  if [[ "${OS}" == "macos" ]] && ! xcode-select -p &>/dev/null; then
     msg_heading "Installing command line tools"
     install_clt
     if ! xcode-select -p &>/dev/null; then
@@ -390,13 +395,24 @@ init() {
   [[ -z "${no_update}" ]] && update "$@"
 }
 
-# Set oses array
-set_oses() {
-  local os
-  # Get the list of os names to exclude
-  while IFS= read -r os; do
-    oses+=("${os}");
-  done < <(get_os 1)
+# Set excl_oses array
+set_excl_oses() {
+  local distros=() candidates=()
+
+  distros=("debian" "ubuntu")
+  candidates=("macos" "cygwin")
+
+  for distro in "${distros[@]}"; do
+    candidates+=("${distro}")
+    candidates+=("${distro}_wsl")
+  done
+
+  # Set the list of os names to exclude
+  for candidate in "${candidates[@]}"; do
+    if [[ "${OS}" != "${candidate}" ]]; then
+      ecxl_oses+=("${candidate}")
+    fi
+  done
 }
 
 # Set blacklist array
@@ -569,7 +585,7 @@ remove() {
   [[ ! "$1" == "${HOME}"/* ]] && return 1
 
   # Set the default trash path according to Apple/XDG specification
-  if is_macos; then
+  if [[ "${OS}" == "macos" ]]; then
     trash="${trash:-${HOME}/.Trash}"
   else
     trash="${trash:-${XDG_DATA_HOME:-${HOME}/.local/share}/Trash}"
@@ -643,7 +659,7 @@ record_remove() {
 
   # Remove the record from the record file
   if [[ -e "$2" ]]; then
-    if is_macos; then
+    if [[ "${OS}" == "macos" ]]; then
       args+=("''")
     fi
     args+=("\\:$1:d" "$2")
@@ -749,21 +765,20 @@ _menu_add() {
 }
 
 os_filter() {
-  local os
+  local excl_os
 
-  for os in "${oses[@]}"; do
-    [[ "${1##*/}" =~  \.${os}($|\.) ]] && return 1
+  for excl_os in "${excl_oses[@]}"; do
+    [[ "${1##*/}" =~  \.${excl_os}($|\.) ]] && return 1
   done
   return 0
 }
 os_trim() {
-  local base os
+  local base
 
-  os="$(get_os)"
-  if [[ "$1" == *."${os}".* ]]; then
-    base="${1/.${os}./.}"
-  elif [[ "$1" == *."${os}" ]]; then
-    base="${1%.${os}}"
+  if [[ "$1" == *."${OS}".* ]]; then
+    base="${1/.${OS}./.}"
+  elif [[ "$1" == *."${OS}" ]]; then
+    base="${1%.${OS}}"
   else
     base="$1"
   fi
