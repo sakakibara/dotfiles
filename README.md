@@ -56,7 +56,7 @@ Supported operating systems:
 * Debian
 * WSL Debian
 
-Will add support for linux systems in the future.
+Will add support for other linux systems in the future.
 
 ## File Structures
 
@@ -91,7 +91,7 @@ Either way works, but the support for putting the OS name as suffix is for files
 e.g. `.gitconfig`
 
 This condition applies to files under `link`, `copy` and `src` directories.
-Operating systems currently supported are `macos`, `linux` and `cygwin`.
+Operating systems currently supported for this feature are `macos`, `cygwin`, `debian`, `debian_wsl`.
 
 ## Usage
 
