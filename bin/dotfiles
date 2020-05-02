@@ -23,7 +23,7 @@ get_os() {
       if [[ -f "/etc/os-release" ]]; then
         os="$(awk -F= '$1=="ID" { print tolower($2) ;}' "/etc/os-release")"
       elif command -v lsb_release &>/dev/null; then
-        os="$(lsb_release -si)"
+        os="$(lsb_release -si | awk '{ print tolower($0) ;}')"
       elif [[ -f "/etc/lsb-release" ]]; then
         os="$(awk -F= '$1=="DISTRIB_ID" { print tolower($2) ;}' \
           "/etc/lsb-release")"
