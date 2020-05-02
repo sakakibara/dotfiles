@@ -768,7 +768,7 @@ os_filter() {
   local excl_os
 
   for excl_os in "${excl_oses[@]}"; do
-    [[ "${1##*/}" =~  \.${excl_os}($|\.) ]] && return 1
+    [[ "${1##*/}" =~ \.${excl_os}($|\.) ]] && return 1
   done
   return 0
 }
