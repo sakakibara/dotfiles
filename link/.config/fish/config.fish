@@ -34,14 +34,7 @@ if status --is-login
   set -U fish_color_quote FBF1C7
   set -U fish_color_redirection 689D6A
 
-  switch (uname)
-    case CYGWIN'*'
-      set -x OS cygwin
-    case Linux
-      set -x OS linux
-    case Darwin
-      set -x OS macos
-  end
+  set -x OS (get_os)
 
   if test (command -v nvim)
     set -x EDITOR nvim
