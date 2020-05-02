@@ -60,6 +60,7 @@ if status --is-login
   # Navigation aliases
   abbr -a e $EDITOR
   abbr -a se sudo $EDITOR
+  abbr -a ef $EDITOR \~/.config/fish/config.fish
   abbr -a .. cd ..
   abbr -a ... cd ../..
   abbr -a .... cd ../../..
