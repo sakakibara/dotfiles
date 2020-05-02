@@ -52,8 +52,9 @@ Following things will be automatically installed by the [dotfiles][dotfiles] scr
 
 Supported operating systems:
 * macOS
-* linux
-* cygwin
+* Cygwin
+* Debian
+* WSL Debian
 
 Will add support for linux systems in the future.
 
