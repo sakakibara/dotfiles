@@ -13,7 +13,12 @@ There's also `unlink` command to easily remove dotfiles symlinks from any machin
 
 ## Installation
 
-Requirements: bash, curl, git
+Requirements: bash, git, curl or wget
+
+Installation of the dotfiles is as easy as pasting the following one-liner.
+Running the appropriate one-liner will start the installation process, such as cloning the repository, symlinking the files from `link` directory, copying the files from `copy` directory, then running initialization scripts from `src` directory.
+
+### One-liner for macos
 
 **If your shell is either bash or zsh**
 ```sh
@@ -23,6 +28,18 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/sakakibara/dotfiles/mast
 **If your shell is fish**
 ```sh
 bash (curl -fsSL  https://raw.githubusercontent.com/sakakibara/dotfiles/master/bin/dotfiles | psub)
+```
+
+### One-liner for linux
+
+**If your shell is either bash or zsh**
+```sh
+bash -c "$(wget -qO- https://raw.githubusercontent.com/sakakibara/dotfiles/master/bin/dotfiles)"
+```
+
+**If your shell is fish**
+```sh
+bash (wget -qO-  https://raw.githubusercontent.com/sakakibara/dotfiles/master/bin/dotfiles | psub)
 ```
 
 ## Dependencies
