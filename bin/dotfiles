@@ -407,7 +407,7 @@ set_excl_oses() {
 
   # Set the list of os names to exclude
   for candidate in "${candidates[@]}"; do
-    if [[ "${OS}" != "${candidate}" ]]; then
+    if [[ "${OS}" != "${candidate}" && "${OS%_wsl}" != "${candidate}" ]]; then
       excl_oses+=("${candidate}")
     fi
   done
@@ -773,13 +773,22 @@ os_filter() {
 os_trim() {
   local base
 
-  if [[ "$1" == *."${OS}".* ]]; then
-    base="${1/.${OS}./.}"
-  elif [[ "$1" == *."${OS}" ]]; then
-    base="${1%.${OS}}"
-  else
-    base="$1"
-  fi
+  case "$1" in
+    *."${OS}".*)
+      base="${1/.${OS}./.}"
+      ;;
+    *."${OS}")
+      base="${1%.${OS}}"
+      ;;
+    *."${OS%_wsl}".*)
+      base="${1/.${OS%_wsl}./.}"
+      ;;
+    *."${OS%_wsl}")
+      base="${1%.${OS%_wsl}}"
+      ;;
+    *)
+      base="$1"
+  esac
 
   echo "${HOME}/${base}"
 }
