@@ -397,6 +397,9 @@ init() {
 set_excl_oses() {
   local distros=() candidates=()
 
+  # Clear excl_oses array
+  excl_oses=()
+
   distros=("debian" "ubuntu")
   candidates=("macos" "cygwin")
 
