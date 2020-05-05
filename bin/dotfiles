@@ -669,7 +669,7 @@ record_remove() {
 
   # If the record file is an empty file, might as well delete it
   if [[ ! -s "$2" ]]; then
-    rm -f "$2"
+    rm "$2"
   fi
 }
 
