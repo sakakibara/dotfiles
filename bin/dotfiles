@@ -967,6 +967,9 @@ unlink_files() {
 unlink_test() {
   local result
 
+  # If the target file doesn't exist, do not skip
+  [[ ! -f "$2" ]] && return
+
   # Check if the target file is blacklisted or inside a blacklisted directory
   if [[ -z "${force}" ]]; then
     result="$(is_blacklisted "$2")"
@@ -983,7 +986,10 @@ unlink_do() {
 
   shortname="${2/${HOME}/~}"
 
-  if remove "$1"; then
+  if [[ ! -f "$1" ]]; then
+    msg_success "File ${shortname} is already unlinked."
+    return 0
+  elif remove "$1"; then
     msg_success "Unlinked ${shortname}." && rmdir_if_empty "$1"
     return 0
   else
@@ -995,27 +1001,30 @@ unlink_record() { record_remove "$1" "$2"; }
 
 #; ****** CLEAN COMMAND FUNCTIONS ******
 clean_target() { echo "link"; }
-clean_heading() { msg_heading "Checking for stale symlinks in home"; }
+clean_heading() { msg_heading "Checking for stale links"; }
 clean_files() {
   # Reset the files array as it's content is irrelevant to this operation
   files=()
 
   if [[ -s "$1" ]]; then
     while IFS= read -r file; do
-      # Check if the file is a broken symlink
-      if [[ -L "${file}" && ! -e "${file}" ]]; then
+      # Check if the file does not exist or is a broken symlink
+      if [[ ! -f "${file}" ]] || [[ -L "${file}" && ! -e "${file}" ]]; then
         files+=("${file}")
       fi
     done < "$1"
   fi
 }
-clean_none() { msg_arrow "There's no broken symlink."; }
+clean_none() { msg_arrow "There's no stale links."; }
 clean_do() {
   local shortname
 
   shortname="${2/${HOME}/~}"
 
-  if remove "$1"; then
+  if [[ ! -f "$1" ]]; then
+    msg_success "File ${shortname} is already unlinked."
+    return 0
+  elif remove "$1"; then
     msg_success "Unlinked ${shortname}." && rmdir_if_empty "$1"
     return 0
   else
