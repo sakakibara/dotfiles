@@ -101,7 +101,7 @@ Plug 'mattn/emmet-vim',
       \ { 'for': ['html', 'xhtml', 'htmldjango', 'php', 'css', 'scss', 'sass'] }
 Plug 'artur-shaik/vim-javacomplete2', { 'for': ['java'] }
 Plug 'kalekundert/vim-coiled-snake', { 'for': ['python'] }
-Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries' }
+Plug 'fatih/vim-go'
 Plug 'posva/vim-vue'
 
 " Autocompletion Plugins
