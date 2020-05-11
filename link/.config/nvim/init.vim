@@ -19,7 +19,7 @@ let $MYVIMRC = resolve($MYVIMRC)
 
 " Python interpreter path
 " let g:python_host_prog = expand('~/.pyenv/versions/nvim2/bin/python')
-let g:python3_host_prog = expand('~/.pyenv/versions/nvim3/bin/python')
+let g:python3_host_prog = expand('~/.asdf/shims/python3')
 
 """" AutoCmd Group
 
