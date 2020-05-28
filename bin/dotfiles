@@ -395,23 +395,23 @@ init() {
 
 # Set excl_oses array
 set_excl_oses() {
-  local distros=() candidates=()
+  local distros=() oses=()
 
   # Clear excl_oses array
   excl_oses=()
 
   distros=("debian" "ubuntu")
-  candidates=("macos" "cygwin")
+  oses=("macos" "cygwin")
 
   for distro in "${distros[@]}"; do
-    candidates+=("${distro}")
-    candidates+=("${distro}_wsl")
+    oses+=("${distro}")
+    oses+=("${distro}_wsl")
   done
 
   # Set the list of os names to exclude
-  for candidate in "${candidates[@]}"; do
-    if [[ "${OSNAME}" != "${candidate}" && "${OSNAME%_wsl}" != "${candidate}" ]]; then
-      excl_oses+=("${candidate}")
+  for os in "${oses[@]}"; do
+    if [[ "${OSNAME}" != "${os}" && "${OSNAME%_wsl}" != "${os}" ]]; then
+      excl_oses+=("${os}")
     fi
   done
 }
