@@ -1,5 +1,5 @@
 # Abort if not macOS
-[[ "${OS}" == "macos" ]] || return 1
+[[ "${OSNAME}" == "macos" ]] || return 1
 
 # Install Homebrew
 if [[ ! "$(command -v brew)" ]]; then

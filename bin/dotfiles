@@ -43,7 +43,7 @@ get_os() {
   return 1
 }
 
-OS="$(get_os)"
+OSNAME="$(get_os)"
 
 #; ****** UTILITY FUNCTIONS ******
 # Check if the script is run directly
@@ -227,7 +227,7 @@ get_macos_version() {
 # Check and try to resolve dependencies return false if it fails
 dependency() {
   # Check if command line tools are installed and try to install it if it isn't
-  if [[ "${OS}" == "macos" ]] && ! xcode-select -p &>/dev/null; then
+  if [[ "${OSNAME}" == "macos" ]] && ! xcode-select -p &>/dev/null; then
     msg_heading "Installing command line tools"
     install_clt
     if ! xcode-select -p &>/dev/null; then
@@ -410,7 +410,7 @@ set_excl_oses() {
 
   # Set the list of os names to exclude
   for candidate in "${candidates[@]}"; do
-    if [[ "${OS}" != "${candidate}" && "${OS%_wsl}" != "${candidate}" ]]; then
+    if [[ "${OSNAME}" != "${candidate}" && "${OSNAME%_wsl}" != "${candidate}" ]]; then
       excl_oses+=("${candidate}")
     fi
   done
@@ -586,7 +586,7 @@ remove() {
   [[ ! "$1" == "${HOME}"/* ]] && return 1
 
   # Set the default trash path according to Apple/XDG specification
-  if [[ "${OS}" == "macos" ]]; then
+  if [[ "${OSNAME}" == "macos" ]]; then
     trash="${trash:-${HOME}/.Trash}"
   else
     trash="${trash:-${XDG_DATA_HOME:-${HOME}/.local/share}/Trash}"
@@ -660,7 +660,7 @@ record_remove() {
 
   # Remove the record from the record file
   if [[ -e "$2" ]]; then
-    if [[ "${OS}" == "macos" ]]; then
+    if [[ "${OSNAME}" == "macos" ]]; then
       args+=("")
     fi
     args+=("\\:$1:d" "$2")
@@ -777,17 +777,17 @@ os_trim() {
   local base
 
   case "$1" in
-    *."${OS}".*)
-      base="${1/.${OS}./.}"
+    *."${OSNAME}".*)
+      base="${1/.${OSNAME}./.}"
       ;;
-    *."${OS}")
-      base="${1%.${OS}}"
+    *."${OSNAME}")
+      base="${1%.${OSNAME}}"
       ;;
-    *."${OS%_wsl}".*)
-      base="${1/.${OS%_wsl}./.}"
+    *."${OSNAME%_wsl}".*)
+      base="${1/.${OSNAME%_wsl}./.}"
       ;;
-    *."${OS%_wsl}")
-      base="${1%.${OS%_wsl}}"
+    *."${OSNAME%_wsl}")
+      base="${1%.${OSNAME%_wsl}}"
       ;;
     *)
       base="$1"

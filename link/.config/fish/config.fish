@@ -34,7 +34,7 @@ if status --is-interactive
   set -U fish_color_quote FBF1C7
   set -U fish_color_redirection 689D6A
 
-  set -x OS (get_os)
+  set -x OSNAME (get_os)
 
   if test (command -v nvim)
     set -x EDITOR nvim
