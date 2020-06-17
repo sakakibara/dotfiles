@@ -124,7 +124,12 @@ Plug 'gruvbox-community/gruvbox'
 Plug 'vim-airline/vim-airline'
 
 " Miscellaneous Plugins
-Plug '/usr/local/opt/fzf' | Plug 'junegunn/fzf.vim'
+if $OSNAME =~ 'macos'
+  Plug '/usr/local/opt/fzf'
+else
+  Plug '~/.fzf'
+endif
+Plug 'junegunn/fzf.vim'
 Plug 'mbbill/undotree', { 'on': ['UndotreeShow', 'UndotreeToggle'] }
 Plug 'majutsushi/tagbar',
       \ { 'on': ['TagbarOpen', 'TagbarToggle', 'Tagbar',
