@@ -808,26 +808,32 @@ let g:fzf_colors = {
 let g:fzf_layout = { 'down': '~10' }
 let g:fzf_history_dir = '~/.local/share/fzf-history'
 
+if $OSNAME =~ 'debian'
+  let s:fd_command = 'fdfind'
+else
+  let s:fd_command = 'fd'
+endif
+
 " Custom fzf commands
 command! -bang -nargs=? -complete=dir Files
       \ call fzf#vim#files(<q-args>, {
-      \ 'source': 'fd --type f --follow --hidden'}, <bang>0)
+      \ 'source': s:fd_command . ' --type f --follow --hidden'}, <bang>0)
 
 command! -bang -nargs=? -complete=dir Cd
       \ call fzf#run(fzf#wrap({
-      \ 'source': 'fd --type d --follow --hidden',
+      \ 'source': s:fd_command . ' --type d --follow --hidden',
       \ 'dir': <q-args>,
       \ 'sink': 'cd' }, <bang>0))
 
 command! -bang -nargs=? -complete=dir LCd
       \ call fzf#run(fzf#wrap({
-      \ 'source': 'fd --type d -follow --hidden',
+      \ 'source': s:fd_command . ' --type d -follow --hidden',
       \ 'dir': <q-args>,
       \ 'sink': 'lcd' }, <bang>0))
 
 command! -bang -nargs=? -complete=dir FindNote
       \ call fzf#vim#files(<q-args>, {
-      \ 'source': 'fd --type f --follow --hidden',
+      \ 'source': s:fd_command . ' --type f --follow --hidden',
       \ 'dir': '~/notes'}, <bang>0)
 
 command! -bang -nargs=? -complete=dir GrepNote
