@@ -4,7 +4,7 @@
 # Install Homebrew
 if [[ ! "$(command -v brew)" ]]; then
   msg_heading "Installing Homebrew"
-  /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
 fi
 
 # Exit if, for some reason, Homebrew is not installed
