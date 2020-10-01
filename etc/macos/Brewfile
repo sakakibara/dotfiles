@@ -40,7 +40,6 @@ brew "universal-ctags/universal-ctags/universal-ctags", args: ["HEAD"]
 cask "adobe-creative-cloud"
 cask "alfred"
 cask "appcleaner"
-cask "cmd-eikana"
 cask "colorpicker-skalacolor"
 cask "docker"
 cask "dropbox"
