@@ -41,7 +41,6 @@ brew "wget"
 brew "universal-ctags/universal-ctags/universal-ctags", args: ["HEAD"]
 cask "adobe-creative-cloud"
 cask "alfred"
-cask "appcleaner"
 cask "colorpicker-skalacolor"
 cask "docker"
 cask "dropbox"
