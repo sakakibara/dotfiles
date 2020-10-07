@@ -693,7 +693,7 @@ set shortmess+=c
 " always show signcolumns
 set signcolumn=yes
 
-let g:coc_global_extensions = ['coc-dictionary', 'coc-snippets',
+let g:coc_global_extensions = ['coc-lists', 'coc-dictionary', 'coc-snippets',
       \ 'coc-json', 'coc-tsserver', 'coc-html', 'coc-css', 'coc-emmet',
       \ 'coc-python',  'coc-gocode', 'coc-tailwindcss']
 
