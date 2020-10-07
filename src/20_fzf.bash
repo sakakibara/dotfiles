@@ -2,8 +2,6 @@
 if [[ ! "$(command -v fzf)" && ! -d "${HOME}/.fzf" ]]; then
   msg_heading "Installing fzf"
   git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
-  # fzf installation
-  "${HOME}/.fzf/install"
 fi
 
 # Exit if, for some reason, fzf is not installed
