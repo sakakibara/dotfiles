@@ -43,13 +43,6 @@ if status --is-interactive
   end
   set -x VISUAL $EDITOR
 
-  if test (command -v fzf)
-    set -x FZF_DEFAULT_COMMAND 'fd --type file --follow --hidden --exclude .git'
-    set -x FZF_DEFAULT_OPTS "--ansi"
-    set -x FZF_CTRL_T_COMMAND $FZF_DEFAULT_COMMAND
-    set -x FZF_ALT_C_COMMAND 'fd --type directory --follow --hidden'
-  end
-
   # Navigation aliases
   abbr -a e $EDITOR
   abbr -a se sudo $EDITOR
@@ -70,6 +63,14 @@ if status --is-interactive
   path_prepend $HOME/.composer/vendor/bin
   path_prepend $GOPATH/bin
   path_prepend /usr/local/bin /usr/local/sbin $DOTFILES/bin
+
+  # Fzf settings
+  if test (command -v fzf)
+    set -x FZF_DEFAULT_COMMAND 'fd --type file --follow --hidden --exclude .git'
+    set -x FZF_DEFAULT_OPTS "--ansi"
+    set -x FZF_CTRL_T_COMMAND $FZF_DEFAULT_COMMAND
+    set -x FZF_ALT_C_COMMAND 'fd --type directory --follow --hidden'
+  end
 
   # Keybind
   bind \e\cP history-token-search-backward
