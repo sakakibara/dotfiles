@@ -127,7 +127,7 @@ Plug 'vim-airline/vim-airline'
 Plug '~/.fzf'
 Plug 'junegunn/fzf.vim'
 Plug 'mbbill/undotree', { 'on': ['UndotreeShow', 'UndotreeToggle'] }
-Plug 'majutsushi/tagbar',
+Plug 'preservim/tagbar',
       \ { 'on': ['TagbarOpen', 'TagbarToggle', 'Tagbar',
       \ 'TagbarOpenAutoClose', 'TagbarCurrentTag'] }
 Plug 'jlanzarotta/bufexplorer'
