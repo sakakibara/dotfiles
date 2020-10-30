@@ -986,7 +986,7 @@ unlink_do() {
 
   shortname="${2/${HOME}/~}"
 
-  if [[ ! -f "$1" ]]; then
+  if [[ ! -L "$1" ]]; then
     msg_success "File ${shortname} is already unlinked."
     return 0
   elif remove "$1"; then
