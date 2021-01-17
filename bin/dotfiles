@@ -49,6 +49,13 @@ OSNAME="$(get_os)"
 # Check if the script is run directly
 is_dotfiles_bin() { [[ "${0##*/}" == dotfiles ]]; }
 
+is_relpath() {
+  if [[ "${1:0:1}" == "/" ]]; then
+    return 1
+  fi
+  return 0
+}
+
 # Find the relative path from $1 to $2
 # Taken from https://unix.stackexchange.com/a/269303
 get_relpath() {
@@ -66,6 +73,20 @@ get_relpath() {
   done
 
   echo "${down}${ref##"${pos}/"}"
+}
+
+get_abspath() {
+  local base dir
+
+  base="${1##*/}"
+  dir="${1%/*}"
+
+  # $1 : relative filename
+  if [[ -d "$1" ]]; then
+    cd "$1" && pwd
+  elif [[ -d "${dir}" ]]; then
+    echo "$(cd "${dir}" && pwd)/${base}"
+  fi
 }
 
 # Add an entry to the front of existing PATH if it doesn't already exist
@@ -107,8 +128,9 @@ array_diff() {
   set +o noglob
 }
 
-# If the script is being sourced, abort here
-[[ -n "${BASH_SOURCE[0]}" && "${BASH_SOURCE[0]}" != "$0" ]] && return
+# If the script is being sourced and not run as test script, abort here
+[[ -z "${BATS_TEST_NUMBER}" \
+  && -n "${BASH_SOURCE[0]}" && "${BASH_SOURCE[0]}" != "$0" ]] && return
 
 #; ****** DOTFILES SCRIPT ******
 set -o errexit -o pipefail
@@ -116,18 +138,38 @@ set -o errexit -o pipefail
 # Display the version
 version() { local version; version=0.1.6; echo "dotfiles ${version}"; }
 
+# Set readme
+set_readme() {
+  read -rd '' readme << EOF || true
+See the README for documentation.
+https://github.com/${DOTFILES_USER}/dotfiles
+EOF
+}
+
 # Usage to be displayed with help command
 usage() {
+  local readme
+  set_readme
+  case "$1" in
+    clean|link|copy|src|sync|unlink|help|version|update)
+      "$1_usage"
+      ;;
+    *)
+      all_usage
+  esac
+}
+
+all_usage() {
   cat << EOF
-Usage: dotfiles <command>
+Usage: ${0##*/} [command]
 
 Multiple commands can be given to run multiple tasks at once.
 Defaults to clean, copy, link and src, if no <command> is given.
 Unless --no-update option is given, dotfiles command will always
 try to update the repository.
 
-Commands marked with asterisk(*) cannot be used together with any
-other commands.
+Commands marked with asterisk(*) cannot be used together with
+any other commands.
 
 Options:
   -h, --help        Show this help message
@@ -142,19 +184,91 @@ Commands:
   src        Source shell scripts in src folder
   sync       Alias for clean & link
   unlink     Removes symlinks created by link command
-  help*      Show help
-  version*   Show version
+  help       Show help
+  version    Show version
   update*    Updates dotfiles without running any other commands
 
-See the README for documentation.
-https://github.com/sakakibara/dotfiles
+${readme}
+EOF
+}
+
+clean_usage() {
+  cat << EOF
+Usage: ${0##*/} clean
+
+Removes stale symlinks
+
+${readme}
+EOF
+}
+
+link_usage() {
+  cat << EOF
+Usage: ${0##*/} link
+
+Symlinks files in link folder to \$HOME
+
+${readme}
+EOF
+}
+
+copy_usage() {
+  cat << EOF
+Usage: ${0##*/} copy
+
+Copies files in copy folder to \$HOME
+
+${readme}
+EOF
+}
+
+src_usage() {
+  cat << EOF
+Usage: ${0##*/} src
+
+Source shell scripts in src folder
+
+${readme}
+EOF
+}
+
+sync_usage() {
+  cat << EOF
+Usage: ${0##*/} sync
+
+Alias for clean & link
+
+${readme}
+EOF
+}
+
+unlink_usage() {
+  cat << EOF
+Usage: ${0##*/} unlink
+
+Removes symlinks created by link command
+
+${readme}
+EOF
+}
+
+update_usage() {
+  cat << EOF
+Usage: ${0##*/} update
+
+Updates dotfiles without running any other commands
+This command is exclusive and cannot be used together with any other commands
+
+${readme}
 EOF
 }
 
 # Entry point for dotfiles command
 main() {
-  local echoed clt_tmp backup backup_dir no_update timer
-  local cmds=() menu_options=() menu_selects=() excl_oses=() blacklist=()
+  local echoed clt_tmp backup backup_dir timer
+  local args=() missing_param_opts=() invalid_combos=() invalid_args=()
+  local excl_oses=() blacklist=()
+  local menu_options=() menu_selects=()
 
   # Set up trap function
   trap cleanup EXIT
@@ -167,9 +281,6 @@ main() {
 
   # Parse argument options, and add valid commands to cmds array
   parse "$@"
-
-  # Initialize dotfiles
-  init "${cmds[@]}"
 
   # Set backup_dir variable
   backup_dir="${DOTFILES}/backup/$(date "+%Y-%m-%dT%H:%M:%S%Z")"
@@ -184,7 +295,7 @@ main() {
   timer=5; is_dotfiles_bin || timer=15
 
   # Parse arguments to run commands
-  commands "${cmds[@]}"
+  execute "$@"
 
   # Display a message if any backups are created
   if [[ -n "${backup}" ]]; then
@@ -283,101 +394,252 @@ install_clt() {
   fi
 }
 
-# Splits short options like "-unf" to "-u", "-n" and "-f"
-split_shortopt() {
-  local i opt
+opt_or_command() {
+  case "$1" in
+    -[a-zA-Z]*|--[a-zA-Z]*)
+      echo "option"
+      ;;
+    *)
+      echo "command"
+      ;;
+  esac
+}
 
-  opt="${1:1}"
+missing_param() {
+  local arg
 
-  for (( i=0; i<${#opt}; i++ )); do
-    opts+=("-${opt:${i}:1}")
+  for arg in "$@"; do
+    category="$(opt_or_command "${arg}")"
   done
+
+  echo "Error: Missing required parameter for $1 ${category}." >&2
+  exit 1
+}
+
+invalid_argument() {
+  local category
+
+  category="$(opt_or_command "$1")"
+
+  echo "Error: Unknown ${category} '$1'." >&2
+  exit 1
+}
+
+invalid_combo() {
+  local arg
+  local categories=()
+
+  for arg in "$@"; do
+    categories+=("$(opt_or_command "${arg}")")
+  done
+
+  echo "Error: $1 ${categories[0]} can't be used together with $2 ${categories[1]}." >&2
+  exit 1
+}
+
+is_invalid_pair() {
+  local variable
+  local candidates=()
+
+  for pair in "${invalid_pairs[@]}"; do
+    IFS=":" read -ra candidates <<< "${pair}"
+    if [[ "$1" == "${candidates[0]}" ]]; then
+      against="${candidates[1]}"
+    elif [[ "$1" == "${candidates[1]}" ]]; then
+      against="${candidates[0]}"
+    fi
+    if [[ -n "${against}" ]]; then
+      case "$(opt_or_command "${against}")" in
+        option)
+          variable="${against#--}"
+          variable="${variable//-/_}"
+          if [[ -n "${!variable}" ]]; then
+            invalid_combos+=("$1:${against}")
+            return 0
+          fi
+          ;;
+        command)
+          for arg in "${args[@]}"; do
+            if [[ "${against}" == "${arg}" ]]; then
+              invalid_combos+=("$1:${against}")
+              return 0
+            fi
+          done
+          ;;
+      esac
+    fi
+  done
+  return 1
 }
 
 # Parse arguments
 parse() {
-  local opt arg
-  local opts=() args=()
+  local ignore switch opt longopt shortopt valid param need_param
+  local variable has_equal shortopts cmd candidate
+  local exclusive_cmds=() invalid_pairs=() opts=()
+  local candidates=() fields=()
+
+  # Exclusive commands which may not be used together with any other commands
+  exclusive_cmds=(
+    "update"
+  )
+
+  # Invalid combination pairs
+  # format must be in the following form
+  # and options must be declared in long-opt form with hyphens
+  invalid_pairs=(
+    "--no-update:update"
+  )
+
+  # Optional argument declaration
+  # format must be in the following form without any hyphens
+  # "long-opt:short-opt[:default-value(optional)]"
+  # note that second colon is required if the option requires a paramer
+  opts=(
+    "help:h"
+    "version:v"
+    "force:f"
+    "no-update:n"
+  )
 
   # Parse arguments into options and command arguments
   while [[ $# -gt 0 ]]; do
-    # Everything after "--" should be considered as commands
-    if [[ -n "${ignore}" ]]; then
-      args+=("$1")
+
+    if [[ -n "${switch}" ]]; then
+      candidates=("${opts[@]}")
+
+      for candidate in "${candidates[@]}"; do
+        unset need_param
+        colons="${opt//[^:]}"
+        [[ "${#colons}" -gt 1 ]] && need_param=1
+        if [[ -z "${need_param}" ]]; then
+          longopt="${candidate%:*}"
+          shortopt="${candidate#*:}"
+          if [[ "-${shortopt}" == "${switch}" \
+            || "--${longopt}" == "${switch}" ]]; then
+            valid=1
+            break
+          fi
+        else
+          IFS=":" read -ra fields <<< "${candidate}"
+          longopt="${fields[0]}"
+          shortopt="${fields[1]}"
+          default="${fields[2]}"
+          if [[ "-${shortopt}" == "${switch}" ]]; then
+            valid=1
+            if [[ "${#shortopts}" -gt 0 ]];then
+              param="${shortopts}"
+              unset shortopts
+            else
+              shift
+              param="$1"
+            fi
+            break
+          elif [[ "--${longopt}" == "${switch}" ]]; then
+            valid=1
+            if [[ -z "${has_equal}" && -z "${param}" ]]; then
+              shift
+              param="$1"
+            fi
+            break
+          fi
+        fi
+      done
+
+      variable="${longopt//-/_}"
+      # Variable name sanitizing
+      variable="${variable//[^0-9A-Za-z_]/}"
+
+      # Allow dynamic variable name assignment
+      # shellcheck disable=SC2229
+      if [[ -z "${valid}" ]]; then
+        invalid_args+=("${switch}")
+      elif ! is_invalid_pair "--${longopt}"; then
+        if [[ -n "${need_param}" ]]; then
+          if [[ -n "${param}" ]]; then
+            read -r "${variable}" <<< "${param}"
+          elif [[ -n "${default}" ]]; then
+            read -r "${variable}" <<< "${default}"
+          else
+            missing_param_opts+=("--${longopt}")
+          fi
+        else
+          read -r "${variable}" <<< 1
+        fi
+      fi
+
+      unset valid switch param need_param has_equal
+      if [[ -z "${shortopts}" ]]; then
+        shift
+      fi
+    elif [[ -n "${shortopts}" ]]; then
+      # Break up concatenated shortopts
+      # Set the first letter of shortopts string as the switch
+      switch="-${shortopts:0:1}"
+      # Remove the first letter of short opts
+      shortopts="${shortopts:1}"
     else
+      if [[ -z "${ignore}" ]]; then
+        case "$1" in
+          -[a-zA-Z]*)
+            shortopts="${1:1}"
+            continue
+            ;;
+          --[a-zA-Z]*=*)
+            switch="${1%=*}"
+            param="${1#*=}"
+            has_equal=1
+            continue
+            ;;
+          --[a-zA-Z]*)
+            switch="$1"
+            continue
+            ;;
+          --)
+            ignore=1
+            shift
+            ;;
+        esac
+      fi
       case "$1" in
-        -[a-zA-Z]*)
-          split_shortopt "$1"
+        help)
+          help=1
+          shift
           ;;
-        --[a-zA-Z]*)
-          opts+=("$1")
-          ;;
-        --)
-          ignore=1;
+        version)
+          version=1
+          shift
           ;;
         *)
-          args+=("$1")
+          for cmd in "${exclusive_cmds[@]}"; do
+            if [[ "$1" == "${cmd}" ]]; then
+              exclusive_cmd="$1"
+              break
+            fi
+          done
+          if [[ -n "${exclusive_cmd}" && "${#args[@]}" -gt 0 ]]; then
+            invalid_combos+=("$1:${args[0]}")
+          fi
+          case "$1" in
+            update)
+              if ! is_invalid_pair "$1"; then
+                update=1
+                args+=("$1")
+              fi
+              ;;
+            link|copy|src|unlink|clean|sync)
+              if ! is_invalid_pair "$1"; then
+                args+=("$1")
+              fi
+              ;;
+            *)
+              invalid_args+=("$1")
+              ;;
+          esac
+          shift
+          ;;
       esac
     fi
-    shift
-  done
-
-  # Parse the options and commands
-  parse_opts && parse_cmds
-}
-
-# Parse options
-parse_opts() {
-  # Set the options or add the commands into args array
-  for opt in "${opts[@]}"; do
-    case "${opt}" in
-      -h|--help)
-        args+=("help")
-        ;;
-      -v|--version)
-        args+=("version")
-        ;;
-      -n|--no-update)
-        no_update=1
-        ;;
-      -f|--force)
-        force=1
-        ;;
-      *)
-        echo "Unknown option: ${opt}" >&2
-        exit 1
-        ;;
-    esac
-  done
-
-}
-
-# Parse commands
-parse_cmds() {
-  # Run an exclusive command or store the commands to $cmds array
-  for arg in "${args[@]}"; do
-    case "${arg}" in
-      help)
-        usage && exit
-        ;;
-      version)
-        version && exit
-        ;;
-      update)
-        if [[ -n "${no_update}" ]]; then
-          echo "Error: no-update flag can't be used together with update command."
-          exit 1
-        fi
-        update && exit
-        ;;
-      link|copy|src|unlink|clean|sync)
-        cmds+=("${arg}")
-        ;;
-      *)
-        echo "Unknown command: ${arg}" >&2
-        exit 1
-        ;;
-    esac
   done
 }
 
@@ -390,6 +652,7 @@ init() {
       "https://github.com/${DOTFILES_USER}/dotfiles.git" "${DOTFILES}"
     cd "${DOTFILES}" || exit 1
   fi
+  # shellcheck disable=SC2154
   [[ -z "${no_update}" ]] && update "$@"
 }
 
@@ -475,15 +738,45 @@ update() {
 }
 
 # Run the commands
-commands() {
-  local cmd
+execute() {
+  local arg
 
-  if [[ -z "$*" ]]; then
-    all
-  else
-    for cmd; do
-      "${cmd}"
-    done
+  if [[ -n "${help}" ]]; then
+    if [[ "${#args[@]}" -eq 1 ]]; then
+      usage "${args[0]}" && exit
+    else
+      usage && exit
+    fi
+  elif [[ -n "${version}" ]]; then
+    version && exit
+  elif [[ "${#missing_param_opts[@]}" -gt 0 ]]; then
+    # for param in "${missing_param_opts[@]}"; do
+    #   missing_param "${param}"
+    # done
+    missing_param "${missing_param_opts[0]}"
+  elif [[ "${#invalid_args[@]}" -gt 0 ]]; then
+    # for arg in "${invalid_args[@]}"; do
+    #   invalid_argument "${arg}"
+    # done
+    invalid_argument "${invalid_args[0]}"
+  elif [[ "${#invalid_combos[@]}" -gt 0 ]]; then
+    # for combo in "${invalid_combos[@]}"; do
+    #   invalid_combo "${combo%:*}" "${combo#*:}"
+    # done
+    invalid_combo "${invalid_combos[0]%:*}" "${invalid_combos[0]#*:}"
+  fi
+
+  # Initialize dotfiles
+  init "$@"
+
+  if [[ -z "${update}" ]]; then
+    if [[ -z "${args[*]}" ]]; then
+      all
+    else
+      for arg in "${args[@]}"; do
+        "${arg}"
+      done
+    fi
   fi
 }
 all() { is_dotfiles_bin && clean; link; copy; src; }
@@ -971,6 +1264,7 @@ unlink_test() {
   [[ ! -f "$2" ]] && return
 
   # Check if the target file is blacklisted or inside a blacklisted directory
+  # shellcheck disable=SC2154
   if [[ -z "${force}" ]]; then
     result="$(is_blacklisted "$2")"
     if [[ -n "${result}" ]]; then
