@@ -136,7 +136,7 @@ array_diff() {
 set -o errexit -o pipefail
 
 # Display the version
-version() { local version; version=0.1.6; echo "dotfiles ${version}"; }
+version() { local version; version=0.1.7; echo "dotfiles ${version}"; }
 
 # Set readme
 set_readme() {
