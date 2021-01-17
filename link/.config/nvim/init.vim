@@ -103,6 +103,7 @@ Plug 'artur-shaik/vim-javacomplete2', { 'for': ['java'] }
 Plug 'kalekundert/vim-coiled-snake', { 'for': ['python'] }
 Plug 'fatih/vim-go'
 Plug 'posva/vim-vue'
+Plug 'aliou/bats.vim'
 
 " Autocompletion Plugins
 Plug 'roxma/nvim-yarp'
