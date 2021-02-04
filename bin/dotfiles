@@ -1197,7 +1197,7 @@ link_do() {
 
   mkdir_if_missing "$2"
 
-  if ln -s "${relpath}" "$2"; then
+  if ln -s "${relpath}" "$2" &>/dev/null; then
     msg_success "Linked ${shortname}."
   else
     msg_error "Failed to link ${shortname}."
@@ -1439,5 +1439,7 @@ cleanup() {
     sudo rm -f "${clt_tmp}"
   fi
 }
+
+[[ -n "${BATS_TEST_NUMBER}" ]] && return
 
 main "$@" || exit 1
