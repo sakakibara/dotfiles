@@ -75,7 +75,4 @@ if status --is-interactive
   # Keybind
   bind \e\cP history-token-search-backward
   bind \e\cN history-token-search-forward
-
-  # Completions
-  complete -c git -w hub
 end
