@@ -12,6 +12,8 @@ if status --is-interactive
   # Disable greeting message
   set fish_greeting
 
+  set -x VIRTUAL_ENV_DISABLE_PROMPT 1
+
   # Bootstrap fisher
   if not functions -q fisher
     set -q XDG_CONFIG_HOME; or set XDG_CONFIG_HOME ~/.config

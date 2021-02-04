@@ -16,6 +16,10 @@ function fish_prompt
   set -l behind "⇣"
   set -l prompt "❯"
 
+  if set -l venv_array (string split '/' "$VIRTUAL_ENV")
+    echo -ns "(" $venv_array[-2] ")" " "
+  end
+
   # Print current working directory
   echo -ns $directory_color $cwd $normal_color
 
