@@ -1,0 +1,7 @@
+abbr -="cd -"
+abbr ..="cd .."
+abbr ...="cd ../.."
+abbr ....="cd ../../.."
+abbr .....="cd ../../../.."
+abbr e="nvim"
+abbr se="sudo nvim"

@@ -1,0 +1,16 @@
+local file="${ZSH_EVAL_CACHE}/init-${1##*/}.zsh"
+
+if [[ -n "${ZSH_EVAL_CACHE_DISABLE}" ]]; then
+  eval "$("$@")"
+elif [[ -r "${file}" ]]; then
+  source "${file}"
+else
+  if type "$1" &>/dev/null || type -f osname &>/dev/null; then
+    (echo "Creating cache file for the output of: $*" >&2)
+    mkdir -p "${ZSH_EVAL_CACHE}"
+    "$@" > "${file}"
+    source "${file}"
+  else
+    echo "Error: $1 is not available."
+  fi
+fi

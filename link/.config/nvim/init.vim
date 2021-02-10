@@ -465,6 +465,9 @@ function! s:sql_init() abort
   setlocal commentstring=--%s
 endfunction
 
+" Zsh specific autocmd
+autocmd rc BufRead,BufNewFile ~/.zfunc/* setfiletype zsh
+
 """" Folding
 
 function! NeatFoldExpr(...)

@@ -1,0 +1,28 @@
+case "${OSTYPE}" in
+  "darwin"*)
+    OSNAME="macos"
+    ;;
+  "cygwin")
+    OSNAME="cygwin"
+    ;;
+  "linux"*)
+    if [[ -f "/etc/os-release" ]]; then
+      OSNAME="$(awk -F= '$1=="ID" { print tolower($2) ;}' "/etc/os-release")"
+    elif type lsb_release &>/dev/null; then
+      OSNAME="$(lsb_release -si | awk '{ print tolower($0) ;}')"
+    elif [[ -f "/etc/lsb-release" ]]; then
+      OSNAME="$(awk -F= '$1=="DISTRIB_ID" { print tolower($2) ;}' "/etc/lsb-release")"
+    elif [[ -f /etc/debian_version ]]; then
+      OSNAME="debian"
+    fi
+
+    if [[ -n "${OSNAME}" && -f "/proc/version" ]]; then
+      grep -q "Microsoft" "/proc/version" && OSNAME="${OSNAME}_wsl"
+    fi
+    ;;
+esac
+if [[ "$1" == "init" ]]; then
+  echo "export OSNAME=${OSNAME}"
+else
+  echo "${OSNAME}"
+fi
