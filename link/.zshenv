@@ -32,15 +32,19 @@ zecache osname init
 
 # Set dotfiles environment variable
 export DOTFILES=${HOME}/.dotfiles
-path=("${DOTFILES}/bin")
+
+path=(
+  "${HOME}/.local/bin"
+  "${HOME}/.fzf/bin"
+  "${DOTFILES}/bin"
+  ${path}
+)
 
 # Set OS specific environment variable
 if [[ ${OSNAME} == macos ]]; then
   path=(
     "/usr/local/bin"
     "/usr/local/sbin"
-    "${HOME}/.local/bin"
-    "${HOME}/.fzf/bin"
     ${path}
   )
 fi
