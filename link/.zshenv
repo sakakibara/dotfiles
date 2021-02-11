@@ -54,3 +54,8 @@ if (( ${+commands[go]} )); then
   export GOBIN="${GOPATH}/bin"
   path+=("${GOBIN}")
 fi
+
+if [[ ${OSNAME} == *_wsl ]]; then
+  export TZ=/usr/share/zoneinfo/Japan
+  export DISPLAY=localhost:0.0
+fi
