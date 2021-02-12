@@ -130,6 +130,12 @@ alias df="df -h"
 [[ -f ~/.zshrc.local ]] && source ~/.zshrc.local
 
 #
+# Completions
+#
+
+fpath+=(${HOME}/.zcomp)
+
+#
 # Zinit
 #
 
