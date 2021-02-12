@@ -130,12 +130,6 @@ alias df="df -h"
 [[ -f ~/.zshrc.local ]] && source ~/.zshrc.local
 
 #
-# Completions
-#
-
-fpath+=(${HOME}/.zcomp)
-
-#
 # Zinit
 #
 
@@ -283,6 +277,15 @@ zstyle ':completion:*:(ssh|scp|rsync):*:hosts-ipaddr' ignored-patterns '^(<->.<-
 
 (( ${+aliases[zi]} )) && unalias zi
 zecache zoxide init zsh
+
+#
+# Completions
+#
+
+fpath+=(${HOME}/.zcomp)
+if (( ${+functions[asdf]} )); then
+  fpath+=(${HOME}/.asdf/completions)
+fi
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
