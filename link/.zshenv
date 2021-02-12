@@ -25,7 +25,7 @@ export ZSH_EVAL_CACHE=${ZSH_EVAL_CACHE:-"${HOME}/.zecache"}
 fpath=(${HOME}/.zfunc ${fpath})
 
 # Autoload all functions in custom zsh functions directory
-autoload -Uz ${HOME}/.zfunc/*(@:t)
+autoload -Uz ${HOME}/.zfunc/*(.,@:t)
 
 # Set or load OSNAME variable
 zecache osname init
