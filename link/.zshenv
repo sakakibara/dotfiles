@@ -15,6 +15,9 @@ else
 fi
 export VISUAL="${EDITOR}"
 
+# Set oracle language
+export NLS_LANG=AMERICAN_AMERICA.AL32UTF8
+
 # Disable microsoft telemetry
 export DOTNET_CLI_TELEMETRY_OPTOUT=1
 
