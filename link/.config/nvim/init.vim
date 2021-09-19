@@ -538,9 +538,30 @@ endfunction
 """" Vim-Sandwich
 
 let g:textobj_sandwich_no_default_key_mappings = 1
+runtime macros/sandwich/keymap/surround.vim
 
-nmap s <Nop>
-xmap s <Nop>
+let g:sandwich#recipes += [
+      \   {'buns': ['{ ', ' }'], 'nesting': 1, 'match_syntax': 1,
+      \    'kind': ['add', 'replace'], 'action': ['add'], 'input': ['{']},
+      \
+      \   {'buns': ['[ ', ' ]'], 'nesting': 1, 'match_syntax': 1,
+      \    'kind': ['add', 'replace'], 'action': ['add'], 'input': ['[']},
+      \
+      \   {'buns': ['( ', ' )'], 'nesting': 1, 'match_syntax': 1,
+      \    'kind': ['add', 'replace'], 'action': ['add'], 'input': ['(']},
+      \
+      \   {'buns': ['{\s*', '\s*}'],   'nesting': 1, 'regex': 1,
+      \    'match_syntax': 1, 'kind': ['delete', 'replace', 'textobj'],
+      \    'action': ['delete'], 'input': ['{']},
+      \
+      \   {'buns': ['\[\s*', '\s*\]'], 'nesting': 1, 'regex': 1,
+      \    'match_syntax': 1, 'kind': ['delete', 'replace', 'textobj'],
+      \    'action': ['delete'], 'input': ['[']},
+      \
+      \   {'buns': ['(\s*', '\s*)'],   'nesting': 1, 'regex': 1,
+      \    'match_syntax': 1, 'kind': ['delete', 'replace', 'textobj'],
+      \    'action': ['delete'], 'input': ['(']},
+      \ ]
 
 """" Vim-Speeddating
 
@@ -599,14 +620,6 @@ xmap p <Plug>(SubversiveSubstitute)
 xmap P <Plug>(SubversiveSubstitute)
 
 """" Vim-Sneak
-
-" Sneak
-nmap <Leader>s <Plug>Sneak_s
-nmap <Leader>S <Plug>Sneak_S
-xmap <Leader>s <Plug>Sneak_s
-xmap <Leader>S <Plug>Sneak_S
-omap <Leader>s <Plug>Sneak_s
-omap <Leader>S <Plug>Sneak_S
 
 " 1-character enhanced 'f'
 nmap f <Plug>Sneak_f
