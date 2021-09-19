@@ -766,7 +766,7 @@ autocmd BufWritePre *.go :call CocAction('runCommand', 'editor.action.organizeIm
 
 """" Fugitive
 
-nnoremap <silent> <Leader>gs :15Gstatus<CR>
+nnoremap <silent> <Leader>gs :Git<CR>
 nnoremap <silent> <Leader>gd :Gdiff HEAD<CR>
 
 """" IndentLine
