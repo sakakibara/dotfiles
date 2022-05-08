@@ -12,33 +12,26 @@ if status --is-interactive
   # Disable greeting message
   set fish_greeting
 
-  set -x VIRTUAL_ENV_DISABLE_PROMPT 1
-
-  # Bootstrap fisher
-  if not functions -q fisher
-    set -q XDG_CONFIG_HOME; or set XDG_CONFIG_HOME ~/.config
-    curl https://git.io/fisher --create-dirs -sLo $XDG_CONFIG_HOME/fish/functions/fisher.fish
-    fish -c fisher
-  end
-
   # Export dotfiles directory variable
   set -x DOTFILES $HOME/.dotfiles
 
   # Export gopath
   set -x GOPATH $HOME/.go
 
-  set -U fish_color_autosuggestion 928374
-  set -U fish_color_command B8BB26
-  set -U fish_color_comment 928374
-  set -U fish_color_end FBF1C7
-  set -U fish_color_error FB4934
-  set -U fish_color_param D65D0E
-  set -U fish_color_quote FBF1C7
-  set -U fish_color_redirection 689D6A
-
   set -x OSNAME (get_os)
 
-  if test (command -v nvim)
+  # Add path
+  path_prepend $HOME/.fzf/bin
+  path_prepend $HOME/.composer/vendor/bin
+  path_prepend $GOPATH/bin
+  path_prepend /usr/local/bin /usr/local/sbin $DOTFILES/bin
+  path_prepend $HOME/.local/share/bin
+
+  if test (command -v ec)
+    set -x EDITOR ec
+  else if test (command -v emacs)
+    set -x EDITOR emacs
+  else if test (command -v nvim)
     set -x EDITOR nvim
   else
     set -x EDITOR vim
@@ -54,17 +47,6 @@ if status --is-interactive
   abbr -a .... cd ../../..
   abbr -a ..... cd ../../../..
   abbr -a -- - cd -
-  abbr -a zz z -c
-  abbr -a zi z -i
-  abbr -a zf z -I
-  abbr -a zb z -b
-
-  # Add path
-  path_prepend $HOME/.local/bin
-  path_prepend $HOME/.fzf/bin
-  path_prepend $HOME/.composer/vendor/bin
-  path_prepend $GOPATH/bin
-  path_prepend /usr/local/bin /usr/local/sbin $DOTFILES/bin
 
   # Fzf settings
   if test (command -v fzf)

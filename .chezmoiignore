@@ -1,0 +1,10 @@
+README.md
+LICENSE
+etc/**
+{{ if ne .chezmoi.os "darwin" }}
+.config/mpv/mpv.conf
+.config/fish/functions/hide.fish
+.config/fish/functions/hide_desktop.fish
+.config/fish/functions/show.fish
+.config/fish/functions/show_desktop.fish
+{{ end }}

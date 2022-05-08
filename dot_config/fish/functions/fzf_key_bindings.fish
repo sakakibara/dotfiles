@@ -10,28 +10,6 @@
 # - $FZF_CTRL_R_OPTS
 # - $FZF_ALT_C_COMMAND
 # - $FZF_ALT_C_OPTS
-#
-# The MIT License (MIT)
-# 
-# Copyright (c) 2013-2020 Junegunn Choi
-# 
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-# 
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
-# 
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-# THE SOFTWARE.
 
 # Key bindings
 # ------------
@@ -42,6 +20,7 @@ function fzf_key_bindings
     set -l commandline (__fzf_parse_commandline)
     set -l dir $commandline[1]
     set -l fzf_query $commandline[2]
+    set -l prefix $commandline[3]
 
     # "-path \$dir'*/\\.*'" matches hidden files/folders inside $dir but not
     # $dir itself, even if hidden.
@@ -53,7 +32,7 @@ function fzf_key_bindings
 
     test -n "$FZF_TMUX_HEIGHT"; or set FZF_TMUX_HEIGHT 40%
     begin
-      set -lx FZF_DEFAULT_OPTS "--height $FZF_TMUX_HEIGHT --reverse $FZF_DEFAULT_OPTS $FZF_CTRL_T_OPTS"
+      set -lx FZF_DEFAULT_OPTS "--height $FZF_TMUX_HEIGHT --reverse --bind=ctrl-z:ignore $FZF_DEFAULT_OPTS $FZF_CTRL_T_OPTS"
       eval "$FZF_CTRL_T_COMMAND | "(__fzfcmd)' -m --query "'$fzf_query'"' | while read -l r; set result $result $r; end
     end
     if [ -z "$result" ]
@@ -64,6 +43,7 @@ function fzf_key_bindings
       commandline -t ""
     end
     for i in $result
+      commandline -it -- $prefix
       commandline -it -- (string escape $i)
       commandline -it -- ' '
     end
@@ -73,7 +53,7 @@ function fzf_key_bindings
   function fzf-history-widget -d "Show command history"
     test -n "$FZF_TMUX_HEIGHT"; or set FZF_TMUX_HEIGHT 40%
     begin
-      set -lx FZF_DEFAULT_OPTS "--height $FZF_TMUX_HEIGHT $FZF_DEFAULT_OPTS --tiebreak=index --bind=ctrl-r:toggle-sort $FZF_CTRL_R_OPTS +m"
+      set -lx FZF_DEFAULT_OPTS "--height $FZF_TMUX_HEIGHT $FZF_DEFAULT_OPTS --tiebreak=index --bind=ctrl-r:toggle-sort,ctrl-z:ignore $FZF_CTRL_R_OPTS +m"
 
       set -l FISH_MAJOR (echo $version | cut -f1 -d.)
       set -l FISH_MINOR (echo $version | cut -f2 -d.)
@@ -96,20 +76,22 @@ function fzf_key_bindings
     set -l commandline (__fzf_parse_commandline)
     set -l dir $commandline[1]
     set -l fzf_query $commandline[2]
+    set -l prefix $commandline[3]
 
     test -n "$FZF_ALT_C_COMMAND"; or set -l FZF_ALT_C_COMMAND "
     command find -L \$dir -mindepth 1 \\( -path \$dir'*/\\.*' -o -fstype 'sysfs' -o -fstype 'devfs' -o -fstype 'devtmpfs' \\) -prune \
     -o -type d -print 2> /dev/null | sed 's@^\./@@'"
     test -n "$FZF_TMUX_HEIGHT"; or set FZF_TMUX_HEIGHT 40%
     begin
-      set -lx FZF_DEFAULT_OPTS "--height $FZF_TMUX_HEIGHT --reverse $FZF_DEFAULT_OPTS $FZF_ALT_C_OPTS"
+      set -lx FZF_DEFAULT_OPTS "--height $FZF_TMUX_HEIGHT --reverse --bind=ctrl-z:ignore $FZF_DEFAULT_OPTS $FZF_ALT_C_OPTS"
       eval "$FZF_ALT_C_COMMAND | "(__fzfcmd)' +m --query "'$fzf_query'"' | read -l result
 
       if [ -n "$result" ]
-        cd $result
+        cd -- $result
 
         # Remove last token from commandline.
         commandline -t ""
+        commandline -it -- $prefix
       end
     end
 
@@ -138,9 +120,15 @@ function fzf_key_bindings
     bind -M insert \ec fzf-cd-widget
   end
 
-  function __fzf_parse_commandline -d 'Parse the current command line token and return split of existing filepath and rest of token'
+  function __fzf_parse_commandline -d 'Parse the current command line token and return split of existing filepath, fzf query, and optional -option= prefix'
+    set -l commandline (commandline -t)
+
+    # strip -option= from token if present
+    set -l prefix (string match -r -- '^-[^\s=]+=' $commandline)
+    set commandline (string replace -- "$prefix" '' $commandline)
+
     # eval is used to do shell expansion on paths
-    set -l commandline (eval "printf '%s' "(commandline -t))
+    eval set commandline $commandline
 
     if [ -z $commandline ]
       # Default to current directory with no --query
@@ -160,6 +148,7 @@ function fzf_key_bindings
 
     echo $dir
     echo $fzf_query
+    echo $prefix
   end
 
   function __fzf_get_dir -d 'Find the longest existing filepath from input string'
