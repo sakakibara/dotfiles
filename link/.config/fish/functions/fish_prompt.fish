@@ -24,20 +24,20 @@ function fish_prompt
   echo -ns $directory_color $cwd $normal_color
 
   # Check if git is installed, and if the directory is git repository
-  if begin test (which git ^/dev/null); and test (command git rev-parse --is-inside-work-tree ^/dev/null); end
+  if begin test (which git 2>/dev/null); and test (command git rev-parse --is-inside-work-tree 2>/dev/null); end
     # Get git branch name
-    set -l git_branch_name (command git symbolic-ref --short HEAD ^/dev/null; or command git show-ref --head -s --abbrev | head -n1 ^/dev/null)
+    set -l git_branch_name (command git symbolic-ref --short HEAD 2>/dev/null; or command git show-ref --head -s --abbrev | head -n1 2>/dev/null)
 
     # Check if git repository is dirty
-    set -l is_git_dirty (command git status --porcelain --ignore-submodules ^/dev/null)
+    set -l is_git_dirty (command git status --porcelain --ignore-submodules 2>/dev/null)
 
     # Set git_arrows if upstream is configured
-    test (command git rev-parse --abbrev-ref "@{upstream}" ^/dev/null); and set -l git_arrows
+    test (command git rev-parse --abbrev-ref "@{upstream}" 2>/dev/null); and set -l git_arrows
 
     # Run if git_arrows variable has been declared
     if set -q git_arrows
       # Check for git status
-      set -l git_status (string split \t (command git rev-list --count --left-right "HEAD...@{upstream}" ^/dev/null))
+      set -l git_status (string split \t (command git rev-list --count --left-right "HEAD...@{upstream}" 2>/dev/null))
 
       if begin set -q git_status[1]; and test $git_status[1] -gt 0; end
         set git_arrows $git_arrows $ahead_color $ahead
