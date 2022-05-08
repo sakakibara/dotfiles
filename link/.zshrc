@@ -5,16 +5,21 @@ if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]
   source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
 fi
 
+# Files will be created with these permissions:
+# files 644 -rw-r--r-- (666 minus 022)
+# dirs  755 drwxr-xr-x (777 minus 022)
+umask 022
+
 #
 # Exports
 #
 
 if (( ${+commands[fzf]} )); then
   local fd_command
-  if [[ "${OSNAME}" == *_wsl ]]; then
-    fd_command="fdfind"
-  else
+  if (( ${+commands[fd]} )); then
     fd_command="fd"
+  elif (( ${+commands[fdfind]} )); then
+    fd_command="fdfind"
   fi
   export FZF_DEFAULT_COMMAND="${fd_command} --type file --follow --hidden --exclude .git"
   export FZF_DEFAULT_OPTS="--ansi"
@@ -22,14 +27,16 @@ if (( ${+commands[fzf]} )); then
   export FZF_ALT_C_COMMAND="${fd_command} --type directory --follow --hidden"
 fi
 
-export _ZO_DATA_DIR="${XDG_DATA_HOME:-${HOME}/.local/share}/zoxide"
+if (( ${+commands[zoxide]} )); then
+  export _ZO_DATA_DIR="${XDG_DATA_HOME:-${HOME}/.local/share}/zoxide"
+fi
 
 #
 # Global variables
 #
 
-typeset -g HISTSIZE=50000
-typeset -g SAVEHIST=10000
+typeset -g SAVEHIST=50000
+typeset -g HISTSIZE=60000 # SAVEHIST * 1.2
 typeset -g HISTFILE="${HOME}/.zsh_history"
 
 # Let C-w stop deleting on /
@@ -82,16 +89,16 @@ autoload -Uz edit-command-line
 zle -N edit-command-line
 
 zmodload zsh/complist
-_accept-and-beginning-of-line() {
+accept-and-beginning-of-line() {
   zle accept-search
   zle beginning-of-line
 }
-zle -N _accept-and-beginning-of-line
-_accept-and-end-of-line() {
+zle -N accept-and-beginning-of-line
+accept-and-end-of-line() {
   zle accept-search
   zle end-of-line
 }
-zle -N _accept-and-end-of-line
+zle -N accept-and-end-of-line
 
 # Enable shift-tab to cycle backwards
 bindkey "^[[Z" reverse-menu-complete
@@ -99,8 +106,8 @@ bindkey "^[[Z" reverse-menu-complete
 # Open editor to edit input
 bindkey "^X^E" edit-command-line
 
-bindkey -M menuselect "^A" _accept-and-beginning-of-line
-bindkey -M menuselect "^E" _accept-and-end-of-line
+bindkey -M menuselect "^A" accept-and-beginning-of-line
+bindkey -M menuselect "^E" accept-and-end-of-line
 bindkey -M menuselect "\E" accept-search
 bindkey -M menuselect "^S" history-incremental-search-forward
 bindkey -M menuselect "^R" history-incremental-search-backward
@@ -110,13 +117,13 @@ bindkey -M menuselect "^R" history-incremental-search-backward
 #
 
 # Option aliases
-if [[ "${OSNAME}" == "macos" ]]; then
+if [[ "${OSTYPE}" == darwin* ]]; then
   alias ls="command ls -GF"
 else
   alias ls="command ls -F --color"
 fi
 
-if [[ "${OSNAME}" == *_wsl ]]; then
+if (( ${+commands[fdfind]} )); then
   alias fd="fdfind"
 fi
 alias ll="ls -l"
@@ -127,60 +134,91 @@ alias fs="stat -f '%z bytes'"
 alias df="df -h"
 
 # Load local configuration
-[[ -f ~/.zshrc.local ]] && source ~/.zshrc.local
+[[ -r "${HOME}/.zshrc.local" ]] && source "${HOME}/.zshrc.local"
 
 #
-# Zinit
+# Plugin config
 #
 
-### Added by Zinit's installer
-if [[ ! -f ${HOME}/.zinit/bin/zinit.zsh ]]; then
-    print -P "%F{220}Installing %F{33}DHARMA%F{220} Initiative Plugin Manager (%F{33}zdharma/zinit%F{220})…%f"
-    command mkdir -p "${HOME}/.zinit" && command chmod g-rwX "${HOME}/.zinit"
-    command git clone https://github.com/zdharma/zinit "${HOME}/.zinit/bin" && \
-        print -P "%F{34}Installation successful.%f%b" || \
-        print -P "%F{160}The clone has failed.%f%b"
-fi
-
-source "${HOME}/.zinit/bin/zinit.zsh"
-autoload -Uz _zinit
-(( ${+_comps} )) && _comps[zinit]=_zinit
-
-# Load a few important annexes, without Turbo
-# (this is currently required for annexes)
-zinit light-mode for \
-    zinit-zsh/z-a-rust \
-    zinit-zsh/z-a-as-monitor \
-    zinit-zsh/z-a-patch-dl \
-    zinit-zsh/z-a-bin-gem-node
-
-### End of Zinit's installer chunk
-
-zinit ice wait"0" lucid blockf
-zinit light zsh-users/zsh-completions
-
-zinit ice depth=1 lucid
-zinit light romkatv/powerlevel10k
-
-zinit snippet OMZ::plugins/django/django.plugin.zsh
-
+typeset -g ABBR_USER_ABBREVIATIONS_FILE="${HOME}/.zabbr"
 typeset -g ZSH_AUTOSUGGEST_STRATEGY=(history completion)
 typeset -g ZSH_AUTOSUGGEST_USE_ASYNC=1
 
-export ABBR_USER_ABBREVIATIONS_FILE="${HOME}/.zabbr"
-zinit light olets/zsh-abbr
+#
+# Antidote
+#
 
-# fast-syntax-highlighting
-zinit ice wait"1" lucid atinit"ZINIT[COMPINIT_OPTS]=-C; zicompinit; zicdreplay"
-zinit light zdharma/fast-syntax-highlighting
+zstyle ':antidote:bundle' use-friendly-names 'yes'
 
-# zsh-autosuggestions
-zinit ice wait"1" lucid atload"!_zsh_autosuggest_start"
-zinit light zsh-users/zsh-autosuggestions
+# Clone antidote if necessary
+[[ -e "${HOME}/.antidote" ]] || git clone https://github.com/mattmc3/antidote.git "${HOME}/.antidote"
+
+# Source antidote
+source "${HOME}/.antidote/antidote.zsh"
+
+# Generate and source plugins from ~/.zsh_plugins.txt
+antidote load
 
 #
-# Zstyles
+# External plugins
 #
+
+[[ -r "${HOME}/.asdf/asdf.sh" ]] && source "${HOME}/.asdf/asdf.sh"
+[[ -r "${HOME}/.fzf.zsh" ]] && source "${HOME}/.fzf.zsh"
+
+# Uncomment the line below when zi alias collides
+# (( ${+aliases[zi]} )) && unalias zi
+zecache zoxide init zsh
+
+#
+# Completions
+#
+
+fpath+=(${HOME}/.zcomp)
+
+# asdf completions
+if (( ${+functions[asdf]} )); then
+  fpath+=(${HOME}/.asdf/completions)
+fi
+
+zecache pip completion --zsh
+
+#
+# Compdump
+#
+
+# Load and initialize the completion system ignoring insecure directories with a
+# cache time of 20 hours, so it should almost always regenerate the first time a
+# shell is opened each day.
+autoload -Uz compinit
+if [[ -z "${ZSH_COMPDUMP}" ]]; then
+  ZSH_COMPDUMP="${XDG_CACHE_HOME:-$HOME/.cache}/zsh/zcompdump"
+fi
+# #q expands globs in conditional expressions
+if [[ $ZSH_COMPDUMP(#qNmh-20) ]]; then
+  # -C (skip function check) implies -i (skip security check).
+  compinit -C -d "$ZSH_COMPDUMP"
+else
+  mkdir -p "${ZSH_COMPDUMP:h}"
+  compinit -i -d "${ZSH_COMPDUMP}"
+  # Keep $_comp_path younger than cache time even if it isn't regenerated.
+  touch "${ZSH_COMPDUMP}"
+fi
+if [[ ! "${ZSH_COMPDUMP}.zwc" -nt "${ZSH_COMPDUMP}" ]]; then
+   zcompile -R -- "${ZSH_COMPDUMP}.zwc" "${ZSH_COMPDUMP}"
+fi
+
+#
+# Completion styles
+#
+
+# Defaults.
+zstyle ':completion:*:default' list-colors ${(s.:.)LS_COLORS}
+zstyle ':completion:*:default' list-prompt '%S%M matches%s'
+
+# Use caching to make completion for commands such as dpkg and apt usable.
+zstyle ':completion::complete:*' use-cache on
+zstyle ':completion::complete:*' cache-path "${XDG_CACHE_HOME:-$HOME/.cache}/zsh/zcompcache"
 
 zstyle ':completion:*' matcher-list 'm:{a-zA-Z-_}={A-Za-z_-}' 'r:|=*' 'l:|=* r:|=*'
 
@@ -193,7 +231,6 @@ zstyle ':completion:*:corrections' format ' %F{green}-- %d (errors: %e) --%f'
 zstyle ':completion:*:descriptions' format ' %F{yellow}-- %d --%f'
 zstyle ':completion:*:messages' format ' %F{purple} -- %d --%f'
 zstyle ':completion:*:warnings' format ' %F{red}-- no matches found --%f'
-zstyle ':completion:*:default' list-prompt '%S%M matches%s'
 zstyle ':completion:*' format ' %F{yellow}-- %d --%f'
 zstyle ':completion:*' group-name ''
 zstyle ':completion:*' verbose yes
@@ -214,7 +251,6 @@ zstyle ':completion:*:functions' ignored-patterns '(_*|pre(cmd|exec))'
 zstyle ':completion:*:*:-subscript-:*' tag-order indexes parameters
 
 # Directories
-zstyle ':completion:*:default' list-colors ${(s.:.)LS_COLORS}
 zstyle ':completion:*:*:cd:*' tag-order local-directories directory-stack path-directories
 zstyle ':completion:*:*:cd:*:directory-stack' menu yes select
 zstyle ':completion:*:-tilde-:*' group-order 'named-directories' 'path-directories' 'users' 'expand'
@@ -263,7 +299,13 @@ zstyle ':completion:*:*:kill:*' insert-ids single
 # Man
 zstyle ':completion:*:manuals' separate-sections true
 zstyle ':completion:*:manuals.(^1*)' insert-sections true
-#
+
+# Media Players
+zstyle ':completion:*:*:mpg123:*' file-patterns '*.(mp3|MP3):mp3\ files *(-/):directories'
+zstyle ':completion:*:*:mpg321:*' file-patterns '*.(mp3|MP3):mp3\ files *(-/):directories'
+zstyle ':completion:*:*:ogg123:*' file-patterns '*.(ogg|OGG|flac):ogg\ files *(-/):directories'
+zstyle ':completion:*:*:mocp:*' file-patterns '*.(wav|WAV|mp3|MP3|ogg|OGG|flac):ogg\ files *(-/):directories'
+
 # SSH/SCP/RSYNC
 zstyle ':completion:*:(ssh|scp|rsync):*' tag-order 'hosts:-host:host hosts:-domain:domain hosts:-ipaddr:ip\ address *'
 zstyle ':completion:*:(scp|rsync):*' group-order users files all-files hosts-domain hosts-host hosts-ipaddr
@@ -271,23 +313,6 @@ zstyle ':completion:*:ssh:*' group-order users hosts-domain hosts-host users hos
 zstyle ':completion:*:(ssh|scp|rsync):*:hosts-host' ignored-patterns '*(.|:)*' loopback ip6-loopback localhost ip6-localhost broadcasthost
 zstyle ':completion:*:(ssh|scp|rsync):*:hosts-domain' ignored-patterns '<->.<->.<->.<->' '^[-[:alnum:]]##(.[-[:alnum:]]##)##' '*@*'
 zstyle ':completion:*:(ssh|scp|rsync):*:hosts-ipaddr' ignored-patterns '^(<->.<->.<->.<->|(|::)([[:xdigit:].]##:(#c,2))##(|%*))' '127.0.0.<->' '255.255.255.255' '::1' 'fe80::*'
-
-[[ -r "${HOME}/.asdf/asdf.sh" ]] && source "${HOME}/.asdf/asdf.sh"
-[[ -r "${HOME}/.fzf.zsh" ]] && source "${HOME}/.fzf.zsh"
-
-(( ${+aliases[zi]} )) && unalias zi
-zecache zoxide init zsh
-
-#
-# Completions
-#
-
-fpath+=(${HOME}/.zcomp)
-if (( ${+functions[asdf]} )); then
-  fpath+=(${HOME}/.asdf/completions)
-fi
-
-zecache pip completion --zsh
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
