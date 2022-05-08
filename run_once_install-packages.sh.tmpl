@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-{{ if eq .chezmoi.os "darwin" -}}
 #
-# Dependency check
+# Utility
 #
 
 # Cleanup temporary files and directories created in the script
@@ -12,14 +11,17 @@ cleanup() {
   fi
 }
 
-trap cleanup EXIT
-
 # Attempt to keep sudo timestamp refreshed
 keep_sudo() {
   while true; do
     sudo -n true; sleep 10; kill -0 "$$" || exit
   done 2>/dev/null &
 }
+
+{{ if eq .chezmoi.os "darwin" -}}
+#
+# Dependency check
+#
 
 # Get macos version without the micro version
 get_macos_version() {
@@ -70,52 +72,58 @@ install_clt() {
   fi
 }
 
-# Check if command line tools are installed and try to install it if it isn't
-if ! xcode-select -p &>/dev/null; then
-  # Installing command line tools
-  install_clt
+dependency() {
+  # Check if command line tools are installed and try to install it if it isn't
   if ! xcode-select -p &>/dev/null; then
-    echo "Installation has failed" >&2
+    # Installing command line tools
+    install_clt
+    if ! xcode-select -p &>/dev/null; then
+      echo "Installation has failed" >&2
+      return 1
+    fi
+  fi
+
+  # Abort if git isn't installed
+  if ! command -v git &>/dev/null; then
+    echo "Git isn't installed" >&2
     return 1
   fi
-fi
-
-# Abort if git isn't installed
-if ! command -v git &>/dev/null; then
-  echo "Git isn't installed" >&2
-  return 1
-fi
+}
 
 #
 # Homebrew
 #
 
-if [[ ! "$(command -v brew)" ]]; then
-  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-fi
+setup_homebrew() {
+  if [[ ! "$(command -v brew)" ]]; then
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  fi
 
-# Exit if, for some reason, homebrew is not installed
-if [[ ! "$(command -v brew)" ]]; then
-  echo "Homebrew failed to install." >&2
-  # return 1
-fi
+  # Exit if, for some reason, homebrew is not installed
+  if [[ ! "$(command -v brew)" ]]; then
+    echo "Homebrew failed to install." >&2
+    # return 1
+  fi
 
-# Update homebrew
-brew update
+  # Update homebrew
+  brew update
 
-# Installing packages via homebrew
-brew bundle --file="${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi/etc/macos/Brewfile"
+  # Installing packages via homebrew
+  brew bundle --file="${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi/etc/macos/Brewfile"
+}
 
 
 #
 # MPV
 #
 
-# Download ontop playback script
-if [[ ! -f "${HOME}/.config/mpv/scripts/ontop-playback.lua" ]]; then
-  curl -fLo "${HOME}/.config/mpv/scripts/ontop-playback.lua" --create-dirs \
-    https://raw.githubusercontent.com/mpv-player/mpv/master/TOOLS/lua/ontop-playback.lua
-fi
+setup_mpv() {
+  # Download ontop playback script
+  if [[ ! -f "${HOME}/.config/mpv/scripts/ontop-playback.lua" ]]; then
+    curl -fLo "${HOME}/.config/mpv/scripts/ontop-playback.lua" --create-dirs \
+      https://raw.githubusercontent.com/mpv-player/mpv/master/TOOLS/lua/ontop-playback.lua
+  fi
+}
 
 {{ end -}}
 
@@ -124,83 +132,117 @@ fi
 # FZF
 #
 
-if [[ ! "$(command -v fzf)" && ! -d "${HOME}/.fzf" ]]; then
-  # Installing fzf
-  git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
-fi
+setup_fzf() {
+  if [[ ! "$(command -v fzf)" && ! -d "${HOME}/.fzf" ]]; then
+    # Installing fzf
+    git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
+  fi
 
-# Exit if, for some reason, fzf is not installed
-if [[ ! -f "${HOME}/.fzf/bin/fzf" ]]; then
-  echo "fzf failed to install." >&2
-  # return 1
-fi
+  # Exit if, for some reason, fzf is not installed
+  if [[ ! -f "${HOME}/.fzf/bin/fzf" ]]; then
+    echo "fzf failed to install." >&2
+    # return 1
+  fi
+}
 
 
 #
 # Asdf
 #
 
-if [[ ! "$(command -v asdf)" && ! -d "${HOME}/.asdf" ]]; then
-  # Installing asdf
-  git clone https://github.com/asdf-vm/asdf.git ~/.asdf
-  (cd "${HOME}/.asdf" && git checkout "$(git describe --abbrev=0 --tags)")
-  # Asdf initialization
-  # shellcheck source=/dev/null
-  source "${HOME}/.asdf/asdf.sh"
-else
-  # Updating asdf
-  asdf update
-fi
+setup_asdf() {
+  if [[ ! "$(command -v asdf)" && ! -d "${HOME}/.asdf" ]]; then
+    # Installing asdf
+    git clone https://github.com/asdf-vm/asdf.git ~/.asdf
+    (cd "${HOME}/.asdf" && git checkout "$(git describe --abbrev=0 --tags)")
+    # Asdf initialization
+    # shellcheck source=/dev/null
+    source "${HOME}/.asdf/asdf.sh"
+  else
+    # Updating asdf
+    asdf update
+  fi
 
-# Exit if, for some reason, asdf is not installed
-if [[ ! "$(command -v asdf)" ]]; then
-  echo "asdf failed to install." >&2
-  # return 1
-fi
+  # Exit if, for some reason, asdf is not installed
+  if [[ ! "$(command -v asdf)" ]]; then
+    echo "asdf failed to install." >&2
+    # return 1
+  fi
 
-local lang plugin install skip
-local langs=() plugins=() installs=()
+  local lang plugin install skip
+  local langs=() plugins=() installs=()
 
-while IFS= read -r line; do
-  langs+=("${line%% *}")
-done < "${HOME}/${ASDF_CONFIG_FILE:-.tool-versions}"
+  while IFS= read -r line; do
+    langs+=("${line%% *}")
+  done < "${HOME}/${ASDF_CONFIG_FILE:-.tool-versions}"
 
-while IFS= read -r plugin; do
-  [[ "${plugin}" != '*' ]] && plugins+=("${plugin}")
-done < <(asdf plugin-list)
+  while IFS= read -r plugin; do
+    [[ "${plugin}" != '*' ]] && plugins+=("${plugin}")
+  done < <(asdf plugin-list)
 
-# shellcheck disable=SC2207
-# installs=($(array_diff "${langs[*]}" "${plugins[*]}"))
+  # shellcheck disable=SC2207
+  # installs=($(array_diff "${langs[*]}" "${plugins[*]}"))
 
-set -o noglob
+  set -o noglob
 
-for lang in "${langs[@]}"; do
-  skip=
-  for plugin in "${plugins[@]}"; do
-    [[ "${lang}" == "${plugin}" ]] && { skip=1; break; }
+  for lang in "${langs[@]}"; do
+    skip=
+    for plugin in "${plugins[@]}"; do
+      [[ "${lang}" == "${plugin}" ]] && { skip=1; break; }
+    done
+    [[ -z "${skip}" ]] && installs+=("${lang}")
   done
-  [[ -z "${skip}" ]] && installs+=("${lang}")
-done
 
-set +o noglob
+  set +o noglob
 
-if [[ "${#installs[@]}" -gt 0 ]]; then
-  # "Installing asdf plugins: ${installs[*]}"
-  for install in "${installs[@]}"; do
-    asdf plugin-add "${install}"
-  done
-fi
+  if [[ "${#installs[@]}" -gt 0 ]]; then
+    # "Installing asdf plugins: ${installs[*]}"
+    for install in "${installs[@]}"; do
+      asdf plugin-add "${install}"
+    done
+  fi
 
-if [[ "$(asdf plugin-list)" != '*' ]]; then
-  (cd "${HOME}" && asdf install)
-fi
+  if [[ "$(asdf plugin-list)" != '*' ]]; then
+    (cd "${HOME}" && asdf install)
+  fi
+}
 
 
 #
 # TPM
 #
 
-if [[ ! -d ~/.tmux/plugins/tpm ]]; then
-  git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
-  ~/.tmux/plugins/tpm/bin/install_plugins
-fi
+setup_tpm() {
+  if [[ ! -d ~/.tmux/plugins/tpm ]]; then
+    git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
+    ~/.tmux/plugins/tpm/bin/install_plugins
+  fi
+}
+
+
+#
+# Main
+#
+
+main() {
+
+  # Set up trap function
+  trap cleanup EXIT
+
+  # Try to avoid having to type in the passwords over and over
+  keep_sudo
+
+{{ if eq .chezmoi.os "darwin" -}}
+  # Try to resolve dependencies. Exit if the requirement isn't met by the end
+  dependency || exit 1
+
+  setup_homebrew
+  setup_mpv
+{{ end -}}
+
+  setup_fzf
+  setup_asdf
+  setup_tpm
+}
+
+main "$@" || exit 1
