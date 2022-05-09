@@ -1,0 +1,43 @@
+$AUTO_CD = True
+$COLOR_INPUT = False
+$FORCE_POSIX_PATHS = True
+$COMPLETION_IN_THREAD = True
+$UPDATE_COMPLETIONS_ON_KEYPRESS = False
+$XONSH_COLOR_STYLE = 'paraiso-dark'
+$XONSH_AUTOPAIR = True
+$XONSH_CACHE_EVERYTHING = True
+$XONSH_CACHE_SCRIPTS = True
+
+$_Z_DATA = $HOME + '/.config/xonsh/z'
+$_Z_CASE_SENSITIVE = False
+$STARSHIP_CONFIG = $HOME + '/.config/starship/config.toml'
+
+xontrib load prompt_starship zoxide
+
+aliases['..'] = ['cd', '..']
+aliases['-'] = ['cd', '-']
+
+# Emacs
+def _e(args):
+    if not args:
+        echo e command currently requires at least one argument
+        return
+    emacsclientw -n -a "''" @(args)
+aliases['e'] = _e
+del _e
+
+def _ef():
+    e @$(fzf)
+aliases['ef'] = _ef
+del _ef
+
+# mkdir & cd
+def _mkcd(args):
+  mkdir -p @(args)
+  cd @(args)
+aliases['mkcd'] = _mkcd
+del _mkcd
+
+aliases['ls'] = ['uutils', 'ls', '--color=auto', '--quoting-style=literal']
+aliases['ll'] = ['uutils', 'ls', '--color=auto', '--quoting-style=literal', '-ll']
+aliases['la'] = ['uutils', 'ls', '--color=auto', '--quoting-style=literal', '-la']
