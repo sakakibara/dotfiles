@@ -1,0 +1,4 @@
+{{- if eq .chezmoi.os "windows" -}}
+@echo off
+ATTRIB +H /d %USERPROFILE%\.*
+{{- end -}}
