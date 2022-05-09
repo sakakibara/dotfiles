@@ -1,3 +1,4 @@
+{{ if eq .chezmoi.os "darwin" -}}
 #!/usr/bin/env bash
 #
 # Utility
@@ -18,7 +19,6 @@ keep_sudo() {
   done 2>/dev/null &
 }
 
-{{ if eq .chezmoi.os "darwin" -}}
 #
 # Dependency check
 #
@@ -125,8 +125,6 @@ setup_mpv() {
   fi
 }
 
-{{ end -}}
-
 
 #
 # FZF
@@ -232,13 +230,11 @@ main() {
   # Try to avoid having to type in the passwords over and over
   keep_sudo
 
-{{ if eq .chezmoi.os "darwin" -}}
   # Try to resolve dependencies. Exit if the requirement isn't met by the end
   dependency || exit 1
 
   setup_homebrew
   setup_mpv
-{{ end -}}
 
   setup_fzf
   setup_asdf
@@ -246,3 +242,4 @@ main() {
 }
 
 main "$@" || exit 1
+{{ end -}}
