@@ -148,6 +148,8 @@ typeset -g ZSH_AUTOSUGGEST_USE_ASYNC=1
 # Antidote
 #
 
+export ANTIDOTE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}/antidote"
+
 zstyle ':antidote:bundle' use-friendly-names 'yes'
 
 # Clone antidote if necessary
