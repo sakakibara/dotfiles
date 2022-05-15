@@ -69,6 +69,13 @@ if [[ "${OSTYPE}" == darwin* ]]; then
   )
 fi
 
+if [[ -d "${HOME}/.emacs.d/bin" ]]; then
+  path=(
+    "${HOME}/.emacs.d/bin"
+    ${path}
+  )
+fi
+
 if (( ${+commands[go]} )); then
   export GOPATH="${HOME}/.go"
   export GOBIN="${GOPATH}/bin"
