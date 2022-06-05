@@ -143,6 +143,12 @@
  (:prefix ("z" . "zoom")
   :desc "Zoom font" "f" #'+hydra/text-zoom/body))
 
+(when (featurep! :tools chezmoi)
+  (map! :leader
+        (:prefix "f"
+         :desc "Find file in dotfiles" "t" #'chezmoi-find
+         :desc "Browse dotfiles" "T" #'+chezmoi--browse-dotfiles)))
+
 (use-package! eaw
   :hook (doom-first-input . eaw-fullwidth))
 
