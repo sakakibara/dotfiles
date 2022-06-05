@@ -32,9 +32,9 @@
 (add-hook 'after-change-major-mode-hook #'treat-underscore-as-word)
 
 (after! ps-print
-  (setq  ps-printer-name t
-         ps-print-header nil ;; hide header
-         ps-paper-type 'a4))
+  (setq ps-printer-name t
+        ps-print-header nil ;; hide header
+        ps-paper-type 'a4))
 
 (after! ps-mule
   (setq ps-multibyte-buffer 'non-latin-printer))
