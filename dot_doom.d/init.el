@@ -23,7 +23,7 @@
 
 (doom! :input
        ;;chinese
-       ;;japanese
+       (japanese +migemo)
        ;;layout            ; auie,ctsrnm is the superior home row
 
        :completion

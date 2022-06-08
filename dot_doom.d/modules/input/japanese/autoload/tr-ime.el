@@ -1,7 +1,7 @@
-;;; os/windows/autoload/tr-ime.el -*- lexical-binding: t; -*-
+;;; input/japanese/autoload/tr-ime.el -*- lexical-binding: t; -*-
 
 ;;;###autoload
-(defun +windows--w32-frame-setup ()
+(defun +japanese--w32-frame-setup ()
   "Setup frame for w32-ime"
   (when (eq (framep (selected-frame)) 'w32)
     ;; Remove the hook since this only needs to be called once per session

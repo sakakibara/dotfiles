@@ -36,21 +36,9 @@
 ;;
 ;;; Packages
 
-(use-package! tr-ime
-  :commands tr-ime-advanced-install
-  :init
-  ;; Setup frame if the selected frame is an ordinary frame (w32)
-  ;; Add the setup function to a hook if it is console or daemon mode
-  (if (eq (framep (selected-frame)) 'w32)
-      (+windows--w32-frame-setup)
-    (add-hook 'server-after-make-frame-hook #'+windows--w32-frame-setup)))
-
-;; Fix encoding problems on windows
-(when (featurep! :completion vertico)
-  (after! consult
-    (setq consult--regexp-compiler #'+windows--consult--regexp-compiler-fn)))
 (after! projectile
-  (advice-add #'projectile-files-via-ext-command :around #'+windows--coding-system-for-rw-utf-8-cp932-a))
+  (advice-add #'projectile-files-via-ext-command
+              :around #'+windows--coding-system-for-rw-utf-8-cp932-a))
 
 (after! flycheck
   (advice-add 'flycheck-parse-output :around #'+windows--flycheck-sanitize-output-a))
