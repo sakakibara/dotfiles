@@ -382,12 +382,6 @@
   (add-hook 'evil-insert-state-entry-hook #'evil-insert-state-entry-display-numbers-h)
   (add-hook 'evil-insert-state-exit-hook #'evil-insert-state-exit-display-numbers-h))
 
-(after! evil-surround
-  ;; Add space to list of available surround keys
-  (let ((pairs '((?\s " " . " "))))
-    (prependq! evil-surround-pairs-alist pairs)
-    (prependq! evil-embrace-evil-surround-keys (mapcar #'car pairs))))
-
 (use-package! xonsh-mode
   :defer t)
 
