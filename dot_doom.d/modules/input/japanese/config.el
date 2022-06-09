@@ -10,8 +10,10 @@
         migemo-user-dictionary nil
         migemo-regex-dictionary nil
         migemo-coding-system 'utf-8-unix
-        migemo-directory (concat doom-etc-dir "migemo/")
-        migemo-dictionary "/usr/local/share/migemo/utf-8/migemo-dict")
+        migemo-directory (concat doom-etc-dir "migemo/"))
+  (if IS-WINDOWS
+      (setq migemo-dictionary (expand-file-name "~/.local/share/migemo/utf-8/migemo-dict"))
+    (setq migemo-dictionary "/usr/local/share/migemo/utf-8/migemo-dict"))
   :config
   (migemo-init)
   (use-package! avy-migemo
