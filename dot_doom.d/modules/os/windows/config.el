@@ -36,6 +36,12 @@
 ;;
 ;;; Packages
 
+(when (featurep! :completion vertico)
+  (after! consult
+    (setq! consult-async-refresh-delay 0.3
+           consult-async-input-throttle 0.6
+           consult-async-input-debounce 0.3)))
+
 (after! projectile
   (advice-add #'projectile-files-via-ext-command
               :around #'+windows--coding-system-for-rw-utf-8-cp932-a))
