@@ -62,7 +62,8 @@
 
 (when IS-WINDOWS
   (when (featurep! :completion vertico)
-    (setq consult--regexp-compiler #'+japanese--consult--windows-regexp-compiler-fn))
+    (after! consult
+      (setq consult--regexp-compiler #'+japanese--consult--windows-regexp-compiler-fn)))
 
   (use-package! tr-ime
     :commands tr-ime-advanced-install
