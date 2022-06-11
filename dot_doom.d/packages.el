@@ -29,8 +29,8 @@
     :pin "7fa581524533a9b6b770426e4445e571a69e469d"))
 
 ;; Disable osx-trash since it has problems with newer macos
-(when (featurep! :os macos)
-  (package! osx-trash :disable t))
+;; (when (featurep! :os macos)
+;;   (package! osx-trash :disable t))
 
 ;; (when (featurep! :lang org +roam2)
 ;;   (unpin! org-roam)

@@ -15,9 +15,9 @@
       server-client-instructions nil
       byte-compile-warnings '(not cl-functions obsolete))
 
-(and IS-MAC
-     (not (fboundp 'system-move-file-to-trash))
-     (defalias 'system-move-file-to-trash #'ns-move-file-to-trash))
+;; (and IS-MAC
+;;      (not (fboundp 'system-move-file-to-trash))
+;;      (defalias 'system-move-file-to-trash #'ns-move-file-to-trash))
 
 (setq-default major-mode 'indented-text-mode
               indicate-empty-lines t
