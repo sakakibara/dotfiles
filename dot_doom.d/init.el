@@ -194,6 +194,7 @@
        web                 ; the tubes
        yaml                ; JSON, but readable
        ;;zig               ; C, but simpler
+       sql
        vbnet
 
        :email
