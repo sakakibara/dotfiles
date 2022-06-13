@@ -5,6 +5,20 @@
          sql-ms-options nil
          sql-ms-login-params '(user password server database)))
 
+(use-package! sql-indent
+  :hook (sql-mode . sqlind-minor-mode))
+
+(use-package! sqlup-mode
+  :hook (sql-mode . sqlup-mode)
+  :hook (sql-interactive-mode . sqlup-mode)
+  :config
+  (setq sqlup-blacklist '("data"))
+  (map! :map sql-mode-map
+        :localleader
+        (:prefix ("u" . "upcase")
+        "b" #'sqlup-capitalize-keywords-in-buffer
+        "r" #'sqlup-capitalize-keywords-in-region)))
+
 (use-package! ejc-sql
   :hook (sql-mode . ejc-sql-mode)
   :config
