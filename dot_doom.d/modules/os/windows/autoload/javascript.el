@@ -2,15 +2,14 @@
 
 ;;;###autoload
 (defun +windows--remove-javascript-npm-mode-hook-h ()
-  (when (featurep! :lang javascript)
-    (dolist (mode '(html-mode
-                    css-mode
-                    web-mode
-                    markdown-mode
-                    js-mode
-                    json-mode
-                    typescript-mode
-                    solidity-mode))
-      (remove-hook (intern (format "%s-hook" mode))
-                   (intern (format "doom--enable-%s-in-%s-h"
-                                   '+javascript-npm-mode mode))))))
+  (dolist (mode '(html-mode
+                  css-mode
+                  web-mode
+                  markdown-mode
+                  js-mode
+                  json-mode
+                  typescript-mode
+                  solidity-mode))
+    (remove-hook (intern (format "%s-hook" mode))
+                 (intern (format "doom--enable-%s-in-%s-h"
+                                 '+javascript-npm-mode mode)))))

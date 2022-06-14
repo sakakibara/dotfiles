@@ -2,9 +2,7 @@
 
 ;; Setup windows specific coding system as late as possible to override
 ;; settings in $DOOMDIR/config.el
-(add-hook! 'doom-after-init-modules-hook
-           '(+windows--coding-system-setup
-             +windows--remove-javascript-npm-mode-hook-h))
+(add-hook 'doom-after-init-modules-hook #'+windows--coding-system-setup)
 
 (setq default-process-coding-system '(undecided-dos . utf-8-unix))
 
@@ -64,6 +62,9 @@
 
 (after! csv-mode
     (add-hook 'csv-mode-hook #'disable-require-final-newline))
+
+(when (featurep! :lang javascript)
+  (add-hook 'doom-after-init-modules-hook #'+windows--remove-javascript-npm-mode-hook-h))
 
 (use-package! w32-browser
   :after-call dired-before-readin-hook
