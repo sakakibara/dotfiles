@@ -6,7 +6,8 @@
          sql-ms-login-params '(user password server database)))
 
 (use-package! sql-indent
-  :hook (sql-mode . sqlind-minor-mode))
+  :hook (sql-mode . sqlind-minor-mode)
+  :hook (sql-interactive-mode . sqlind-minor-mode))
 
 (use-package! sqlup-mode
   :hook (sql-mode . sqlup-mode)
