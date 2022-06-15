@@ -64,7 +64,8 @@
     (add-hook 'csv-mode-hook #'disable-require-final-newline))
 
 (when (featurep! :lang javascript)
-  (add-hook 'doom-after-init-modules-hook #'+windows--remove-javascript-npm-mode-hook-h))
+  (after! add-node-modules-path
+    (setq add-node-modules-path-command (+windows--build-add-node-modules-path-command))))
 
 (use-package! w32-browser
   :after-call dired-before-readin-hook
