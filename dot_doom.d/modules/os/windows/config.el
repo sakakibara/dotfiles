@@ -26,6 +26,9 @@
       doom-localleader-alt-key "C-M-SPC m"
       ls-lisp-format-time-list '("%Y-%m-%d %H:%M" "%Y-%m-%d %H:%M"))
 
+(after! comint
+  (add-hook 'comint-output-filter-functions '+windows--coding-system-for-buffer-process))
+
 ;;
 ;;; Printing
 

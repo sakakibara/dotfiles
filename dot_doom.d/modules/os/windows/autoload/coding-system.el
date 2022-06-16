@@ -29,3 +29,12 @@
   (let ((coding-system-for-read 'utf-8)
         (coding-system-for-write 'cp932))
     (apply fn args)))
+
+;;;###autoload
+(defun +windows--coding-system-for-buffer-process (_)
+  (when-let ((process (get-buffer-process (current-buffer))))
+    (let ((coding-system (process-coding-system process)))
+      (set-process-coding-system process
+                                 (coding-system-change-text-conversion
+                                  (car coding-system) 'undecided)
+                                 (cdr coding-system)))))
