@@ -32,30 +32,30 @@
     ;;     (setq consult--regexp-compiler fn)))
 
     (after! orderless
-      (orderless-define-completion-style orderless-default-style
+      (orderless-define-completion-style +orderless-default
         (orderless-matching-styles '(orderless-literal
                                      orderless-regexp)))
 
-      (orderless-define-completion-style orderless-migemo-style
+      (orderless-define-completion-style +orderless-migemo
         (orderless-matching-styles '(orderless-literal
                                      orderless-regexp
                                      +japanese--orderless-migemo)))
 
-      (orderless-define-completion-style orderless-initialism-style
+      (orderless-define-completion-style +orderless-initialism
         (orderless-matching-styles '(orderless-initialism
                                      orderless-literal)))
 
       (setq completion-category-overrides
-            '((command (styles orderless-initialism-style))
-              (file (styles orderless-migemo-style))
-              (buffer (styles orderless-migemo-style))
-              (symbol (styles orderless-default-style))
-              (consult-location (styles orderless-migemo-style))
-              (consult-multi (styles orderless-migemo-style))
-              (org-roam-node (styles orderless-migemo-style))
-              (unicode-name (styles orderless-migemo-style))
-              (variable (styles orderless-default-style))
-              (project-file (styles orderless-migemo-style))))))
+            '((command (styles +orderless-initialism))
+              (file (styles +orderless-migemo))
+              (buffer (styles +orderless-migemo))
+              (symbol (styles +orderless-default))
+              (consult-location (styles +orderless-migemo))
+              (consult-multi (styles +orderless-migemo))
+              (org-roam-node (styles +orderless-migemo))
+              (unicode-name (styles +orderless-migemo))
+              (variable (styles +orderless-default))
+              (project-file (styles +orderless-migemo))))))
 
   (when (featurep! :completion helm)
     (after! helm (helm-migemo-mode +1))))
