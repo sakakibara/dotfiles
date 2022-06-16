@@ -50,7 +50,7 @@
               :around #'+windows--coding-system-for-rw-utf-8-cp932-a))
 
 (after! flycheck
-  (advice-add 'flycheck-parse-output :around #'+windows--flycheck-sanitize-output-a))
+  (advice-add #'flycheck-parse-output :around #'+windows--flycheck-sanitize-output-a))
 
 (after! undo-tree
     (setq undo-limit 5600000           ; 5600kb (default is 160kb)
