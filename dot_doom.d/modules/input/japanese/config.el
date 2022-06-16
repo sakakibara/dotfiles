@@ -45,6 +45,8 @@
         (orderless-matching-styles '(orderless-initialism
                                      orderless-literal)))
 
+      (add-to-list 'completion-styles '+orderless-migemo t)
+
       (setq completion-category-overrides
             '((command (styles +orderless-initialism))
               (file (styles +orderless-migemo))
