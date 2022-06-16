@@ -54,7 +54,8 @@
               (consult-multi (styles orderless-migemo-style))
               (org-roam-node (styles orderless-migemo-style))
               (unicode-name (styles orderless-migemo-style))
-              (variable (styles orderless-default-style))))))
+              (variable (styles orderless-default-style))
+              (project-file (styles orderless-migemo-style))))))
 
   (when (featurep! :completion helm)
     (after! helm (helm-migemo-mode +1))))
