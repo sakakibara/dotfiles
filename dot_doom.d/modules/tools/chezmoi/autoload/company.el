@@ -2,6 +2,6 @@
 
 ;;;###autoload
 (defun +chezmoi--company-backend-h ()
-  (if chezmoi-mode
-      (add-to-list 'company-backends 'chezmoi-company-backend)
-    (delete 'chezmoi-company-backend 'company-backends)))
+  (when (and chezmoi-mode
+             (not (derived-mode-p 'emacs-lisp-mode)))
+    (add-to-list 'company-backends 'chezmoi-company-backend)))

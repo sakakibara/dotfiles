@@ -14,8 +14,7 @@
              chezmoi-find
              chezmoi-write-files
              chezmoi-open-other
-             chezmoi-template-buffer-display
-             chezmoi-mode)
+             chezmoi-template-buffer-display)
   :config
   (when (featurep! :editor evil)
     (add-hook 'chezmoi-mode-hook #'+chezmoi--evil-h)))
@@ -23,8 +22,8 @@
 (use-package! chezmoi-company
   :when (featurep! :completion company)
   :after chezmoi
-  :config
-  (add-hook 'chezmoi-mode-hook #'+chezmoi--company-backend-h))
+  :commands chezmoi-company-backend
+  :hook (chezmoi-mode . +chezmoi--company-backend-h))
 
 (when (featurep! :editor file-templates)
   (advice-add #'+file-templates-in-emacs-dirs-p
