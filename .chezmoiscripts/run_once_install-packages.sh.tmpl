@@ -9,10 +9,10 @@ main() {
   unix::keep_sudo
 
   # Check if command line tools is installed and try to install it if it isn't
-  darwin::require_clt
+  darwin::require_clt || exit 1
 
   # Check if homebrew is installed and try to install it if it isn't
-  brew::require
+  brew::require || exit 1
 
   # Brewfile hash: {{ include "etc/darwin/Brewfile" | sha256sum }}
   brew::setup
