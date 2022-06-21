@@ -49,7 +49,8 @@
 
       (setq completion-category-overrides
             '((command (styles +orderless-initialism))
-              (file (styles +orderless-migemo))
+              (file (styles +vertico-basic-remote orderless partial-completion
+                            +orderless-migemo))
               (buffer (styles +orderless-migemo))
               (symbol (styles +orderless-default))
               (consult-location (styles +orderless-migemo))
