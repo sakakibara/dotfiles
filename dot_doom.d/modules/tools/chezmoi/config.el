@@ -7,7 +7,8 @@
   "Location of the chezmoi managed doom private directory")
 
 (use-package! chezmoi
-  :commands (chezmoi-write
+  :commands (chezmoi-mode
+             chezmoi-write
              chezmoi-magit-status
              chezmoi-diff
              chezmoi-ediff
