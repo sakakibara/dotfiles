@@ -80,7 +80,7 @@
 
 
 (use-package! pangu-spacing
-  :hook (text-mode . pangu-spacing-mode)
+  :hook (org-mode . pangu-spacing-mode)
   :init
   ;; replacing `chinese-two-byte' by `japanese'
   (setq pangu-spacing-chinese-before-english-regexp
