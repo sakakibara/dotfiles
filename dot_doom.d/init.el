@@ -187,7 +187,8 @@
        (sh +lsp
            +fish
            +powershell
-           +xonsh)         ; she sells {ba,z,fi}sh shells on the C xor
+           +xonsh
+           +elvish)         ; she sells {ba,z,fi}sh shells on the C xor
        ;;sml
        ;;solidity          ; do you need a blockchain? No.
        ;;swift             ; who asked for emoji variables?

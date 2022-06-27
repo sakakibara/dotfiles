@@ -388,5 +388,8 @@
 (use-package! xonsh-mode
   :defer t)
 
+(use-package! elvish-mode
+  :defer t)
+
 ;; Load local lisp file if it exists
 (load! "local" nil t)

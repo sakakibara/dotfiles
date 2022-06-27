@@ -28,6 +28,10 @@
   (package! xonsh-mode
     :pin "7fa581524533a9b6b770426e4445e571a69e469d"))
 
+(when (featurep! :lang sh +elvish)
+  (package! elvish-mode
+    :pin "a13fcaf209d803e2e450ca2bf80dea94b40a0141"))
+
 ;; Disable osx-trash since it has problems with newer macos
 ;; (when (featurep! :os macos)
 ;;   (package! osx-trash :disable t))
