@@ -11,7 +11,7 @@
     (modify-all-frames-parameters '((ime-font . "PlemolJP-10")))
 
     ;; tr-ime
-    (tr-ime-advanced-install)
+    (tr-ime-advanced-install t)
     ;; (tr-ime-advanced-initialize)
 
     ;; w32-ime settings
