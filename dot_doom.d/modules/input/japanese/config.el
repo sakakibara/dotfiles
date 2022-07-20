@@ -75,7 +75,7 @@
     ;; Setup frame if the selected frame is an ordinary frame (w32)
     ;; Add the setup function to a hook if it is console or daemon mode
     (if (eq (framep (selected-frame)) 'w32)
-        (+windows--w32-frame-setup)
+        (+japanese--w32-frame-setup)
       (add-hook 'server-after-make-frame-hook #'+japanese--w32-frame-setup))))
 
 
