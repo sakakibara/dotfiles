@@ -14,9 +14,7 @@ matches case insensitively."
   (setq input (mapcar #'migemo-get-pattern (consult--split-escaped input)))
   (cons (mapcar (lambda (x) (consult--convert-regexp x type)) input)
         (when-let (regexps (seq-filter #'consult--valid-regexp-p input))
-          (lambda (str)
-            (let ((case-fold-search ignore-case))
-              (consult--highlight-regexps regexps str))))))
+          (apply-partially #'consult--highlight-regexps regexps ignore-case))))
 
 
 ;;;###autoload
@@ -37,9 +35,7 @@ matches case insensitively."
                                   (encode-coding-string y 'cp932)
                                 y))) input)
         (when-let (regexps (seq-filter #'consult--valid-regexp-p input))
-          (lambda (str)
-            (let ((case-fold-search ignore-case))
-              (consult--highlight-regexps regexps str))))))
+          (apply-partially #'consult--highlight-regexps regexps ignore-case))))
 
 
 ;;;###autoload
@@ -59,6 +55,4 @@ matches case insensitively."
                                   (encode-coding-string y 'cp932)
                                 y))) input)
         (when-let (regexps (seq-filter #'consult--valid-regexp-p input))
-          (lambda (str)
-            (let ((case-fold-search ignore-case))
-              (consult--highlight-regexps regexps str))))))
+          (apply-partially #'consult--highlight-regexps regexps ignore-case))))
