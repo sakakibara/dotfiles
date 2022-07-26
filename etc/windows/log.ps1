@@ -22,7 +22,7 @@ $recordType = $recordType.PadRight(6)
 
 # Getting dates
 $currentDateTime = Get-Date
-$longDateTime = $currentDateTime.ToString('G')
+$longDateTime = $currentDateTime.ToString('yyyy-MM-dd HH:mm:ss')
 
 # Setting log filename and location to save the log file
 $logFileName = "log.txt"
