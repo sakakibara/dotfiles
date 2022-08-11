@@ -163,6 +163,9 @@
                                                projectile-root-top-down-recurring
                                                +projectile-root-parent))))
 
+(after! company
+  (setq company-idle-delay nil))
+
 (after! company-box
   (when (daemonp)
     (setq company-box-enable-icon nil))
