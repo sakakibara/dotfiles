@@ -28,6 +28,10 @@
 
 (remove-hook! 'doom-first-input-hook #'evil-snipe-override-mode)
 
+(setq fancy-splash-image (concat doom-user-dir "splash.svg"))
+(remove-hook '+doom-dashboard-functions #'doom-dashboard-widget-shortmenu)
+(remove-hook '+doom-dashboard-functions #'doom-dashboard-widget-footer)
+
 (add-hook 'after-change-major-mode-hook #'treat-underscore-as-word)
 
 (after! ps-print
