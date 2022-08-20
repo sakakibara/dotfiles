@@ -49,15 +49,15 @@
 
 (setq +modeline-height 22)
 
-(when (and (featurep! :lang emacs-lisp)
-           (featurep! :tools chezmoi))
+(when (and (modulep! :lang emacs-lisp)
+           (modulep! :tools chezmoi))
   (add-to-list '+emacs-lisp-disable-flycheck-in-dirs "~/.local/share/chezmoi/dot_doom.d/"))
 
-(when (featurep! :editor lispy)
+(when (modulep! :editor lispy)
   (after! lispyville
     (remove-hook! 'evil-escape-inhibit-functions #'+lispy-inhibit-evil-escape-fn)))
 
-(when (featurep! :lang sql)
+(when (modulep! :lang sql)
   (after! ejc-sql
     (load! "lisp/ejc-connection" nil t)))
 
@@ -97,7 +97,7 @@
 (setq org-directory "~/org/"
       org-archive-location (concat org-directory ".archive/%s::"))
 
-(when (featurep! :ui deft)
+(when (modulep! :ui deft)
   (after! deft
     (setq deft-directory org-directory)))
 
@@ -142,7 +142,7 @@
  (:prefix ("z" . "zoom")
   :desc "Zoom font" "f" #'+hydra/text-zoom/body))
 
-(when (featurep! :tools chezmoi)
+(when (modulep! :tools chezmoi)
   (map! :leader
         (:prefix "f"
          :desc "Find file in dotfiles" "t" #'chezmoi-find
@@ -384,7 +384,7 @@
   (add-hook 'evil-insert-state-entry-hook #'evil-insert-state-entry-display-numbers-h)
   (add-hook 'evil-insert-state-exit-hook #'evil-insert-state-exit-display-numbers-h))
 
-(when (featurep! :ui workspaces)
+(when (modulep! :ui workspaces)
   (after! persp-mode
     (setq persp-emacsclient-init-frame-behaviour-override "main")))
 

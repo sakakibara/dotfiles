@@ -1,7 +1,7 @@
 ;; -*- no-byte-compile: t; -*-
 ;;; input/japanese/packages.el
 
-(when (featurep! +migemo)
+(when (modulep! +migemo)
   (package! migemo :pin "f756cba3d5268968da361463c2e29b3a659a3de7")
   (package! avy-migemo
     :recipe (:host github :repo "tam17aki/avy-migemo")

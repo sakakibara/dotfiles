@@ -2,7 +2,7 @@
 
 (use-package! migemo
   :after-call after-find-file pre-command-hook
-  :when (featurep! +migemo)
+  :when (modulep! +migemo)
   :init
   (setq search-default-regexp-mode nil
         ;; migemo-options '("-q" "--emacs" "-i" "\a")
@@ -20,11 +20,11 @@
     :after (avy)
     :config (avy-migemo-mode 1))
 
-  (when (featurep! :completion vertico)
+  (when (modulep! :completion vertico)
     ;; Uncomment following lines to enable migemo for all searches.
-    ;; (when-let ((fn (cond ((and (featurep! +migemo) IS-WINDOWS)
+    ;; (when-let ((fn (cond ((and (modulep! +migemo) IS-WINDOWS)
     ;;                       #'+japanese--consult--windows-migemo-regexp-compiler-fn)
-    ;;                      ((featurep! +migemo)
+    ;;                      ((modulep! +migemo)
     ;;                       #'+japanese--consult--migemo-regexp-compiler-fn)
     ;;                      (IS-WINDOWS
     ;;                       #'+japanese--consult--windows--regexp-compiler-fn))))
@@ -60,12 +60,12 @@
               (variable (styles +orderless-default))
               (project-file (styles +orderless-migemo))))))
 
-  (when (featurep! :completion helm)
+  (when (modulep! :completion helm)
     (after! helm (helm-migemo-mode +1))))
 
 
 (when IS-WINDOWS
-  (when (featurep! :completion vertico)
+  (when (modulep! :completion vertico)
     (after! consult
       (setq consult--regexp-compiler #'+japanese--consult--windows-regexp-compiler-fn)))
 

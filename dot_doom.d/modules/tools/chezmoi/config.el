@@ -17,16 +17,16 @@
              chezmoi-open-other
              chezmoi-template-buffer-display)
   :config
-  (when (featurep! :editor evil)
+  (when (modulep! :editor evil)
     (add-hook 'chezmoi-mode-hook #'+chezmoi--evil-h)))
 
 (use-package! chezmoi-company
-  :when (featurep! :completion company)
+  :when (modulep! :completion company)
   :after chezmoi
   :commands chezmoi-company-backend
   :hook (chezmoi-mode . +chezmoi--company-backend-h))
 
-(when (featurep! :editor file-templates)
+(when (modulep! :editor file-templates)
   (advice-add #'+file-templates-in-emacs-dirs-p
               :override #'+chezmoi--file-templates-in-emacs-dirs-p-a)
   (advice-add #'+file-templates-get-short-path

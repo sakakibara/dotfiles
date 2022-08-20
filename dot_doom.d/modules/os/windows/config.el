@@ -39,7 +39,7 @@
 ;;
 ;;; Packages
 
-(when (featurep! :completion vertico)
+(when (modulep! :completion vertico)
   (after! consult
     (setq! consult-async-refresh-delay 0.3
            consult-async-input-throttle 0.6
@@ -66,7 +66,7 @@
 (after! csv-mode
     (add-hook 'csv-mode-hook #'disable-require-final-newline))
 
-(when (featurep! :lang javascript)
+(when (modulep! :lang javascript)
   (after! add-node-modules-path
     (setq add-node-modules-path-command (+windows--build-add-node-modules-path-command))))
 

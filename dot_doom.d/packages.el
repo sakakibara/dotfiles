@@ -19,25 +19,25 @@
 (package! openwith :pin "1dc89670822966fab6e656f6519fdd7f01e8301a" :disable t)
 (package! rg :pin "dcbaa48689d3d73f8a142a1ab5f1e722d7434ff9")
 
-(when (featurep! :lang csharp)
+(when (modulep! :lang csharp)
   (package! font-lock-ext
     :recipe (:host github :repo "sensorflo/font-lock-ext"
              :files ("font-lock-ext.el"))
     :pin "b6c82e8ac7996d96494a54454015a98ceb883feb"))
 
-(when (featurep! :lang sh +xonsh)
+(when (modulep! :lang sh +xonsh)
   (package! xonsh-mode
     :pin "7fa581524533a9b6b770426e4445e571a69e469d"))
 
-(when (featurep! :lang sh +elvish)
+(when (modulep! :lang sh +elvish)
   (package! elvish-mode
     :pin "a13fcaf209d803e2e450ca2bf80dea94b40a0141"))
 
 ;; Disable osx-trash since it has problems with newer macos
-;; (when (featurep! :os macos)
+;; (when (modulep! :os macos)
 ;;   (package! osx-trash :disable t))
 
-;; (when (featurep! :lang org +roam2)
+;; (when (modulep! :lang org +roam2)
 ;;   (unpin! org-roam)
 ;;   (package! org-roam-ui))
 

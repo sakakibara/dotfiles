@@ -27,7 +27,7 @@
         ejc-completion-system 'standard))
 
 (use-package! ejc-company
-  :when (featurep! :completion company)
+  :when (modulep! :completion company)
   :after ejc-sql
   :config
   (set-company-backend! 'ejc-sql-mode 'ejc-company-backend))
