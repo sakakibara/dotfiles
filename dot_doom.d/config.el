@@ -31,6 +31,7 @@
 (setq fancy-splash-image (concat doom-user-dir "splash.svg"))
 (remove-hook '+doom-dashboard-functions #'doom-dashboard-widget-shortmenu)
 (remove-hook '+doom-dashboard-functions #'doom-dashboard-widget-footer)
+(setq +doom-dashboard-banner-padding '(2 . 2))
 
 (add-hook 'after-change-major-mode-hook #'treat-underscore-as-word)
 
