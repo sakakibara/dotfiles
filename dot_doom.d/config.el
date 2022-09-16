@@ -2,7 +2,7 @@
 
 (set-language-environment "Japanese")
 (prefer-coding-system 'utf-8)
-(set-coding-system-priority 'utf-8 'cp932 'euc-jp 'iso-2022-jp)
+(set-coding-system-priority 'utf-8 'utf-8-with-signature 'cp932 'euc-jp 'iso-2022-jp)
 (setq-default buffer-file-coding-system 'utf-8-unix)
 
 ;; Place your private configuration here! Remember, you do not need to run 'doom
