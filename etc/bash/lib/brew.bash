@@ -24,6 +24,8 @@ brew::require() {
 
 brew::setup() {
   msg::heading "Set up packages with homebrew"
+  # Check if homebrew is installed and try to install it if it isn't
+  brew::require || return 1
   # Update homebrew
   brew update
   # Installing packages via homebrew
