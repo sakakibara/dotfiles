@@ -12,12 +12,12 @@ main() {
   darwin::require_clt || exit 1
 
   # Brewfile hash: {{ include "etc/darwin/Brewfile" | sha256sum }}
-  brew::setup
+  ask_to_run brew::setup
 
-  mpv::setup
-  fzf::setup
-  asdf::setup
-  tpm::setup
+  ask_to_run mpv::setup
+  ask_to_run fzf::setup
+  ask_to_run asdf::setup
+  ask_to_run tpm::setup
 }
 
 main "$@" || exit 1

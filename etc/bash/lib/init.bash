@@ -3,6 +3,29 @@
 BASH_LIB_DIR="${BASH_SOURCE%/*}"
 BASH_LIB_DIR="${BASH_LIB_DIR:-$PWD}"
 
+# Confirm before running a command
+# $@ = command with arguments to run
+ask_to_run() {
+  local input
+
+  while true; do
+    read -r -p "Run ${*/::/ }? [Y/n] " input
+
+    case "${input}" in
+      [yY][eE][sS]|[yY])
+        "$@"
+        break
+        ;;
+      [nN][oO]|[nN])
+        break
+        ;;
+      *)
+        echo "Invalid input..."
+        ;;
+    esac
+  done
+}
+
 # Source files in bash lib directory
 # It prevents loading the same file twice
 # $@ = file name without extension
