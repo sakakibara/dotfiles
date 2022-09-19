@@ -37,11 +37,11 @@ brew "tealdeer"
 brew "tmux"
 brew "trash"
 brew "tree"
+brew "universal-ctags"
 brew "wget"
 brew "zoxide"
 brew "zsh"
 brew "d12frosted/emacs-plus/emacs-plus@28", args: ["with-elrumo2-icon", "with-native-comp", "with-no-frame-refocus"]
-brew "universal-ctags/universal-ctags/universal-ctags", args: ["HEAD"]
 cask "adobe-creative-cloud"
 cask "basictex"
 cask "docker"
