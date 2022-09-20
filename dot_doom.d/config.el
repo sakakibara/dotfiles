@@ -54,10 +54,6 @@
 
 (setq +modeline-height 22)
 
-(when (and (modulep! :lang emacs-lisp)
-           (modulep! :tools chezmoi))
-  (add-to-list '+emacs-lisp-disable-flycheck-in-dirs "~/.local/share/chezmoi/dot_doom.d/"))
-
 (when (modulep! :editor lispy)
   (after! lispyville
     (remove-hook! 'evil-escape-inhibit-functions #'+lispy-inhibit-evil-escape-fn)))
