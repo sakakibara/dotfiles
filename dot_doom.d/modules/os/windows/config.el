@@ -2,7 +2,7 @@
 
 ;; Setup windows specific coding system as late as possible to override
 ;; settings in $DOOMDIR/config.el
-(add-hook 'doom-after-init-modules-hook #'+windows--coding-system-setup)
+(add-hook 'after-init-hook #'+windows--coding-system-setup)
 
 (setq default-process-coding-system '(undecided-dos . utf-8-unix))
 
