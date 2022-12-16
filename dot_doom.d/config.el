@@ -306,6 +306,9 @@
         '(("d" "Default" entry "* %?"
            :target (file+head "%<%Y-%m-%d>.org" "#+title: %<%B %d, %Y>\n\n")))))
 
+(use-package! org-wild-notifier
+  :hook (org-mode . org-wild-notifier-mode))
+
 (after! ox
   (setq org-export-with-sub-superscripts nil))
 

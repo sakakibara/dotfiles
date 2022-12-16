@@ -25,6 +25,9 @@
              :files ("font-lock-ext.el"))
     :pin "b6c82e8ac7996d96494a54454015a98ceb883feb"))
 
+(when (modulep! :lang org)
+  (package! org-wild-notifier :pin "9a503675a0b33decadca4eb2e52ac5b6bc8d3efb"))
+
 (when (modulep! :lang sh +xonsh)
   (package! xonsh-mode
     :pin "7fa581524533a9b6b770426e4445e571a69e469d"))
