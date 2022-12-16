@@ -9,7 +9,6 @@
 ;; To install SOME-PACKAGE from MELPA, ELPA or emacsmirror:
 ;(package! some-package)
 (package! hl-line :disable t)
-(package! benchmark-init :pin "02435560415bbadbcf5051fb7042880549170e7e")
 (package! form-feed :pin "ac1f0ef30a11979f5dfe12d8c05a666739e486ff" :disable t)
 (package! eaw
   :recipe (:host github :repo "hamano/locale-eaw"

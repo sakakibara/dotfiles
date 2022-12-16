@@ -14,10 +14,6 @@
 ;;      Alternatively, press 'gd' (or 'C-c c d') on a module to browse its
 ;;      directory (for easy access to its source code).
 
-(when init-file-debug
-  (require 'benchmark-init)
-  (add-hook 'doom-first-input-hook #'benchmark-init/deactivate))
-
 (defconst IS-WSL (or (getenv "IS_WSL")
                      (getenv "WSL_DISTRO_NAME")))
 
