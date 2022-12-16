@@ -80,6 +80,13 @@
         :gn [C-return] #'dired-w32-browser
         :gn [C-M-return] #'dired-w32explore))
 
+(use-package! alert-toast
+  :after alert
+  :config
+  (advice-add #'alert-toast--coding-page
+              :override #'+windows--alert-toast--coding-page)
+  (setq alert-default-style 'toast))
+
 (after! ob-plantuml
   (let ((cmdline (string-join `("-charset" "utf-8" "-config") " ")))
     (setq org-babel-default-header-args:plantuml
