@@ -234,8 +234,7 @@
   (add-to-list 'org-file-apps '("\\.doc.?\\'" . default))
   (setq org-startup-folded 'show2levels
         org-ellipsis " [...] ")
-  (setq! org-log-done 'time
-         org-log-into-drawer t)
+  (setq! org-log-into-drawer t)
   (setq org-todo-keywords
         '((sequence
            "TODO(t)"  ; A task that needs doing & is ready to do
