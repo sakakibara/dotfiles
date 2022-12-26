@@ -1,5 +1,7 @@
 ;;; input/japanese/config.el -*- lexical-binding: t; -*-
 
+(setq word-wrap-by-category t)
+
 (use-package! migemo
   :after-call after-find-file pre-command-hook
   :when (modulep! +migemo)
