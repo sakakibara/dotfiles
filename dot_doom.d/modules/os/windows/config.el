@@ -34,7 +34,15 @@
 
 (after! ps-print
   (setq ps-lpr-command (executable-find "gswin64c")
-        ps-lpr-switches '("-q" "-dNOPAUSE" "-dBATCH" "-sDEVICE=mswinpr2")))
+        ps-lpr-switches '("-q" "-sDEVICE=mswinpr2" "-dNOPAUSE" "-dBATCH" "-dWINKANJI")))
+
+(after! ps-mule
+  (setq ps-multibyte-buffer 'bdf-font-except-latin
+        bdf-directory-list
+        (mapcar (lambda (d)
+                  (concat (expand-file-name "~/.intlfonts/") d))
+                '("Japanese" "Japanese.X" "Japanese.BIG"
+                  "Misc" "TrueType" "Type1"))))
 
 ;;
 ;;; Packages
