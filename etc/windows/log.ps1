@@ -25,7 +25,7 @@ $currentDateTime = Get-Date
 $longDateTime = $currentDateTime.ToString('yyyy-MM-dd HH:mm:ss')
 
 # Record to log
-$record = "$($longDateTime) $($recordType) :: $($env:UserName) - $($env:ComputerName)"
+$record = "$($longDateTime)|$($env:ComputerName)|$($env:UserName)|$($recordType)"
 
 # Append the record to the log
 $record | Out-File $logPath -Encoding default -Append
