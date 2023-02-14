@@ -3,14 +3,14 @@
 # logon/logoff script via group policy editor (gpedit.msc)
 #
 # Example parameters:
-# $dirPath = C:\log
+# $logPath = C:\log\logon.txt
 # $recordType = LOGON
 
 Param(
     [Parameter(Position=0,
-               HelpMessage="Directory path to save the log file",
+               HelpMessage="Path to save the log file",
                Mandatory=$true)]
-    [String]$dirPath,
+    [String]$logPath,
     [Parameter(Position=1,
                HelpMessage="Log record type",
                Mandatory=$true)]
@@ -23,10 +23,6 @@ $recordType = $recordType.PadRight(6)
 # Getting dates
 $currentDateTime = Get-Date
 $longDateTime = $currentDateTime.ToString('yyyy-MM-dd HH:mm:ss')
-
-# Setting log filename and location to save the log file
-$logFileName = "log.txt"
-$logPath = Join-Path $dirPath $logFileName
 
 # Record to log
 $record = "$($longDateTime) $($recordType) :: $($env:UserName) - $($env:ComputerName)"
