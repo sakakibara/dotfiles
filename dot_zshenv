@@ -69,9 +69,9 @@ if [[ "${OSTYPE}" == darwin* ]]; then
   )
 fi
 
-if [[ -d "${HOME}/.emacs.d/bin" ]]; then
+if [[ -d "${XDG_CONFIG_HOME}/emacs/bin" ]]; then
   path=(
-    "${HOME}/.emacs.d/bin"
+    "${XDG_CONFIG_HOME}/emacs/bin"
     ${path}
   )
 fi
