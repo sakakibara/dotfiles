@@ -319,10 +319,11 @@
         '(("d" "Default" entry "* %?"
            :target (file+head "%<%Y-%m-%d>.org" "#+title: %<%B %d, %Y>\n\n")))))
 
-(use-package! org-wild-notifier
-  :hook (org-load . org-wild-notifier-mode)
-  :config
-  (add-hook 'kill-emacs-hook #'org-wild-notifier--stop))
+(when IS-WINDOWS
+  (use-package! org-wild-notifier
+    :hook (org-load . org-wild-notifier-mode)
+    :config
+    (add-hook 'kill-emacs-hook #'org-wild-notifier--stop)))
 
 (after! ox
   (setq org-export-with-sub-superscripts nil))
