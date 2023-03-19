@@ -31,3 +31,5 @@
               :override #'+chezmoi--file-templates-in-emacs-dirs-p-a)
   (advice-add #'+file-templates-get-short-path
               :override #'+chezmoi--file-templates-get-short-path-a))
+
+(add-hook 'doom-after-modules-config-hook #'+chezmoi--init-h)
