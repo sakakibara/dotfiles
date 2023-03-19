@@ -62,11 +62,11 @@ path=(
 
 # Set OS specific environment variable
 if [[ "${OSTYPE}" == darwin* ]]; then
-  path=(
-    "/usr/local/bin"
-    "/usr/local/sbin"
-    ${path}
-  )
+  if [[ -f "/opt/homebrew/bin/brew" ]]; then
+    zecache /opt/homebrew/bin/brew shellenv
+  elif [[ -f "/usr/local/bin/brew" ]]; then
+    zecache /usr/local/bin/brew shellenv
+  fi
 fi
 
 if [[ -d "${XDG_CONFIG_HOME}/emacs/bin" ]]; then
