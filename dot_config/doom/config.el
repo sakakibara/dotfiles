@@ -58,10 +58,6 @@
   (after! lispyville
     (remove-hook! 'evil-escape-inhibit-functions #'+lispy-inhibit-evil-escape-fn)))
 
-(when (modulep! :lang sql)
-  (after! ejc-sql
-    (load! "lisp/ejc-connection" nil t)))
-
 ;; Some functionality uses this to identify you, e.g. GPG configuration, email
 ;; clients, file templates and snippets.
 (setq user-full-name "Sho Sakakibara"
