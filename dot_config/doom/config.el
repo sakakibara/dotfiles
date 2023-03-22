@@ -125,7 +125,7 @@
 
  :leader
 
- (:prefix ("e" . "encoding")
+ (:prefix ("E" . "encoding")
   :desc "Buffer coding system" "b" #'revert-buffer-with-coding-system
   :desc "File coding system" "f" #'set-buffer-file-coding-system)
 
