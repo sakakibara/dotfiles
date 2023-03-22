@@ -263,6 +263,9 @@
       org-roam-db-location (concat org-directory ".org-roam.db")
       org-roam-dailies-directory "journal/")
 
+(map! :nv "zL" #'evil-scroll-right
+      :nv "zH" #'evil-scroll-left)
+
 (map! (:after evil-org
        :map evil-org-mode-map
        :n "gk" (cmd! (if (org-on-heading-p)
