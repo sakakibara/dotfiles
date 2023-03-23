@@ -72,6 +72,9 @@
   (after! add-node-modules-path
     (setq add-node-modules-path-command (+windows--build-add-node-modules-path-command))))
 
+(use-package! good-scroll
+  :hook (doom-init-ui . good-scroll-mode))
+
 (use-package! w32-browser
   :after-call dired-before-readin-hook
   :commands dired-w32-browser dired-w32explore
