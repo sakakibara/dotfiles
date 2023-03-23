@@ -85,6 +85,12 @@
         :gn [C-return] #'dired-w32-browser
         :gn [C-M-return] #'dired-w32explore))
 
+(after! dired
+  (setq dired-listing-switches "-alG"
+        ls-lisp-dirs-first t
+        ls-lisp-ignore-case t
+        ls-lisp-UCA-like-collation nil))
+
 (use-package! alert-toast
   :after alert
   :config
