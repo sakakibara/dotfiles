@@ -326,6 +326,7 @@
   (use-package! org-wild-notifier
     :hook (org-load . org-wild-notifier-mode)
     :config
+    (setq! org-wild-notifier-alert-time '(10 5 1 0))
     (add-hook 'kill-emacs-hook #'org-wild-notifier--stop)))
 
 (after! ox
