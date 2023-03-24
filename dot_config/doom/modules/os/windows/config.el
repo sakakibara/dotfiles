@@ -23,8 +23,7 @@
 
 (modify-coding-system-alist 'file "\\.sql\\'" 'cp932-dos)
 (setq doom-leader-alt-key "C-M-SPC"
-      doom-localleader-alt-key "C-M-SPC m"
-      ls-lisp-format-time-list '("%Y-%m-%d %H:%M" "%Y-%m-%d %H:%M"))
+      doom-localleader-alt-key "C-M-SPC m")
 
 (after! comint
   (add-hook 'comint-output-filter-functions '+windows--coding-system-for-buffer-process))
@@ -46,6 +45,12 @@
 
 ;;
 ;;; Packages
+
+(after! ls-lisp
+  (setq ls-lisp-format-time-list '("%Y-%m-%d %H:%M" "%Y-%m-%d %H:%M")
+        ls-lisp-dirs-first t
+        ls-lisp-ignore-case t
+        ls-lisp-UCA-like-collation nil))
 
 (when (modulep! :completion vertico)
   (after! consult
@@ -86,10 +91,7 @@
         :gn [C-M-return] #'dired-w32explore))
 
 (after! dired
-  (setq dired-listing-switches "-alG"
-        ls-lisp-dirs-first t
-        ls-lisp-ignore-case t
-        ls-lisp-UCA-like-collation nil))
+  (setq dired-listing-switches "-alG"))
 
 (use-package! alert-toast
   :after alert
