@@ -225,6 +225,7 @@
   (setq org-startup-folded 'show2levels
         org-ellipsis " [...] ")
   (setq! org-log-into-drawer t)
+  (add-to-list 'org-modules 'org-habit)
   (setq org-todo-keywords
         '((sequence
            "TODO(t)"  ; A task that needs doing & is ready to do
