@@ -130,8 +130,10 @@
   :desc "File coding system" "f" #'set-buffer-file-coding-system)
 
  (:prefix "o"
-  :desc "Grep" "g" #'rg
-  :desc "Undo-tree visualize" "u" #'undo-tree-visualize)
+  :desc "Grep" "g" #'rg)
+
+ (:prefix "s"
+  :desc "Undo history" "u" #'undo-tree-visualize)
 
  ;; (:prefix "t"
  ;;  :desc "Line numbers" "l" #'display-line-numbers-mode)
