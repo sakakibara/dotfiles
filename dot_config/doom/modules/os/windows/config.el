@@ -77,6 +77,11 @@
   (after! add-node-modules-path
     (setq add-node-modules-path-command (+windows--build-add-node-modules-path-command))))
 
+(when (modulep! :ui vc-gutter)
+  (after! vc-svn
+    (advice-add #'vc-do-command
+                :around #'+windows--coding-system-for-rw-undecided-utf-8-a)))
+
 (use-package! good-scroll
   :hook (doom-init-ui . good-scroll-mode))
 

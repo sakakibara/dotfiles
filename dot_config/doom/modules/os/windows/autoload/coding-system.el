@@ -31,6 +31,13 @@
     (apply fn args)))
 
 ;;;###autoload
+(defun +windows--coding-system-for-rw-undecided-utf-8-a (fn &rest args)
+  "Use undecided for coding-system-for-read and utf-8 for coding-system-for-write"
+  (let ((coding-system-for-read 'undecided)
+        (coding-system-for-write 'utf-8))
+    (apply fn args)))
+
+;;;###autoload
 (defun +windows--coding-system-for-buffer-process (_)
   (when-let ((process (get-buffer-process (current-buffer))))
     (let ((coding-system (process-coding-system process)))
