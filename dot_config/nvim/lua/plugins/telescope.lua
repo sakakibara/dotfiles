@@ -14,6 +14,7 @@ return {
     },
     opts = {
       defaults = {
+        preview = false,
         prompt_prefix = " ",
         selection_caret = " ",
         mappings = {
