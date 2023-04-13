@@ -134,8 +134,9 @@
  (:prefix "o"
   :desc "Grep" "g" #'rg)
 
- (:prefix "s"
-  :desc "Undo history" "u" #'undo-tree-visualize)
+ (:when (modulep! :emacs undo +tree)
+   (:prefix "s"
+    :desc "Undo history" "u" #'undo-tree-visualize))
 
  ;; (:prefix "t"
  ;;  :desc "Line numbers" "l" #'display-line-numbers-mode)
