@@ -146,8 +146,8 @@
        ;;fsharp            ; ML stands for Microsoft's Language
        ;;fstar             ; (dependent) types and (monadic) effects and Z3
        ;;gdscript          ; the language you waited for
-       (go +lsp
-           +tree-sitter)   ; the hipster dialect
+       (go +tree-sitter
+           +lsp)           ; the hipster dialect
        ;;(graphql +lsp)    ; Give queries a REST
        ;;(haskell +lsp)    ; a language that's lazier than I am
        ;;hy                ; readability of scheme w/ speed of python
@@ -173,8 +173,8 @@
        ;;php               ; perl's insecure younger brother
        plantuml            ; diagrams for confusing people more
        ;;purescript        ; javascript, but functional
-       (python +lsp
-               +tree-sitter
+       (python +tree-sitter
+               +lsp
                +pyright
                +poetry)    ; beautiful is better than ugly
        ;;qt                ; the 'cutest' gui framework ever
@@ -186,8 +186,8 @@
        ;;rust              ; Fe2O3.unwrap().unwrap().unwrap().unwrap()
        ;;scala             ; java, but good
        ;;(scheme +guile)   ; a fully conniving family of lisps
-       (sh +lsp
-           +tree-sitter
+       (sh +tree-sitter
+           +lsp
            +fish
            +powershell
            +xonsh
