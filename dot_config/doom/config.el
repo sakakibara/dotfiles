@@ -424,5 +424,9 @@
 (use-package! elvish-mode
   :defer t)
 
+(when (modulep! :lang javascript)
+  (setq rjsx-comment-start-skip "[[:space:]]*\\(?://+\\|{?/\\*+\\)")
+  (advice-add #'rjsx-uncomment-region-function :override #'+rjsx--uncomment-region-function))
+
 ;; Load local lisp file if it exists
 (load! "local" nil t)
