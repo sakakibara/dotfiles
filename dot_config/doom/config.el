@@ -203,21 +203,6 @@
     (add-to-list 'dired-guess-shell-alist-user `("\\.doc.?\\'" ,cmd))
     (add-to-list 'dired-guess-shell-alist-user `("\\.ppt.?\\'" ,cmd))))
 
-(use-package! run-assoc
-  :after-call dired-before-readin-hook
-  :commands run-associated-program dired-run-associated-program
-  :config
-  (when IS-WINDOWS
-    (setq associated-program-alist '(("c:/Program Files/Microsoft Office/Office16/EXCEL.exe" "\\.xls.?\\'")
-                                     ("c:/Program Files/Microsoft Office/Office16/WINWORD.exe" "\\.doc.?\\'")
-                                     ("c:/Program Files/Microsoft Office/Office16/POWERPNT.exe" "\\.ppt.?\\'")
-                                     ("c:/Program Files/Adobe/Acrobat DC/Acrobat/Acrobat.exe" "\\.pdf\\'"))))
-  (map! :map dired-mode-map
-        ;; "C-RET" #'dired-run-associated-program
-        :gn [C-return] #'dired-run-associated-program
-        (:when IS-MAC
-         :gn [s-return] #'dired-run-associated-program)))
-
 (use-package! rg
   :commands rg rg-literal rg-dwim
   :config

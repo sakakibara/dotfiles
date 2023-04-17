@@ -14,7 +14,6 @@
   :recipe (:host github :repo "hamano/locale-eaw"
            :files ("eaw.el"))
   :pin "37456e118bdfd6a97508c3998f06153148366a7a" :disable t)
-(package! run-assoc :disable t)
 (package! openwith :pin "1dc89670822966fab6e656f6519fdd7f01e8301a" :disable t)
 (package! rg :pin "dcbaa48689d3d73f8a142a1ab5f1e722d7434ff9")
 
