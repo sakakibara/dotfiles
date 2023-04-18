@@ -399,9 +399,8 @@
   (add-hook 'evil-insert-state-entry-hook #'evil-insert-state-entry-display-numbers-h)
   (add-hook 'evil-insert-state-exit-hook #'evil-insert-state-exit-display-numbers-h))
 
-(when (modulep! :ui workspaces)
-  (after! persp-mode
-    (setq persp-emacsclient-init-frame-behaviour-override "main")))
+(after! persp-mode
+  (setq persp-emacsclient-init-frame-behaviour-override "main"))
 
 (use-package! xonsh-mode
   :defer t)
