@@ -409,7 +409,7 @@
 (use-package! elvish-mode
   :defer t)
 
-(when (modulep! :lang javascript)
+(after! rjsx-mode
   (setq rjsx-comment-start-skip "[[:space:]]*\\(?://+\\|{?/\\*+\\)")
   (advice-add #'rjsx-uncomment-region-function :override #'+rjsx--uncomment-region-function))
 
