@@ -88,7 +88,7 @@
 ;; available. You can either set `doom-theme' or manually load a theme with the
 ;; `load-theme' function. This is the default:
 (setq doom-theme (if IS-WINDOWS
-                     'modus-operandi
+                     'doom-one-light
                    'doom-one))
 
 ;; If you use `org' and don't want your org files in the default location below,
