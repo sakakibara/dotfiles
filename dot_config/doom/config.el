@@ -399,6 +399,12 @@
   (add-hook 'evil-insert-state-entry-hook #'evil-insert-state-entry-display-numbers-h)
   (add-hook 'evil-insert-state-exit-hook #'evil-insert-state-exit-display-numbers-h))
 
+(after! whitespace
+  (setq whitespace-display-mappings
+        '((newline-mark ?\n [?¬ ?\n])
+          (space-mark ?\  [?·] [?.])))
+  (set-face-underline 'whitespace-tab t))
+
 (after! persp-mode
   (setq persp-emacsclient-init-frame-behaviour-override "main"))
 
