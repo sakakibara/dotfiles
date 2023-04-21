@@ -405,6 +405,10 @@
           (space-mark ?\  [?·] [?.])))
   (set-face-underline 'whitespace-tab t))
 
+(after! dired
+  (map! :map dired-mode-map
+        :ng "q" #'quit-window))
+
 (after! persp-mode
   (setq persp-emacsclient-init-frame-behaviour-override "main"))
 
