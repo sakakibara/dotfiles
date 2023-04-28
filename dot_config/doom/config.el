@@ -44,6 +44,7 @@
   (setq ps-multibyte-buffer 'non-latin-printer))
 
 (after! undo-tree
+  (setq undo-tree-visualizer-diff nil)
   (add-hook! '(evil-local-mode-hook wdired-mode-hook) #'turn-on-undo-tree-mode))
 
 (after! evil-snipe
