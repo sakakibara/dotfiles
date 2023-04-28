@@ -4,8 +4,6 @@
 ;; settings in $DOOMDIR/config.el
 (add-hook 'after-init-hook #'+windows--coding-system-setup)
 
-(setq default-process-coding-system '(undecided-dos . utf-8-unix))
-
 ;; Encode subprocess parameters as cp932
 (cl-loop for (func args-pos) in '((call-process        4)
                                   (call-process-region 6)
