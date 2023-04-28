@@ -20,6 +20,9 @@
                                '((depth . 99)))))
 
 (modify-coding-system-alist 'file "\\.sql\\'" 'cp932-dos)
+
+(add-to-list 'process-coding-system-alist '("[rR][gG]" utf-8-dos . utf-8-unix))
+
 (setq doom-leader-alt-key "C-M-SPC"
       doom-localleader-alt-key "C-M-SPC m")
 
