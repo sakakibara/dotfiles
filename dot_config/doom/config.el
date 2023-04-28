@@ -206,7 +206,8 @@
 (use-package! rg
   :commands rg rg-literal rg-dwim
   :config
-  (add-to-list 'rg-custom-type-aliases '("tsv" . "*.tsv")))
+  (add-to-list 'rg-custom-type-aliases '("tsv" . "*.tsv"))
+  (add-to-list 'rg-custom-type-aliases '("dat" . "*.dat")))
 
 (after! org
   ;; (add-hook 'org-mode-hook #'display-line-numbers--turn-off)
