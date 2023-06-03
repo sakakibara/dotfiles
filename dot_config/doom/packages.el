@@ -34,8 +34,6 @@
   (package! elvish-mode
     :pin "a13fcaf209d803e2e450ca2bf80dea94b40a0141"))
 
-(package! async :pin "aee2947bd58250fa6b19988f8d5039a4600bb601")
-
 ;; Disable osx-trash since it has problems with newer macos
 ;; (when (modulep! :os macos)
 ;;   (package! osx-trash :disable t))
