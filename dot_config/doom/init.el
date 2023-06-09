@@ -16,6 +16,8 @@
 
 (defconst IS-WSL (or (getenv "IS_WSL")
                      (getenv "WSL_DISTRO_NAME")))
+(when IS-WINDOWS
+  (setq native-comp-speed 3))
 
 (doom! :input
        ;;chinese
