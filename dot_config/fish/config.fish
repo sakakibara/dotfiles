@@ -50,7 +50,7 @@ if status --is-interactive
   fish_add_path -pP $HOME/.fzf/bin
   fish_add_path -pP $HOME/.composer/vendor/bin
   fish_add_path -pP $GOPATH/bin
-  fish_add_path -pP $HOME/.local/share/bin
+  fish_add_path -pP $HOME/.local/bin
 
   if string match -q -- $OSNAME "darwin*"
     if test -f "/opt/homebrew/bin/brew"
