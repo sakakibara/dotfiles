@@ -47,11 +47,19 @@ if status --is-interactive
   set -x GOPATH $HOME/.go
 
   # Add path
-  path_prepend $HOME/.fzf/bin
-  path_prepend $HOME/.composer/vendor/bin
-  path_prepend $GOPATH/bin
-  path_prepend /usr/local/bin /usr/local/sbin $DOTFILES/bin
-  path_prepend $HOME/.local/share/bin
+  fish_add_path -pP $HOME/.fzf/bin
+  fish_add_path -pP $HOME/.composer/vendor/bin
+  fish_add_path -pP $GOPATH/bin
+  fish_add_path -pP $HOME/.local/share/bin
+
+  if string match -q -- $OSNAME "darwin*"
+    if test -f "/opt/homebrew/bin/brew"
+      eval (/opt/homebrew/bin/brew shellenv)
+    end
+    if test -f "/usr/local/bin/brew"
+      eval (/usr/local/bin/brew shellenv)
+    end
+  end
 
   if test (command -v ec)
     set -x EDITOR ec
