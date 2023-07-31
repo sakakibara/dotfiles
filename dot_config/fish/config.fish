@@ -5,6 +5,32 @@ umask 022
 
 set -x OSNAME (get_os)
 
+if not set -q XDG_CONFIG_HOME
+  set -x XDG_CONFIG_HOME $HOME/.config
+end
+
+if not set -q XDG_CACHE_HOME
+  set -x XDG_CACHE_HOME $HOME/.cache
+end
+
+if not set -q XDG_DATA_HOME
+  set -x XDG_DATA_HOME $HOME/.local/share
+end
+
+if not set -q XDG_RUNTIME_DIR
+  set -x XDG_RUNTIME_DIR $HOME/.xdg
+end
+
+if string match -q -- $OSNAME "darwin*"
+  set -x XDG_DESKTOP_DIR $HOME/Desktop
+  set -x XDG_DOCUMENTS_DIR $HOME/Documents
+  set -x XDG_DOWNLOAD_DIR $HOME/Downloads
+  set -x XDG_MUSIC_DIR $HOME/Music
+  set -x XDG_PICTURES_DIR $HOME/Pictures
+  set -x XDG_VIDEOS_DIR $HOME/Videos
+  set -x XDG_PROJECTS_DIR $HOME/Projects
+end
+
 # Set default language to English UTF-8
 set -x LANG en_US.UTF-8
 set -x LC_ALL en_US.UTF-8
