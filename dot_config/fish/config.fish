@@ -72,6 +72,9 @@ if status --is-interactive
   end
   set -x VISUAL $EDITOR
 
+  # Set oracle language
+  set -x NLS_LANG AMERICAN_AMERICA.AL32UTF8
+
   # Navigation aliases
   abbr -a e $EDITOR
   abbr -a se sudo $EDITOR
