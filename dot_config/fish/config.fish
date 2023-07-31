@@ -3,6 +3,8 @@
 # dirs  755 drwxr-xr-x (777 minus 022)
 umask 022
 
+set -x OSNAME (get_os)
+
 # Set default language to English UTF-8
 set -x LANG en_US.UTF-8
 set -x LC_ALL en_US.UTF-8
@@ -17,8 +19,6 @@ if status --is-interactive
 
   # Export gopath
   set -x GOPATH $HOME/.go
-
-  set -x OSNAME (get_os)
 
   # Add path
   path_prepend $HOME/.fzf/bin
