@@ -75,6 +75,9 @@ if status --is-interactive
   # Set oracle language
   set -x NLS_LANG AMERICAN_AMERICA.AL32UTF8
 
+  # Disable microsoft .NET telemetry
+  set -x DOTNET_CLI_TELEMETRY_OPTOUT 1
+
   # Navigation aliases
   abbr -a e $EDITOR
   abbr -a se sudo $EDITOR
