@@ -38,14 +38,20 @@ require("lazy").setup({
   },
 })
 
-vim.api.nvim_create_autocmd("User", {
-  pattern = "VeryLazy",
-  callback = function()
-    require("config.options")
-    require("config.autocmds")
-    require("config.keymaps")
-    if vim.bo.filetype == "lazy" then
-      vim.cmd([[do VimResized]])
-    end
-  end,
-})
+if vim.fn.argc(-1) == 0 then
+  vim.api.nvim_create_autocmd("User", {
+    pattern = "VeryLazy",
+    callback = function()
+      require("config.options")
+      require("config.autocmds")
+      require("config.keymaps")
+      if vim.bo.filetype == "lazy" then
+        vim.cmd([[do VimResized]])
+      end
+    end,
+  })
+else
+  require("config.options")
+  require("config.autocmds")
+  require("config.keymaps")
+end
