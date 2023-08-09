@@ -1,3 +1,5 @@
+vim.g.mapleader = " "
+
 -- Encodings
 vim.opt.fileencodings = { 'ucs-bom', 'utf-8', 'iso-2022-jp', 'euc-jp', 'cp932', 'latin1' }
 vim.opt.fileformats = { 'unix', 'dos', 'mac' }
