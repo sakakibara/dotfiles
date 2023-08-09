@@ -17,7 +17,7 @@ return {
     },
     opts = {
       defaults = {
-        preview = false,
+        preview = { hide_on_startup = true },
         prompt_prefix = " ",
         selection_caret = " ",
         mappings = {
@@ -55,10 +55,16 @@ return {
             ["jk"] = function(...)
               return require("telescope.actions").close(...)
             end,
+            ["<M-p>"] = function(...)
+              return require("telescope.actions.layout").toggle_preview(...)
+            end,
           },
           n = {
             ["q"] = function(...)
               return require("telescope.actions").close(...)
+            end,
+            ["<M-p>"] = function(...)
+              return require("telescope.actions.layout").toggle_preview(...)
             end,
           },
         },
