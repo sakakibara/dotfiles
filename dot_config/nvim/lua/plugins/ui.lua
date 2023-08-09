@@ -26,6 +26,16 @@ return {
   },
 
   {
+    "akinsho/bufferline.nvim",
+    event = "VeryLazy",
+    opts = {
+      options = {
+        always_show_bufferline = false,
+      }
+    }
+  },
+
+  {
     "stevearc/dressing.nvim",
     lazy = true,
     init = function()
