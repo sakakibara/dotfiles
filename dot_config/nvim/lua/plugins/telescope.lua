@@ -3,13 +3,14 @@ return {
     "nvim-telescope/telescope.nvim",
     dependencies = {
       "nvim-lua/plenary.nvim",
-      "nvim-telescope/telescope-live-grep-args.nvim"
+      "nvim-telescope/telescope-live-grep-args.nvim",
+      "nvim-telescope/telescope-file-browser.nvim",
     },
     cmd = "Telescope",
     version = false,
     keys = {
       { "<leader>bb", "<cmd>Telescope buffers<cr>", desc = "Buffers" },
-      { "<leader>ff", "<cmd>Telescope find_files <cr>", desc = "Find Files" },
+      { "<leader>ff", "<cmd>Telescope file_browser<cr>", desc = "Find Files" },
       { "<leader>fF", "<cmd>Telescope find_files hidden=true<cr>", desc = "Find Files" },
       { "<leader>fr", "<cmd>Telescope oldfiles<cr>", desc = "Recent" },
       { "<leader>:", "<cmd>Telescope commands<cr>", desc = "Commands" },
@@ -69,10 +70,23 @@ return {
           },
         },
       },
+      extensions = {
+        file_browser = {
+          theme = "ivy",
+          mappings = {
+            i = {
+              ["<Tab>"] = function(...)
+                return require("telescope.actions").select_default(...)
+              end,
+            },
+          },
+        },
+      },
     },
     config = function(_, opts)
       require("telescope").setup(opts)
       require("telescope").load_extension("live_grep_args")
+      require("telescope").load_extension("file_browser")
     end
   },
 }
