@@ -2,36 +2,25 @@ return {
   {
     "nvim-lualine/lualine.nvim",
     event = "VeryLazy",
-    opts = function(plugin)
-      local function fg(name)
-        return function()
-          local hl = vim.api.nvim_get_hl_by_name(name, true)
-          return hl and hl.foreground and { fg = string.format("#%06x", hl.foreground) }
-        end
-      end
-
+    opts = function()
       return {
         options = {
           theme = "auto",
           globalstatus = true,
-          disabled_filetypes = { statusline = { "lazy" } },
         },
         sections = {
           lualine_a = {'mode'},
-          lualine_b = {'branch', 'diff', 'diagnostics'},
-          lualine_c = {'filename'},
-          lualine_x = {'encoding', 'fileformat', 'filetype'},
+          lualine_b = {'branch'},
+          lualine_c = {
+            'diagnostics',
+            { 'filetype', icons_only = true, separator = '', padding = { left = 1, right = 0 } },
+            { 'filename', path = 1, symbols = { modified = "  ", readonly = "", unnamed = "" } },
+          },
+          lualine_x = {'encoding', 'fileformat'},
           lualine_y = {'progress'},
           lualine_z = {'location'},
         },
-        inactive_sections = {
-          lualine_a = {},
-          lualine_b = {},
-          lualine_c = {'filename'},
-          lualine_x = {'location'},
-          lualine_y = {},
-          lualine_z = {},
-        },
+        extensions = { 'lazy' },
       }
     end,
   },
