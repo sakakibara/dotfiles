@@ -138,4 +138,30 @@ return {
       end,
     },
   },
+
+  {
+    "mickael-menu/zk-nvim",
+    keys = {
+      { "<leader>zn", "<cmd>ZkNew { title = vim.fn.input('Title: ') }<cr>", desc = "Create zk note" },
+      { "<leader>zo", "<cmd>ZkNotes { sort = { 'modified' } }<cr>", desc = "Open zk note" },
+      { "<leader>zt", "<cmd>ZkTags<cr>", desc = "Open zk note by tags" },
+      { "<leader>zf", "<cmd>ZkNotes { sort = { 'modified' }, match = { vim.fn.input('Search : ') } }<cr>", desc = "Open zk note by tags" },
+    },
+    opts = {
+      picker = "select",
+      lsp = {
+        config = {
+          cmd = { "zk", "lsp" },
+          name = "zk",
+        },
+        auto_attach = {
+          enabled = true,
+          filetypes = { "markdown" },
+        }
+      },
+    },
+    config = function(_, opts)
+      require("zk").setup(opts)
+    end,
+  },
 }

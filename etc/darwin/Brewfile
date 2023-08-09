@@ -38,6 +38,7 @@ brew "trash"
 brew "tree"
 brew "universal-ctags"
 brew "wget"
+brew "zk"
 brew "zoxide"
 brew "zsh"
 brew "d12frosted/emacs-plus/emacs-plus@28", args: ["with-elrumo2-icon", "with-native-comp", "with-no-frame-refocus"]
