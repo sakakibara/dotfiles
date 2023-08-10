@@ -16,9 +16,6 @@ vim.opt.shortmess:append { W = true, I = true, c = true }
 -- Use system clipboard by default
 vim.opt.clipboard:prepend('unnamed')
 
--- Disable redraw while executing macros
-vim.opt.lazyredraw = true
-
 -- Default tab settings
 vim.opt.tabstop = 2
 vim.opt.softtabstop = -1
