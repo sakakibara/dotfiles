@@ -160,10 +160,10 @@ return {
   {
     "mickael-menu/zk-nvim",
     keys = {
-      { "<leader>zn", "<cmd>ZkNew { title = vim.fn.input('Title: ') }<cr>", desc = "Create zk note" },
-      { "<leader>zo", "<cmd>ZkNotes { sort = { 'modified' } }<cr>", desc = "Open zk note" },
-      { "<leader>zt", "<cmd>ZkTags<cr>", desc = "Open zk note by tags" },
-      { "<leader>zf", "<cmd>ZkNotes { sort = { 'modified' }, match = { vim.fn.input('Search : ') } }<cr>", desc = "Open zk note by tags" },
+      { "<leader>nn", "<cmd>ZkNew { title = vim.fn.input('Title: ') }<cr>", desc = "Create zk note" },
+      { "<leader>nf", "<cmd>ZkNotes { sort = { 'modified' } }<cr>", desc = "Open zk note" },
+      { "<leader>nt", "<cmd>ZkTags<cr>", desc = "Open zk note by tags" },
+      { "<leader>no", "<cmd>ZkNotes { sort = { 'modified' }, match = { vim.fn.input('Search : ') } }<cr>", desc = "Open zk note by tags" },
     },
     opts = {
       picker = "select",
