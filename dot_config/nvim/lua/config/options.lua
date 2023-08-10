@@ -41,3 +41,7 @@ vim.opt.relativenumber = true
 
 -- Color theme
 vim.opt.termguicolors = true
+
+-- Folding
+vim.opt.foldmethod = "expr"
+vim.opt.foldexpr = "nvim_treesitter#foldexpr()"
