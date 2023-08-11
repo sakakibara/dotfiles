@@ -1,3 +1,5 @@
+local ZkUtil = require("util.zk-nvim")
+
 return {
   {
     "folke/which-key.nvim",
@@ -203,6 +205,7 @@ return {
     keys = {
       { "<leader>nn", "<cmd>ZkNew { title = vim.fn.input('Title: ') }<cr>", desc = "Create zk note" },
       { "<leader>nf", "<cmd>ZkNotes { sort = { 'modified' } }<cr>", desc = "Open zk note" },
+      { "<leader>ns", ZkUtil.grep_notes, desc = "Search zk note" },
       { "<leader>nt", "<cmd>ZkTags<cr>", desc = "Open zk note by tags" },
       { "<leader>no", "<cmd>ZkNotes { sort = { 'modified' }, match = { vim.fn.input('Search : ') } }<cr>", desc = "Open zk note by tags" },
     },
