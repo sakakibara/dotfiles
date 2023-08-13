@@ -1,3 +1,5 @@
+local FbUtil = require("util.telescope-file-browser")
+
 return {
   {
     "nvim-telescope/telescope.nvim",
@@ -14,7 +16,7 @@ return {
     version = false,
     keys = {
       { "<leader>bb", "<cmd>Telescope buffers<cr>", desc = "Buffers" },
-      { "<leader>ff", "<cmd>Telescope file_browser<cr>", desc = "Find Files" },
+      { "<leader>ff", FbUtil.file_browser, desc = "Find Files" },
       { "<leader>fF", "<cmd>Telescope find_files hidden=true<cr>", desc = "Find Files" },
       { "<leader>fr", "<cmd>Telescope oldfiles<cr>", desc = "Recent" },
       { "<leader>:", "<cmd>Telescope commands<cr>", desc = "Commands" },
