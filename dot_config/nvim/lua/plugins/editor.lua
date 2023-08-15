@@ -203,6 +203,15 @@ return {
   },
 
   {
+    "nvim-pack/nvim-spectre",
+    cmd = "Spectre",
+    opts = { open_cmd = "noswapfile vnew" },
+    keys = {
+      { "<leader>sr", function() require("spectre").open() end, desc = "Spectre" },
+    },
+  },
+
+  {
     "mickael-menu/zk-nvim",
     keys = {
       { "<leader>nn", "<cmd>ZkNew { title = vim.fn.input('Title: ') }<cr>", desc = "Create zk note" },
