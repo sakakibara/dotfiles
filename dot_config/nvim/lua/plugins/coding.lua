@@ -21,6 +21,11 @@ return {
   },
 
   {
+    "RRethy/nvim-treesitter-endwise",
+    event = "InsertEnter",
+  },
+
+  {
     "andymass/vim-matchup",
     event = "VeryLazy",
     confing = function()
