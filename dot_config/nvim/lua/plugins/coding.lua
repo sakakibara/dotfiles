@@ -9,11 +9,9 @@ return {
   },
 
   {
-    "echasnovski/mini.comment",
+    'numToStr/Comment.nvim',
     event = "VeryLazy",
-    config = function(_, opts)
-      require("mini.comment").setup(opts)
-    end,
+    opts = {},
   },
 
   {
