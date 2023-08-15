@@ -15,6 +15,14 @@ return {
   },
 
   {
+    "andymass/vim-matchup",
+    event = "VeryLazy",
+    confing = function()
+      vim.g.matchup_matchparen_offscreen = { method = "popup" }
+    end
+  },
+
+  {
     "L3MON4D3/LuaSnip",
     dependencies = {
       "rafamadriz/friendly-snippets",
