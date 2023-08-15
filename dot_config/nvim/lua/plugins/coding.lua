@@ -15,6 +15,12 @@ return {
   },
 
   {
+    "windwp/nvim-autopairs",
+    event = "InsertEnter",
+    opts = {},
+  },
+
+  {
     "andymass/vim-matchup",
     event = "VeryLazy",
     confing = function()
