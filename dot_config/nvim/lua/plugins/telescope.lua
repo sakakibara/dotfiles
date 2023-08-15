@@ -25,7 +25,7 @@ return {
     opts = {
       defaults = {
         preview = { hide_on_startup = true },
-        prompt_prefix = " ",
+        prompt_prefix = "❯ ",
         selection_caret = " ",
         mappings = {
           i = {
