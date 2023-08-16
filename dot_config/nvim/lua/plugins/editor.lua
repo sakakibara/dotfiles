@@ -1,5 +1,3 @@
-local ZkUtil = require("util.zk-nvim")
-
 return {
   {
     "folke/which-key.nvim",
