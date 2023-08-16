@@ -216,7 +216,7 @@ return {
     keys = {
       { "<leader>nn", "<cmd>ZkNew { title = vim.fn.input('Title: ') }<cr>", desc = "Create zk note" },
       { "<leader>nf", "<cmd>ZkNotes { sort = { 'modified' } }<cr>", desc = "Open zk note" },
-      { "<leader>ns", "<cmd>ZkGrep", desc = "Search zk note" },
+      { "<leader>ns", "<cmd>ZkGrep<cr>", desc = "Search zk note" },
       { "<leader>nt", "<cmd>ZkTags<cr>", desc = "Open zk note by tags" },
       { "<leader>no", "<cmd>ZkNotes { sort = { 'modified' }, match = { vim.fn.input('Search : ') } }<cr>", desc = "Open zk note by tags" },
     },
@@ -235,7 +235,27 @@ return {
     },
     config = function(_, opts)
       require("zk").setup(opts)
-      vim.api.nvim_create_user_command("ZkGrep", ZkUtil.grep_notes, {})
+
+      local function grep_notes()
+        local collection = {}
+        local list_opts = { select = { "title", "path", "absPath" } }
+        require("zk.api").list(vim.env.ZK_NOTEBOOK_DIR, list_opts, function(_, notes)
+          for _, note in ipairs(notes) do
+            collection[note.absPath] = note.title or note.path
+          end
+        end)
+        local options = vim.tbl_deep_extend("force", {
+          prompt_title = "Notes",
+          search_dirs = { vim.env.ZK_NOTEBOOK_DIR },
+          disable_coordinates = true,
+          path_display = function(_, path)
+            return collection[path]
+          end,
+        }, opts or {})
+        require("telescope.builtin").live_grep(options)
+      end
+
+      vim.api.nvim_create_user_command("ZkGrep", grep_notes, {})
     end,
   },
 }
