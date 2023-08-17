@@ -1,3 +1,4 @@
+local load_textobjects = false
 return {
   {
     "nvim-treesitter/nvim-treesitter",
