@@ -61,6 +61,9 @@ return {
         desc = "Delete all Notifications",
       },
     },
+    init = function()
+      vim.notify = require("notify")
+    end,
     opts = {
       timeout = 3000,
       max_height = function()
