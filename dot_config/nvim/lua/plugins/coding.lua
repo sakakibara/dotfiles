@@ -28,8 +28,8 @@ return {
 
       npairs.add_rules {
         Rule(' ', ' ')
-          :with_pair(function(opts)
-            local pair = opts.line:sub(opts.col - 1, opts.col)
+          :with_pair(function(options)
+            local pair = options.line:sub(options.col - 1, options.col)
             return vim.tbl_contains({
               brackets[1][1] .. brackets[1][2],
               brackets[2][1] .. brackets[2][2],
@@ -38,9 +38,9 @@ return {
           end)
           :with_move(cond.none())
           :with_cr(cond.none())
-          :with_del(function(opts)
+          :with_del(function(options)
             local col = vim.api.nvim_win_get_cursor(0)[2]
-            local context = opts.line:sub(col - 1, col + 2)
+            local context = options.line:sub(col - 1, col + 2)
             return vim.tbl_contains({
               brackets[1][1] .. '  ' .. brackets[1][2],
               brackets[2][1] .. '  ' .. brackets[2][2],
@@ -52,7 +52,7 @@ return {
         npairs.add_rules {
           Rule(bracket[1] .. ' ', ' ' .. bracket[2])
             :with_pair(cond.none())
-            :with_move(function(opts) return opts.char == bracket[2] end)
+            :with_move(function(options) return options.char == bracket[2] end)
             :with_del(cond.none())
             :use_key(bracket[2])
             :replace_map_cr(function(_) return '<C-c>2xi<CR><C-c>O' end)
