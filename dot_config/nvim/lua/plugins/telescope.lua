@@ -15,10 +15,10 @@ return {
     cmd = "Telescope",
     version = false,
     keys = {
-      { "<leader><space>", Util.telescope("files"), desc = "Find Files (root dir)" },
+      { "<leader><space>", Util.telescope("files", { cwd = false }), desc = "Find Files (cwd)" },
       { "<leader>bb", "<cmd>Telescope buffers<cr>", desc = "Buffers" },
       { "<leader>ff", Util.telescope("file_browser"), desc = "Find Files" },
-      { "<leader>fF", Util.telescope("files", { cwd = false }), desc = "Find Files (cwd)" },
+      { "<leader>fF", Util.telescope("files"), desc = "Find Files (root dir)" },
       { "<leader>fr", "<cmd>Telescope oldfiles<cr>", desc = "Recent" },
       { "<leader>fR", Util.telescope("oldfiles", { cwd = vim.loop.cwd() }), desc = "Recent (cwd)" },
       { '<leader>s"', "<cmd>Telescope registers<cr>", desc = "Registers" },
