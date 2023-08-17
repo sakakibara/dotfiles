@@ -106,7 +106,6 @@ return {
 
   {
     'stevearc/oil.nvim',
-    lazy = false,
     keys = {
       {
         "-",
@@ -116,6 +115,14 @@ return {
         mode = "n",
       },
     },
+    init = function()
+      if vim.fn.argc() == 1 then
+        local stat = vim.loop.fs_stat(tostring(vim.fn.argv(0)))
+        if stat and stat.type == "directory" then
+          require("oil")
+        end
+      end
+    end,
     opts = {
       columns = {
         "icon",
