@@ -103,7 +103,13 @@ return {
     event = { "BufReadPost", "BufNewFile" },
     opts = {
       char = "│",
-      filetype_exclude = { "help", "lazy" },
+      filetype_exclude = {
+        "Trouble",
+        "help",
+        "lazy",
+        "mason",
+        "notify",
+      },
       show_trailing_blankline_indent = false,
       show_current_context = false,
     },
@@ -119,7 +125,13 @@ return {
     },
     config = function(_, opts)
       vim.api.nvim_create_autocmd("FileType", {
-        pattern = { "help", "lazy", "mason" },
+        pattern = {
+          "Trouble",
+          "help",
+          "lazy",
+          "mason",
+          "notify",
+        },
         callback = function()
           vim.b.miniindentscope_disable = true
         end,
