@@ -34,7 +34,7 @@ return {
       { "<leader>hk", "<cmd>Telescope keymaps<cr>", desc = "Keymaps" },
       { "<leader>uc", Util.telescope("colorscheme", { enable_preview = true }), desc = "Colorschemes" },
       { "<leader>:", "<cmd>Telescope commands<cr>", desc = "Commands" },
-      { "<leader>/", "<cmd>Telescope live_grep_args<cr>", desc = "Grep" },
+      { "<leader>/", Util.telescope("live_grep_args", { cwd = false }), desc = "Live Grep Args (cwd)" },
     },
     opts = {
       defaults = {
