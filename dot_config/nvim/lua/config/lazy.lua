@@ -13,7 +13,6 @@ return {
         "matchit",
         "matchparen",
         "netrwPlugin",
-        "rplugin",
         "tarPlugin",
         "tohtml",
         "tutor",
