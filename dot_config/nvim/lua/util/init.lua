@@ -50,7 +50,7 @@ function M.telescope(picker, opts)
     elseif picker == "file_browser" then
       local path
       if vim.bo.filetype == "oil" then
-        path = require("oil").get_current_dir()
+        path = vim.fn.fnamemodify(require("oil").get_current_dir(), ":h")
       else
         local bufname = vim.api.nvim_buf_get_name(0)
         if bufname == "" then
