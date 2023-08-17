@@ -39,10 +39,12 @@ return {
     "stevearc/dressing.nvim",
     lazy = true,
     init = function()
+      ---@diagnostic disable-next-line: duplicate-set-field
       vim.ui.select = function(...)
         require("lazy").load({ plugins = { "dressing.nvim" } })
         return vim.ui.select(...)
       end
+      ---@diagnostic disable-next-line: duplicate-set-field
       vim.ui.input = function(...)
         require("lazy").load({ plugins = { "dressing.nvim" } })
         return vim.ui.input(...)
@@ -201,9 +203,11 @@ return {
       use_default_keymaps = true,
       view_options = {
         show_hidden = false,
+        ---@diagnostic disable-next-line: unused-local
         is_hidden_file = function(name, bufnr)
           return vim.startswith(name, ".")
         end,
+        ---@diagnostic disable-next-line: unused-local
         is_always_hidden = function(name, bufnr)
           return false
         end,
