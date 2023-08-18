@@ -36,6 +36,47 @@ return {
   },
 
   {
+    "kevinhwang91/nvim-ufo",
+    dependencies = {
+      "kevinhwang91/promise-async",
+      "luukvbaal/statuscol.nvim",
+    },
+    event = { "BufReadPost", "BufNewFile" },
+    keys = {
+      { "zR", function() require("ufo").openAllFolds() end, desc = "Open All Folds" },
+      { "zM", function() require("ufo").closeAllFolds() end, desc = "Close All Folds" },
+    },
+    opts = {
+      provider_selector = function(_, filetype, _)
+        local lspWithOutFolding = { "markdown", "bash", "sh", "bash", "zsh", "css" }
+        if vim.tbl_contains(lspWithOutFolding, filetype) then
+          return { "treesitter", "indent" }
+        elseif filetype == "html" then
+          return { "indent" }
+        else
+          return { "lsp", "indent" }
+        end
+      end,
+    }
+  },
+
+  {
+    "luukvbaal/statuscol.nvim",
+    event = { "BufReadPost", "BufNewFile" },
+    config = function()
+      local builtin = require("statuscol.builtin")
+      require("statuscol").setup({
+        relculright = true,
+        segments = {
+          { text = { builtin.foldfunc }, click = "v:lua.ScFa" },
+          { text = { "%s" }, click = "v:lua.ScSa" },
+          { text = { builtin.lnumfunc, " " }, click = "v:lua.ScLa" }
+        }
+      })
+    end
+  },
+
+  {
     "stevearc/dressing.nvim",
     lazy = true,
     init = function()
