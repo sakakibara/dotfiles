@@ -7,7 +7,14 @@ return {
       defaults = {
         mode = { "n", "v" },
         ["<leader>b"] = { name = "+buffer" },
+        ["<leader>c"] = { name = "+code" },
         ["<leader>f"] = { name = "+file" },
+        ["<leader>g"] = { name = "+git" },
+        ["<leader>gh"] = { name = "+hunks" },
+        ["<leader>s"] = { name = "+search" },
+        ["<leader>u"] = { name = "+ui" },
+        ["["] = { name = "+prev" },
+        ["]"] = { name = "+next" },
       },
     },
     config = function(_, opts)
