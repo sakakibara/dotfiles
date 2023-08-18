@@ -35,6 +35,21 @@ return {
   },
 
   {
+    "chrisgrieser/nvim-genghis",
+    dependencies = "stevearc/dressing.nvim",
+    keys = {
+      { "<leader>fy", function() require("genghis").copyFilename() end, desc = "Copy File Name" },
+      { "<leader>fY", function() require("genghis").copyFilepath() end, desc = "Copy File Path" },
+      { "<leader>fx", function() require("genghis").chmodx() end, desc = "File Chmod" },
+      { "<leader>fm", function() require("genghis").renameFile() end, desc = "Rename File" },
+      { "<leader>fM", function() require("genghis").moveAndRenameFile() end, desc = "Move and Rename File" },
+      { "<leader>fn", function() require("genghis").createNewFile() end, desc = "Create New File" },
+      { "<leader>fd", function() require("genghis").duplicateFile() end, desc = "Create Duplicate File" },
+      { "<leader>fD", function() require("genghis").trashFile() end, desc = "Trash File" },
+    }
+  },
+
+  {
     "monaqa/dial.nvim",
     keys = {
       {
