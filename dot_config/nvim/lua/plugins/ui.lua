@@ -9,18 +9,18 @@ return {
           globalstatus = false,
         },
         sections = {
-          lualine_a = {'mode'},
-          lualine_b = {'branch'},
+          lualine_a = {"mode"},
+          lualine_b = {"branch"},
           lualine_c = {
-            'diagnostics',
-            { 'filetype', icons_only = true, separator = '', padding = { left = 1, right = 0 } },
-            { 'filename', path = 1, symbols = { modified = "  ", readonly = "", unnamed = "" } },
+            "diagnostics",
+            { "filetype", icons_only = true, separator = "", padding = { left = 1, right = 0 } },
+            { "filename", path = 1, symbols = { modified = "  ", readonly = "", unnamed = "" } },
           },
-          lualine_x = {'encoding', 'fileformat'},
-          lualine_y = {'progress'},
-          lualine_z = {'location'},
+          lualine_x = {"encoding", "fileformat"},
+          lualine_y = {"progress"},
+          lualine_z = {"location"},
         },
-        extensions = { 'lazy' },
+        extensions = { "lazy" },
       }
     end,
   },
@@ -143,7 +143,7 @@ return {
   },
 
   {
-    'stevearc/oil.nvim',
+    "stevearc/oil.nvim",
     keys = {
       {
         "-",

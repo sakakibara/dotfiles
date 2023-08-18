@@ -1,20 +1,20 @@
 vim.g.mapleader = " "
 
 -- Encodings
-vim.opt.fileencodings = { 'ucs-bom', 'utf-8', 'iso-2022-jp', 'euc-jp', 'cp932', 'latin1' }
-vim.opt.fileformats = { 'unix', 'dos', 'mac' }
+vim.opt.fileencodings = { "ucs-bom", "utf-8", "iso-2022-jp", "euc-jp", "cp932", "latin1" }
+vim.opt.fileformats = { "unix", "dos", "mac" }
 
 -- Enable mouse
-vim.opt.mouse = 'a'
+vim.opt.mouse = "a"
 
 -- Disable swap file attention message
-vim.opt.shortmess:append('A')
+vim.opt.shortmess:append("A")
 
 -- Disable startup screen message
 vim.opt.shortmess:append { W = true, I = true, c = true }
 
 -- Use system clipboard by default
-vim.opt.clipboard:prepend('unnamed')
+vim.opt.clipboard:prepend("unnamed")
 
 -- Default tab settings
 vim.opt.tabstop = 2

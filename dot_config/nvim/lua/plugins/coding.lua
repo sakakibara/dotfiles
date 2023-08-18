@@ -9,7 +9,7 @@ return {
   },
 
   {
-    'numToStr/Comment.nvim',
+    "numToStr/Comment.nvim",
     event = "VeryLazy",
     opts = {},
   },
@@ -24,10 +24,10 @@ return {
 
       local Rule = require("nvim-autopairs.rule")
       local cond = require("nvim-autopairs.conds")
-      local brackets = { { '(', ')' }, { '[', ']' }, { '{', '}' } }
+      local brackets = { { "(", ")" }, { "[", "]" }, { "{", "}" } }
 
       npairs.add_rules {
-        Rule(' ', ' ')
+        Rule(" ", " ")
           :with_pair(function(options)
             local pair = options.line:sub(options.col - 1, options.col)
             return vim.tbl_contains({
@@ -42,20 +42,20 @@ return {
             local col = vim.api.nvim_win_get_cursor(0)[2]
             local context = options.line:sub(col - 1, col + 2)
             return vim.tbl_contains({
-              brackets[1][1] .. '  ' .. brackets[1][2],
-              brackets[2][1] .. '  ' .. brackets[2][2],
-              brackets[3][1] .. '  ' .. brackets[3][2]
+              brackets[1][1] .. "  " .. brackets[1][2],
+              brackets[2][1] .. "  " .. brackets[2][2],
+              brackets[3][1] .. "  " .. brackets[3][2]
             }, context)
           end)
       }
       for _, bracket in pairs(brackets) do
         npairs.add_rules {
-          Rule(bracket[1] .. ' ', ' ' .. bracket[2])
+          Rule(bracket[1] .. " ", " " .. bracket[2])
             :with_pair(cond.none())
             :with_move(function(options) return options.char == bracket[2] end)
             :with_del(cond.none())
             :use_key(bracket[2])
-            :replace_map_cr(function(_) return '<C-c>2xi<CR><C-c>O' end)
+            :replace_map_cr(function(_) return "<C-c>2xi<CR><C-c>O" end)
         }
       end
     end,
@@ -191,8 +191,8 @@ return {
             return {
               from = { line = 1, col = 1 },
               to = {
-                line = fn.line('$'),
-                col = math.max(fn.getline('$'):len(), 1)
+                line = fn.line("$"),
+                col = math.max(fn.getline("$"):len(), 1)
               }
             }
           end,

@@ -21,8 +21,8 @@ return {
     "echasnovski/mini.basics",
     config = function(_, opts)
       require("mini.basics").setup(opts)
-      vim.keymap.del('n', '<C-z>')
-      vim.keymap.del('i', '<C-z>')
+      vim.keymap.del("n", "<C-z>")
+      vim.keymap.del("i", "<C-z>")
     end
   },
 
@@ -172,8 +172,8 @@ return {
       signs = {
         add = { text = "▎" },
         change = { text = "▎" },
-        delete = { text = "契" },
-        topdelete = { text = "契" },
+        delete = { text = "_" },
+        topdelete = { text = "‾" },
         changedelete = { text = "▎" },
         untracked = { text = "▎" },
       },
