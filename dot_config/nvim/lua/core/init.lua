@@ -46,18 +46,20 @@ end
 function M.load(name)
   local LazyUtil = require("lazy.core.util")
   local function _load(mod)
-    LazyUtil.try(function()
-      require(mod)
-    end, {
-      msg = "Failed to load " .. mod,
-      on_error = function(msg)
-        local info = require("lazy.core.cache").find(mod)
-        if info == nil or (type(info) == "table" and #info == 0) then
-          return
-        end
-        LazyUtil.error(msg)
+    LazyUtil.try(
+      function()
+        require(mod)
       end,
-    })
+      {
+        msg = "Failed to load " .. mod,
+        on_error = function(msg)
+          local info = require("lazy.core.cache").find(mod)
+          if info == nil or (type(info) == "table" and #info == 0) then
+            return
+          end
+          LazyUtil.error(msg)
+        end,
+      })
   end
   _load("config." .. name)
   if vim.bo.filetype == "lazy" then
