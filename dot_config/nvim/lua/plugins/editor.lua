@@ -256,6 +256,15 @@ return {
   },
 
   {
+    "kevinhwang91/nvim-bqf",
+    dependencies = {
+      "lukas-reineke/indent-blankline.nvim",
+    },
+    event = "VeryLazy",
+    opts = {},
+  },
+
+  {
     "nvim-telescope/telescope.nvim",
     dependencies = {
       "nvim-lua/plenary.nvim",
