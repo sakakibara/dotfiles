@@ -196,6 +196,22 @@ return {
   },
 
   {
+    "ahmedkhalf/project.nvim",
+    dependencies = {
+      "nvim-telescope/telescope.nvim",
+    },
+    event = "VeryLazy",
+    opts = {},
+    config = function(_, opts)
+      require("project_nvim").setup(opts)
+      require("telescope").load_extension("projects")
+    end,
+    keys = {
+      { "<leader>pp", "<Cmd>Telescope projects<CR>", desc = "Projects" },
+    },
+  },
+
+  {
     "lewis6991/gitsigns.nvim",
     event = "BufReadPre",
     opts = {
