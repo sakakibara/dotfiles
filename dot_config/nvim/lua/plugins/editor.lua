@@ -201,7 +201,11 @@ return {
       "nvim-telescope/telescope.nvim",
     },
     event = "VeryLazy",
-    opts = {},
+    opts = {
+      exclude_dirs = {
+        "~/.config/nvim/lua/*"
+      },
+    },
     config = function(_, opts)
       require("project_nvim").setup(opts)
       require("telescope").load_extension("projects")
