@@ -258,6 +258,7 @@ return {
         "nvim-telescope/telescope-fzf-native.nvim",
         build = "make",
       },
+      "jvgrootveld/telescope-zoxide",
     },
     cmd = "Telescope",
     version = false,
@@ -277,6 +278,7 @@ return {
       { "<leader>sW", Util.telescope("grep_string", { cwd = false, word_match = "-w" }), desc = "Word (cwd)" },
       { "<leader>sw", Util.telescope("grep_string"), mode = "v", desc = "Selection (root dir)" },
       { "<leader>sW", Util.telescope("grep_string", { cwd = false }), mode = "v", desc = "Selection (cwd)" },
+      { "<leader>sz", "<cmd>Telescope zoxide list<cr>", desc = "Zoxide" },
       { "<leader>ht", "<cmd>Telescope help_tags<cr>", desc = "Help Tags" },
       { "<leader>hk", "<cmd>Telescope keymaps<cr>", desc = "Keymaps" },
       { "<leader>uc", Util.telescope("colorscheme", { enable_preview = true }), desc = "Colorschemes" },
@@ -358,6 +360,9 @@ return {
           override_file_sorter = true,
           case_mode = "smart_case",
         },
+        zoxide = {
+          list_command = "zoxide query -ls --all",
+        },
       },
     },
     config = function(_, opts)
@@ -365,6 +370,7 @@ return {
       require("telescope").load_extension("live_grep_args")
       require("telescope").load_extension("file_browser")
       require("telescope").load_extension("fzf")
+      require("telescope").load_extension('zoxide')
     end
   },
 
