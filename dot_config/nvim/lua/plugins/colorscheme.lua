@@ -5,12 +5,16 @@ return {
   name = "catppuccin",
   opts = {
     flavour = jit.os:find("Linux") and "latte" or "mocha",
+    background = {
+        light = "latte",
+        dark = "mocha",
+    },
     integrations = {
       cmp = true,
       flash = true,
       gitsigns = true,
       illuminate = true,
-      indent_blankline = {enabled = true },
+      indent_blankline = { enabled = true },
       markdown = true,
       mason = true,
       navic = { enabled = true, custom_bg = "lualine" },
@@ -19,7 +23,12 @@ return {
       telescope = true,
       treesitter = true,
       which_key = true,
-    }
+    },
+    custom_highlights = function(colors)
+      return {
+        Folded = { bg = colors.crust },
+      }
+    end,
   },
   config = function(_, opts)
     require("catppuccin").setup(opts)
