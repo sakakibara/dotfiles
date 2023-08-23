@@ -170,6 +170,7 @@ return {
         "mason",
         "notify",
         "qf",
+        "oil",
       },
       show_trailing_blankline_indent = false,
       show_current_context = false,
