@@ -48,8 +48,19 @@ return {
     opts = {
       options = {
         always_show_bufferline = false,
-      }
-    }
+        custom_filter = function(buf, _)
+          local filetype_exclude = {
+            "oil",
+          }
+          for _, ft in ipairs(filetype_exclude) do
+            if vim.bo[buf].filetype == ft then
+              return false
+            end
+          end
+          return true
+        end,
+      },
+    },
   },
 
   {
