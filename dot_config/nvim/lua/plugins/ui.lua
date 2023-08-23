@@ -3,20 +3,37 @@ return {
     "nvim-lualine/lualine.nvim",
     event = "VeryLazy",
     opts = function()
+      local Util = require("util")
       return {
         options = {
           theme = "auto",
-          globalstatus = false,
+          globalstatus = true,
         },
         sections = {
           lualine_a = {"mode"},
-          lualine_b = {"branch"},
+          lualine_b = {
+            {
+              'b:gitsigns_head',
+              icon = '',
+            },
+          },
           lualine_c = {
             "diagnostics",
             { "filetype", icons_only = true, separator = "", padding = { left = 1, right = 0 } },
             { "filename", path = 1, symbols = { modified = "  ", readonly = "", unnamed = "" } },
+            {
+              function() return require("nvim-navic").get_location() end,
+              cond = function() return package.loaded["nvim-navic"] and require("nvim-navic").is_available() end,
+            },
           },
-          lualine_x = {"encoding", "fileformat"},
+          lualine_x = {
+            "encoding",
+            "fileformat",
+            {
+              "diff",
+              source = Util.diff_source(),
+            },
+          },
           lualine_y = {"progress"},
           lualine_z = {"location"},
         },
