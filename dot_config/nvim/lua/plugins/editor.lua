@@ -245,6 +245,10 @@ return {
       },
       "debugloop/telescope-undo.nvim",
       "jvgrootveld/telescope-zoxide",
+      {
+        "nvim-telescope/telescope-frecency.nvim",
+        dependencies = { "kkharji/sqlite.lua" }
+      },
     },
     cmd = "Telescope",
     version = false,
@@ -253,8 +257,7 @@ return {
       { "<leader>bb", "<cmd>Telescope buffers<cr>", desc = "Buffers" },
       { "<leader>ff", Util.telescope("file_browser"), desc = "Find Files" },
       { "<leader>fF", Util.telescope("files"), desc = "Find Files (root dir)" },
-      { "<leader>fr", "<cmd>Telescope oldfiles<cr>", desc = "Recent" },
-      { "<leader>fR", Util.telescope("oldfiles", { cwd = vim.loop.cwd() }), desc = "Recent (cwd)" },
+      { "<leader>fr", "<cmd>Telescope frecency<cr>", desc = "Recent" },
       { '<leader>s"', "<cmd>Telescope registers<cr>", desc = "Registers" },
       { "<leader>ss", "<cmd>Telescope current_buffer_fuzzy_find<cr>", desc = "Buffer" },
       { "<leader>sc", "<cmd>Telescope command_history<cr>", desc = "Command History" },
@@ -357,6 +360,7 @@ return {
       require("telescope").load_extension("live_grep_args")
       require("telescope").load_extension("file_browser")
       require("telescope").load_extension("fzf")
+      require("telescope").load_extension("frecency")
       require("telescope").load_extension("undo")
       require("telescope").load_extension("zoxide")
     end
