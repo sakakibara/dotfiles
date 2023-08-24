@@ -352,6 +352,29 @@ return {
         },
         zoxide = {
           list_command = "zoxide query -ls --all",
+          mappings = {
+            default = {
+              action = function(selection)
+                vim.cmd.cd(selection.path)
+                require("oil").open(selection.path)
+              end,
+            },
+            ["<C-s>"] = {
+              before_action = function()
+                require("oil")
+              end,
+            },
+            ["<C-v>"] = {
+              before_action = function()
+                require("oil")
+              end,
+            },
+            ["<C-e>"] = {
+              before_action = function()
+                require("oil")
+              end,
+            },
+          },
         },
       },
     },
