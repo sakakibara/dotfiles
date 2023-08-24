@@ -9,6 +9,7 @@ return {
         light = "latte",
         dark = "mocha",
     },
+    show_end_of_buffer = true,
     integrations = {
       cmp = true,
       flash = true,
