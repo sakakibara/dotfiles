@@ -10,6 +10,9 @@ return {
         dark = "mocha",
     },
     show_end_of_buffer = true,
+    dim_inactive = {
+      enabled = true,
+    },
     integrations = {
       cmp = true,
       flash = true,
