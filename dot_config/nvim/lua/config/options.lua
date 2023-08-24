@@ -1,4 +1,5 @@
 vim.g.mapleader = " "
+vim.g.maplocalleader = " m"
 
 -- Encodings
 vim.opt.fileencodings = { "ucs-bom", "utf-8", "iso-2022-jp", "euc-jp", "cp932", "latin1" }
