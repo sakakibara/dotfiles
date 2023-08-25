@@ -12,6 +12,8 @@ return {
     show_end_of_buffer = true,
     dim_inactive = {
       enabled = true,
+      shade = "dark",
+      percentage = 0.70,
     },
     integrations = {
       cmp = true,
@@ -24,7 +26,7 @@ return {
       navic = { enabled = true, custom_bg = "lualine" },
       neotree = true,
       notify = true,
-      telescope = true,
+      telescope = { enabled = true, style = "nvchad" },
       treesitter = true,
       which_key = true,
     },
