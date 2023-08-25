@@ -6,8 +6,8 @@ return {
   opts = {
     flavour = jit.os:find("Linux") and "latte" or "mocha",
     background = {
-        light = "latte",
-        dark = "mocha",
+      light = "latte",
+      dark = "mocha",
     },
     show_end_of_buffer = true,
     dim_inactive = {
