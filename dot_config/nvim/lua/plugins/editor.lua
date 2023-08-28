@@ -397,6 +397,7 @@ return {
       { "<leader>ns", "<cmd>ZkGrep<cr>", desc = "Search zk note" },
       { "<leader>nt", "<cmd>ZkTags<cr>", desc = "Open zk note by tags" },
       { "<leader>no", "<cmd>ZkNotes { sort = { 'modified' }, match = { vim.fn.input('Search : ') } }<cr>", desc = "Open zk note by tags" },
+      { "<leader>nr", "<cmd>ZkIndex<cr>", desc = "Refresh zk index" },
     },
     opts = {
       picker = "select",
