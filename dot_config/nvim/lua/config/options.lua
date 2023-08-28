@@ -2,7 +2,7 @@ vim.g.mapleader = " "
 vim.g.maplocalleader = " m"
 
 -- Encodings
-vim.opt.fileencodings = { "ucs-bom", "utf-8", "iso-2022-jp", "euc-jp", "cp932", "latin1" }
+vim.opt.fileencodings = { "ucs-bom", "utf-8", "iso-2022-jp", "cp932", "euc-jp", "latin1" }
 vim.opt.fileformats = { "unix", "dos", "mac" }
 
 -- Enable mouse
