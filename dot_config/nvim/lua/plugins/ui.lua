@@ -60,6 +60,10 @@ return {
         end,
       },
     },
+    keys = {
+      { "[b", "<cmd>BufferLineCyclePrev<cr>", desc = "Previous Buffer" },
+      { "]b", "<cmd>BufferLineCycleNext<cr>", desc = "Next Buffer" },
+    },
   },
 
   {
