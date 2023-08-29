@@ -67,7 +67,7 @@ function M.run(picker, opts)
         map("i", "<a-c>", function()
           local action_state = require("telescope.actions.state")
           local line = action_state.get_current_line()
-          M.telescope(
+          M.run(
             params.picker,
             vim.tbl_deep_extend("force", {},
               params.opts or {},
