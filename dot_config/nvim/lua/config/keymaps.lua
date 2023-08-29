@@ -1,5 +1,6 @@
-vim.keymap.set("i", "jk", "<Esc>")
-vim.keymap.set("n", "<Leader>w", "<C-w>")
-vim.keymap.set("n", "<Leader>bn", "<cmd>bnext<cr>", { desc = "Next buffer" })
-vim.keymap.set("n", "<Leader>bp", "<cmd>bNext<cr>", { desc = "Previous buffer" })
-vim.keymap.set("n", "<Leader>bN", "<cmd>enew<cr>", { desc = "New empty buffer" })
+local map = vim.keymap.set
+map("i", "jk", "<Esc>")
+map("n", "<Leader>w", "<C-w>")
+map("n", "<Leader>bn", "<cmd>bnext<cr>", { desc = "Next buffer" })
+map("n", "<Leader>bp", "<cmd>bNext<cr>", { desc = "Previous buffer" })
+map("n", "<Leader>bN", "<cmd>enew<cr>", { desc = "New empty buffer" })
