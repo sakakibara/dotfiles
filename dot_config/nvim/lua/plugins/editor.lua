@@ -245,10 +245,7 @@ return {
       },
       "debugloop/telescope-undo.nvim",
       "jvgrootveld/telescope-zoxide",
-      {
-        "nvim-telescope/telescope-frecency.nvim",
-        dependencies = { "kkharji/sqlite.lua" }
-      },
+      "nvim-telescope/telescope-frecency.nvim",
     },
     cmd = "Telescope",
     version = false,
@@ -349,6 +346,9 @@ return {
           override_generic_sorter = true,
           override_file_sorter = true,
           case_mode = "smart_case",
+        },
+        frecency = {
+          use_sqlite = false,
         },
         zoxide = {
           list_command = "zoxide query -ls --all",
