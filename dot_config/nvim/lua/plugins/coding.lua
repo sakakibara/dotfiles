@@ -250,6 +250,12 @@ return {
   },
 
   {
+    "echasnovski/mini.align",
+    event = "VeryLazy",
+    opts = {},
+  },
+
+  {
     "gbprod/yanky.nvim",
     dependencies = { "kkharji/sqlite.lua" },
     opts = function()
