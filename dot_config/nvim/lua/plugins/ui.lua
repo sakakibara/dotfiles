@@ -3,7 +3,6 @@ return {
     "nvim-lualine/lualine.nvim",
     event = "VeryLazy",
     opts = function()
-      local Util = require("util")
       return {
         options = {
           theme = "auto",
@@ -31,7 +30,7 @@ return {
             "fileformat",
             {
               "diff",
-              source = Util.diff_source(),
+              source = require("util.statusline").diff_source(),
             },
           },
           lualine_y = {"progress"},
@@ -149,7 +148,7 @@ return {
     lazy = true,
     init = function()
       vim.g.navic_silence = true
-      require("util").on_attach(function(client, buffer)
+      require("util.lsp").on_attach(function(client, buffer)
         if client.server_capabilities.documentSymbolProvider then
           require("nvim-navic").attach(client, buffer)
         end
@@ -330,7 +329,7 @@ return {
       {
         "<leader>fe",
         function()
-          require("neo-tree.command").execute({ toggle = true, dir = require("util").get_root() })
+          require("neo-tree.command").execute({ toggle = true, dir = require("util.telescope").get_root() })
         end,
         desc = "Explorer NeoTree (root dir)",
       },

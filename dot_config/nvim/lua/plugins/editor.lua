@@ -1,5 +1,3 @@
-local Util = require("util")
-
 return {
   {
     "folke/which-key.nvim",
@@ -250,27 +248,27 @@ return {
     cmd = "Telescope",
     version = false,
     keys = {
-      { "<leader><space>", Util.telescope("files", { cwd = false }), desc = "Find Files (cwd)" },
+      { "<leader><space>", require("util.telescope").run("files", { cwd = false }), desc = "Find Files (cwd)" },
       { "<leader>bb", "<cmd>Telescope buffers<cr>", desc = "Buffers" },
-      { "<leader>ff", Util.telescope("file_browser"), desc = "Find Files" },
-      { "<leader>fF", Util.telescope("files"), desc = "Find Files (root dir)" },
+      { "<leader>ff", require("util.telescope").run("file_browser"), desc = "Find Files" },
+      { "<leader>fF", require("util.telescope").run("files"), desc = "Find Files (root dir)" },
       { "<leader>fr", "<cmd>Telescope frecency<cr>", desc = "Recent" },
       { '<leader>s"', "<cmd>Telescope registers<cr>", desc = "Registers" },
       { "<leader>ss", "<cmd>Telescope current_buffer_fuzzy_find<cr>", desc = "Buffer" },
       { "<leader>sc", "<cmd>Telescope command_history<cr>", desc = "Command History" },
-      { "<leader>sg", Util.telescope("live_grep"), desc = "Grep (root dir)" },
-      { "<leader>sG", Util.telescope("live_grep", { cwd = false }), desc = "Grep (cwd)" },
-      { "<leader>sw", Util.telescope("grep_string", { word_match = "-w" }), desc = "Word (root dir)" },
-      { "<leader>sW", Util.telescope("grep_string", { cwd = false, word_match = "-w" }), desc = "Word (cwd)" },
-      { "<leader>sw", Util.telescope("grep_string"), mode = "v", desc = "Selection (root dir)" },
-      { "<leader>sW", Util.telescope("grep_string", { cwd = false }), mode = "v", desc = "Selection (cwd)" },
+      { "<leader>sg", require("util.telescope").run("live_grep"), desc = "Grep (root dir)" },
+      { "<leader>sG", require("util.telescope").run("live_grep", { cwd = false }), desc = "Grep (cwd)" },
+      { "<leader>sw", require("util.telescope").run("grep_string", { word_match = "-w" }), desc = "Word (root dir)" },
+      { "<leader>sW", require("util.telescope").run("grep_string", { cwd = false, word_match = "-w" }), desc = "Word (cwd)" },
+      { "<leader>sw", require("util.telescope").run("grep_string"), mode = "v", desc = "Selection (root dir)" },
+      { "<leader>sW", require("util.telescope").run("grep_string", { cwd = false }), mode = "v", desc = "Selection (cwd)" },
       { "<leader>su", "<cmd>Telescope undo<cr>", desc = "Undo history" },
       { "<leader>sz", "<cmd>Telescope zoxide list<cr>", desc = "Zoxide" },
       { "<leader>ht", "<cmd>Telescope help_tags<cr>", desc = "Help Tags" },
       { "<leader>hk", "<cmd>Telescope keymaps<cr>", desc = "Keymaps" },
-      { "<leader>uc", Util.telescope("colorscheme", { enable_preview = true }), desc = "Colorschemes" },
+      { "<leader>uc", require("util.telescope").run("colorscheme", { enable_preview = true }), desc = "Colorschemes" },
       { "<leader>:", "<cmd>Telescope commands<cr>", desc = "Commands" },
-      { "<leader>/", Util.telescope("live_grep_args", { cwd = false }), desc = "Live Grep Args (cwd)" },
+      { "<leader>/", require("util.telescope").run("live_grep_args", { cwd = false }), desc = "Live Grep Args (cwd)" },
     },
     opts = {
       defaults = {
@@ -285,12 +283,12 @@ return {
             ["<a-i>"] = function()
               local action_state = require("telescope.actions.state")
               local line = action_state.get_current_line()
-              Util.telescope("find_files", { no_ignore = true, default_text = line })()
+              require("util.telescope").run("find_files", { no_ignore = true, default_text = line })()
             end,
             ["<a-h>"] = function()
               local action_state = require("telescope.actions.state")
               local line = action_state.get_current_line()
-              Util.telescope("find_files", { hidden = true, default_text = line })()
+              require("util.telescope").run("find_files", { hidden = true, default_text = line })()
             end,
             ["<C-Down>"] = function(...)
               return require("telescope.actions").cycle_history_next(...)

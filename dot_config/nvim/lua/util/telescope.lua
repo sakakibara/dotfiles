@@ -33,7 +33,7 @@ function M.get_root()
   return root
 end
 
-function M.telescope(picker, opts)
+function M.run(picker, opts)
   local params = { picker = picker, opts = opts }
   return function()
     picker = params.picker
@@ -84,61 +84,6 @@ function M.telescope(picker, opts)
     else
       require("telescope").extensions[picker][picker](opts)
     end
-  end
-end
-
-function M.on_attach(on_attach)
-  vim.api.nvim_create_autocmd("LspAttach", {
-    callback = function(args)
-      local buffer = args.buf
-      local client = vim.lsp.get_client_by_id(args.data.client_id)
-      on_attach(client, buffer)
-    end,
-  })
-end
-
-function M.has(plugin)
-  return require("lazy.core.config").spec.plugins[plugin] ~= nil
-end
-
-function M.opts(name)
-  local plugin = require("lazy.core.config").plugins[name]
-  if not plugin then
-    return {}
-  end
-  local Plugin = require("lazy.core.plugin")
-  return Plugin.values(plugin, "opts", false)
-end
-
-function M.on_load(name, fn)
-  local Config = require("lazy.core.config")
-  if Config.plugins[name] and Config.plugins[name]._.loaded then
-    vim.schedule(function()
-      fn(name)
-    end)
-  else
-    vim.api.nvim_create_autocmd("User", {
-      pattern = "LazyLoad",
-      callback = function(event)
-        if event.data == name then
-          fn(name)
-          return true
-        end
-      end,
-    })
-  end
-end
-
-function M.diff_source()
-  local icons = require("config.icons")
-  ---@diagnostic disable-next-line: undefined-field
-  local gitsigns = vim.b.gitsigns_status_dict
-  if gitsigns then
-    return {
-      added = icons.git.added,
-      modified = icons.git.modified,
-      removed = icons.git.removed,
-    }
   end
 end
 

@@ -24,6 +24,7 @@ M.inited = false
 function M.init()
   if not M.inited then
     M.inited = true
+    require("util.lazy").delay_notify()
     M.load("options")
   end
 end

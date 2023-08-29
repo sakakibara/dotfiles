@@ -43,7 +43,7 @@ function M.get()
         has = "codeAction",
       }
     }
-    if require("util").has("inc-rename.nvim") then
+    if require("util.lazy").has("inc-rename.nvim") then
       M.keys[#M.keys + 1] = {
         "<leader>cr",
         function()
@@ -88,7 +88,7 @@ function M.resolve(buffer)
     add(keymap)
   end
 
-  local opts = require("util").opts("nvim-lspconfig")
+  local opts = require("util.lazy").opts("nvim-lspconfig")
   local clients = vim.lsp.get_active_clients({ bufnr = buffer })
   for _, client in ipairs(clients) do
     local maps = opts.servers[client.name] and opts.servers[client.name].keys or {}

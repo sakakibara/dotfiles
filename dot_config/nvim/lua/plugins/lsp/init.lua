@@ -25,11 +25,9 @@ return {
       },
     },
     config = function(_, opts)
-      local Util = require("util")
-
       require("plugins.lsp.format").setup(opts)
 
-      Util.on_attach(function(client, buffer)
+      require("util.lsp").on_attach(function(client, buffer)
         require("plugins.lsp.keymaps").on_attach(client, buffer)
       end)
 
