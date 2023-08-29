@@ -292,4 +292,13 @@ return {
       { "=P", "<Plug>(YankyPutBeforeFilter)", desc = "Put before applying a filter" },
     },
   },
+
+  {
+    "akinsho/toggleterm.nvim",
+    version = "*",
+    opts = {},
+    keys = {
+      { "<leader>gl", require("util.terminal").lazygit_toggle, { desc = "Lazygit" } },
+    },
+  },
 }
