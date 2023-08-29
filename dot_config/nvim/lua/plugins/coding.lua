@@ -298,7 +298,7 @@ return {
     version = "*",
     opts = {},
     keys = {
-      { "<leader>gl", require("util.terminal").lazygit_toggle, { desc = "Lazygit" } },
+      { "<leader>gl", require("util.terminal").lazygit_toggle, desc = "Lazygit" },
     },
   },
 }
