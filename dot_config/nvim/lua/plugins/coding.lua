@@ -302,4 +302,13 @@ return {
       { "<leader>gl", require("util.terminal").lazygit_toggle, desc = "Lazygit" },
     },
   },
+
+  {
+    "NvChad/nvim-colorizer.lua",
+    event = "VeryLazy",
+    opts = {
+      filetypes = { "css", "html", "scss", "sass" },
+      user_default_options = { mode = "virtualtext" },
+    },
+  },
 }
