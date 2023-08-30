@@ -235,24 +235,17 @@ return {
     "nvim-telescope/telescope.nvim",
     dependencies = {
       "nvim-lua/plenary.nvim",
-      "nvim-telescope/telescope-live-grep-args.nvim",
-      "nvim-telescope/telescope-file-browser.nvim",
       {
         "nvim-telescope/telescope-fzf-native.nvim",
         build = "make",
       },
-      "debugloop/telescope-undo.nvim",
-      "jvgrootveld/telescope-zoxide",
-      "nvim-telescope/telescope-frecency.nvim",
     },
     cmd = "Telescope",
     version = false,
     keys = {
       { "<leader><space>", require("util.telescope").run("files", { cwd = false }), desc = "Find Files (cwd)" },
       { "<leader>bb", "<cmd>Telescope buffers<cr>", desc = "Buffers" },
-      { "<leader>ff", require("util.telescope").run("file_browser"), desc = "Find Files" },
       { "<leader>fF", require("util.telescope").run("files"), desc = "Find Files (root dir)" },
-      { "<leader>fr", "<cmd>Telescope frecency<cr>", desc = "Recent" },
       { '<leader>s"', "<cmd>Telescope registers<cr>", desc = "Registers" },
       { "<leader>ss", "<cmd>Telescope current_buffer_fuzzy_find<cr>", desc = "Buffer" },
       { "<leader>sc", "<cmd>Telescope command_history<cr>", desc = "Command History" },
@@ -262,13 +255,10 @@ return {
       { "<leader>sW", require("util.telescope").run("grep_string", { cwd = false, word_match = "-w" }), desc = "Word (cwd)" },
       { "<leader>sw", require("util.telescope").run("grep_string"), mode = "v", desc = "Selection (root dir)" },
       { "<leader>sW", require("util.telescope").run("grep_string", { cwd = false }), mode = "v", desc = "Selection (cwd)" },
-      { "<leader>su", "<cmd>Telescope undo<cr>", desc = "Undo history" },
-      { "<leader>sz", "<cmd>Telescope zoxide list<cr>", desc = "Zoxide" },
       { "<leader>ht", "<cmd>Telescope help_tags<cr>", desc = "Help Tags" },
       { "<leader>hk", "<cmd>Telescope keymaps<cr>", desc = "Keymaps" },
       { "<leader>uc", require("util.telescope").run("colorscheme", { enable_preview = true }), desc = "Colorschemes" },
       { "<leader>:", "<cmd>Telescope commands<cr>", desc = "Commands" },
-      { "<leader>/", require("util.telescope").run("live_grep_args", { cwd = false }), desc = "Live Grep Args (cwd)" },
     },
     opts = {
       defaults = {
@@ -378,11 +368,51 @@ return {
     },
     config = function(_, opts)
       require("telescope").setup(opts)
-      require("telescope").load_extension("live_grep_args")
-      require("telescope").load_extension("file_browser")
       require("telescope").load_extension("fzf")
+    end
+  },
+  {
+    "nvim-telescope/telescope-live-grep-args.nvim",
+    keys = {
+      { "<leader>/", require("util.telescope").run("live_grep_args", { cwd = false }), desc = "Live Grep Args (cwd)" },
+    },
+    config = function()
+      require("telescope").load_extension("live_grep_args")
+    end
+  },
+  {
+    "nvim-telescope/telescope-file-browser.nvim",
+    keys = {
+      { "<leader>ff", require("util.telescope").run("file_browser"), desc = "Find Files" },
+    },
+    config = function()
+      require("telescope").load_extension("file_browser")
+    end
+  },
+  {
+    "nvim-telescope/telescope-frecency.nvim",
+    keys = {
+      { "<leader>fr", "<cmd>Telescope frecency<cr>", desc = "Recent" },
+    },
+    config = function()
       require("telescope").load_extension("frecency")
+    end
+  },
+  {
+    "debugloop/telescope-undo.nvim",
+    keys = {
+      { "<leader>su", "<cmd>Telescope undo<cr>", desc = "Undo history" },
+    },
+    config = function()
       require("telescope").load_extension("undo")
+    end
+  },
+  {
+    "jvgrootveld/telescope-zoxide",
+    keys = {
+      { "<leader>sz", "<cmd>Telescope zoxide list<cr>", desc = "Zoxide" },
+    },
+    config = function()
       require("telescope").load_extension("zoxide")
     end
   },
