@@ -336,6 +336,8 @@ return {
           case_mode = "smart_case",
         },
         frecency = {
+          auto_validate = false,
+          show_unindexed = false,
           use_sqlite = false,
         },
         zoxide = {
@@ -391,6 +393,7 @@ return {
   },
   {
     "nvim-telescope/telescope-frecency.nvim",
+    event = "VeryLazy",
     keys = {
       { "<leader>fr", "<cmd>Telescope frecency<cr>", desc = "Recent" },
     },
