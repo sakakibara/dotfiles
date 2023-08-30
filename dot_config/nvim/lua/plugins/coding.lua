@@ -311,4 +311,16 @@ return {
       user_default_options = { mode = "virtualtext" },
     },
   },
+
+  {
+    "uga-rosa/ccc.nvim",
+    cmd = {
+      "CccConvert",
+      "CccHighlighterDisable",
+      "CccHighlighterEnable",
+      "CccHighlighterToggle",
+      "CccPick",
+    },
+    opts = {},
+  },
 }
