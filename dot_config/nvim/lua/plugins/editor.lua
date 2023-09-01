@@ -335,6 +335,27 @@ return {
           override_file_sorter = true,
           case_mode = "smart_case",
         },
+        undo = {
+          use_delta = false,
+          use_custom_command = nil,
+          side_by_side = false,
+          diff_context_lines = vim.o.scrolloff,
+          entry_format = "state #$ID, $STAT, $TIME",
+          time_format = "",
+          mappings = {
+            i = {
+              ["<C-y>"] = function(...)
+                return require("telescope-undo.actions").yank_additions(...)
+              end,
+              ["<M-y>"] = function(...)
+                return require("telescope-undo.actions").yank_deletions(...)
+              end,
+              ["<CR>"] = function(...)
+                return require("telescope-undo.actions").restore(...)
+              end,
+            },
+          },
+        },
         frecency = {
           auto_validate = false,
           show_unindexed = false,
