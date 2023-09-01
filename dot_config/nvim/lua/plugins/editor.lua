@@ -298,12 +298,6 @@ return {
             ["<C-p>"] = function(...)
               return require("telescope.actions").preview_scrolling_up(...)
             end,
-            ["<Esc>"] = function(...)
-              return require("telescope.actions").close(...)
-            end,
-            ["jk"] = function(...)
-              return require("telescope.actions").close(...)
-            end,
             ["<M-p>"] = function(...)
               return require("telescope.actions.layout").toggle_preview(...)
             end,
