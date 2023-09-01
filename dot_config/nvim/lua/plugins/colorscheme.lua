@@ -4,7 +4,7 @@ return {
   priority = 1000,
   name = "catppuccin",
   opts = {
-    flavour = jit.os:find("Linux") and "latte" or "mocha",
+    flavour = "mocha",
     background = {
       light = "latte",
       dark = "mocha",
