@@ -54,3 +54,5 @@ vim.opt.fillchars = {
   foldsep = " ",
   foldclose = "",
 }
+
+vim.opt.updatetime = 200
