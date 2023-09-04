@@ -66,31 +66,6 @@ return {
   },
 
   {
-    "akinsho/bufferline.nvim",
-    event = "VeryLazy",
-    opts = {
-      options = {
-        always_show_bufferline = false,
-        custom_filter = function(buf, _)
-          local filetype_exclude = {
-            "oil",
-          }
-          for _, ft in ipairs(filetype_exclude) do
-            if vim.bo[buf].filetype == ft then
-              return false
-            end
-          end
-          return true
-        end,
-      },
-    },
-    keys = {
-      { "[b", "<cmd>BufferLineCyclePrev<cr>", desc = "Previous Buffer" },
-      { "]b", "<cmd>BufferLineCycleNext<cr>", desc = "Next Buffer" },
-    },
-  },
-
-  {
     "kevinhwang91/nvim-ufo",
     dependencies = "kevinhwang91/promise-async",
     event = { "BufReadPost", "BufNewFile" },
