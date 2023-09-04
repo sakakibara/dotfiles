@@ -25,15 +25,6 @@ return {
   },
 
   {
-    "echasnovski/mini.basics",
-    config = function(_, opts)
-      require("mini.basics").setup(opts)
-      vim.keymap.del("n", "<C-z>")
-      vim.keymap.del("i", "<C-z>")
-    end
-  },
-
-  {
     "echasnovski/mini.bufremove",
     keys = {
       { "<leader>bd", function() require("mini.bufremove").delete(0, false) end, desc = "Delete Buffer" },
