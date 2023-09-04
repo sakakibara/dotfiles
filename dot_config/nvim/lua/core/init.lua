@@ -13,6 +13,7 @@ function M.setup()
       end,
     })
   else
+    M.init()
     M.load("autocmds")
     M.load("keymaps")
   end
