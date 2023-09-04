@@ -49,6 +49,9 @@ return {
           node_decremental = "<bs>",
         },
       },
+      matchup = {
+        enable = true,
+      },
       endwise = {
         enable = true,
       },
