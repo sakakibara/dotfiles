@@ -38,7 +38,7 @@ vim.opt.undofile = true
 
 -- Line numbers
 vim.opt.number = true
-vim.opt.relativenumber = true
+vim.opt.relativenumber = false
 
 -- Color theme
 vim.opt.termguicolors = true

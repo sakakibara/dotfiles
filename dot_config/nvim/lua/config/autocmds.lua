@@ -19,3 +19,17 @@ vim.api.nvim_create_autocmd("BufWritePre", {
     end
   end,
 })
+
+local vmr_augrp = vim.api.nvim_create_augroup("visual_mode_relnum", {})
+vim.api.nvim_create_autocmd("ModeChanged", {
+  group = vmr_augrp,
+  pattern = "*:[V\x16]*",
+  callback = function() vim.wo.relativenumber = vim.wo.number end,
+  desc = "Show relative line numbers",
+})
+vim.api.nvim_create_autocmd("ModeChanged", {
+  group = vmr_augrp,
+  pattern = '[V\x16]*:*',
+  callback = function() vim.wo.relativenumber = string.find(vim.fn.mode(), '^[V\22]') ~= nil end,
+  desc = "Hide relative line numbers",
+})
