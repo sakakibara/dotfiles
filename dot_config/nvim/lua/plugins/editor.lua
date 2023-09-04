@@ -6,8 +6,6 @@ return {
       plugins = { spelling = true },
       defaults = {
         mode = { "n", "v" },
-        ["<leader>"] = { name = "+prefix" },
-        ["<localleader>"] = { name = "+prefix" },
         ["<leader>b"] = { name = "+buffer" },
         ["<leader>c"] = { name = "+code" },
         ["<leader>f"] = { name = "+file" },
