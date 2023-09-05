@@ -47,6 +47,7 @@ return {
     opts = {
       create_autocmd = false,
       attach_navic = false,
+      theme = "catppuccin",
     },
     config = function(_, opts)
       require("barbecue").setup(opts)
