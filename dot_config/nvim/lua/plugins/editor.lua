@@ -25,6 +25,24 @@ return {
   },
 
   {
+    "chrishrb/gx.nvim",
+    event = { "BufEnter" },
+    dependencies = { "nvim-lua/plenary.nvim" },
+    opts = {
+      handlers = {
+        plugin = true,
+        github = true,
+        brewfile = true,
+        package_json = true,
+        search = true,
+      },
+      handler_options = {
+        search_engine = "duckduckgo",
+      },
+    },
+  },
+
+  {
     "echasnovski/mini.bufremove",
     keys = {
       { "<leader>bd", function() require("mini.bufremove").delete(0, false) end, desc = "Delete Buffer" },
