@@ -6,6 +6,15 @@ map("n", "<leader>w", "<C-w>")
 map({ "n", "x" }, "j", "v:count == 0 ? 'gj' : 'j'", { expr = true, silent = true })
 map({ "n", "x" }, "k", "v:count == 0 ? 'gk' : 'k'", { expr = true, silent = true })
 
+map("n", "<A-h>", "<C-w>h", { desc = "Go to the left window", remap = true })
+map("n", "<A-j>", "<C-w>j", { desc = "Go to the lower window", remap = true })
+map("n", "<A-k>", "<C-w>k", { desc = "Go to the upper window", remap = true })
+map("n", "<A-l>", "<C-w>l", { desc = "Go to the right window", remap = true })
+map("t", "<A-h>", "<cmd>wincmd h<cr>", { desc = "Go to the left window" })
+map("t", "<A-j>", "<cmd>wincmd j<cr>", { desc = "Go to the lower window" })
+map("t", "<A-k>", "<cmd>wincmd k<cr>", { desc = "Go to the upper window" })
+map("t", "<A-l>", "<cmd>wincmd l<cr>", { desc = "Go to the right window" })
+
 map({ "n", "x", "o" }, "n", "'Nn'[v:searchforward]", { expr = true, desc = "Next search result" })
 map({ "n", "x", "o" }, "N", "'nN'[v:searchforward]", { expr = true, desc = "Previous search result" })
 
