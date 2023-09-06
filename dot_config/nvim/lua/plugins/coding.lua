@@ -298,7 +298,7 @@ return {
     version = "*",
     opts = {},
     keys = {
-      { "<C-\\>", mode = { "n", "x", "o", "t" }, "<cmd>ToggleTerm<cr>", desc = "Toggle terminal" },
+      { "<F7>", mode = { "n", "x", "o", "t" }, "<cmd>ToggleTerm<cr>", desc = "Toggle terminal" },
       { "<leader>gl", require("util.terminal").lazygit_toggle, desc = "Lazygit" },
     },
   },
