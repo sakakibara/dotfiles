@@ -1,7 +1,6 @@
 local map = vim.keymap.set
 
 map("i", "jk", "<Esc>")
-map("t", "jk", "<C-\\><C-n>")
 map("n", "<leader>w", "<C-w>")
 
 map({ "n", "x" }, "j", "v:count == 0 ? 'gj' : 'j'", { expr = true, silent = true })
