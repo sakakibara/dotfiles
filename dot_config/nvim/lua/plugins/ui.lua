@@ -3,12 +3,15 @@ return {
     "nvim-lualine/lualine.nvim",
     event = "VeryLazy",
     opts = function()
+      local function oil_path()
+        return vim.fn.fnamemodify(require("oil").get_current_dir(), ":p:~")
+      end
       local oil_extension = {
         sections = {
           lualine_a = {"mode"},
           lualine_c = {
             "filetype",
-            require("oil").get_current_dir,
+            { oil_path },
           },
         },
         filetypes = { "oil" },
