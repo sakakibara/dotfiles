@@ -2,7 +2,7 @@ local M = {}
 
 M.root_patterns = { ".git", "lua" }
 
-function M.get_root()
+function M.root()
   ---@type string?
   local path = vim.api.nvim_buf_get_name(0)
   path = path ~= "" and vim.loop.fs_realpath(path) or nil
@@ -33,12 +33,24 @@ function M.get_root()
   return root
 end
 
-function M.run(picker, opts)
+function M.basedir()
+  local path
+  if vim.bo.filetype == "oil" then
+    path = vim.fn.fnamemodify(require("oil").get_current_dir(), ":h")
+  else
+    path = vim.fn.expand("%:h:p")
+  end
+  return path
+end
+
+function M.func(picker, opts)
   local params = { picker = picker, opts = opts }
   return function()
     picker = params.picker
     opts = params.opts
-    opts = vim.tbl_deep_extend("force", { cwd = M.get_root() }, opts or {})
+    if type(opts.cwd) == "function" then
+      opts = vim.tbl_deep_extend("force", opts or {}, { cwd = opts.cwd() })
+    end
 
     if picker == "files" then
       if vim.loop.fs_stat((opts.cwd or vim.loop.cwd()) .. "/.git") then
@@ -47,19 +59,6 @@ function M.run(picker, opts)
       else
         picker = "find_files"
       end
-    elseif picker == "file_browser" then
-      local path
-      if vim.bo.filetype == "oil" then
-        path = vim.fn.fnamemodify(require("oil").get_current_dir(), ":h")
-      else
-        local bufname = vim.api.nvim_buf_get_name(0)
-        if bufname == "" then
-          path = vim.loop.cwd()
-        else
-          path = vim.fn.fnamemodify(bufname, ":p:h")
-        end
-      end
-      opts = vim.tbl_deep_extend("force", { path = path }, opts or {})
     end
 
     if opts.cwd and opts.cwd ~= vim.loop.cwd() then
