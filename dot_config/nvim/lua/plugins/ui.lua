@@ -215,13 +215,7 @@ return {
   {
     "stevearc/oil.nvim",
     keys = {
-      {
-        "-",
-        function()
-          require("oil").open()
-        end,
-        mode = "n",
-      },
+      { "-", function() require("oil").open() end, desc = "Open parent directory" },
     },
     init = function()
       if vim.fn.argc() == 1 then
