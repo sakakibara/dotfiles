@@ -3,6 +3,16 @@ return {
     "nvim-lualine/lualine.nvim",
     event = "VeryLazy",
     opts = function()
+      local oil_extension = {
+        sections = {
+          lualine_a = {"mode"},
+          lualine_c = {
+            "filetype",
+            require("oil").get_current_dir,
+          },
+        },
+        filetypes = { "oil" },
+      }
       return {
         options = {
           theme = "auto",
@@ -32,7 +42,7 @@ return {
           lualine_y = {"progress"},
           lualine_z = {"location"},
         },
-        extensions = { "lazy", "neo-tree", "quickfix", "toggleterm" },
+        extensions = { "lazy", "neo-tree", "quickfix", "toggleterm", oil_extension },
       }
     end,
   },
