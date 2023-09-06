@@ -318,6 +318,9 @@ return {
             end,
           },
           n = {
+            ["-"] = function(...)
+              return require("telescope.actions").nop(...)
+            end,
             ["q"] = function(...)
               return require("telescope.actions").close(...)
             end,
