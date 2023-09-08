@@ -39,6 +39,7 @@ function M.basedir()
     path = vim.fn.fnamemodify(require("oil").get_current_dir(), ":h")
   else
     path = vim.fn.expand("%:h:p")
+    path = path == "" and vim.loop.cwd()
   end
   return path
 end
