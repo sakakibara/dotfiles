@@ -118,6 +118,16 @@ return {
   },
 
   {
+    "echasnovski/mini.splitjoin",
+    event = "VeryLazy",
+    opts = {
+      mappings = {
+        toggle = "gs"
+      },
+    },
+  },
+
+  {
     "max397574/better-escape.nvim",
     event = "InsertEnter",
     opts = {
