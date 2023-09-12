@@ -1,5 +1,7 @@
 local map = vim.keymap.set
 local util_file = require("util.file")
+local util_keymaps = require("util.keymaps")
+util_keymaps.setup()
 
 map("n", "<leader>w", "<C-w>")
 
@@ -35,8 +37,8 @@ map("n", "]f", util_file.next_file, { desc = "Next file" })
 map("n", "[F", util_file.first_file, { desc = "First file" })
 map("n", "]F", util_file.last_file, { desc = "Last file" })
 
-map("n", "[ ", "<cmd>call append(line('.') - 1, repeat([''], v:count1))<cr>", { desc = "Add empty line above" })
-map("n", "] ", "<cmd>call append(line('.'), repeat([''], v:count1))<cr>", { desc = "Add empty line below" })
+map("n", "[ ", "v:lua.KeymapsUtil.put_empty_line(v:true)",  { expr = true, desc = "Add empty line above" })
+map("n", "] ", "v:lua.KeymapsUtil.put_empty_line(v:false)", { expr = true, desc = "Add empty line below" })
 
 map("n", "<leader>ul", "<cmd>Lazy<cr>", { desc = "Lazy" })
 
