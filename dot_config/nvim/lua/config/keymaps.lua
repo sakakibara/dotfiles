@@ -27,6 +27,8 @@ map("n", "<leader>xq", "<cmd>copen<cr>", { desc = "Quickfix list" })
 
 map("n", "[q", "<cmd>cprevious<cr>", { desc = "Previous quickfix" })
 map("n", "]q", "<cmd>cnext<cr>", { desc = "Next quickfix" })
+map("n", "[Q", "<cmd>cfirst<cr>", { desc = "First quickfix" })
+map("n", "]Q", "<cmd>clast<cr>", { desc = "Last quickfix" })
 
 map("n", "[ ", "<cmd>call append(line('.') - 1, repeat([''], v:count1))<cr>", { desc = "Add empty line above" })
 map("n", "] ", "<cmd>call append(line('.'), repeat([''], v:count1))<cr>", { desc = "Add empty line below" })
