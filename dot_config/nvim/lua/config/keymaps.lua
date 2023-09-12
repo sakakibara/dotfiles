@@ -25,8 +25,8 @@ map("n", "<leader>bs", "<cmd>w<cr>", { desc = "Save buffer" })
 map("n", "<leader>xl", "<cmd>lopen<cr>", { desc = "Location list" })
 map("n", "<leader>xq", "<cmd>copen<cr>", { desc = "Quickfix list" })
 
-map("n", "<leader>[q", "<cmd>cprevious<cr>", { desc = "Previous quickfix" })
-map("n", "<leader>]q", "<cmd>cnext<cr>", { desc = "Next quickfix" })
+map("n", "[q", "<cmd>cprevious<cr>", { desc = "Previous quickfix" })
+map("n", "]q", "<cmd>cnext<cr>", { desc = "Next quickfix" })
 
 map("n", "[ ", "<cmd>call append(line('.') - 1, repeat([''], v:count1))<cr>", { desc = "Add empty line above" })
 map("n", "] ", "<cmd>call append(line('.'), repeat([''], v:count1))<cr>", { desc = "Add empty line below" })
