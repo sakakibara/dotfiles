@@ -3,9 +3,13 @@ local M = {}
 M.root_patterns = { ".git", "lua", ".svn", ".vs" }
 
 function M.root()
-  ---@type string?
-  local path = vim.api.nvim_buf_get_name(0)
-  path = path ~= "" and vim.loop.fs_realpath(path) or nil
+  local path
+  if vim.bo.filetype == "oil" then
+    path = require("oil").get_current_dir()
+  else
+    path = vim.api.nvim_buf_get_name(0)
+    path = path ~= "" and vim.loop.fs_realpath(path) or nil
+  end
   local roots = {}
   if path then
     for _, client in pairs(vim.lsp.get_active_clients({ bufnr = 0 })) do
