@@ -1,4 +1,5 @@
 local map = vim.keymap.set
+local util_file = require("util.file")
 
 map("n", "<leader>w", "<C-w>")
 
@@ -29,6 +30,10 @@ map("n", "[q", "<cmd>cprevious<cr>", { desc = "Previous quickfix" })
 map("n", "]q", "<cmd>cnext<cr>", { desc = "Next quickfix" })
 map("n", "[Q", "<cmd>cfirst<cr>", { desc = "First quickfix" })
 map("n", "]Q", "<cmd>clast<cr>", { desc = "Last quickfix" })
+map("n", "[f", util_file.prev_file, { desc = "Previous file" })
+map("n", "]f", util_file.next_file, { desc = "Next file" })
+map("n", "[F", util_file.first_file, { desc = "First file" })
+map("n", "]F", util_file.last_file, { desc = "Last file" })
 
 map("n", "[ ", "<cmd>call append(line('.') - 1, repeat([''], v:count1))<cr>", { desc = "Add empty line above" })
 map("n", "] ", "<cmd>call append(line('.'), repeat([''], v:count1))<cr>", { desc = "Add empty line below" })
