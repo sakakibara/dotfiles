@@ -338,7 +338,7 @@ return {
       {
         "<leader>fe",
         function()
-          require("neo-tree.command").execute({ toggle = true, dir = require("util.telescope").root() })
+          require("neo-tree.command").execute({ toggle = true, dir = require("util.path").root() })
         end,
         desc = "Explorer NeoTree (root dir)",
       },
