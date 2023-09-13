@@ -36,7 +36,7 @@ function M.next_file()
   local files = get_files(dir)
   if files == nil then return end
   local index = current_file_index(files)
-  if index + 1 <= #files then
+  if index and index + 1 <= #files then
     local path_sep = package.config:sub(1, 1)
     local target_path = dir .. path_sep .. files[index + 1]
     vim.cmd('edit ' .. target_path)
@@ -48,7 +48,7 @@ function M.prev_file()
   local files = get_files(dir)
   if files == nil then return end
   local index = current_file_index(files)
-  if index > 1 then
+  if index and index > 1 then
     local path_sep = package.config:sub(1, 1)
     local target_path = dir .. path_sep .. files[index - 1]
     vim.cmd('edit ' .. target_path)
