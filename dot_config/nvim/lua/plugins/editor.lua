@@ -249,7 +249,16 @@ return {
   {
     "RRethy/vim-illuminate",
     event = "BufReadPost",
-    opts = { delay = 200 },
+    opts = {
+      delay = 200,
+      filetypes_denylist = {
+        "csv",
+        "tsv",
+        "text",
+        "oil",
+      },
+      large_file_cutoff = 10000,
+    },
     config = function(_, opts)
       require("illuminate").configure(opts)
     end,
