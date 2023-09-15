@@ -319,6 +319,10 @@ return {
         is_always_hidden = function(name, bufnr)
           return false
         end,
+        sort = {
+          { "type", "asc" },
+          { "name", "asc" },
+        },
       },
       float = {
         padding = 2,
