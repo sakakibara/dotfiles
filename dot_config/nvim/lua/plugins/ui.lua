@@ -13,6 +13,8 @@ return {
             "filetype",
             { oil_path },
           },
+          lualine_y = {"progress"},
+          lualine_z = {"location"},
         },
         filetypes = { "oil" },
       }
@@ -31,7 +33,7 @@ return {
           },
           lualine_c = {
             "diagnostics",
-            { "filetype", icon_only = true, separator = "", padding = { left = 1, right = 0 } },
+            "filetype",
             { "filename", path = 1 },
           },
           lualine_x = {
