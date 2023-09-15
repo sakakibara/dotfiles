@@ -262,6 +262,15 @@ return {
     opts = {
       columns = {
         "icon",
+        {
+          "size",
+          highlight = "Number",
+        },
+        {
+          "mtime",
+          highlight = "Special",
+          format = "%y-%m-%d %T"
+        },
       },
       buf_options = {
         buflisted = false,
