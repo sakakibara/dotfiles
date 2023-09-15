@@ -297,6 +297,7 @@ return {
         ["`"] = "actions.cd",
         ["~"] = "actions.tcd",
         ["g."] = "actions.toggle_hidden",
+        ["gs"] = "actions.change_sort",
       },
       use_default_keymaps = true,
       view_options = {
