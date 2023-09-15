@@ -359,17 +359,22 @@ return {
         function()
           require("neo-tree.command").execute({ toggle = true, dir = require("util.path").root() })
         end,
-        desc = "Explorer NeoTree (root dir)",
+        desc = "Explorer neotree",
       },
       {
         "<leader>fE",
         function()
           require("neo-tree.command").execute({ toggle = true, dir = vim.loop.cwd() })
         end,
-        desc = "Explorer NeoTree (cwd)",
+        desc = "Explorer neotree (cwd)",
       },
-      { "<leader>e", "<leader>fe", desc = "Explorer NeoTree (root dir)", remap = true },
-      { "<leader>E", "<leader>fE", desc = "Explorer NeoTree (cwd)", remap = true },
+      {
+        "<leader>fre",
+        function()
+          require("neo-tree.command").execute({ toggle = true, dir = require("util.path").basedir() })
+        end,
+        desc = "Explorer neotree (relative)",
+      },
     },
     deactivate = function()
       vim.cmd([[Neotree close]])

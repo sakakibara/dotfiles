@@ -11,9 +11,13 @@ return {
         ["<leader>b"] = { name = "+buffer" },
         ["<leader>c"] = { name = "+code" },
         ["<leader>f"] = { name = "+file" },
+        ["<leader>fr"] = { name = "+relative" },
         ["<leader>g"] = { name = "+git" },
         ["<leader>gh"] = { name = "+hunks" },
         ["<leader>s"] = { name = "+search" },
+        ["<leader>sr"] = { name = "+relative" },
+        ["<leader>t"] = { name = "+toggle" },
+        ["<leader>n"] = { name = "+notes" },
         ["<leader>u"] = { name = "+ui" },
         ["["] = { name = "+prev" },
         ["]"] = { name = "+next" },
@@ -357,7 +361,7 @@ return {
     cmd = "Spectre",
     opts = { open_cmd = "noswapfile vnew" },
     keys = {
-      { "<leader>sr", function() require("spectre").open() end, desc = "Spectre" },
+      { "<leader>se", function() require("spectre").open() end, desc = "Spectre" },
     },
   },
 
@@ -382,25 +386,29 @@ return {
     cmd = "Telescope",
     version = false,
     keys = {
-      { "<leader><space>", util_telescope.func("files", { cwd = util_path.root }), desc = "Find files" },
+      { "<leader><space>", util_telescope.func("files", { cwd = util_path.root }), desc = "Files" },
+      { "<leader>sb", "<cmd>Telescope buffers<cr>", desc = "Buffers" },
       { "<leader>bb", "<cmd>Telescope buffers<cr>", desc = "Buffers" },
-      { "<leader>ff", util_telescope.func("files", { cwd = util_path.root }), desc = "Find files" },
-      { "<leader>fF", util_telescope.func("files", { cwd = false }), desc = "Find files (cwd)" },
-      { "<leader>rf", util_telescope.func("find_files", { cwd = util_path.basedir }), desc = "Find files (relative)" },
+      { "<leader>sf", util_telescope.func("files", { cwd = util_path.root }), desc = "Files" },
+      { "<leader>sF", util_telescope.func("files", { cwd = false }), desc = "Files (cwd)" },
+      { "<leader>srf", util_telescope.func("find_files", { cwd = util_path.basedir }), desc = "Find files (relative)" },
+      { "<leader>ff", util_telescope.func("files", { cwd = util_path.root }), desc = "Files" },
+      { "<leader>fF", util_telescope.func("files", { cwd = false }), desc = "Files (cwd)" },
+      { "<leader>frf", util_telescope.func("find_files", { cwd = util_path.basedir }), desc = "Find files (relative)" },
       { "<leader>sg", util_telescope.func("live_grep", { cwd = util_path.root }), desc = "Grep" },
       { "<leader>sG", util_telescope.func("live_grep", { cwd = false }), desc = "Grep (cwd)" },
-      { "<leader>rg", util_telescope.func("live_grep", { cwd = util_path.basedir }), desc = "Grep (relative)" },
+      { "<leader>srg", util_telescope.func("live_grep", { cwd = util_path.basedir }), desc = "Grep (relative)" },
       { "<leader>sw", util_telescope.func("grep_string", { cwd = util_path.root, word_match = "-w" }), desc = "Word" },
       { "<leader>sW", util_telescope.func("grep_string", { cwd = false, word_match = "-w" }), desc = "Word (cwd)" },
-      { "<leader>rw", util_telescope.func("grep_string", { cwd = util_path.basedir, word_match = "-w" }), desc = "Word (relative)" },
+      { "<leader>srw", util_telescope.func("grep_string", { cwd = util_path.basedir, word_match = "-w" }), desc = "Word (relative)" },
       { "<leader>sw", util_telescope.func("grep_string", { cwd = util_path.root }), mode = "v", desc = "Selection" },
       { "<leader>sW", util_telescope.func("grep_string", { cwd = false }), mode = "v", desc = "Selection (cwd)" },
-      { "<leader>rw", util_telescope.func("grep_string", { cwd = util_path.basedir }), mode = "v", desc = "Selection (relative)" },
+      { "<leader>srw", util_telescope.func("grep_string", { cwd = util_path.basedir }), mode = "v", desc = "Selection (relative)" },
       { '<leader>s"', "<cmd>Telescope registers<cr>", desc = "Registers" },
-      { "<leader>ss", "<cmd>Telescope current_buffer_fuzzy_find<cr>", desc = "Buffer" },
+      { "<leader>ss", "<cmd>Telescope current_buffer_fuzzy_find<cr>", desc = "Fuzzy search buffer lines" },
       { "<leader>sc", "<cmd>Telescope command_history<cr>", desc = "Command history" },
-      { "<leader>ht", "<cmd>Telescope help_tags<cr>", desc = "Help tags" },
-      { "<leader>hk", "<cmd>Telescope keymaps<cr>", desc = "Keymaps" },
+      { "<leader>sh", "<cmd>Telescope help_tags<cr>", desc = "Help tags" },
+      { "<leader>sk", "<cmd>Telescope keymaps<cr>", desc = "Keymaps" },
       { "<leader>tt", util_telescope.func("colorscheme", { enable_preview = true }), desc = "Colorschemes" },
       { "<leader>:", "<cmd>Telescope commands<cr>", desc = "Commands" },
     },
@@ -538,8 +546,9 @@ return {
   {
     "nvim-telescope/telescope-live-grep-args.nvim",
     keys = {
-      { "<leader>/", "<cmd>Telescope live_grep_args<cr>", desc = "Live Grep Args" },
-      { "<leader>p/", util_telescope.func("live_grep_args"), desc = "Live Grep Args (cwd)" },
+      { "<leader>sa", util_telescope.func("live_grep_args", { cwd = util_path.root }), desc = "Grep with args" },
+      { "<leader>sA", util_telescope.func("live_grep_args", { cwd = false }), desc = "Grep with args (cwd)" },
+      { "<leader>sra", util_telescope.func("live_grep_args", { cwd = util_path.basedir }), desc = "Grep with args (relative)" },
     },
     config = function()
       require("telescope").load_extension("live_grep_args")
@@ -551,7 +560,7 @@ return {
       {
         "<leader>fb",
         util_telescope.func("file_browser", { cwd = util_path.basedir }),
-        desc = "Find browser",
+        desc = "File browser",
       },
     },
     config = function()
@@ -562,7 +571,8 @@ return {
     "nvim-telescope/telescope-frecency.nvim",
     event = "VeryLazy",
     keys = {
-      { "<leader>fr", "<cmd>Telescope frecency<cr>", desc = "Recent" },
+      { "<leader>so", "<cmd>Telescope frecency<cr>", desc = "Oldfiles" },
+      { "<leader>fo", "<cmd>Telescope frecency<cr>", desc = "Oldfiles" },
     },
     config = function()
       require("telescope").load_extension("frecency")
