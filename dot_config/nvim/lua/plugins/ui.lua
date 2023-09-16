@@ -268,7 +268,7 @@ return {
         },
         {
           "mtime",
-          highlight = "Special",
+          highlight = "Statement",
           format = "%y-%m-%d %T"
         },
       },
