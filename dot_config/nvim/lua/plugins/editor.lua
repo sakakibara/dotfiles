@@ -411,6 +411,7 @@ return {
       { "<leader>sk", "<cmd>Telescope keymaps<cr>", desc = "Keymaps" },
       { "<leader>tt", util_telescope.func("colorscheme", { enable_preview = true }), desc = "Colorschemes" },
       { "<leader>:", "<cmd>Telescope commands<cr>", desc = "Commands" },
+      { "<leader>'", "<cmd>Telescope resume<cr>", desc = "Resume" },
     },
     opts = {
       defaults = {
