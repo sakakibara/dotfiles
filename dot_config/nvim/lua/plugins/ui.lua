@@ -1,58 +1,5 @@
 return {
   {
-    "nvim-lualine/lualine.nvim",
-    event = "VeryLazy",
-    opts = function()
-      local function oil_path()
-        return vim.fn.fnamemodify(require("oil").get_current_dir(), ":p:~")
-      end
-      local oil_extension = {
-        sections = {
-          lualine_a = {"mode"},
-          lualine_c = {
-            "filetype",
-            { oil_path },
-          },
-          lualine_y = {"progress"},
-          lualine_z = {"location"},
-        },
-        filetypes = { "oil" },
-      }
-      return {
-        options = {
-          theme = "auto",
-          globalstatus = true,
-        },
-        sections = {
-          lualine_a = {"mode"},
-          lualine_b = {
-            {
-              'b:gitsigns_head',
-              icon = '',
-            },
-          },
-          lualine_c = {
-            "diagnostics",
-            "filetype",
-            { "filename", path = 1 },
-          },
-          lualine_x = {
-            "encoding",
-            "fileformat",
-            {
-              "diff",
-              source = require("util.statusline").diff_source(),
-            },
-          },
-          lualine_y = {"progress"},
-          lualine_z = {"location"},
-        },
-        extensions = { "lazy", "neo-tree", "quickfix", "toggleterm", oil_extension },
-      }
-    end,
-  },
-
-  {
     "utilyre/barbecue.nvim",
     dependencies = {
       "SmiteshP/nvim-navic",
