@@ -54,4 +54,11 @@ return {
     Value = " ",
     Variable = " ",
   },
+  general = {
+    lsp = " ",
+    vim = " ",
+    mode = "",
+    lock = "'",
+    debug = " ",
+  },
 }
