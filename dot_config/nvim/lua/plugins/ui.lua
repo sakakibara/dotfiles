@@ -1,34 +1,5 @@
 return {
   {
-    "utilyre/barbecue.nvim",
-    dependencies = {
-      "SmiteshP/nvim-navic",
-      "nvim-tree/nvim-web-devicons",
-    },
-    event = { "BufReadPost", "BufNewFile" },
-    opts = {
-      create_autocmd = false,
-      attach_navic = false,
-      theme = "catppuccin",
-    },
-    config = function(_, opts)
-      require("barbecue").setup(opts)
-      vim.api.nvim_create_autocmd({
-        "WinResized",
-        "BufWinEnter",
-        "CursorHold",
-        "InsertLeave",
-        "BufModifiedSet",
-      }, {
-          group = vim.api.nvim_create_augroup("barbecue.updater", {}),
-          callback = function()
-            require("barbecue.ui").update()
-          end,
-        })
-    end,
-  },
-
-  {
     "kevinhwang91/nvim-ufo",
     dependencies = "kevinhwang91/promise-async",
     event = { "BufReadPost", "BufNewFile" },
