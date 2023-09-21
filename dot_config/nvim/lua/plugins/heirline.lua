@@ -1,11 +1,34 @@
 return {
   {
     "rebelot/heirline.nvim",
+    event = {
+      "VeryLazy",
+      "BufReadPost",
+      "BufNewFile",
+    },
     config = function()
       local conditions = require("heirline.conditions")
       local utils = require("heirline.utils")
       local util_lazy = require("util.lazy")
       local icons = require("config.icons")
+
+      local function blend(color1, color2, alpha)
+        color1 = type(color1) == "number" and string.format("#%06x", color1) or color1
+        color2 = type(color2) == "number" and string.format("#%06x", color2) or color2
+        local r1, g1, b1 = color1:match("#(%x%x)(%x%x)(%x%x)")
+        local r2, g2, b2 = color2:match("#(%x%x)(%x%x)(%x%x)")
+        local r = tonumber(r1, 16) * alpha + tonumber(r2, 16) * (1 - alpha)
+        local g = tonumber(g1, 16) * alpha + tonumber(g2, 16) * (1 - alpha)
+        local b = tonumber(b1, 16) * alpha + tonumber(b2, 16) * (1 - alpha)
+        return "#"
+          .. string.format("%02x", math.min(255, math.max(r, 0)))
+          .. string.format("%02x", math.min(255, math.max(g, 0)))
+          .. string.format("%02x", math.min(255, math.max(b, 0)))
+      end
+
+      local function dim(color, n)
+        return blend(color, "#000000", n)
+      end
 
       local function setup_colors()
         return {
@@ -28,6 +51,20 @@ return {
           git_change = utils.get_highlight("diffChanged").fg,
         }
       end
+
+      local Align = { provider = "%=" }
+      local Space = setmetatable({ provider = ' ' }, {
+        __call = function(_, n)
+          return { provider = string.rep(' ', n) }
+        end
+      })
+      local WinbarSeparator = {
+        provider = "  ",
+        hl = { fg = "gray" },
+      }
+      local LeftCap = {
+        provider = '▌',
+      }
 
       local ViMode = {
         init = function(self)
@@ -72,7 +109,7 @@ return {
           },
         },
         provider = function(self)
-          return icons.general.mode .. "%2(" .. self.mode_names[self.mode] .. "%)"
+          return icons.status.Mode .. "%2(" .. self.mode_names[self.mode] .. "%)"
         end,
         hl = function(self)
           local color = self:mode_color()
@@ -104,15 +141,48 @@ return {
         end,
       }
 
-      local FileName = {
+      local DirName = {
         init = function(self)
-          self.lfilename = vim.fn.fnamemodify(self.filename, ":.")
-          if self.lfilename == "" then
-            self.lfilename = "[No Name]"
+          local modifier = ":.:~:h"
+          -- if self.filetype == "oil" then
+          --   modifier = modifier .. ":h"
+          -- end
+          local dirname = vim.fn.fnamemodify(self.filename, modifier)
+          local children = {}
+          if dirname ~= "." then
+            local first_char = dirname:sub(1, 1)
+            if first_char == "/" then
+              table.insert(children,{
+                provider = first_char,
+                hl = { fg = "gray" },
+              })
+            end
+            local protocol_start_index = dirname:find("://")
+            if protocol_start_index ~= nil then
+              local protocol = dirname:sub(1, protocol_start_index + 2)
+              table.insert(children, {
+                provider = protocol,
+                hl = { fg = "gray" },
+              })
+
+              dirname = dirname:sub(protocol_start_index + 3)
+            end
+            local path_separator = package.config:sub(1, 1)
+            local dirs = vim.split(dirname, path_separator, { trimempty = true })
+            for i, dir in ipairs(dirs) do
+              local child = {
+                {
+                  provider = dir,
+                  hl = {fg = "gray"},
+                }
+              }
+              if i <= #dirs then
+                table.insert(child, WinbarSeparator)
+              end
+              table.insert(children, child)
+            end
           end
-          if not conditions.width_percent_below(#self.lfilename, 0.27) then
-            self.lfilename = vim.fn.pathshorten(self.lfilename)
-          end
+          self[1] = self:new(children, 1)
         end,
         hl = function()
           if vim.bo.modified then
@@ -120,17 +190,28 @@ return {
           end
           return "Directory"
         end,
-        flexible = 2,
-        {
-          provider = function(self)
-            return self.lfilename
-          end,
-        },
-        {
-          provider = function(self)
-            return vim.fn.pathshorten(self.lfilename)
-          end,
-        },
+      }
+
+      local BaseName = {
+        init = function(self)
+          local modifier = ":t"
+          if self.filetype == "oil" then
+            modifier = ":~:h" .. modifier
+          end
+          self.lbasename = vim.fn.fnamemodify(self.filename, modifier)
+          if self.lbasename == "" then
+            self.lbasename = "[No Name]"
+          end
+        end,
+        provider = function(self)
+          return self.lbasename
+        end,
+        hl = function()
+          if vim.bo.modified then
+            return { fg = "bright_fg", bold = true, italic = true }
+          end
+          return "bright_fg"
+        end,
       }
 
       local FileFlags = {
@@ -138,24 +219,31 @@ return {
           condition = function()
             return vim.bo.modified
           end,
-          provider = "[+]", --",
+          provider = "[+]",
           hl = { fg = "green" },
         },
         {
           condition = function()
             return not vim.bo.modifiable or vim.bo.readonly
           end,
-          provider = "",
+          provider = " ",
           hl = { fg = "orange" },
         },
       }
 
-      local FileNameBlock = {
+      local FilePathBlock = {
         init = function(self)
-          self.filename = vim.api.nvim_buf_get_name(0)
+          self.filetype = vim.bo.filetype
+          if self.filetype == "oil" then
+            self.filename = require("oil").get_current_dir()
+          else
+            self.filename = vim.api.nvim_buf_get_name(0)
+          end
         end,
+        Space,
+        DirName,
         FileIcon,
-        FileName,
+        BaseName,
         unpack(FileFlags),
       }
 
@@ -198,7 +286,7 @@ return {
         -- %L = number of lines in the buffer
         -- %c = column number
         -- %P = percentage through file of displayed window
-        provider = "%7(%l/%3L%):%2c %P",
+        provider = "%7(%l/%3L%):2%c %P",
       }
 
       local ScrollBar = {
@@ -212,6 +300,84 @@ return {
           return string.rep(self.sbar[i], 2)
         end,
         hl = { fg = "blue", bg = "bright_bg" },
+      }
+
+      local Navic = {
+        condition = function()
+          return require("nvim-navic").is_available()
+        end,
+        static = {
+          type_hl = {
+            File = dim(utils.get_highlight("Directory").fg, 0.75),
+            Module = dim(utils.get_highlight("@include").fg, 0.75),
+            Namespace = dim(utils.get_highlight("@namespace").fg, 0.75),
+            Package = dim(utils.get_highlight("@include").fg, 0.75),
+            Class = dim(utils.get_highlight("@type").fg, 0.75),
+            Method = dim(utils.get_highlight("@method").fg, 0.75),
+            Property = dim(utils.get_highlight("@property").fg, 0.75),
+            Field = dim(utils.get_highlight("@field").fg, 0.75),
+            Constructor = dim(utils.get_highlight("@constructor").fg, 0.75),
+            Enum = dim(utils.get_highlight("@type").fg, 0.75),
+            Interface = dim(utils.get_highlight("@type").fg, 0.75),
+            Function = dim(utils.get_highlight("@function").fg, 0.75),
+            Variable = dim(utils.get_highlight("@variable").fg, 0.75),
+            Constant = dim(utils.get_highlight("@constant").fg, 0.75),
+            String = dim(utils.get_highlight("@string").fg, 0.75),
+            Number = dim(utils.get_highlight("@number").fg, 0.75),
+            Boolean = dim(utils.get_highlight("@boolean").fg, 0.75),
+            Array = dim(utils.get_highlight("@field").fg, 0.75),
+            Object = dim(utils.get_highlight("@type").fg, 0.75),
+            Key = dim(utils.get_highlight("@keyword").fg, 0.75),
+            Null = dim(utils.get_highlight("@comment").fg, 0.75),
+            EnumMember = dim(utils.get_highlight("@constant").fg, 0.75),
+            Struct = dim(utils.get_highlight("@type").fg, 0.75),
+            Event = dim(utils.get_highlight("@type").fg, 0.75),
+            Operator = dim(utils.get_highlight("@operator").fg, 0.75),
+            TypeParameter = dim(utils.get_highlight("@type").fg, 0.75),
+          },
+          enc = function(line, col, winnr)
+            return bit.bor(bit.lshift(line, 16), bit.lshift(col, 6), winnr)
+          end,
+          dec = function(c)
+            local line = bit.rshift(c, 16)
+            local col = bit.band(bit.rshift(c, 6), 1023)
+            local winnr = bit.band(c, 63)
+            return line, col, winnr
+          end,
+        },
+        init = function(self)
+          local data = require("nvim-navic").get_data() or {}
+          local children = {}
+          for _, d in ipairs(data) do
+            local pos = self.enc(d.scope.start.line, d.scope.start.character, self.winnr)
+            local child = {
+              {
+                WinbarSeparator
+              },
+              {
+                provider = d.icon,
+                hl = { fg = self.type_hl[d.type] },
+              },
+              {
+                provider = d.name:gsub("%%", "%%%%"):gsub("%s*->%s*", ""),
+                hl = { fg = self.type_hl[d.type] },
+                -- hl = self.type_hl[d.type],
+                on_click = {
+                  callback = function(_, minwid)
+                    local line, col, winnr = self.dec(minwid)
+                    vim.api.nvim_win_set_cursor(vim.fn.win_getid(winnr), { line, col })
+                  end,
+                  minwid = pos,
+                  name = "heirline_navic",
+                },
+              },
+            }
+            table.insert(children, child)
+          end
+          self[1] = self:new(children, 1)
+        end,
+        update = "CursorMoved",
+        hl = { fg = "gray" },
       }
 
       local Diagnostics = {
@@ -317,7 +483,7 @@ return {
       local Lsp = {
         condition = conditions.lsp_attached,
         update = { "LspAttach", "LspDetach", "WinEnter" },
-        provider = icons.general.lsp .. "LSP",
+        provider = icons.status.Lsp .. "LSP",
         hl = { fg = "green", bold = true },
         on_click = {
           name = "heirline_LSP",
@@ -340,7 +506,7 @@ return {
           return session ~= nil
         end,
         provider = function()
-          return icons.debug .. require("dap").status() .. " "
+          return icons.status.Debug .. require("dap").status() .. " "
         end,
         hl = "Debug",
         {
@@ -400,7 +566,7 @@ return {
 
       local WorkDir = {
         init = function(self)
-          self.icon = (vim.fn.haslocaldir(0) == 1 and "l" or "g") .. " " .. icons.kinds.Folder
+          self.icon = (vim.fn.haslocaldir(0) == 1 and icons.status.DirectoryAlt or icons.status.Directory)
           local cwd = vim.fn.getcwd(0)
           self.cwd = vim.fn.fnamemodify(cwd, ":~")
           if not conditions.width_percent_below(#self.cwd, 0.27) then
@@ -481,10 +647,12 @@ return {
 
       local SearchCount = {
         condition = function()
+          ---@diagnostic disable-next-line: undefined-field
           return vim.v.hlsearch ~= 0 and vim.o.cmdheight == 0
         end,
         init = function(self)
           local ok, search = pcall(vim.fn.searchcount)
+          ---@diagnostic disable-next-line: undefined-field
           if ok and search.total then
             self.search = search
           end
@@ -519,44 +687,32 @@ return {
         condition = function()
           return vim.o.cmdheight == 0
         end,
-        provider = ":%3.5(%S%)",
+        provider = "%3.5(%S%)",
         hl = function(self)
           return { bold = true, fg = self:mode_color() }
         end,
       }
 
-      local Align = { provider = "%=" }
-      local Space = setmetatable({ provider = ' ' }, {
-        __call = function(_, n)
-          return { provider = string.rep(' ', n) }
-        end
-      })
-      local LeftCap = {
-        provider = '▌',
-      }
-
-      ViiMode = utils.surround({ "", "" }, "bright_bg", { MacroRec, ViMode, ShowCmd })
+      ViMode = { MacroRec, ViMode }
 
       local DefaultStatusline = {
         LeftCap,
+        Space,
         ViMode,
         Space,
-        Spell,
-        WorkDir,
-        FileNameBlock,
-        { provider = "%<" },
-        Space,
         Git,
+        WorkDir,
+        { provider = "%<" },
+        Align,
+        -- ShowCmd,
         Space,
+        Spell,
         Diagnostics,
-        Align,
-        Align,
         Dap,
         Lsp,
         Space,
         FileType,
-        { flexible = 3, { FileEncoding, Space, FileFormat }, { provider = "" } },
-        Space,
+        { flexible = 3, { Space, FileEncoding, Space, FileFormat, Space, }, { provider = "" } },
         Ruler,
         SearchCount,
         Space,
@@ -566,7 +722,6 @@ return {
       local InactiveStatusline = {
         condition = conditions.is_not_active,
         { hl = { fg = "gray", force = true }, WorkDir },
-        FileNameBlock,
         { provider = "%<" },
         Align,
       }
@@ -633,11 +788,43 @@ return {
         DefaultStatusline,
       }
 
-      vim.o.laststatus = 0
-      vim.o.showcmdloc = "statusline"
+      local WinBar = {
+        fallthrough = false,
+        {
+          condition = function()
+            return conditions.buffer_matches({ buftype = { "terminal" } })
+          end,
+          {
+            FileType,
+            Space,
+            TerminalName,
+          },
+        },
+        {
+          fallthrough = false,
+          {
+            condition = conditions.is_not_active,
+            {
+              hl = { fg = "gray", force = true },
+              FilePathBlock,
+            },
+          },
+          {
+            FilePathBlock,
+            Navic,
+            { provider = "%<" },
+            Align,
+          },
+        }
+      }
+
+      vim.o.laststatus = 3
+      vim.o.cmdheight = 0
+      -- vim.o.showcmdloc = "statusline"
 
       require("heirline").setup({
         statusline = StatusLines,
+        winbar = WinBar,
         opts = {
           disable_winbar_cb = function(args)
             if vim.bo[args.buf].filetype == "neo-tree" then

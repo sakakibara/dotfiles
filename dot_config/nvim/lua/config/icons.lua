@@ -54,11 +54,13 @@ return {
     Value = " ",
     Variable = " ",
   },
-  general = {
-    lsp = " ",
-    vim = " ",
-    mode = "",
-    lock = "'",
-    debug = " ",
+  status = {
+    Lsp = " ",
+    Vim = " ",
+    Mode = "",
+    Lock = "'",
+    Debug = " ",
+    Directory = " ",
+    DirectoryAlt = "󰉖 ",
   },
 }
