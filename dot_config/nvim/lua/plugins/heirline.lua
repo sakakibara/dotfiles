@@ -189,12 +189,6 @@ return {
           end
           self[1] = self:new(children, 1)
         end,
-        hl = function()
-          if vim.bo.modified then
-            return { fg = utils.get_highlight("Directory").fg, bold = true, italic = true }
-          end
-          return "Directory"
-        end,
         update = { "BufWinEnter", "BufWritePost" }
       }
 
@@ -836,7 +830,7 @@ return {
             return conditions.buffer_matches({
               buftype = { "nofile", "prompt", "help", "quickfix" },
               filetype = { "^git.*", "Trouble", "neo-tree" },
-            }, args.buf)            --
+            }, args.buf)
           end,
           colors = setup_colors,
         }
