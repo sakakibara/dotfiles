@@ -127,11 +127,15 @@ return {
       local FileIcon = {
         init = function(self)
           local filename = self.filename
-          local extension = vim.fn.fnamemodify(filename, ":e")
-          self.icon, self.icon_color =
-          require("nvim-web-devicons").get_icon_color(
-            filename, extension, { default = true }
-          )
+          if vim.fn.isdirectory(filename) == 0 then
+            local extension = vim.fn.fnamemodify(filename, ":e")
+            self.icon, self.icon_color =
+            require("nvim-web-devicons").get_icon_color(
+              filename, extension, { default = true }
+            )
+          else
+            self.icon, self.icon_color = icons.status.DirectoryAlt, "blue"
+          end
         end,
         provider = function(self)
           return self.icon and (self.icon .. " ")
@@ -144,10 +148,8 @@ return {
       local DirName = {
         init = function(self)
           local modifier = ":.:~:h"
-          -- if self.filetype == "oil" then
-          --   modifier = modifier .. ":h"
-          -- end
-          local dirname = vim.fn.fnamemodify(self.filename, modifier)
+          local filename = self.filename
+          local dirname = vim.fn.fnamemodify(filename, modifier)
           local children = {}
           if dirname ~= "." then
             local first_char = dirname:sub(1, 1)
@@ -164,11 +166,13 @@ return {
                 provider = protocol,
                 hl = { fg = "gray" },
               })
-
               dirname = dirname:sub(protocol_start_index + 3)
             end
             local path_separator = package.config:sub(1, 1)
             local dirs = vim.split(dirname, path_separator, { trimempty = true })
+            if self.filename:sub(-1) == '/' then
+              table.remove(dirs, #dirs)
+            end
             for i, dir in ipairs(dirs) do
               local child = {
                 {
@@ -194,13 +198,17 @@ return {
 
       local BaseName = {
         init = function(self)
-          local modifier = ":t"
-          if self.filetype == "oil" then
-            modifier = ":~:h" .. modifier
-          end
-          self.lbasename = vim.fn.fnamemodify(self.filename, modifier)
-          if self.lbasename == "" then
-            self.lbasename = "[No Name]"
+          if self.filename:sub(-1) == '/' then
+            self.lbasename = vim.fn.fnamemodify(self.filename, ":."):sub(1, -2)
+            self.lbasename = vim.fn.fnamemodify(self.lbasename, ":t")
+            if self.lbasename == "" then
+              self.lbasename = "."
+            end
+          else
+            self.lbasename = vim.fn.fnamemodify(self.filename, ":t")
+            if self.lbasename == "" then
+              self.lbasename = "[No Name]"
+            end
           end
         end,
         provider = function(self)
@@ -226,15 +234,14 @@ return {
           condition = function()
             return not vim.bo.modifiable or vim.bo.readonly
           end,
-          provider = " ",
+          provider = "  ",
           hl = { fg = "orange" },
         },
       }
 
       local FilePathBlock = {
         init = function(self)
-          self.filetype = vim.bo.filetype
-          if self.filetype == "oil" then
+          if vim.bo.filetype == "oil" then
             self.filename = require("oil").get_current_dir()
           else
             self.filename = vim.api.nvim_buf_get_name(0)
@@ -286,7 +293,7 @@ return {
         -- %L = number of lines in the buffer
         -- %c = column number
         -- %P = percentage through file of displayed window
-        provider = "%7(%l/%3L%):2%c %P",
+        provider = "%7(%l/%3L%):%2c %P",
       }
 
       local ScrollBar = {
@@ -441,7 +448,8 @@ return {
         hl = { fg = "orange" },
         {
           provider = function(self)
-            return " " .. self.status_dict.head
+            return self.status_dict.head and
+              (" " .. self.status_dict.head .. " ")
           end,
           hl = { bold = true },
         },
@@ -827,13 +835,10 @@ return {
         winbar = WinBar,
         opts = {
           disable_winbar_cb = function(args)
-            if vim.bo[args.buf].filetype == "neo-tree" then
-              return
-            end
             return conditions.buffer_matches({
               buftype = { "nofile", "prompt", "help", "quickfix" },
-              filetype = { "^git.*", "fugitive", "Trouble", "dashboard" },
-            }, args.buf)
+              filetype = { "^git.*", "Trouble", "neo-tree" },
+            }, args.buf)            --
           end,
           colors = setup_colors,
         }
