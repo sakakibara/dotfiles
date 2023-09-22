@@ -143,6 +143,7 @@ return {
         hl = function(self)
           return { fg = self.icon_color }
         end,
+        update = { "BufWinEnter", "BufWritePost" }
       }
 
       local DirName = {
@@ -194,6 +195,7 @@ return {
           end
           return "Directory"
         end,
+        update = { "BufWinEnter", "BufWritePost" }
       }
 
       local BaseName = {
@@ -220,6 +222,7 @@ return {
           end
           return "bright_fg"
         end,
+        update = { "BufWinEnter", "BufWritePost" }
       }
 
       local FileFlags = {
@@ -229,6 +232,7 @@ return {
           end,
           provider = "[+]",
           hl = { fg = "green" },
+          update = "BufModifiedSet",
         },
         {
           condition = function()
@@ -236,6 +240,7 @@ return {
           end,
           provider = "  ",
           hl = { fg = "orange" },
+          update = { "BufReadPost", "BufNewFile", "FileChangedRO" },
         },
       }
 
@@ -259,6 +264,7 @@ return {
           return string.upper(vim.bo.filetype)
         end,
         hl = "Type",
+        update = "FileType",
       }
 
       local FileEncoding = {
