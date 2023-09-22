@@ -191,7 +191,7 @@ return {
         },
       },
       buf_options = {
-        buflisted = false,
+        buflisted = true,
         bufhidden = "hide",
       },
       win_options = {
