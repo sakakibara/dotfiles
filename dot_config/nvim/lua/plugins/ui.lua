@@ -303,7 +303,7 @@ return {
         desc = "Explorer neotree (cwd)",
       },
       {
-        "<leader>fre",
+        "<leader>rfe",
         function()
           require("neo-tree.command").execute({ toggle = true, dir = require("util.path").basedir() })
         end,
