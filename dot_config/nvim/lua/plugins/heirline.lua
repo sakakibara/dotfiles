@@ -619,7 +619,6 @@ return {
       }
 
       local TerminalName = {
-        -- icon = ' ', -- 
         {
           provider = function()
             local tname, _ = vim.api.nvim_buf_get_name(0):gsub(".*:", "")
@@ -633,13 +632,6 @@ return {
             ---@diagnostic disable-next-line: undefined-field
             return vim.b.term_title
           end,
-        },
-        {
-          provider = function()
-            local id = require("terminal"):current_term_index()
-            return " " .. (id or "Exited")
-          end,
-          hl = { bold = true, fg = "blue" },
         },
       }
 
