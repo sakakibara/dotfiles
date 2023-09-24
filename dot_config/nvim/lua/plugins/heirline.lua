@@ -1,15 +1,12 @@
 return {
   {
     "rebelot/heirline.nvim",
-    event = {
-      "VeryLazy",
-      "BufReadPost",
-      "BufNewFile",
-    },
+    event = "UIEnter",
     config = function()
       local conditions = require("heirline.conditions")
       local utils = require("heirline.utils")
-      local util_lazy = require("util.lazy")
+      local ulazy = require("util.lazy")
+      local upath = require("util.path")
       local icons = require("config.icons")
 
       local function blend(color1, color2, alpha)
@@ -58,7 +55,7 @@ return {
           return { provider = string.rep(' ', n) }
         end
       })
-      local WinbarSeparator = {
+      local BreadcrumbSep = {
         provider = "  ",
         hl = { fg = "gray" },
       }
@@ -126,15 +123,14 @@ return {
 
       local FileIcon = {
         init = function(self)
-          local filename = self.filename
-          if vim.fn.isdirectory(filename) == 0 then
-            local extension = vim.fn.fnamemodify(filename, ":e")
+          local file_path = self.file_path or upath.get_current_file_path()
+          if upath.is_dir(file_path) then
+            self.icon, self.icon_color = icons.status.DirectoryAlt, "blue"
+          else
+            local extension = vim.fn.fnamemodify(file_path, ":e")
             self.icon, self.icon_color =
             require("nvim-web-devicons").get_icon_color(
-              filename, extension, { default = true }
-            )
-          else
-            self.icon, self.icon_color = icons.status.DirectoryAlt, "blue"
+              file_path, extension, { default = true })
           end
         end,
         provider = function(self)
@@ -146,69 +142,101 @@ return {
         update = { "BufWinEnter", "BufWritePost" }
       }
 
-      local DirName = {
+      local WorkDir = {
         init = function(self)
-          local modifier = ":.:~:h"
-          local filename = self.filename
-          local dirname = vim.fn.fnamemodify(filename, modifier)
-          local children = {}
-          if dirname ~= "." then
-            local first_char = dirname:sub(1, 1)
-            if first_char == "/" then
-              table.insert(children,{
-                provider = first_char,
-                hl = { fg = "gray" },
-              })
-            end
-            local protocol_start_index = dirname:find("://")
-            if protocol_start_index ~= nil then
-              local protocol = dirname:sub(1, protocol_start_index + 2)
-              table.insert(children, {
-                provider = protocol,
-                hl = { fg = "gray" },
-              })
-              dirname = dirname:sub(protocol_start_index + 3)
-            end
-            local path_separator = package.config:sub(1, 1)
-            local dirs = vim.split(dirname, path_separator, { trimempty = true })
-            if self.filename:sub(-1) == '/' then
-              table.remove(dirs, #dirs)
-            end
-            for i, dir in ipairs(dirs) do
-              local child = {
-                {
-                  provider = dir,
-                  hl = {fg = "gray"},
-                }
-              }
-              if i <= #dirs then
-                table.insert(child, WinbarSeparator)
-              end
-              table.insert(children, child)
-            end
-          end
-          self[1] = self:new(children, 1)
+          self.icon = (vim.fn.haslocaldir(0) == 1 and icons.status.DirectoryAlt or icons.status.Directory)
         end,
-        update = { "BufWinEnter", "BufWritePost" }
+        hl = { fg = "gray", bold = true },
+        on_click = {
+          callback = function()
+            vim.cmd("Neotree toggle")
+          end,
+          name = "heirline_workdir",
+        },
+        flexible = 1,
+        {
+          provider = function(self)
+            return self.icon .. self.pwd
+          end,
+        },
+        {
+          provider = function(self)
+            return self.icon .. vim.fn.pathshorten(self.pwd)
+          end,
+        },
+        { provider = "" },
+      }
+
+      local DirPath = {
+        hl = { fg = "blue", bold = true },
+        flexible = 1,
+        {
+          provider = function(self)
+            return self.dir_path
+          end,
+        },
+        {
+          provider = function(self)
+            return vim.fn.pathshorten(self.dir_path)
+          end,
+        },
+        { provider = "" },
+      }
+
+      local function generate_path_breadcrumb(self, path)
+        local dir_path = path
+        local children = {}
+        if dir_path then
+          local protocol_start_index = dir_path:find("://")
+          if protocol_start_index ~= nil then
+            local protocol = dir_path:sub(1, protocol_start_index + 2)
+            table.insert(children, {
+              provider = protocol,
+              hl = { fg = "gray" },
+            })
+            dir_path = dir_path:sub(protocol_start_index + 3)
+          end
+          local dirs = upath.split(dir_path)
+          if dir_path:sub(1, 1) == upath.sep then
+            table.insert(dirs, 1, upath.sep)
+          end
+          for i, dir in ipairs(dirs) do
+            local child = {
+              {
+                provider = dir,
+                hl = {fg = "gray"},
+              }
+            }
+            if i <= #dirs then
+              table.insert(child, BreadcrumbSep)
+            end
+            table.insert(children, child)
+          end
+        end
+        self[1] = self:new(children, 1)
+      end
+
+      local DirBreadcrumb = {
+        flexible = 1,
+        {
+          provider = function(self)
+            generate_path_breadcrumb(self, self.dir_path)
+          end
+        },
+        {
+          provider = function(self)
+            generate_path_breadcrumb(self, vim.fn.pathshorten(self.dir_path, 2))
+          end
+        },
+        { provider = "" },
       }
 
       local BaseName = {
         init = function(self)
-          if self.filename:sub(-1) == '/' then
-            self.lbasename = vim.fn.fnamemodify(self.filename, ":."):sub(1, -2)
-            self.lbasename = vim.fn.fnamemodify(self.lbasename, ":t")
-            if self.lbasename == "" then
-              self.lbasename = "."
-            end
-          else
-            self.lbasename = vim.fn.fnamemodify(self.filename, ":t")
-            if self.lbasename == "" then
-              self.lbasename = "[No Name]"
-            end
-          end
+          self.basename = upath.get_basename(self.file_path)
         end,
         provider = function(self)
-          return self.lbasename
+          return self.basename
         end,
         hl = function()
           if vim.bo.modified then
@@ -216,7 +244,6 @@ return {
           end
           return "bright_fg"
         end,
-        update = { "BufWinEnter", "BufWritePost" }
       }
 
       local FileFlags = {
@@ -234,23 +261,52 @@ return {
           end,
           provider = "  ",
           hl = { fg = "orange" },
-          update = { "BufReadPost", "BufNewFile", "FileChangedRO" },
+          update = { "FileChangedRO" },
         },
       }
 
-      local FilePathBlock = {
+      local Breadcrumb = {
         init = function(self)
-          if vim.bo.filetype == "oil" then
-            self.filename = require("oil").get_current_dir()
-          else
-            self.filename = vim.api.nvim_buf_get_name(0)
-          end
+          self.file_path = upath.get_current_file_path()
+          self.dir_path = upath.get_relative_dir_path(self.file_path)
         end,
-        Space,
-        DirName,
+        DirBreadcrumb,
         FileIcon,
         BaseName,
         unpack(FileFlags),
+        update = {
+          "BufWinEnter",
+          "BufWritePost",
+          "DirChanged",
+          "WinResized",
+        },
+      }
+
+      local FilePath = {
+        condition = function()
+          return conditions.buffer_matches({
+            buftype = { "" },
+            filetype = { "oil" },
+          })
+        end,
+        init = function(self)
+          local file_path = upath.get_current_file_path()
+          local dir_path = upath.get_relative_dir_path(file_path)
+          local pwd = upath.get_pwd(file_path)
+          self.file_path = file_path
+          self.dir_path = dir_path and dir_path
+          self.pwd = pwd and pwd
+        end,
+        WorkDir,
+        DirPath,
+        BaseName,
+        unpack(FileFlags),
+        update = {
+          "BufWinEnter",
+          "BufWritePost",
+          "DirChanged",
+          "WinResized",
+        },
       }
 
       local FileType = {
@@ -359,7 +415,7 @@ return {
             local pos = self.enc(d.scope.start.line, d.scope.start.character, self.winnr)
             local child = {
               {
-                WinbarSeparator
+                BreadcrumbSep
               },
               {
                 provider = d.icon,
@@ -507,7 +563,7 @@ return {
         condition = function()
           local session
 
-          if util_lazy.has("dap") then
+          if ulazy.has("dap") then
             session = require("dap").session()
           end
 
@@ -570,41 +626,6 @@ return {
           },
         },
         { provider = " " },
-      }
-
-      local WorkDir = {
-        init = function(self)
-          self.icon = (vim.fn.haslocaldir(0) == 1 and icons.status.DirectoryAlt or icons.status.Directory)
-          local cwd = vim.fn.getcwd(0)
-          self.cwd = vim.fn.fnamemodify(cwd, ":~")
-          if not conditions.width_percent_below(#self.cwd, 0.27) then
-            self.cwd = vim.fn.pathshorten(self.cwd)
-          end
-        end,
-        hl = { fg = "blue", bold = true },
-        on_click = {
-          callback = function()
-            vim.cmd("Neotree toggle")
-          end,
-          name = "heirline_workdir",
-        },
-        flexible = 1,
-        {
-          provider = function(self)
-            local trail = self.cwd:sub(-1) == "/" and "" or "/"
-            return self.icon .. self.cwd .. trail .. " "
-          end,
-        },
-        {
-          provider = function(self)
-            local cwd = vim.fn.pathshorten(self.cwd)
-            local trail = self.cwd:sub(-1) == "/" and "" or "/"
-            return self.icon .. cwd .. trail .. " "
-          end,
-        },
-        {
-          provider = "",
-        },
       }
 
       local HelpFilename = {
@@ -701,7 +722,7 @@ return {
         ViMode,
         Space,
         Git,
-        WorkDir,
+        FilePath,
         { provider = "%<" },
         Align,
         -- ShowCmd,
@@ -711,6 +732,7 @@ return {
         Dap,
         Lsp,
         Space,
+        FileIcon,
         FileType,
         { flexible = 3, { Space, FileEncoding, Space, FileFormat, Space, }, { provider = "" } },
         Ruler,
@@ -721,7 +743,7 @@ return {
 
       local InactiveStatusline = {
         condition = conditions.is_not_active,
-        { hl = { fg = "gray", force = true }, WorkDir },
+        { hl = { fg = "gray", force = true }, FilePath },
         { provider = "%<" },
         Align,
       }
@@ -806,21 +828,17 @@ return {
             condition = conditions.is_not_active,
             {
               hl = { fg = "gray", force = true },
-              FilePathBlock,
+              Breadcrumb,
             },
           },
           {
-            FilePathBlock,
+            Breadcrumb,
             Navic,
             { provider = "%<" },
             Align,
           },
         }
       }
-
-      vim.o.laststatus = 3
-      vim.o.cmdheight = 0
-      -- vim.o.showcmdloc = "statusline"
 
       require("heirline").setup({
         statusline = StatusLines,

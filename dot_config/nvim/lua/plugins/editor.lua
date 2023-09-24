@@ -1,5 +1,6 @@
-local util_telescope = require("util.telescope")
-local util_path = require("util.path")
+local utelescope = require("util.telescope")
+local root_path = require("util.path").get_root_path
+local rel_dir_path = require("util.path").get_relative_dir_path
 return {
   {
     "folke/which-key.nvim",
@@ -387,30 +388,30 @@ return {
     cmd = "Telescope",
     version = false,
     keys = {
-      { "<leader><space>", util_telescope.func("files", { cwd = util_path.root }), desc = "Files" },
+      { "<leader><space>", utelescope.func("files", { cwd = root_path }), desc = "Files" },
       { "<leader>sb", "<cmd>Telescope buffers<cr>", desc = "Buffers" },
       { "<leader>bb", "<cmd>Telescope buffers<cr>", desc = "Buffers" },
-      { "<leader>sf", util_telescope.func("files", { cwd = util_path.root }), desc = "Files" },
-      { "<leader>sF", util_telescope.func("files", { cwd = false }), desc = "Files (cwd)" },
-      { "<leader>rsf", util_telescope.func("find_files", { cwd = util_path.basedir }), desc = "Find files (relative)" },
-      { "<leader>ff", util_telescope.func("files", { cwd = util_path.root }), desc = "Files" },
-      { "<leader>fF", util_telescope.func("files", { cwd = false }), desc = "Files (cwd)" },
-      { "<leader>rff", util_telescope.func("find_files", { cwd = util_path.basedir }), desc = "Find files (relative)" },
-      { "<leader>sg", util_telescope.func("live_grep", { cwd = util_path.root }), desc = "Grep" },
-      { "<leader>sG", util_telescope.func("live_grep", { cwd = false }), desc = "Grep (cwd)" },
-      { "<leader>rsg", util_telescope.func("live_grep", { cwd = util_path.basedir }), desc = "Grep (relative)" },
-      { "<leader>sw", util_telescope.func("grep_string", { cwd = util_path.root, word_match = "-w" }), desc = "Word" },
-      { "<leader>sW", util_telescope.func("grep_string", { cwd = false, word_match = "-w" }), desc = "Word (cwd)" },
-      { "<leader>rsw", util_telescope.func("grep_string", { cwd = util_path.basedir, word_match = "-w" }), desc = "Word (relative)" },
-      { "<leader>sw", util_telescope.func("grep_string", { cwd = util_path.root }), mode = "v", desc = "Selection" },
-      { "<leader>sW", util_telescope.func("grep_string", { cwd = false }), mode = "v", desc = "Selection (cwd)" },
-      { "<leader>srw", util_telescope.func("grep_string", { cwd = util_path.basedir }), mode = "v", desc = "Selection (relative)" },
+      { "<leader>sf", utelescope.func("files", { cwd = root_path }), desc = "Files" },
+      { "<leader>sF", utelescope.func("files", { cwd = false }), desc = "Files (cwd)" },
+      { "<leader>rsf", utelescope.func("find_files", { cwd = rel_dir_path }), desc = "Find files (relative)" },
+      { "<leader>ff", utelescope.func("files", { cwd = root_path }), desc = "Files" },
+      { "<leader>fF", utelescope.func("files", { cwd = false }), desc = "Files (cwd)" },
+      { "<leader>rff", utelescope.func("find_files", { cwd = rel_dir_path }), desc = "Find files (relative)" },
+      { "<leader>sg", utelescope.func("live_grep", { cwd = root_path }), desc = "Grep" },
+      { "<leader>sG", utelescope.func("live_grep", { cwd = false }), desc = "Grep (cwd)" },
+      { "<leader>rsg", utelescope.func("live_grep", { cwd = rel_dir_path }), desc = "Grep (relative)" },
+      { "<leader>sw", utelescope.func("grep_string", { cwd = root_path, word_match = "-w" }), desc = "Word" },
+      { "<leader>sW", utelescope.func("grep_string", { cwd = false, word_match = "-w" }), desc = "Word (cwd)" },
+      { "<leader>rsw", utelescope.func("grep_string", { cwd = rel_dir_path, word_match = "-w" }), desc = "Word (relative)" },
+      { "<leader>sw", utelescope.func("grep_string", { cwd = root_path }), mode = "v", desc = "Selection" },
+      { "<leader>sW", utelescope.func("grep_string", { cwd = false }), mode = "v", desc = "Selection (cwd)" },
+      { "<leader>srw", utelescope.func("grep_string", { cwd = rel_dir_path }), mode = "v", desc = "Selection (relative)" },
       { '<leader>s"', "<cmd>Telescope registers<cr>", desc = "Registers" },
       { "<leader>ss", "<cmd>Telescope current_buffer_fuzzy_find<cr>", desc = "Fuzzy search buffer lines" },
       { "<leader>sc", "<cmd>Telescope command_history<cr>", desc = "Command history" },
       { "<leader>sh", "<cmd>Telescope help_tags<cr>", desc = "Help tags" },
       { "<leader>sk", "<cmd>Telescope keymaps<cr>", desc = "Keymaps" },
-      { "<leader>tt", util_telescope.func("colorscheme", { enable_preview = true }), desc = "Colorschemes" },
+      { "<leader>tt", utelescope.func("colorscheme", { enable_preview = true }), desc = "Colorschemes" },
       { "<leader>:", "<cmd>Telescope commands<cr>", desc = "Commands" },
       { "<leader>'", "<cmd>Telescope resume<cr>", desc = "Resume" },
     },
@@ -427,12 +428,12 @@ return {
             ["<a-i>"] = function()
               local action_state = require("telescope.actions.state")
               local line = action_state.get_current_line()
-              util_telescope.func("find_files", { no_ignore = true, default_text = line })()
+              utelescope.func("find_files", { no_ignore = true, default_text = line })()
             end,
             ["<a-h>"] = function()
               local action_state = require("telescope.actions.state")
               local line = action_state.get_current_line()
-              util_telescope.func("find_files", { hidden = true, default_text = line })()
+              utelescope.func("find_files", { hidden = true, default_text = line })()
             end,
             ["<C-Down>"] = function(...)
               return require("telescope.actions").cycle_history_next(...)
@@ -548,9 +549,9 @@ return {
   {
     "nvim-telescope/telescope-live-grep-args.nvim",
     keys = {
-      { "<leader>sa", util_telescope.func("live_grep_args", { cwd = util_path.root }), desc = "Grep with args" },
-      { "<leader>sA", util_telescope.func("live_grep_args", { cwd = false }), desc = "Grep with args (cwd)" },
-      { "<leader>rsa", util_telescope.func("live_grep_args", { cwd = util_path.basedir }), desc = "Grep with args (relative)" },
+      { "<leader>sa", utelescope.func("live_grep_args", { cwd = root_path }), desc = "Grep with args" },
+      { "<leader>sA", utelescope.func("live_grep_args", { cwd = false }), desc = "Grep with args (cwd)" },
+      { "<leader>rsa", utelescope.func("live_grep_args", { cwd = rel_dir_path }), desc = "Grep with args (relative)" },
     },
     config = function()
       require("telescope").load_extension("live_grep_args")
@@ -561,7 +562,7 @@ return {
     keys = {
       {
         "<leader>fb",
-        util_telescope.func("file_browser", { cwd = util_path.basedir }),
+        utelescope.func("file_browser", { cwd = rel_dir_path }),
         desc = "File browser",
       },
     },

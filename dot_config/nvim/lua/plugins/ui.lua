@@ -1,3 +1,5 @@
+local root_path = require("util.path").get_root_path
+local rel_dir_path = require("util.path").get_relative_dir_path
 return {
   {
     "kevinhwang91/nvim-ufo",
@@ -171,8 +173,7 @@ return {
     },
     init = function()
       if vim.fn.argc() == 1 then
-        local stat = vim.loop.fs_stat(tostring(vim.fn.argv(0)))
-        if stat and stat.type == "directory" then
+        if require("util.path").is_dir(tostring(vim.fn.argv(0))) then
           require("oil")
         end
       end
@@ -291,7 +292,7 @@ return {
       {
         "<leader>fe",
         function()
-          require("neo-tree.command").execute({ toggle = true, dir = require("util.path").root() })
+          require("neo-tree.command").execute({ toggle = true, dir = root_path() })
         end,
         desc = "Explorer neotree",
       },
@@ -305,7 +306,7 @@ return {
       {
         "<leader>rfe",
         function()
-          require("neo-tree.command").execute({ toggle = true, dir = require("util.path").basedir() })
+          require("neo-tree.command").execute({ toggle = true, dir = rel_dir_path() })
         end,
         desc = "Explorer neotree (relative)",
       },
