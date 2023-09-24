@@ -183,49 +183,153 @@ return {
         { provider = "" },
       }
 
-      local function generate_path_breadcrumb(self, path)
-        local dir_path = path
-        local children = {}
-        if dir_path then
-          local protocol_start_index = dir_path:find("://")
-          if protocol_start_index ~= nil then
-            local protocol = dir_path:sub(1, protocol_start_index + 2)
-            table.insert(children, {
-              provider = protocol,
-              hl = { fg = "gray" },
-            })
-            dir_path = dir_path:sub(protocol_start_index + 3)
+      local function build_path_breadcrumbs(opts)
+        opts = opts or {}
+        return function(self)
+          local children = {}
+          local dir_path = self.dir_path or nil
+          local shortened
+          if opts.max_char and opts.max_char > 0 then
+            dir_path = vim.fn.pathshorten(dir_path, opts.max_char)
+            shortened = true
           end
-          local dirs = upath.split(dir_path)
-          if dir_path:sub(1, 1) == upath.sep then
-            table.insert(dirs, 1, upath.sep)
-          end
-          for i, dir in ipairs(dirs) do
-            local child = {
-              {
-                provider = dir,
-                hl = {fg = "gray"},
-              }
-            }
-            if i <= #dirs then
-              table.insert(child, BreadcrumbSep)
+          if dir_path then
+            local protocol_start_index = dir_path:find("://")
+            if protocol_start_index ~= nil then
+              local protocol = dir_path:sub(1, protocol_start_index + 2)
+              table.insert(children, {
+                provider = protocol,
+                hl = { fg = "gray" },
+              })
+              dir_path = dir_path:sub(protocol_start_index + 3)
             end
-            table.insert(children, child)
+            local data = upath.split(dir_path)
+            local is_empty = vim.tbl_isempty(data)
+            if opts.prefix and not is_empty then
+              table.insert(children, BreadcrumbSep)
+            end
+            local start_index = 0
+            if opts.max_depth and opts.max_depth > 0 then
+              start_index = #data - opts.max_depth
+              if start_index > 0 then
+                table.insert(children, {
+                  provider = icons.status.Ellipsis,
+                  hl = { fg = "gray" },
+                })
+                table.insert(children, BreadcrumbSep)
+              end
+            else
+              if dir_path:sub(1, 1) == upath.sep then
+                table.insert(data, 1, upath.sep)
+              end
+            end
+            for i, d in ipairs(data) do
+              if i > start_index then
+                local child = {
+                  {
+                    provider = shortened and d .. icons.status.Ellipsis or d,
+                    hl = { fg = "gray" },
+                  }
+                }
+                if #data > 1 and i < #data then table.insert(child, BreadcrumbSep) end
+                table.insert(children, child)
+              end
+            end
+            if opts.suffix and not is_empty then
+              table.insert(children, BreadcrumbSep)
+            end
           end
+          self[1] = self:new(children, 1)
         end
-        self[1] = self:new(children, 1)
+      end
+
+      local function build_symbol_breadcrumbs(opts)
+        opts = opts or {}
+        return function(self)
+          local children = {}
+          local data = require("aerial").get_location(true) or {}
+          local is_empty = vim.tbl_isempty(data)
+          if opts.prefix and not is_empty then
+            table.insert(children, BreadcrumbSep)
+          end
+          local start_index = 0
+          if opts.max_depth and opts.max_depth > 0 then
+            start_index = #data - opts.max_depth
+            if start_index > 0 then
+              table.insert(children, {
+                provider = icons.status.Ellipsis,
+                hl = { fg = "gray" },
+              })
+              table.insert(children, BreadcrumbSep)
+            end
+          end
+          for i, d in ipairs(data) do
+            if i > start_index then
+              local pos = self.enc(d.lnum, d.col, self.winnr)
+              local child = {
+                {
+                  provider = d.icon,
+                  hl = { fg = self.type_hl[d.kind] },
+                },
+                {
+                  provider = function()
+                    local symbol = string.gsub(d.name, "%%", "%%%%"):gsub("%s*->%s*", "")
+                    if opts.max_char and opts.max_char > 0 then
+                      symbol = symbol:sub(-opts.max_char) .. icons.status.Ellipsis
+                    end
+                    return symbol
+                  end
+                },
+                on_click = {
+                  callback = function(_, minwid)
+                    local line, col, winnr = self.dec(minwid)
+                    vim.api.nvim_win_set_cursor(vim.fn.win_getid(winnr), { line, col })
+                  end,
+                  minwid = pos,
+                  name = "heirline_aerial",
+                },
+              }
+              if #data > 1 and i < #data then table.insert(child, BreadcrumbSep) end
+              table.insert(children, child)
+            end
+            if opts.suffix and not is_empty then
+              table.insert(children, BreadcrumbSep)
+            end
+          end
+          self[1] = self:new(children, 1)
+        end
       end
 
       local DirBreadcrumb = {
         flexible = 1,
         {
-          provider = function(self)
-            generate_path_breadcrumb(self, self.dir_path)
+          init = function(self)
+            build_path_breadcrumbs({ suffix = true })(self)
           end
         },
         {
-          provider = function(self)
-            generate_path_breadcrumb(self, vim.fn.pathshorten(self.dir_path, 2))
+          init = function(self)
+            build_path_breadcrumbs({
+              suffix = true,
+              max_depth = 3,
+            })(self)
+          end
+        },
+        {
+          init = function(self)
+            build_path_breadcrumbs({
+              suffix = true,
+              max_char = 1,
+            })(self)
+          end
+        },
+        {
+          init = function(self)
+            build_path_breadcrumbs({
+              suffix = true,
+              max_char = 1,
+              max_depth = 3,
+            })(self)
           end
         },
         { provider = "" },
@@ -365,9 +469,9 @@ return {
         hl = { fg = "blue", bg = "bright_bg" },
       }
 
-      local Navic = {
-        condition = function()
-          return require("nvim-navic").is_available()
+      local Aerial = {
+        condifion = function()
+          return package.loaded["aerial"]
         end,
         static = {
           type_hl = {
@@ -408,39 +512,26 @@ return {
             return line, col, winnr
           end,
         },
-        init = function(self)
-          local data = require("nvim-navic").get_data() or {}
-          local children = {}
-          for _, d in ipairs(data) do
-            local pos = self.enc(d.scope.start.line, d.scope.start.character, self.winnr)
-            local child = {
-              {
-                BreadcrumbSep
-              },
-              {
-                provider = d.icon,
-                hl = { fg = self.type_hl[d.type] },
-              },
-              {
-                provider = d.name:gsub("%%", "%%%%"):gsub("%s*->%s*", ""),
-                hl = { fg = self.type_hl[d.type] },
-                -- hl = self.type_hl[d.type],
-                on_click = {
-                  callback = function(_, minwid)
-                    local line, col, winnr = self.dec(minwid)
-                    vim.api.nvim_win_set_cursor(vim.fn.win_getid(winnr), { line, col })
-                  end,
-                  minwid = pos,
-                  name = "heirline_navic",
-                },
-              },
-            }
-            table.insert(children, child)
-          end
-          self[1] = self:new(children, 1)
-        end,
-        update = "CursorMoved",
+        update = {
+          "CursorMoved",
+          "WinResized",
+        },
         hl = { fg = "gray" },
+        flexible = 1,
+        {
+          init = function(self)
+            build_symbol_breadcrumbs({ prefix = true })(self)
+          end
+        },
+        {
+          init = function(self)
+            build_symbol_breadcrumbs({
+              prefix = true,
+              max_depth = 3,
+            })(self)
+          end
+        },
+        { provider = "" },
       }
 
       local Diagnostics = {
@@ -461,25 +552,25 @@ return {
         end,
         {
           provider = function(self)
-            return self.errors > 0 and (icons.diagnostics.Error .. self.errors .. " ")
+            return self.errors > 0 and (icons.diagnostics.Error .. " " .. self.errors .. " ")
           end,
           hl = "DiagnosticError",
         },
         {
           provider = function(self)
-            return self.warnings > 0 and (icons.diagnostics.Warn .. self.warnings .. " ")
+            return self.warnings > 0 and (icons.diagnostics.Warn .. " " .. self.warnings .. " ")
           end,
           hl = "DiagnosticWarn",
         },
         {
           provider = function(self)
-            return self.info > 0 and (icons.diagnostics.Info .. self.info .. " ")
+            return self.info > 0 and (icons.diagnostics.Info .. " " .. self.info .. " ")
           end,
           hl = "DiagnosticInfo",
         },
         {
           provider = function(self)
-            return self.hints > 0 and (icons.diagnostics.Hint .. self.hints)
+            return self.hints > 0 and (icons.diagnostics.Hint .. " " .. self.hints)
           end,
           hl = "DiagnosticHint",
         },
@@ -729,12 +820,15 @@ return {
         Space,
         Spell,
         Diagnostics,
+        Space,
         Dap,
+        Space,
         Lsp,
         Space,
         FileIcon,
         FileType,
-        { flexible = 3, { Space, FileEncoding, Space, FileFormat, Space, }, { provider = "" } },
+        Space,
+        { flexible = 10, { FileEncoding, Space, FileFormat, Space, }, { provider = "" } },
         Ruler,
         SearchCount,
         Space,
@@ -833,11 +927,10 @@ return {
           },
           {
             Breadcrumb,
-            Navic,
-            { provider = "%<" },
-            Align,
+            Aerial,
           },
-        }
+        },
+        Align,
       }
 
       require("heirline").setup({

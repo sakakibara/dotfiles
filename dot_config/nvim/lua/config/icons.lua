@@ -62,5 +62,6 @@ return {
     Debug = " ",
     Directory = " ",
     DirectoryAlt = "󰉖 ",
+    Ellipsis = "…",
   },
 }
