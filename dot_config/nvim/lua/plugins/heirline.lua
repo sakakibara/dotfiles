@@ -172,12 +172,12 @@ return {
         flexible = 1,
         {
           provider = function(self)
-            return self.dir_path
+            return self.reldirpath
           end,
         },
         {
           provider = function(self)
-            return vim.fn.pathshorten(self.dir_path)
+            return vim.fn.pathshorten(self.reldirpath)
           end,
         },
         { provider = "" },
@@ -187,23 +187,23 @@ return {
         opts = opts or {}
         return function(self)
           local children = {}
-          local dir_path = self.dir_path or nil
-          local shortened
-          if opts.max_char and opts.max_char > 0 then
-            dir_path = vim.fn.pathshorten(dir_path, opts.max_char)
-            shortened = true
+          local reldirpath = self.reldirpath or nil
+          local shorten = opts.max_char and opts.max_char > 0
+          local is_root = reldirpath and reldirpath:sub(1, 1) == upath.sep
+          if shorten then
+            reldirpath = vim.fn.pathshorten(reldirpath, opts.max_char)
           end
-          if dir_path then
-            local protocol_start_index = dir_path:find("://")
+          if reldirpath then
+            local protocol_start_index = reldirpath:find("://")
             if protocol_start_index ~= nil then
-              local protocol = dir_path:sub(1, protocol_start_index + 2)
+              local protocol = reldirpath:sub(1, protocol_start_index + 2)
               table.insert(children, {
                 provider = protocol,
                 hl = { fg = "gray" },
               })
-              dir_path = dir_path:sub(protocol_start_index + 3)
+              reldirpath = reldirpath:sub(protocol_start_index + 3)
             end
-            local data = upath.split(dir_path)
+            local data = upath.split(reldirpath)
             local is_empty = vim.tbl_isempty(data)
             if opts.prefix and not is_empty then
               table.insert(children, BreadcrumbSep)
@@ -218,16 +218,14 @@ return {
                 })
                 table.insert(children, BreadcrumbSep)
               end
-            else
-              if dir_path:sub(1, 1) == upath.sep then
+            elseif is_root then
                 table.insert(data, 1, upath.sep)
-              end
             end
             for i, d in ipairs(data) do
               if i > start_index then
                 local child = {
                   {
-                    provider = shortened and d .. icons.status.Ellipsis or d,
+                    provider = shorten and d .. icons.status.Ellipsis or d,
                     hl = { fg = "gray" },
                   }
                 }
@@ -235,7 +233,7 @@ return {
                 table.insert(children, child)
               end
             end
-            if opts.suffix and not is_empty then
+            if opts.suffix and not is_empty or is_root then
               table.insert(children, BreadcrumbSep)
             end
           end
@@ -336,9 +334,6 @@ return {
       }
 
       local BaseName = {
-        init = function(self)
-          self.basename = upath.get_basename(self.file_path)
-        end,
         provider = function(self)
           return self.basename
         end,
@@ -371,8 +366,8 @@ return {
 
       local Breadcrumb = {
         init = function(self)
-          self.file_path = upath.get_current_file_path()
-          self.dir_path = upath.get_relative_dir_path(self.file_path)
+          self.fpath = upath.get_current_file_path()
+          _, self.reldirpath, self.basename = upath.get_path_segments(self.fpath)
         end,
         DirBreadcrumb,
         FileIcon,
@@ -394,12 +389,9 @@ return {
           })
         end,
         init = function(self)
-          local file_path = upath.get_current_file_path()
-          local dir_path = upath.get_relative_dir_path(file_path)
-          local pwd = upath.get_pwd(file_path)
-          self.file_path = file_path
-          self.dir_path = dir_path and dir_path
-          self.pwd = pwd and pwd
+          self.fpath = upath.get_current_file_path()
+          self.pwd, self.reldirpath, self.basename =
+          upath.get_path_segments(self.fpath)
         end,
         WorkDir,
         DirPath,

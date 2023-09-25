@@ -35,24 +35,44 @@ function M.get_current_file_path()
   return path
 end
 
-function M.get_basename(path)
-  local current_path = path and path or M.get_current_file_path()
-  local basename = vim.fn.fnamemodify(current_path, ":t")
-  if basename == "" and not M.is_dir(current_path) then
-    basename = "[No Name]"
-  end
-  return basename
-end
+function M.get_path_segments(path)
+  local fnmod = vim.fn.fnamemodify
+  local cpath = path and path or M.get_current_file_path()
+  local cwd = vim.loop.cwd()
+  local pwd, reldirpath, basename
 
-function M.get_pwd(path)
-  local current_path = path and path or M.get_current_file_path()
-  local pwd = vim.loop.cwd()
-  if current_path == "" or current_path:find(pwd, 1, true) then
-    pwd = vim.fn.fnamemodify(pwd, ":~") .. M.sep
+  if cpath == "" then
+    pwd = fnmod(cwd, ":~")
+    if cwd ~= M.sep then
+       pwd = pwd .. M.sep
+    end
+    reldirpath = nil
+    basename = "[No Name]"
   else
-    pwd = ""
+    if M.is_dir(cpath) then
+      basename = ""
+    else
+      basename = fnmod(cpath, ":t")
+    end
+    if cwd == M.sep then
+      pwd = cwd
+      reldirpath = fnmod(cpath, ":h"):sub(2)
+    elseif cpath:find(cwd, 1, true) then
+      pwd = fnmod(cwd, ":~") .. M.sep
+      reldirpath = fnmod(cpath, ":~:.:h")
+    else
+      pwd = ""
+      reldirpath = fnmod(cpath, ":~:h")
+    end
+    if reldirpath and reldirpath ~= "" then
+      if reldirpath == "." then
+        reldirpath = ""
+      elseif reldirpath ~= M.sep then
+        reldirpath = reldirpath .. M.sep
+      end
+    end
   end
-  return pwd
+  return pwd, reldirpath, basename
 end
 
 M.root_patterns = { ".git", "lua", ".svn", ".vs" }
@@ -85,20 +105,6 @@ function M.get_root_path()
     root = root and vim.fs.dirname(root) or vim.loop.cwd()
   end
   return root
-end
-
-function M.get_relative_dir_path(path)
-  local current_path = path and path or M.get_current_file_path()
-  local dir_path
-  if current_path ~= "" then
-    dir_path = vim.fn.fnamemodify(current_path, ":~:.:h")
-  end
-  if not dir_path or dir_path == "." then
-    dir_path = ""
-  elseif dir_path ~= M.sep then
-    dir_path = dir_path .. M.sep
-  end
-  return dir_path
 end
 
 return M
