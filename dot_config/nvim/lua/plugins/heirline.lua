@@ -343,6 +343,11 @@ return {
           end
           return "bright_fg"
         end,
+        update = {
+          "TextChanged",
+          "InsertLeave",
+          "BufModifiedSet",
+        },
       }
 
       local FileModified = {
@@ -379,12 +384,6 @@ return {
         BaseName,
         FileModified,
         FileReadOnly,
-        update = {
-          "BufWinEnter",
-          "BufWritePost",
-          "DirChanged",
-          "WinResized",
-        },
       }
 
       local FilePath = {
