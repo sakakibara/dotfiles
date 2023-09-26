@@ -197,29 +197,29 @@ return {
             local protocol_start_index = reldirpath:find("://")
             if protocol_start_index ~= nil then
               local protocol = reldirpath:sub(1, protocol_start_index + 2)
-              table.insert(children, {
+              children[#children+1] = {
                 provider = protocol,
                 hl = { fg = "gray" },
-              })
+              }
               reldirpath = reldirpath:sub(protocol_start_index + 3)
             end
             local data = upath.split(reldirpath)
             local is_empty = vim.tbl_isempty(data)
             if opts.prefix and not is_empty then
-              table.insert(children, BreadcrumbSep)
+              children[#children+1] = BreadcrumbSep
             end
             local start_index = 0
             if opts.max_depth and opts.max_depth > 0 then
               start_index = #data - opts.max_depth
               if start_index > 0 then
-                table.insert(children, {
+                children[#children+1] =  {
                   provider = icons.status.Ellipsis,
                   hl = { fg = "gray" },
-                })
-                table.insert(children, BreadcrumbSep)
+                }
+                children[#children+1] = BreadcrumbSep
               end
             elseif is_root then
-                table.insert(data, 1, upath.sep)
+              table.insert(data, 1, upath.sep)
             end
             for i, d in ipairs(data) do
               if i > start_index then
@@ -229,12 +229,12 @@ return {
                     hl = { fg = "gray" },
                   }
                 }
-                if #data > 1 and i < #data then table.insert(child, BreadcrumbSep) end
-                table.insert(children, child)
+                if #data > 1 and i < #data then child[#child+1] = BreadcrumbSep end
+                children[#children+1] = child
               end
             end
             if opts.suffix and not is_empty or is_root then
-              table.insert(children, BreadcrumbSep)
+              children[#children+1] = BreadcrumbSep
             end
           end
           self[1] = self:new(children, 1)
@@ -248,17 +248,17 @@ return {
           local data = self.data or {}
           local is_empty = vim.tbl_isempty(data)
           if opts.prefix and not is_empty then
-            table.insert(children, BreadcrumbSep)
+            children[#children+1] =  BreadcrumbSep
           end
           local start_index = 0
           if opts.max_depth and opts.max_depth > 0 then
             start_index = #data - opts.max_depth
             if start_index > 0 then
-              table.insert(children, {
+              children[#children+1] = {
                 provider = icons.status.Ellipsis,
                 hl = { fg = "gray" },
-              })
-              table.insert(children, BreadcrumbSep)
+              }
+              children[#children+1] =  BreadcrumbSep
             end
           end
           for i, d in ipairs(data) do
@@ -287,11 +287,11 @@ return {
                   name = "heirline_aerial",
                 },
               }
-              if #data > 1 and i < #data then table.insert(child, BreadcrumbSep) end
-              table.insert(children, child)
+              if #data > 1 and i < #data then child[#child] = BreadcrumbSep end
+              children[#children+1] = child
             end
             if opts.suffix and not is_empty then
-              table.insert(children, BreadcrumbSep)
+              children[#children+1] = BreadcrumbSep
             end
           end
           self[1] = self:new(children, 1)
