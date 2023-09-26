@@ -895,7 +895,7 @@ return {
         fallthrough = false,
         SpecialStatusline,
         TerminalStatusline,
-        InactiveStatusline,
+        -- InactiveStatusline,
         DefaultStatusline,
       }
 
@@ -927,6 +927,9 @@ return {
         },
         Align,
       }
+
+      vim.o.laststatus = 3
+      vim.o.showcmdloc = "statusline"
 
       require("heirline").setup({
         statusline = StatusLines,
