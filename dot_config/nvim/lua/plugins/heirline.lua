@@ -345,22 +345,27 @@ return {
         end,
       }
 
-      local FileFlags = {
-        {
-          condition = function()
-            return vim.bo.modified
-          end,
-          provider = "[+]",
-          hl = { fg = "green" },
-          update = "BufModifiedSet",
+      local FileModified = {
+        condition = function()
+          return vim.bo.modified
+        end,
+        provider = "[+]",
+        hl = { fg = "green" },
+        update = {
+          "TextChanged",
+          "InsertLeave",
+          "BufModifiedSet",
         },
+      }
+
+      local FileReadOnly = {
         {
           condition = function()
             return not vim.bo.modifiable or vim.bo.readonly
           end,
-          provider = "  ",
+          provider = " ",
           hl = { fg = "orange" },
-          update = { "FileChangedRO" },
+          update = "BufReadPost",
         },
       }
 
@@ -372,7 +377,8 @@ return {
         DirBreadcrumb,
         FileIcon,
         BaseName,
-        unpack(FileFlags),
+        FileModified,
+        FileReadOnly,
         update = {
           "BufWinEnter",
           "BufWritePost",
@@ -396,7 +402,6 @@ return {
         WorkDir,
         DirPath,
         BaseName,
-        unpack(FileFlags),
         update = {
           "BufWinEnter",
           "BufWritePost",
@@ -809,6 +814,8 @@ return {
         Space,
         Git,
         FilePath,
+        FileModified,
+        FileReadOnly,
         { provider = "%<" },
         Align,
         -- ShowCmd,
