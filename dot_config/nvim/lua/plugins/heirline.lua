@@ -166,6 +166,11 @@ return {
           end,
         },
         { provider = "" },
+        update = {
+          "BufWinEnter",
+          "DirChanged",
+          "WinResized",
+        },
       }
 
       local DirPath = {
@@ -182,6 +187,11 @@ return {
           end,
         },
         { provider = "" },
+        update = {
+          "BufWinEnter",
+          "DirChanged",
+          "WinResized",
+        },
       }
 
       local function build_path_breadcrumbs(opts)
@@ -332,6 +342,11 @@ return {
           end
         },
         { provider = "" },
+        update = {
+          "BufWinEnter",
+          "DirChanged",
+          "WinResized",
+        },
       }
 
       local BaseName = {
@@ -345,6 +360,7 @@ return {
           return "bright_fg"
         end,
         update = {
+          "BufWinEnter",
           "TextChanged",
           "InsertLeave",
           "BufModifiedSet",
@@ -371,7 +387,7 @@ return {
           end,
           provider = " " .. icons.status.Lock,
           hl = { fg = "orange" },
-          update = "BufReadPost",
+          update = "BufWinEnter",
         },
       }
 
@@ -402,12 +418,6 @@ return {
         WorkDir,
         DirPath,
         BaseName,
-        update = {
-          "BufWinEnter",
-          "BufWritePost",
-          "DirChanged",
-          "WinResized",
-        },
       }
 
       local FileType = {
