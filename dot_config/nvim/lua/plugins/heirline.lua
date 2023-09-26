@@ -106,7 +106,7 @@ return {
           },
         },
         provider = function(self)
-          return icons.status.Mode .. "%2(" .. self.mode_names[self.mode] .. "%)"
+          return icons.status.Mode .. "%-2(" .. self.mode_names[self.mode] .. "%)"
         end,
         hl = function(self)
           local color = self:mode_color()
@@ -131,10 +131,11 @@ return {
             self.icon, self.icon_color =
             require("nvim-web-devicons").get_icon_color(
               file_path, extension, { default = true })
+            self.icon = self.icon and self.icon .. " "
           end
         end,
         provider = function(self)
-          return self.icon and (self.icon .. " ")
+          return self.icon
         end,
         hl = function(self)
           return { fg = self.icon_color }
@@ -354,7 +355,7 @@ return {
         condition = function()
           return vim.bo.modified
         end,
-        provider = "[+]",
+        provider = " [+]",
         hl = { fg = "green" },
         update = {
           "TextChanged",
@@ -368,7 +369,7 @@ return {
           condition = function()
             return not vim.bo.modifiable or vim.bo.readonly
           end,
-          provider = " ",
+          provider = " " .. icons.status.Lock,
           hl = { fg = "orange" },
           update = "BufReadPost",
         },
