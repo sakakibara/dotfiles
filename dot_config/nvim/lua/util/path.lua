@@ -1,5 +1,7 @@
 local M = {}
 
+M.home = vim.loop.os_homedir()
+
 local function get_sep()
   if jit then
     local os = string.lower(jit.os)
@@ -58,8 +60,13 @@ function M.get_path_segments(path)
       pwd = cwd
       reldirpath = fnmod(cpath, ":h"):sub(2)
     elseif cpath:find(cwd, 1, true) then
-      pwd = fnmod(cwd, ":~") .. M.sep
-      reldirpath = fnmod(cpath, ":~:.:h")
+      if cwd:find(M.home, 1, true) then
+        pwd = fnmod(cwd, ":~") .. M.sep
+        reldirpath = fnmod(cpath, ":~:.:h")
+      else
+        pwd = cwd .. M.sep
+        reldirpath = fnmod(cpath, ":.:h")
+      end
     else
       pwd = ""
       reldirpath = fnmod(cpath, ":~:h")
