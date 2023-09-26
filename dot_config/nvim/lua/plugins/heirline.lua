@@ -387,7 +387,7 @@ return {
           end,
           provider = " " .. icons.status.Lock,
           hl = { fg = "orange" },
-          update = "BufWinEnter",
+          update = "BufReadPost",
         },
       }
 
