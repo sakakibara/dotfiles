@@ -57,8 +57,8 @@ return {
   status = {
     Lsp = " ",
     Vim = " ",
-    Mode = "",
-    Lock = "'",
+    Mode = " ",
+    Lock = " ",
     Debug = " ",
     Directory = " ",
     DirectoryAlt = "󰉖 ",
