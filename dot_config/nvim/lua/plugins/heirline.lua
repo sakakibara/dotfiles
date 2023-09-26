@@ -244,7 +244,7 @@ return {
                 children[#children+1] = child
               end
             end
-            if opts.suffix and not is_empty or is_root then
+            if opts.suffix and (not is_empty or is_root) then
               children[#children+1] = BreadcrumbSep
             end
           end
