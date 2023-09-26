@@ -245,7 +245,7 @@ return {
         opts = opts or {}
         return function(self)
           local children = {}
-          local data = require("aerial").get_location(true) or {}
+          local data = self.data or {}
           local is_empty = vim.tbl_isempty(data)
           if opts.prefix and not is_empty then
             table.insert(children, BreadcrumbSep)
@@ -504,6 +504,9 @@ return {
             return line, col, winnr
           end,
         },
+        init = function(self)
+          self.data = require("aerial").get_location(true)
+        end,
         update = {
           "CursorMoved",
           "WinResized",
