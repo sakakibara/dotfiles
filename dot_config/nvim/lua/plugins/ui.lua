@@ -1,5 +1,5 @@
 local root_path = require("util.path").get_root_path
-local rel_dir_path = require("util.path").get_relative_dir_path
+local parent_path = require("util.path").get_parent_path
 return {
   {
     "kevinhwang91/nvim-ufo",
@@ -313,7 +313,7 @@ return {
       {
         "<leader>rfe",
         function()
-          require("neo-tree.command").execute({ toggle = true, dir = rel_dir_path() })
+          require("neo-tree.command").execute({ toggle = true, dir = parent_path() })
         end,
         desc = "Explorer neotree (relative)",
       },

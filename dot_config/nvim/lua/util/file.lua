@@ -1,6 +1,6 @@
 local M = {}
 
-local util_path = require("util.path")
+local upath = require("util.path")
 
 local function get_files(dir)
   local handle = vim.loop.fs_scandir(dir)
@@ -32,7 +32,7 @@ local function current_file_index(files)
 end
 
 function M.next_file()
-  local dir = util_path.basedir()
+  local dir = upath.get_parent_path()
   local files = get_files(dir)
   if files == nil then return end
   local index = current_file_index(files)
@@ -44,7 +44,7 @@ function M.next_file()
 end
 
 function M.prev_file()
-  local dir = util_path.basedir()
+  local dir = upath.get_parent_path()
   local files = get_files(dir)
   if files == nil then return end
   local index = current_file_index(files)
@@ -56,7 +56,7 @@ function M.prev_file()
 end
 
 function M.first_file()
-  local dir = util_path.basedir()
+  local dir = upath.get_parent_path()
   local files = get_files(dir)
   if files == nil then return end
   local path_sep = package.config:sub(1, 1)
@@ -65,7 +65,7 @@ function M.first_file()
 end
 
 function M.last_file()
-  local dir = util_path.basedir()
+  local dir = upath.get_parent_path()
   local files = get_files(dir)
   if files == nil then return end
   local path_sep = package.config:sub(1, 1)

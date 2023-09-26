@@ -107,4 +107,8 @@ function M.get_root_path()
   return root
 end
 
+function M.get_parent_path()
+  return vim.fn.fnamemodify(M.get_current_file_path(), ":h")
+end
+
 return M
