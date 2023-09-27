@@ -7,10 +7,10 @@ return {
     Stopped = { "󰁕 ", "DiagnosticWarn", "DapStoppedLine" },
   },
   diagnostics = {
-    Error = " ",
+    Error = " ",
     Hint = " ",
-    Info = " ",
-    Warn = " ",
+    Info = " ",
+    Warn = " ",
   },
   git = {
     added = " ",
