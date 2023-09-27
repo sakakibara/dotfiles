@@ -298,7 +298,7 @@ return {
                   name = "heirline_aerial",
                 },
               }
-              if #data > 1 and i < #data then child[#child] = BreadcrumbSep end
+              if #data > 1 and i < #data then child[#child+1] = BreadcrumbSep end
               children[#children+1] = child
             end
             if opts.suffix and not is_empty then
