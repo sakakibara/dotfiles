@@ -648,7 +648,7 @@ return {
       local Lsp = {
         condition = conditions.lsp_attached,
         update = { "LspAttach", "LspDetach", "WinEnter" },
-        provider = icons.status.Lsp .. "LSP",
+        provider = icons.status.Lsp .. "LSP" .. " ",
         hl = { fg = "green", bold = true },
         on_click = {
           name = "heirline_LSP",
