@@ -40,7 +40,7 @@ end
 function M.get_path_segments(path)
   local fnmod = vim.fn.fnamemodify
   local cpath = path and path or M.get_current_file_path()
-  local cwd = vim.loop.cwd()
+  local cwd = vim.loop.cwd() or ""
   local pwd, reldirpath, basename
 
   if cpath == "" then
