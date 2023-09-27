@@ -431,14 +431,14 @@ return {
       local FileEncoding = {
         provider = function()
           local enc = (vim.bo.fenc ~= "" and vim.bo.fenc) or vim.o.enc -- :h 'enc'
-          return enc ~= "utf-8" and enc:upper()
+          return enc ~= "utf-8" and enc:upper() .. " "
         end,
       }
 
       local FileFormat = {
         provider = function()
           local fmt = vim.bo.fileformat
-          return fmt ~= "unix" and fmt:upper()
+          return fmt ~= "unix" and fmt:upper() .. " "
         end,
       }
 
@@ -580,7 +580,7 @@ return {
         },
         {
           provider = function(self)
-            return self.hints > 0 and (icons.diagnostics.Hint .. self.hints)
+            return self.hints > 0 and (icons.diagnostics.Hint .. self.hints .. " ")
           end,
           hl = "DiagnosticHint",
         },
@@ -641,7 +641,7 @@ return {
           condition = function(self)
             return self.has_changes
           end,
-          provider = ")",
+          provider = ") ",
         },
       }
 
@@ -832,15 +832,13 @@ return {
         Space,
         Spell,
         Diagnostics,
-        Space,
         Dap,
-        Space,
         Lsp,
-        Space,
         FileIcon,
         FileType,
         Space,
-        { flexible = 10, { FileEncoding, Space, FileFormat, Space, }, { provider = "" } },
+        FileEncoding,
+        FileFormat,
         Ruler,
         SearchCount,
         Space,
