@@ -50,9 +50,9 @@ return {
       end
 
       local Align = { provider = "%=" }
-      local Space = setmetatable({ provider = ' ' }, {
+      local Space = setmetatable({ provider = " " }, {
         __call = function(_, n)
-          return { provider = string.rep(' ', n) }
+          return { provider = string.rep(" ", n) }
         end
       })
       local BreadcrumbSep = {
