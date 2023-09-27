@@ -562,25 +562,25 @@ return {
         end,
         {
           provider = function(self)
-            return self.errors > 0 and (icons.diagnostics.Error .. " " .. self.errors .. " ")
+            return self.errors > 0 and (icons.diagnostics.Error .. self.errors .. " ")
           end,
           hl = "DiagnosticError",
         },
         {
           provider = function(self)
-            return self.warnings > 0 and (icons.diagnostics.Warn .. " " .. self.warnings .. " ")
+            return self.warnings > 0 and (icons.diagnostics.Warn .. self.warnings .. " ")
           end,
           hl = "DiagnosticWarn",
         },
         {
           provider = function(self)
-            return self.info > 0 and (icons.diagnostics.Info .. " " .. self.info .. " ")
+            return self.info > 0 and (icons.diagnostics.Info .. self.info .. " ")
           end,
           hl = "DiagnosticInfo",
         },
         {
           provider = function(self)
-            return self.hints > 0 and (icons.diagnostics.Hint .. " " .. self.hints)
+            return self.hints > 0 and (icons.diagnostics.Hint .. self.hints)
           end,
           hl = "DiagnosticHint",
         },
