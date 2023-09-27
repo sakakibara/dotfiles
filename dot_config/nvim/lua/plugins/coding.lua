@@ -32,7 +32,7 @@ return {
   {
     "andymass/vim-matchup",
     event = "BufEnter",
-    confing = function()
+    init = function()
       vim.g.matchup_matchparen_offscreen = { method = "popup" }
     end
   },
