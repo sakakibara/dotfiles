@@ -102,6 +102,7 @@ return {
 
   {
     "lukas-reineke/indent-blankline.nvim",
+    main = "ibl",
     event = { "BufReadPost", "BufNewFile" },
     opts = {
       indent = { char = "│" },
@@ -122,9 +123,6 @@ return {
       scope = { enabled = false, },
       whitespace = { remove_blankline_train = false, },
     },
-    config = function(_, opts)
-      require("ibl").setup(opts)
-    end
   },
 
   {
