@@ -118,12 +118,15 @@ return {
       exclude = {
         filetypes = {
           "Trouble",
+          "csv",
           "help",
           "lazy",
           "mason",
           "notify",
           "oil",
           "qf",
+          "text",
+          "tsv",
         },
       },
       scope = { enabled = false, },
