@@ -95,16 +95,6 @@ return {
         nested_top = "│ ",
         whitespace = "  ",
       },
-      keymaps = {
-        ["[y"] = "actions.prev",
-        ["]y"] = "actions.next",
-        ["[Y"] = "actions.prev_up",
-        ["]Y"] = "actions.next_up",
-        ["{"] = false,
-        ["}"] = false,
-        ["[["] = false,
-        ["]]"] = false,
-      },
     },
   },
 
