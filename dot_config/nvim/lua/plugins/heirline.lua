@@ -401,6 +401,15 @@ return {
         BaseName,
         FileModified,
         FileReadOnly,
+        update = {
+          "BufWinEnter",
+          "BufWritePost",
+          "DirChanged",
+          "WinResized",
+          "TextChanged",
+          "InsertLeave",
+          "BufModifiedSet",
+        },
       }
 
       local FilePath = {
@@ -418,6 +427,15 @@ return {
         WorkDir,
         DirPath,
         BaseName,
+        update = {
+          "BufWinEnter",
+          "BufWritePost",
+          "DirChanged",
+          "WinResized",
+          "TextChanged",
+          "InsertLeave",
+          "BufModifiedSet",
+        },
       }
 
       local FileType = {
