@@ -20,7 +20,7 @@ return {
       "InsertEnter",
       "CmdlineEnter"
     },
-    branch='v0.6',
+    branch="v0.6",
     opts={},
   },
 
