@@ -105,10 +105,7 @@ return {
     main = "ibl",
     event = { "BufReadPost", "BufNewFile" },
     opts = {
-      indent = {
-        char = "│",
-        highlight = "IndentBlanklineChar",
-      },
+      indent = { char = "│" },
       exclude = {
         filetypes = {
           "Trouble",
