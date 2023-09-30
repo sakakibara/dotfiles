@@ -37,7 +37,7 @@ return {
     },
     custom_highlights = function(colors)
       return {
-        Folded = { bg = colors.crust },
+        Folded = { bg = colors.mantle },
       }
     end,
   },
