@@ -1,11 +1,9 @@
 return {
   {
-    "kylechui/nvim-surround",
+    "echasnovski/mini.surround",
     version = "*",
     event = "VeryLazy",
-    opts = {
-      aliases = {},
-    },
+    opts = {},
   },
 
   {
