@@ -366,6 +366,38 @@ return {
   },
 
   {
+    "stevearc/qf_helper.nvim",
+    cmd = {
+      "QNext",
+      "QPrev",
+      "QFNext",
+      "QFPrev",
+      "LLNext",
+      "LLPrev",
+      "QFOpen",
+      "LLOpen",
+      "QFToggle",
+      "LLToggle",
+      "Cclear",
+      "Lclear",
+      "Keep",
+      "Reject",
+    },
+    keys = {
+      { "<leader>xl", "<cmd>LLToggle<cr>", desc = "Location List" },
+      { "<leader>xq", "<cmd>QFToggle<cr>", desc = "Quickfix Lista" },
+    },
+    opts = {
+      quickfix = {
+        track_location = false,
+      },
+      loclist = {
+        track_location = false,
+      },
+    }
+  },
+
+  {
     "folke/trouble.nvim",
     cmd = { "TroubleToggle", "Trouble" },
     opts = { use_diagnostic_signs = true },
@@ -379,6 +411,8 @@ return {
         function()
           if require("trouble").is_open() then
             require("trouble").previous({ skip_groups = true, jump = true })
+          elseif require("util.lazy").has("qf_helper.nvim") then
+            vim.cmd("QPrev")
           else
             local ok, err = pcall(vim.cmd.cprev)
             if not ok then
@@ -393,6 +427,8 @@ return {
        function()
           if require("trouble").is_open() then
             require("trouble").next({ skip_groups = true, jump = true })
+          elseif require("util.lazy").has("qf_helper.nvim") then
+            vim.cmd("QNext")
           else
             local ok, err = pcall(vim.cmd.cnext)
             if not ok then

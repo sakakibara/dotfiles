@@ -25,11 +25,6 @@ map("n", "<leader>bp", "<cmd>bNext<cr>", { desc = "Previous buffer" })
 map("n", "<leader>bN", "<cmd>enew<cr>", { desc = "New empty buffer" })
 map("n", "<leader>bs", "<cmd>w<cr>", { desc = "Save buffer" })
 
-map("n", "<leader>xl", "<cmd>lopen<cr>", { desc = "Location list" })
-map("n", "<leader>xq", "<cmd>copen<cr>", { desc = "Quickfix list" })
-
-map("n", "[q", "<cmd>cprevious<cr>", { desc = "Previous quickfix" })
-map("n", "]q", "<cmd>cnext<cr>", { desc = "Next quickfix" })
 map("n", "[Q", "<cmd>cfirst<cr>", { desc = "First quickfix" })
 map("n", "]Q", "<cmd>clast<cr>", { desc = "Last quickfix" })
 map("n", "[f", util_file.prev_file, { desc = "Previous file" })
