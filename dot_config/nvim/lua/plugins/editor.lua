@@ -694,6 +694,7 @@ return {
     "mickael-menu/zk-nvim",
     keys = {
       { "<leader>nn", "<cmd>ZkNew { title = vim.fn.input('Title: ') }<cr>", desc = "Create zk note" },
+      { "<leader>nj", "<cmd>ZkNew { group = 'journal' }<cr>", desc = "Create zk journal note" },
       { "<leader>nf", "<cmd>ZkNotes { sort = { 'modified' } }<cr>", desc = "Open zk note" },
       { "<leader>ns", "<cmd>ZkGrep<cr>", desc = "Search zk note" },
       { "<leader>nt", "<cmd>ZkTags<cr>", desc = "Open zk note by tags" },
