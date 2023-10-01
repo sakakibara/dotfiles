@@ -506,12 +506,6 @@ return {
             ["<C-Up>"] = function(...)
               return require("telescope.actions").cycle_history_prev(...)
             end,
-            ["<C-j>"] = function(...)
-              return require("telescope.actions").move_selection_next(...)
-            end,
-            ["<C-k>"] = function(...)
-              return require("telescope.actions").move_selection_previous(...)
-            end,
             ["<C-n>"] = function(...)
               return require("telescope.actions").preview_scrolling_down(...)
             end,
@@ -521,6 +515,37 @@ return {
             ["<M-p>"] = function(...)
               return require("telescope.actions.layout").toggle_preview(...)
             end,
+            ["<C-k>"] = function()
+              require("readline").kill_line()
+            end,
+            ["<C-u>"] = function()
+              require("readline").backward_kill_line()
+            end,
+            ["<M-d>"] = function()
+              require("readline").kill_word()
+            end,
+            ["<M-BS>"] = function()
+              require("readline").backward_kill_word()
+            end,
+            ["<C-w>"] = function()
+              require("readline").unix_word_rubout()
+            end,
+            ["<C-d>"] = { "<delete>", type = "command" },
+            ["<C-h>"] = { "<bs>", type = "command" },
+            ["<C-a>"] = function()
+              require("readline").beginning_of_line()
+            end,
+            ["<C-e>"] = function()
+              require("readline").end_of_line()
+            end,
+            ["<M-f>"] = function()
+              require("readline").forward_word()
+            end,
+            ["<M-b>"] = function()
+              require("readline").backward_word()
+            end,
+            ["<C-f>"] = { "<right>", type = "command" },
+            ["<C-b>"] = { "<left>", type = "command" },
           },
           n = {
             ["-"] = function(...)
