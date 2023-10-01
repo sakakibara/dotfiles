@@ -424,7 +424,7 @@ return {
       },
       {
         "]q",
-       function()
+        function()
           if require("trouble").is_open() then
             require("trouble").next({ skip_groups = true, jump = true })
           elseif require("util.lazy").has("qf_helper.nvim") then
