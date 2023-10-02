@@ -28,6 +28,7 @@ return {
       indent_blankline = { enabled = true },
       markdown = true,
       mason = true,
+      mini = true,
       neotree = true,
       notify = true,
       telescope = { enabled = true },
