@@ -35,6 +35,7 @@ return {
       telescope = { enabled = true },
       lsp_trouble = true,
       treesitter = true,
+      ufo = true,
       which_key = true,
     },
     custom_highlights = function(colors)
