@@ -58,3 +58,4 @@ vim.opt.fillchars = {
 vim.opt.updatetime = 200
 
 vim.opt.grepprg = "rg --vimgrep"
+vim.opt.grepformat = "%f:%l:%c:%m"
