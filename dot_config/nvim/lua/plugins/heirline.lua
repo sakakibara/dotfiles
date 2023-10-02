@@ -443,7 +443,14 @@ return {
           return string.upper(vim.bo.filetype)
         end,
         hl = "Type",
-        update = "FileType",
+        update = {
+          "FileType" ,
+          pattern = "*",
+          callback = vim.schedule_wrap(function()
+            vim.cmd("redrawstatus")
+          end
+          )
+        },
       }
 
       local FileEncoding = {
