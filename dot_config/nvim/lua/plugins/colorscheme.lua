@@ -16,6 +16,7 @@ return {
       percentage = 0.70,
     },
     integrations = {
+      aerial = true,
       cmp = true,
       flash = true,
       gitsigns = true,
