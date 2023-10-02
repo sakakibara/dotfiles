@@ -3,7 +3,22 @@ local parent_path = require("util.path").get_parent_path
 return {
   {
     "kevinhwang91/nvim-ufo",
-    dependencies = "kevinhwang91/promise-async",
+    dependencies = {
+      "kevinhwang91/promise-async",
+      {
+        "luukvbaal/statuscol.nvim",
+        config = function()
+          local builtin = require("statuscol.builtin")
+          require("statuscol").setup({
+            segments = {
+              { text = { "%s" }, click = "v:lua.ScSa" },
+              { text = { builtin.lnumfunc, " " }, click = "v:lua.ScLa" },
+              { text = { builtin.foldfunc, " " }, click = "v:lua.ScFa" },
+            }
+          })
+        end,
+      },
+    },
     event = "VeryLazy",
     keys = {
       { "zR", function() require("ufo").openAllFolds() end, desc = "Open All Folds" },
@@ -23,20 +38,6 @@ return {
     }
   },
 
-  {
-    "luukvbaal/statuscol.nvim",
-    event = "VeryLazy",
-    config = function()
-      local builtin = require("statuscol.builtin")
-      require("statuscol").setup({
-        segments = {
-          { text = { "%s" }, click = "v:lua.ScSa" },
-          { text = { builtin.lnumfunc, " " }, click = "v:lua.ScLa" },
-          { text = { builtin.foldfunc, " " }, click = "v:lua.ScFa" },
-        }
-      })
-    end,
-  },
 
   {
     "stevearc/dressing.nvim",
