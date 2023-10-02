@@ -33,6 +33,7 @@ return {
       notify = true,
       overseer = true,
       telescope = { enabled = true },
+      lsp_trouble = true,
       treesitter = true,
       which_key = true,
     },
