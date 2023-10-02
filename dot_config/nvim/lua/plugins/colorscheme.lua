@@ -17,12 +17,6 @@ return {
     },
     integrations = {
       cmp = true,
-      barbecue = {
-        dim_dirname = true,
-        bold_basename = true,
-        dim_context = true,
-        alt_background = true,
-      },
       flash = true,
       gitsigns = true,
       illuminate = true,
