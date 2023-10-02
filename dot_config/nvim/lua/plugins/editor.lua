@@ -366,6 +366,12 @@ return {
   },
 
   {
+    "yorickpeterse/nvim-pqf",
+    event = "VeryLazy",
+    opts = {},
+  },
+
+  {
     "stevearc/qf_helper.nvim",
     ft = "qf",
     cmd = {
