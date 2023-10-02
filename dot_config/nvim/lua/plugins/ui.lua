@@ -26,14 +26,14 @@ return {
     },
     opts = {
       provider_selector = function(_, filetype, _)
-        local lspWithOutFolding = { "markdown", "bash", "sh", "bash", "zsh", "css" }
-        if vim.tbl_contains(lspWithOutFolding, filetype) then
-          return { "treesitter", "indent" }
-        elseif filetype == "html" then
-          return { "indent" }
-        else
-          return { "lsp", "indent" }
-        end
+        local ftMap = {
+          markdown = { "treesitter" },
+          bash = { "treesitter", "indent" },
+          sh = { "treesitter", "indent" },
+          zsh = { "treesitter", "indent" },
+          css = { "treesitter", "indent" },
+        }
+        return ftMap[filetype]
       end,
     }
   },
