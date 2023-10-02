@@ -310,7 +310,7 @@ return {
       end
 
       local DirBreadcrumb = {
-        flexible = 1,
+        flexible = 100,
         {
           init = function(self)
             build_path_breadcrumbs({ suffix = true })(self)
@@ -545,7 +545,7 @@ return {
           "WinResized",
         },
         hl = { fg = "gray" },
-        flexible = 1,
+        flexible = 50,
         {
           init = function(self)
             build_symbol_breadcrumbs({ prefix = true })(self)
