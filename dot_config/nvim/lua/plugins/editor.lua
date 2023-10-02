@@ -367,6 +367,7 @@ return {
 
   {
     "stevearc/qf_helper.nvim",
+    ft = "qf",
     cmd = {
       "QNext",
       "QPrev",
