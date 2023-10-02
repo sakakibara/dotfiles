@@ -955,6 +955,7 @@ return {
           },
           {
             Breadcrumb,
+            { provider = "%<" },
             Aerial,
           },
         },
