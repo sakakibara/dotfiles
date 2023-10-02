@@ -31,6 +31,7 @@ return {
       mini = true,
       neotree = true,
       notify = true,
+      overseer = true,
       telescope = { enabled = true },
       treesitter = true,
       which_key = true,
