@@ -25,7 +25,7 @@ return {
       mason = true,
       neotree = true,
       notify = true,
-      telescope = { enabled = true, style = "nvchad" },
+      telescope = { enabled = true },
       treesitter = true,
       which_key = true,
     },
