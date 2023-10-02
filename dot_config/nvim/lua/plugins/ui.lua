@@ -299,6 +299,100 @@ return {
   },
 
   {
+    "folke/edgy.nvim",
+    event = "VeryLazy",
+    keys = {
+      {
+        "<leader>te",
+        function()
+          require("edgy").toggle()
+        end,
+        desc = "Edgy Toggle",
+      },
+      { "<leader>tE", function() require("edgy").select() end, desc = "Edgy Select Window" },
+    },
+    opts = function()
+      local opts = {
+        keys = {
+          ["<c-Right>"] = function(win)
+            win:resize("width", 2)
+          end,
+          ["<c-Left>"] = function(win)
+            win:resize("width", -2)
+          end,
+          ["<c-Up>"] = function(win)
+            win:resize("height", 2)
+          end,
+          ["<c-Down>"] = function(win)
+            win:resize("height", -2)
+          end,
+        },
+        left = {
+          {
+            title = "Neo-Tree",
+            ft = "neo-tree",
+            filter = function(buf)
+              return vim.b[buf].neo_tree_source == "filesystem"
+            end,
+            pinned = true,
+            open = function()
+              vim.api.nvim_input("<esc><space>fe")
+            end,
+            size = { height = 0.5 },
+          },
+          { title = "Neotest Summary", ft = "neotest-summary" },
+          {
+            title = "Neo-Tree Git",
+            ft = "neo-tree",
+            filter = function(buf)
+              return vim.b[buf].neo_tree_source == "git_status"
+            end,
+            pinned = true,
+            open = "Neotree position=right git_status",
+          },
+          {
+            title = "Neo-Tree Buffers",
+            ft = "neo-tree",
+            filter = function(buf)
+              return vim.b[buf].neo_tree_source == "buffers"
+            end,
+            pinned = true,
+            open = "Neotree position=top buffers",
+          },
+          "neo-tree",
+          {
+            title = "Aerial",
+            ft = "aerial",
+            pinned = true,
+            open = "AerialToggle",
+          },
+        },
+        bottom = {
+          {
+            ft = "toggleterm",
+            size = { height = 0.25 },
+            filter = function(_, win)
+              return vim.api.nvim_win_get_config(win).relative == ""
+            end,
+          },
+          "Trouble",
+          { ft = "qf", title = "QuickFix" },
+          {
+            ft = "help",
+            size = { height = 20 },
+            filter = function(buf)
+              return vim.bo[buf].buftype == "help"
+            end,
+          },
+          { ft = "spectre_panel", size = { height = 0.4 } },
+          { title = "Neotest Output", ft = "neotest-output-panel", size = { height = 15 } },
+        },
+      }
+      return opts
+    end,
+  },
+
+  {
     "nvim-neo-tree/neo-tree.nvim",
     branch = "v3.x",
     cmd = "Neotree",
@@ -349,7 +443,7 @@ return {
       },
       hijack_netrw_behavior = "disabled",
       sources = { "filesystem", "buffers", "git_status", "document_symbols" },
-      open_files_do_not_replace_types = { "terminal", "Trouble", "qf", "Outline" },
+      open_files_do_not_replace_types = { "terminal", "Trouble", "qf", "Outline", "edgy" },
     },
   },
 }
