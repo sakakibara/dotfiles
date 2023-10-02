@@ -121,7 +121,7 @@ return {
         },
       },
       scope = { enabled = false, },
-      whitespace = { remove_blankline_train = false, },
+      whitespace = { remove_blankline_trail = false, },
     },
   },
 
