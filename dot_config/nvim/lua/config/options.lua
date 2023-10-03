@@ -8,11 +8,8 @@ vim.opt.fileformats = { "unix", "dos", "mac" }
 -- Enable mouse
 vim.opt.mouse = "a"
 
--- Disable swap file attention message
-vim.opt.shortmess:append("A")
-
--- Disable startup screen message
-vim.opt.shortmess:append { W = true, I = true, c = true }
+-- Disable unwanted messages
+vim.opt.shortmess:append({ W = true, I = true, c = true, C = true })
 
 -- Use system clipboard by default
 vim.opt.clipboard:prepend("unnamed")
