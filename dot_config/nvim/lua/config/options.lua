@@ -1,60 +1,60 @@
-vim.g.mapleader = " "
-vim.g.maplocalleader = "\\"
+local g, opt = vim.g, vim.opt
 
--- Encodings
-vim.opt.fileencodings = { "ucs-bom", "utf-8", "iso-2022-jp", "cp932", "euc-jp", "latin1" }
-vim.opt.fileformats = { "unix", "dos", "mac" }
+g.mapleader = " "
+g.maplocalleader = "\\"
+g.markdown_recommended_style = 0
 
--- Enable mouse
-vim.opt.mouse = "a"
-
--- Disable unwanted messages
-vim.opt.shortmess:append({ W = true, I = true, c = true, C = true })
-
--- Use system clipboard by default
-vim.opt.clipboard:prepend("unnamedplus")
-
--- Default tab settings
-vim.opt.tabstop = 2
-vim.opt.softtabstop = -1
-vim.opt.shiftwidth = 0
-vim.opt.expandtab = true
-
--- Searching
-vim.opt.ignorecase = true
-vim.opt.smartcase = true
-
--- Case insensitive file name completion
-vim.opt.wildignorecase = true
-
--- Scroll offset
-vim.opt.scrolloff = 5
-
--- Use persistent undo
-vim.opt.undofile = true
-
--- Line numbers
-vim.opt.number = true
-vim.opt.relativenumber = false
-
--- Color theme
-vim.opt.termguicolors = true
-
--- Folding
-vim.opt.foldenable = true
-vim.opt.foldcolumn = "1"
-vim.opt.foldlevel = 99
-vim.opt.foldlevelstart = 99
-vim.opt.fillchars = {
+opt.autowrite = true
+opt.clipboard:prepend("unnamedplus")
+opt.conceallevel = 3
+opt.confirm = true
+opt.cursorline = false
+opt.expandtab = true
+opt.fileencodings = { "ucs-bom", "utf-8", "iso-2022-jp", "cp932", "euc-jp", "latin1" }
+opt.fileformats = { "unix", "dos", "mac" }
+opt.fillchars = {
   fold = " ",
+  foldclose = "",
   foldopen = "",
   foldsep = " ",
-  foldclose = "",
 }
-
-vim.opt.winminwidth = 5
-
-vim.opt.updatetime = 200
-
-vim.opt.grepprg = "rg --vimgrep"
-vim.opt.grepformat = "%f:%l:%c:%m"
+opt.foldcolumn = "1"
+opt.foldenable = true
+opt.foldlevel = 99
+opt.foldlevelstart = 99
+opt.formatoptions = "jcroqlnt"
+opt.grepformat = "%f:%l:%c:%m"
+opt.grepprg = "rg --vimgrep"
+opt.ignorecase = true
+opt.laststatus = 3
+opt.list = true
+opt.mouse = "a"
+opt.number = true
+opt.pumblend = 10
+opt.pumheight = 10
+opt.relativenumber = false
+opt.scrolloff = 4
+opt.sessionoptions = { "buffers", "curdir", "tabpages", "winsize" }
+opt.shiftround = true
+opt.shiftwidth = 0
+opt.shortmess:append({ W = true, I = true, c = true, C = true })
+opt.showmode = false
+opt.sidescrolloff = 8
+opt.signcolumn = "yes"
+opt.smartcase = true
+opt.smartindent = true
+opt.softtabstop = -1
+opt.spelllang = { "en" }
+opt.splitbelow = true
+opt.splitkeep = "screen"
+opt.splitright = true
+opt.tabstop = 2
+opt.termguicolors = true
+opt.timeoutlen = 300
+opt.undofile = true
+opt.undolevels = 10000
+opt.updatetime = 200
+opt.wildignorecase = true
+opt.wildmode = "longest:full,full"
+opt.winminwidth = 5
+opt.wrap = false

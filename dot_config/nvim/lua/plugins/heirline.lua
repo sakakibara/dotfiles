@@ -963,7 +963,6 @@ return {
         Align,
       }
 
-      vim.o.laststatus = 3
       vim.o.showcmdloc = "statusline"
 
       require("heirline").setup({
