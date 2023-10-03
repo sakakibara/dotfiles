@@ -42,7 +42,7 @@ return {
         ctx.dirname = vim.fn.fnamemodify(ctx.filename, ":h")
         names = vim.tbl_filter(function(name)
           local linter = nlint.linters[name]
-          return linter and not (linter.condition and not linter.condition(ctx))
+          return linter and not (type(linter) == "table" and linter.condition and not linter.condition(ctx))
         end, names)
 
         if #names > 0 then
