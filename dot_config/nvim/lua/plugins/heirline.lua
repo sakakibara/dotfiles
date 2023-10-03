@@ -55,7 +55,7 @@ return {
           return { provider = string.rep(" ", n) }
         end
       })
-      local BreadcrumbSep = {
+      local BreadcrumbsSep = {
         provider = "  ",
         hl = { fg = "gray" },
       }
@@ -209,7 +209,7 @@ return {
             local protocol_start_index = reldirpath:find("://")
             if protocol_start_index ~= nil then
               local protocol = reldirpath:sub(1, protocol_start_index + 2)
-              children[#children+1] = {
+              children[#children + 1] = {
                 provider = protocol,
                 hl = { fg = "gray" },
               }
@@ -218,17 +218,17 @@ return {
             local data = upath.split(reldirpath)
             local is_empty = vim.tbl_isempty(data)
             if opts.prefix and not is_empty then
-              children[#children+1] = BreadcrumbSep
+              children[#children + 1] = BreadcrumbsSep
             end
             local start_index = 0
             if opts.max_depth and opts.max_depth > 0 then
               start_index = #data - opts.max_depth
               if start_index > 0 then
-                children[#children+1] =  {
+                children[#children + 1] =  {
                   provider = icons.status.Ellipsis,
                   hl = { fg = "gray" },
                 }
-                children[#children+1] = BreadcrumbSep
+                children[#children + 1] = BreadcrumbsSep
               end
             elseif is_root then
               table.insert(data, 1, upath.sep)
@@ -241,12 +241,12 @@ return {
                     hl = { fg = "gray" },
                   }
                 }
-                if #data > 1 and i < #data then child[#child+1] = BreadcrumbSep end
-                children[#children+1] = child
+                if #data > 1 and i < #data then child[#child + 1] = BreadcrumbsSep end
+                children[#children + 1] = child
               end
             end
             if opts.suffix and (not is_empty or is_root) then
-              children[#children+1] = BreadcrumbSep
+              children[#children + 1] = BreadcrumbsSep
             end
           end
           self[1] = self:new(children, 1)
@@ -260,17 +260,17 @@ return {
           local data = self.data or {}
           local is_empty = vim.tbl_isempty(data)
           if opts.prefix and not is_empty then
-            children[#children+1] =  BreadcrumbSep
+            children[#children + 1] =  BreadcrumbsSep
           end
           local start_index = 0
           if opts.max_depth and opts.max_depth > 0 then
             start_index = #data - opts.max_depth
             if start_index > 0 then
-              children[#children+1] = {
+              children[#children + 1] = {
                 provider = icons.status.Ellipsis,
                 hl = { fg = "gray" },
               }
-              children[#children+1] =  BreadcrumbSep
+              children[#children + 1] =  BreadcrumbsSep
             end
           end
           for i, d in ipairs(data) do
@@ -299,18 +299,18 @@ return {
                   name = "heirline_aerial",
                 },
               }
-              if #data > 1 and i < #data then child[#child+1] = BreadcrumbSep end
-              children[#children+1] = child
+              if #data > 1 and i < #data then child[#child + 1] = BreadcrumbsSep end
+              children[#children + 1] = child
             end
             if opts.suffix and not is_empty then
-              children[#children+1] = BreadcrumbSep
+              children[#children + 1] = BreadcrumbsSep
             end
           end
           self[1] = self:new(children, 1)
         end
       end
 
-      local DirBreadcrumb = {
+      local DirBreadcrumbs = {
         flexible = 100,
         {
           init = function(self)
@@ -392,12 +392,12 @@ return {
         },
       }
 
-      local Breadcrumb = {
+      local Breadcrumbs = {
         init = function(self)
           self.fpath = upath.get_current_file_path()
           _, self.reldirpath, self.basename = upath.get_path_segments(self.fpath)
         end,
-        DirBreadcrumb,
+        DirBreadcrumbs,
         FileIcon,
         BaseName,
         FileModified,
@@ -951,11 +951,11 @@ return {
             condition = conditions.is_not_active,
             {
               hl = { fg = "gray", force = true },
-              Breadcrumb,
+              Breadcrumbs,
             },
           },
           {
-            Breadcrumb,
+            Breadcrumbs,
             { provider = "%<" },
             Aerial,
           },
