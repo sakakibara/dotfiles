@@ -52,6 +52,8 @@ vim.opt.fillchars = {
   foldclose = "",
 }
 
+vim.opt.winminwidth = 5
+
 vim.opt.updatetime = 200
 
 vim.opt.grepprg = "rg --vimgrep"
