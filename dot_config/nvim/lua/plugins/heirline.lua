@@ -66,6 +66,13 @@ return {
       local ViMode = {
         init = function(self)
           self.mode = vim.api.nvim_get_mode().mode
+          if not self.once then
+            vim.api.nvim_create_autocmd("ModeChanged", {
+              pattern = "*:*o",
+              command = "redrawstatus",
+            })
+            self.once = true
+          end
         end,
         static = {
           mode_names = {
@@ -112,13 +119,7 @@ return {
           local color = self:mode_color()
           return { fg = color, bold = true }
         end,
-        update = {
-          "ModeChanged",
-          pattern = "*:*",
-          callback = vim.schedule_wrap(function()
-            vim.cmd("redrawstatus")
-          end),
-        },
+        update = "ModeChanged",
       }
 
       local FileIcon = {
