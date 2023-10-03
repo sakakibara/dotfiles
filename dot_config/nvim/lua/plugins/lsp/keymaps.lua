@@ -3,9 +3,6 @@ local M = {}
 M.keys = nil
 
 function M.get()
-  local format = function()
-    require("plugins.lsp.format").format({ force = true })
-  end
   if not M.keys then
     M.keys =  {
       { "<leader>cd", vim.diagnostic.open_float, desc = "Line Diagnostics" },
@@ -24,8 +21,6 @@ function M.get()
       { "[e", M.diagnostic_goto(false, "ERROR"), desc = "Prev Error" },
       { "]w", M.diagnostic_goto(true, "WARN"), desc = "Next Warning" },
       { "[w", M.diagnostic_goto(false, "WARN"), desc = "Prev Warning" },
-      { "<leader>cf", format, desc = "Format Document", has = "formatting" },
-      { "<leader>cf", format, desc = "Format Range", mode = "v", has = "rangeFormatting" },
       { "<leader>ca", vim.lsp.buf.code_action, desc = "Code Action", mode = { "n", "v" }, has = "codeAction" },
       {
         "<leader>cA",

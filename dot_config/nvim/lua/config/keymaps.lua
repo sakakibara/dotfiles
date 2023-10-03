@@ -50,3 +50,7 @@ map("n", "<leader>tC", function() require("util.keymaps").toggle("cursorcolumn")
 map("n", "<leader>ti", function() require("util.keymaps").toggle("ignorecase") end, { desc = "Toggle 'ignorecase'" })
 map("n", "<leader>tl", function() require("util.keymaps").toggle("list") end, { desc = "Toggle 'list'" })
 map("n", "<leader>tb", function() require("util.keymaps").toggle("background", false, {"dark", "light"}) end, { desc = "Toggle 'background'" })
+
+map({ "n", "v" }, "<leader>cf", function()
+  require("plugins.lsp.format").format({ force = true })
+end, { desc = "Format" })
