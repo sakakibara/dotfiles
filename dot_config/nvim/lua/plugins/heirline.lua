@@ -444,14 +444,7 @@ return {
           return string.lower(vim.bo.filetype)
         end,
         hl = "Type",
-        update = {
-          "FileType" ,
-          pattern = "*",
-          callback = vim.schedule_wrap(function()
-            vim.cmd("redrawstatus")
-          end
-          )
-        },
+        update = "FileType",
       }
 
       local FileEncoding = {
