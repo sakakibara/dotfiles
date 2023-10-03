@@ -3,20 +3,17 @@ local M = {}
 function M.setup()
   M.bootstrap()
 
-  if vim.fn.argc(-1) == 0 then
-    vim.api.nvim_create_autocmd("User", {
-      group = vim.api.nvim_create_augroup("UserConfig", { clear = true }),
-      pattern = "VeryLazy",
-      callback = function()
-        M.load("autocmds")
-        M.load("keymaps")
-      end,
-    })
-  else
-    M.init()
-    M.load("autocmds")
-    M.load("keymaps")
-  end
+  local no_argc = vim.fn.argc(-1) == 0
+  if not no_argc then M.load("autocmds") end
+
+  vim.api.nvim_create_autocmd("User", {
+    group = vim.api.nvim_create_augroup("UserConfig", { clear = true }),
+    pattern = "VeryLazy",
+    callback = function()
+      if no_argc then M.load("autocmds") end
+      M.load("keymaps")
+    end,
+  })
 
   require("lazy").setup(require("config.lazy"))
 end
