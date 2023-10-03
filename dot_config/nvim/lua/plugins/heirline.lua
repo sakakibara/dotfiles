@@ -440,7 +440,7 @@ return {
 
       local FileType = {
         provider = function()
-          return string.upper(vim.bo.filetype)
+          return string.lower(vim.bo.filetype)
         end,
         hl = "Type",
         update = {
