@@ -8,7 +8,6 @@ end
 
 function M.toggle()
   if vim.b.autoformat == false then
-    ---@diagnostic disable-next-line: inject-field
     vim.b.autoformat = nil
     M.opts.autoformat = true
   else
