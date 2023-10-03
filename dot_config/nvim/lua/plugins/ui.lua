@@ -139,7 +139,10 @@ return {
     main = "ibl",
     event = { "BufReadPost", "BufNewFile" },
     opts = {
-      indent = { char = "│" },
+      indent = {
+        char = "│",
+        tab_char = "│",
+      },
       exclude = {
         filetypes = {
           "Trouble",
