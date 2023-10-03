@@ -21,8 +21,11 @@ return {
     },
     event = "VeryLazy",
     keys = {
-      { "zR", function() require("ufo").openAllFolds() end, desc = "Open All Folds" },
-      { "zM", function() require("ufo").closeAllFolds() end, desc = "Close All Folds" },
+      { "zR", function() require("ufo").openAllFolds() end, desc = "Open all folds" },
+      { "zM", function() require("ufo").closeAllFolds() end, desc = "Close all folds" },
+      { "zr", function() require("ufo").openFoldsExceptKinds() end, desc = "Fold less" },
+      { "zm", function() require("ufo").closeFoldsWith() end, desc = "Fold more" },
+      { "zp", function() require("ufo").peekFoldedLinesUnderCursor() end, desc = "Peek fold" },
     },
     opts = {
       provider_selector = function(_, filetype, _)
@@ -65,7 +68,7 @@ return {
         table.insert(newVirtText, { suffix, "MoreMsg" })
         return newVirtText
       end
-    }
+    },
   },
 
 
