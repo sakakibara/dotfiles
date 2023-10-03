@@ -5,16 +5,13 @@ end
 vim.api.nvim_create_autocmd("BufWritePre", {
   group = augroup("auto_create_dir"),
   callback = function(event)
+    if event.match:match("^%w%w+://") then
+      return
+    end
     local file = vim.loop.fs_realpath(event.match) or event.match
     local force = vim.v.cmdbang
     local dir = vim.fn.fnamemodify(file, ":p:h")
     local message = "'" .. dir .. "' does not exist. Create? [y/N] "
-
-    -- This handles URLs using netrw. See ':help netrw-transparent' for details.
-    if dir:find("%l+://") == 1 then
-      return
-    end
-
     if vim.fn.isdirectory(dir) == 0 then
       if force == 1
         or vim.regex("^y\\%[es]$"):match_str(vim.fn.input(message)) then
