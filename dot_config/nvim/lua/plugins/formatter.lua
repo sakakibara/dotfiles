@@ -5,6 +5,7 @@ return {
     lazy = true,
     cmd = "ConformInfo",
     init = function()
+      vim.o.formatexpr = "v:lua.require'conform'.formatexpr()"
       require("util.lazy").on_very_lazy(function()
         require("plugins.lsp.format").custom_format = function(buf)
           return require("conform").format({ bufnr = buf })
