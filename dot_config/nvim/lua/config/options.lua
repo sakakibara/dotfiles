@@ -12,7 +12,7 @@ vim.opt.mouse = "a"
 vim.opt.shortmess:append({ W = true, I = true, c = true, C = true })
 
 -- Use system clipboard by default
-vim.opt.clipboard:prepend("unnamed")
+vim.opt.clipboard:prepend("unnamedplus")
 
 -- Default tab settings
 vim.opt.tabstop = 2
