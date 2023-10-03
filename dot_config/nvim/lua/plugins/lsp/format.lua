@@ -2,6 +2,8 @@ local M = {}
 
 M.opts = nil
 
+M.custom_format = nil
+
 function M.enabled()
   return M.opts.autoformat
 end
@@ -23,6 +25,15 @@ end
 function M.format(opts)
   local buf = vim.api.nvim_get_current_buf()
   if vim.b.autoformat == false and not (opts and opts.force) then
+    return
+  end
+
+  if
+    M.custom_format
+    and require("lazy.core.util").try(function()
+      return M.custom_format(buf)
+    end, { msg = "Custom formatter failed" })
+  then
     return
   end
 
