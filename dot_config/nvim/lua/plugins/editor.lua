@@ -119,8 +119,8 @@ return {
   {
     "echasnovski/mini.bufremove",
     keys = {
-      { "<leader>bd", function() require("mini.bufremove").delete(0, false) end, desc = "Delete Buffer" },
-      { "<leader>bD", function() require("mini.bufremove").delete(0, true) end, desc = "Delete Buffer (Force)" },
+      { "<leader>bd", function() require("mini.bufremove").delete(0, false) end, desc = "Delete buffer" },
+      { "<leader>bD", function() require("mini.bufremove").delete(0, true) end, desc = "Delete buffer (force)" },
     },
   },
 
@@ -269,8 +269,8 @@ return {
       require("illuminate").configure(opts)
     end,
     keys = {
-      { "]]", function() require("illuminate").goto_next_reference(false) end, desc = "Next Reference", },
-      { "[[", function() require("illuminate").goto_prev_reference(false) end, desc = "Prev Reference" },
+      { "]]", function() require("illuminate").goto_next_reference(false) end, desc = "Next reference", },
+      { "[[", function() require("illuminate").goto_prev_reference(false) end, desc = "Prev reference" },
     },
   },
 
@@ -286,10 +286,10 @@ return {
     },
     keys = {
       { "<c-s>", mode = { "n", "o", "x" }, function() require("flash").jump() end, desc = "Flash" },
-      { "<m-s>", mode = { "n", "o", "x" }, function() require("flash").treesitter() end, desc = "Flash Treesitter" },
-      { "r", mode = "o", function() require("flash").remote() end, desc = "Remote Flash" },
-      { "R", mode = { "o", "x" }, function() require("flash").treesitter_search() end, desc = "Treesitter Search" },
-      { "<c-s>", mode = { "c" }, function() require("flash").toggle() end, desc = "Toggle Flash Search" },
+      { "<m-s>", mode = { "n", "o", "x" }, function() require("flash").treesitter() end, desc = "Flash treesitter" },
+      { "r", mode = "o", function() require("flash").remote() end, desc = "Remote flash" },
+      { "R", mode = { "o", "x" }, function() require("flash").treesitter_search() end, desc = "Treesitter search" },
+      { "<c-s>", mode = { "c" }, function() require("flash").toggle() end, desc = "Toggle flash search" },
     },
   },
 
@@ -391,8 +391,8 @@ return {
       "Reject",
     },
     keys = {
-      { "<leader>xl", "<cmd>LLToggle<cr>", desc = "Location List" },
-      { "<leader>xq", "<cmd>QFToggle<cr>", desc = "Quickfix Lista" },
+      { "<leader>xl", "<cmd>LLToggle<cr>", desc = "Location list" },
+      { "<leader>xq", "<cmd>QFToggle<cr>", desc = "Quickfix list" },
     },
     opts = {
       quickfix = {
@@ -409,10 +409,10 @@ return {
     cmd = { "TroubleToggle", "Trouble" },
     opts = { use_diagnostic_signs = true },
     keys = {
-      { "<leader>xx", "<cmd>TroubleToggle document_diagnostics<cr>", desc = "Document Diagnostics (Trouble)" },
-      { "<leader>xX", "<cmd>TroubleToggle workspace_diagnostics<cr>", desc = "Workspace Diagnostics (Trouble)" },
-      { "<leader>xL", "<cmd>TroubleToggle loclist<cr>", desc = "Location List (Trouble)" },
-      { "<leader>xQ", "<cmd>TroubleToggle quickfix<cr>", desc = "Quickfix List (Trouble)" },
+      { "<leader>xx", "<cmd>TroubleToggle document_diagnostics<cr>", desc = "Document diagnostics (trouble)" },
+      { "<leader>xX", "<cmd>TroubleToggle workspace_diagnostics<cr>", desc = "Workspace diagnostics (trouble)" },
+      { "<leader>xL", "<cmd>TroubleToggle loclist<cr>", desc = "Location list (trouble)" },
+      { "<leader>xQ", "<cmd>TroubleToggle quickfix<cr>", desc = "Quickfix list (trouble)" },
       {
         "[q",
         function()

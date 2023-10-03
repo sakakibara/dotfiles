@@ -97,7 +97,7 @@ return {
         function()
           require("notify").dismiss({ silent = true, pending = true })
         end,
-        desc = "Delete all Notifications",
+        desc = "Delete all notifications",
       },
     },
     init = function()
@@ -341,9 +341,9 @@ return {
         function()
           require("edgy").toggle()
         end,
-        desc = "Edgy Toggle",
+        desc = "Edgy toggle",
       },
-      { "<leader>tE", function() require("edgy").select() end, desc = "Edgy Select Window" },
+      { "<leader>tE", function() require("edgy").select() end, desc = "Edgy select window" },
     },
     opts = function()
       local opts = {
