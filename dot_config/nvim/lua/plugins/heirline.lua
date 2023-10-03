@@ -201,10 +201,10 @@ return {
           local reldirpath = self.reldirpath or nil
           local shorten = opts.max_char and opts.max_char > 0
           local is_root = reldirpath and reldirpath:sub(1, 1) == upath.sep
-          if shorten then
-            reldirpath = vim.fn.pathshorten(reldirpath, opts.max_char)
-          end
           if reldirpath then
+            if shorten then
+              reldirpath = vim.fn.pathshorten(reldirpath, opts.max_char)
+            end
             local protocol_start_index = reldirpath:find("://")
             if protocol_start_index ~= nil then
               local protocol = reldirpath:sub(1, protocol_start_index + 2)
