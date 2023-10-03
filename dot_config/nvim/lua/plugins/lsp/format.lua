@@ -46,43 +46,12 @@ function M.format(opts)
     return
   end
 
-  if M.opts.format_notify then
-    M.notify(formatters)
-  end
-
   vim.lsp.buf.format(vim.tbl_deep_extend("force", {
     bufnr = buf,
     filter = function(client)
       return vim.tbl_contains(client_ids, client.id)
     end,
   }, require("util.lazy").opts("nvim-lspconfig").format or {}))
-end
-
-function M.notify(formatters)
-  local lines = { "# Active:" }
-
-  for _, client in ipairs(formatters.active) do
-    local line = "- **" .. client.name .. "**"
-    table.insert(lines, line)
-  end
-
-  if #formatters.available > 0 then
-    table.insert(lines, "")
-    table.insert(lines, "# Disabled:")
-    for _, client in ipairs(formatters.available) do
-      table.insert(lines, "- **" .. client.name .. "**")
-    end
-  end
-
-  vim.notify(table.concat(lines, "\n"), vim.log.levels.INFO, {
-    title = "Formatting",
-    on_open = function(win)
-      vim.api.nvim_win_set_option(win, "conceallevel", 3)
-      vim.api.nvim_win_set_option(win, "spell", false)
-      local buf = vim.api.nvim_win_get_buf(win)
-      vim.treesitter.start(buf, "markdown")
-    end,
-  })
 end
 
 function M.get_formatters(bufnr)
