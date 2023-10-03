@@ -36,3 +36,12 @@ vim.api.nvim_create_autocmd("ModeChanged", {
   callback = function() vim.wo.relativenumber = string.find(vim.fn.mode(), '^[V\22]') ~= nil end,
   desc = "Hide relative line numbers",
 })
+
+if os.getenv("WSL_DISTRO_NAME") then
+  vim.api.nvim_create_autocmd({ "BufRead", "BufNewFile" }, {
+    group = augroup("disable_fixeol"),
+    pattern = "/mnt/*",
+    callback = function() vim.opt_local.fixendofline = false end,
+    desc = "Do not fix end of line",
+  })
+end
