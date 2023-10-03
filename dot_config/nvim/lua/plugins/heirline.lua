@@ -183,7 +183,7 @@ return {
         },
         {
           provider = function(self)
-            return vim.fn.pathshorten(self.reldirpath)
+            return self.reldirpath and vim.fn.pathshorten(self.reldirpath)
           end,
         },
         { provider = "" },
