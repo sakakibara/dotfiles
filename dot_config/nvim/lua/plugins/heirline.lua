@@ -970,7 +970,6 @@ return {
       }
 
       vim.o.laststatus = 3
-      vim.o.cmdheight = 0
       vim.o.showcmdloc = "statusline"
 
       require("heirline").setup({

@@ -30,7 +30,6 @@ return {
       mason = true,
       mini = true,
       neotree = true,
-      noice = true,
       notify = true,
       overseer = true,
       telescope = { enabled = true },
