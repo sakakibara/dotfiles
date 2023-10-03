@@ -38,6 +38,7 @@ opt.sessionoptions = { "buffers", "curdir", "tabpages", "winsize" }
 opt.shiftround = true
 opt.shiftwidth = 0
 opt.shortmess:append({ W = true, I = true, c = true, C = true })
+opt.showcmdloc = "statusline"
 opt.showmode = false
 opt.sidescrolloff = 8
 opt.signcolumn = "yes"
