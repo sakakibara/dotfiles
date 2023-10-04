@@ -357,15 +357,6 @@ return {
   },
 
   {
-    "nvim-pack/nvim-spectre",
-    cmd = "Spectre",
-    opts = { open_cmd = "noswapfile vnew" },
-    keys = {
-      { "<leader>se", function() require("spectre").open() end, desc = "Spectre" },
-    },
-  },
-
-  {
     "stevearc/qf_helper.nvim",
     ft = "qf",
     cmd = {
