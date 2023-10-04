@@ -39,6 +39,8 @@ map("n", "<leader>ul", "<cmd>Lazy<cr>", { desc = "Lazy" })
 
 map("n", "<leader>qq", "<cmd>qa<cr>", { desc = "Quit all" })
 
+local conceallevel = vim.o.conceallevel > 0 and vim.o.conceallevel or 3
+map("n", "<leader>to", function() require("util.keymaps").toggle("conceallevel", false, {0, conceallevel}) end, { desc = "Toggle conceal" })
 map("n", "<leader>td", function() require("util.keymaps").toggle_diagnostics() end, { desc = "Toggle diagnostic" })
 map("n", "<leader>tn", function() require("util.keymaps").toggle_number() end, { desc = "Toggle line numbers" })
 map("n", "<leader>tN", function() require("util.keymaps").toggle("number") end, { desc = "Toggle 'number'" })
