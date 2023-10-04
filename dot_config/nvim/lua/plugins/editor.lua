@@ -357,6 +357,14 @@ return {
   },
 
   {
+    "stefandtw/quickfix-reflector.vim",
+    ft = "qf",
+    init = function()
+      vim.g.qf_join_changes = 1
+    end,
+  },
+
+  {
     "stevearc/qf_helper.nvim",
     ft = "qf",
     cmd = {
