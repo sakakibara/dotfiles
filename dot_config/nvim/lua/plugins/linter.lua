@@ -36,17 +36,16 @@ return {
       end
 
       function M.lint()
-        local nlint = require("lint")
-        local names = nlint.linters_by_ft[vim.bo.filetype] or {}
+        local names = lint.linters_by_ft[vim.bo.filetype] or {}
         local ctx = { filename = vim.api.nvim_buf_get_name(0) }
         ctx.dirname = vim.fn.fnamemodify(ctx.filename, ":h")
         names = vim.tbl_filter(function(name)
-          local linter = nlint.linters[name]
+          local linter = lint.linters[name]
           return linter and not (type(linter) == "table" and linter.condition and not linter.condition(ctx))
         end, names)
 
         if #names > 0 then
-          nlint.try_lint(names)
+          lint.try_lint(names)
         end
       end
 
