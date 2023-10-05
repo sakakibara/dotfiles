@@ -7,7 +7,7 @@ function M.setup()
   if not no_argc then M.load("autocmds") end
 
   vim.api.nvim_create_autocmd("User", {
-    group = vim.api.nvim_create_augroup("UserConfig", { clear = true }),
+    group = vim.api.nvim_create_augroup("Core", { clear = true }),
     pattern = "VeryLazy",
     callback = function()
       if no_argc then M.load("autocmds") end
