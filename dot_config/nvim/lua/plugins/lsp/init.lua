@@ -1,7 +1,7 @@
 return {
   {
     "neovim/nvim-lspconfig",
-    event = { "BufReadPre", "BufNewFile" },
+    event = "LazyFile",
     dependencies = {
       { "folke/neodev.nvim", opts = {} },
       "williamboman/mason.nvim",
@@ -134,7 +134,7 @@ return {
 
   {
     "smjonas/inc-rename.nvim",
-    event = { "BufReadPre", "BufNewFile" },
+    event = "LazyFile",
     config = true,
   }
 }

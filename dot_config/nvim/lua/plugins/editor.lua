@@ -254,7 +254,7 @@ return {
 
   {
     "RRethy/vim-illuminate",
-    event = "BufReadPost",
+    event = "LazyFile",
     opts = {
       delay = 200,
       filetypes_denylist = {
@@ -323,7 +323,7 @@ return {
 
   {
     "lewis6991/gitsigns.nvim",
-    event = "BufReadPre",
+    event = "LazyFile",
     opts = {
       signs = {
         add = { text = "▎" },

@@ -116,7 +116,7 @@ return {
 
   {
     "stevearc/aerial.nvim",
-    event = { "BufReadPost", "BufNewFile" },
+    event = "LazyFile",
     opts = {
       attach_mode = "global",
       backends = { "lsp", "treesitter", "markdown", "man" },
@@ -137,7 +137,7 @@ return {
   {
     "lukas-reineke/indent-blankline.nvim",
     main = "ibl",
-    event = { "BufReadPost", "BufNewFile" },
+    event = "LazyFile",
     opts = {
       indent = {
         char = "│",
