@@ -19,7 +19,7 @@ return {
         end,
       },
     },
-    event = "VeryLazy",
+    event = "LazyFile",
     keys = {
       { "zR", function() require("ufo").openAllFolds() end, desc = "Open all folds" },
       { "zM", function() require("ufo").closeAllFolds() end, desc = "Close all folds" },
@@ -165,7 +165,7 @@ return {
   {
     "echasnovski/mini.indentscope",
     version = false,
-    event = { "BufReadPre", "BufNewFile" },
+    event = "LazyFile",
     opts = {
       symbol = "│",
       options = { try_as_border = true },
