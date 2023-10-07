@@ -962,6 +962,7 @@ return {
             {
               hl = { fg = "gray", force = true },
               Breadcrumbs,
+              { provider = "%<" },
             },
           },
           {
