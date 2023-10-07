@@ -6,7 +6,9 @@ M.lazy_file_events = { "BufReadPost", "BufNewFile" }
 function M.setup()
   M.bootstrap()
 
-  require("lazy").setup(require("config.lazy"))
+  local clazy = require("config.lazy")
+
+  require("lazy").setup(clazy)
 
   local no_argc = vim.fn.argc(-1) == 0
   if not no_argc then M.load("autocmds") end
@@ -21,6 +23,16 @@ function M.setup()
   })
 
   if M.use_lazy_file then M.lazy_file() end
+
+  require("lazy.core.util").try(function()
+    vim.cmd.colorscheme(clazy.install.colorscheme[1])
+  end, {
+    msg = "Failed to load catppuccin colorscheme",
+    on_error = function(msg)
+      require("lazy.core.util").error(msg)
+      vim.cmd.colorscheme("habamax")
+    end,
+  })
 end
 
 M.inited = false

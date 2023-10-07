@@ -1,7 +1,6 @@
 return {
   "catppuccin/nvim",
-  lazy = false,
-  priority = 1000,
+  lazy = true,
   name = "catppuccin",
   opts = {
     flavour = "mocha",
@@ -44,8 +43,4 @@ return {
       }
     end,
   },
-  config = function(_, opts)
-    require("catppuccin").setup(opts)
-    vim.cmd.colorscheme("catppuccin")
-  end
 }
