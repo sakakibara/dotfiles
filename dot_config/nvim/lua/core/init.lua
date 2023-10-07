@@ -1,7 +1,12 @@
 local M = {}
 
+M.use_lazy_file = true
+M.lazy_file_events = { "BufReadPost", "BufNewFile" }
+
 function M.setup()
   M.bootstrap()
+
+  require("lazy").setup(require("config.lazy"))
 
   local no_argc = vim.fn.argc(-1) == 0
   if not no_argc then M.load("autocmds") end
@@ -15,21 +20,45 @@ function M.setup()
     end,
   })
 
-  M.lazy_file()
-
-  require("lazy").setup(require("config.lazy"))
+  if M.use_lazy_file then M.lazy_file() end
 end
 
 M.inited = false
 function M.init()
   if not M.inited then
     M.inited = true
+    M.use_lazy_file = M.use_lazy_file and vim.fn.argc(-1) > 0
+    ---@diagnostic disable-next-line: undefined-field
+    M.use_lazy_file = M.use_lazy_file and require("lazy.core.handler.event").trigger_events == nil
     require("util.lazy").delay_notify()
     M.load("options")
-    local Event = require("lazy.core.handler.event")
-    local _event = Event._event
+    local LazyPlugin = require("lazy.core.plugin")
+    local add = LazyPlugin.Spec.add
     ---@diagnostic disable-next-line: duplicate-set-field
-    Event._event = function(self, value)
+    LazyPlugin.Spec.add = function(self, plugin, ...)
+      if type(plugin) == "table" then
+        if not M.use_lazy_file and plugin.event then
+          if plugin.event == "LazyFile" then
+            plugin.event = M.lazy_file_events
+          elseif type(plugin.event) == "table" then
+            local events = {}
+            for _, event in ipairs(plugin.event) do
+              if event == "LazyFile" then
+                vim.list_extend(events, M.lazy_file_events)
+              else
+                events[#events + 1] = event
+              end
+            end
+          end
+        end
+      end
+      return add(self, plugin, ...)
+    end
+
+    local LazyEvent = require("lazy.core.handler.event")
+    local _event = LazyEvent._event
+    ---@diagnostic disable-next-line: duplicate-set-field
+    LazyEvent._event = function(self, value)
       return value == "LazyFile" and "User LazyFile" or _event(self, value)
     end
   end
@@ -76,27 +105,45 @@ end
 
 function M.lazy_file()
   local events = {}
+
   local function load()
     if #events == 0 then
       return
     end
+    local LazyEvent = require("lazy.core.handler.event")
+    local LazyUtil = require("lazy.core.util")
     vim.api.nvim_del_augroup_by_name("lazy_file")
+
+    LazyUtil.track({ event = "Core.lazy_file" })
+
+    local skips = {}
+    for _, event in ipairs(events) do
+      skips[event.event] = skips[event.event] or LazyEvent.get_augroups(event.event)
+    end
+
     vim.api.nvim_exec_autocmds("User", { pattern = "LazyFile", modeline = false })
     for _, event in ipairs(events) do
-      vim.api.nvim_exec_autocmds(event.event, {
-        pattern = event.pattern,
-        modeline = false,
-        buffer = event.buf,
-        data = { lazy_file = true },
+      LazyEvent.trigger({
+        event = event.event,
+        exclude = skips[event.event],
+        data = event.data,
+        buf = event.buf,
       })
+      if vim.bo[event.buf].filetype then
+        LazyEvent.trigger({
+          event = "FileType",
+          buf = event.buf,
+        })
+      end
     end
     vim.api.nvim_exec_autocmds("CursorMoved", { modeline = false })
     events = {}
+    LazyUtil.track()
   end
 
   load = vim.schedule_wrap(load)
 
-  vim.api.nvim_create_autocmd({ "BufReadPost", "BufNewFile", "BufWritePost" }, {
+  vim.api.nvim_create_autocmd(M.lazy_file_events, {
     group = vim.api.nvim_create_augroup("lazy_file", { clear = true }),
     callback = function(event)
       table.insert(events, event)
