@@ -184,6 +184,16 @@ return {
         },
         {
           provider = function(self)
+            return self.reldirpath and vim.fn.pathshorten(self.reldirpath, 5)
+          end,
+        },
+        {
+          provider = function(self)
+            return self.reldirpath and vim.fn.pathshorten(self.reldirpath, 3)
+          end,
+        },
+        {
+          provider = function(self)
             return self.reldirpath and vim.fn.pathshorten(self.reldirpath)
           end,
         },
