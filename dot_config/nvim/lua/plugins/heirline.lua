@@ -676,7 +676,7 @@ return {
 
       local Lsp = {
         condition = conditions.lsp_attached,
-        update = { "LspAttach", "LspDetach", "WinEnter" },
+        update = { "LspAttach", "LspDetach", "BufEnter" },
         provider = icons.status.Lsp .. "LSP" .. " ",
         hl = { fg = "green", bold = true },
         on_click = {
