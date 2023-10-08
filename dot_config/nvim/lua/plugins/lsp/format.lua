@@ -1,3 +1,5 @@
+local LazyUtil = require("lazy.core.util")
+
 local M = {}
 
 M.opts = nil
@@ -16,9 +18,9 @@ function M.toggle()
     M.opts.autoformat = not M.opts.autoformat
   end
   if M.opts.autoformat then
-    require("lazy.core.util").info("Enabled format on save", { title = "Format" })
+    LazyUtil.info("Enabled format on save", { title = "Format" })
   else
-    require("lazy.core.util").warn("Disabled format on save", { title = "Format" })
+    LazyUtil.warn("Disabled format on save", { title = "Format" })
   end
 end
 
@@ -30,7 +32,7 @@ function M.format(opts)
 
   if
     M.custom_format
-    and require("lazy.core.util").try(function()
+    and LazyUtil.try(function()
       return M.custom_format(buf)
     end, { msg = "Custom formatter failed" })
   then
@@ -43,6 +45,9 @@ function M.format(opts)
   end, formatters.active)
 
   if #client_ids == 0 then
+    if opts and opts.force then
+      Util.warn("No formatter available", { title = "Format" })
+    end
     return
   end
 
