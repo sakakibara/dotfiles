@@ -27,6 +27,7 @@ return {
         "bash",
         "css",
         "csv",
+        "diff",
         "fish",
         "html",
         "javascript",
