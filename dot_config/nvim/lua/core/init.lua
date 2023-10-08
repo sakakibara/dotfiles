@@ -1,7 +1,7 @@
 local M = {}
 
 M.use_lazy_file = true
-M.lazy_file_events = { "BufReadPost", "BufNewFile" }
+M.lazy_file_events = { "BufReadPost", "BufNewFile", "BufWritePre" }
 
 function M.setup()
   M.bootstrap()
