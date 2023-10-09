@@ -49,10 +49,10 @@ function M.delay_notify()
   local orig = vim.notify
   vim.notify = temp
   local timer = vim.loop.new_timer()
-  local check = vim.loop.new_check()
+  local check = assert(vim.loop.new_check())
   local replay = function()
     timer:stop()
-    if check then check:stop() end
+    check:stop()
     if vim.notify == temp then
       vim.notify = orig
     end
@@ -62,13 +62,11 @@ function M.delay_notify()
       end
     end)
   end
-  if check then
-    check:start(function()
-      if vim.notify ~= temp then
-        replay()
-      end
-    end)
-  end
+  check:start(function()
+    if vim.notify ~= temp then
+      replay()
+    end
+  end)
   timer:start(500, 0, replay)
 end
 
