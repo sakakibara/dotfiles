@@ -10,6 +10,9 @@ function M.on_attach(on_attach)
   })
 end
 
-M.get_clients = vim.lsp.get_clients or vim.lsp.get_active_clients
+function M.get_clients(...)
+  local fn = vim.lsp.get_clients or vim.lsp.get_active_clients
+  return fn(...)
+end
 
 return M

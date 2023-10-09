@@ -1,5 +1,16 @@
 local M = {}
 
+M.remote_patterns = { "/mnt/" }
+
+function M.is_remote_file(path)
+  local current_path = path or ""
+  for _, pattern in ipairs(M.remote_patterns) do
+    if current_path:sub(1, #pattern) == pattern then
+      return true
+    end
+  end
+end
+
 M.home = vim.loop.os_homedir()
 
 local function get_sep()
@@ -89,7 +100,7 @@ function M.get_root_path()
   path = path ~= "" and vim.loop.fs_realpath(path) or nil
   local roots = {}
   if path then
-    for _, client in pairs(vim.lsp.get_active_clients({ bufnr = 0 })) do
+    for _, client in pairs(require("util.lsp").get_clients({ bufnr = 0 })) do
       local workspace = client.config.workspace_folders
       local paths = workspace and vim.tbl_map(function(ws)
         return vim.uri_to_fname(ws.uri)

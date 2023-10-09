@@ -65,7 +65,7 @@ function M.get_formatters(bufnr)
     available = {},
   }
 
-  local clients = vim.lsp.get_active_clients({ bufnr = bufnr })
+  local clients = require("util.lsp").get_clients({ bufnr = bufnr })
   for _, client in ipairs(clients) do
     if M.supports_format(client) then
       table.insert(ret.available, client)
