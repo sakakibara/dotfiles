@@ -24,16 +24,18 @@ function M.setup()
 
   if M.use_lazy_file then M.lazy_file() end
 
-  local colorscheme = clazy.install.colorscheme[1]
+  local LazyUtil = require("lazy.core.util")
+  LazyUtil.track("colorscheme")
   require("lazy.core.util").try(function()
-    vim.cmd.colorscheme(colorscheme)
+    vim.cmd.colorscheme(clazy.install.colorscheme[1])
   end, {
-    msg = "Failed to load " ..  colorscheme ..  "colorscheme",
+    msg = "Failed to load the colorscheme",
     on_error = function(msg)
       require("lazy.core.util").error(msg)
       vim.cmd.colorscheme("colorscheme")
     end,
   })
+  LazyUtil.track()
 end
 
 M.inited = false
