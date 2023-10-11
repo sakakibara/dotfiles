@@ -1,6 +1,3 @@
-local LazyUtil = require("lazy.core.util")
-local LazyPlugin = require("lazy.core.plugin")
-
 local M = {}
 
 function M.bootstrap()
