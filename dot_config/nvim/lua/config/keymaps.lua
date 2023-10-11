@@ -51,6 +51,8 @@ map("n", "<leader>tC", function() ukeymaps.toggle("cursorcolumn") end, { desc = 
 map("n", "<leader>ti", function() ukeymaps.toggle("ignorecase") end, { desc = "Toggle 'ignorecase'" })
 map("n", "<leader>tl", function() ukeymaps.toggle("list") end, { desc = "Toggle 'list'" })
 map("n", "<leader>tb", function() ukeymaps.toggle("background", false, {"dark", "light"}) end, { desc = "Toggle 'background'" })
+map("n", "<leader>tf", function() require("util.format").toggle() end, { desc = "Toggle auto format (global)" })
+map("n", "<leader>tF", function() require("util.format").toggle(true) end, { desc = "Toggle auto format (buffer)" })
 
 map({ "n", "v" }, "<leader>cf", function()
   require("plugins.lsp.format").format({ force = true })
