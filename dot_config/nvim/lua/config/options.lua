@@ -1,4 +1,5 @@
 local g, opt = vim.g, vim.opt
+local ftadd = vim.filetype.add
 
 g.mapleader = " "
 g.maplocalleader = "\\"
@@ -59,3 +60,5 @@ opt.wildignorecase = true
 opt.wildmode = "longest:full,full"
 opt.winminwidth = 5
 opt.wrap = false
+
+ftadd({ extension = { aspx = "html" } })
