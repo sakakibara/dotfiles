@@ -617,10 +617,10 @@ return {
               return require("telescope.actions").cycle_history_prev(...)
             end,
             ["<C-n>"] = function(...)
-              return require("telescope.actions").preview_scrolling_down(...)
+              return require("telescope.actions").move_selection_next(...)
             end,
             ["<C-p>"] = function(...)
-              return require("telescope.actions").preview_scrolling_up(...)
+              return require("telescope.actions").move_selection_previous(...)
             end,
             ["<M-p>"] = function(...)
               return require("telescope.actions.layout").toggle_preview(...)
