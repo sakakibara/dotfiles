@@ -24,12 +24,14 @@ M.lazy_file_events = { "BufReadPost", "BufNewFile", "BufWritePre" }
 function M.lazy_file()
   M.use_lazy_file = M.use_lazy_file and vim.fn.argc(-1) > 0
   ---@diagnostic disable-next-line: undefined-field
-  M.use_lazy_file = M.use_lazy_file and require("lazy.core.handler.event").trigger_events == nil
-  M.use_lazy_file = false
+  local LazyEvent = require("lazy.core.handler.event")
 
-  M.fix_lazy_file()
-
-  if not M.use_lazy_file then
+  if M.use_lazy_file then
+    LazyEvent.mappings.LazyFile = { id = "LazyFile", event = "User", pattern = "LazyFile" }
+    LazyEvent.mappings["User LazyFile"] = LazyEvent.mappings.LazyFile
+  else
+    LazyEvent.mappings.LazyFile = { id = "LazyFile", event = { "BufReadPost", "BufNewFile", "BufWritePre" } }
+    LazyEvent.mappings["User LazyFile"] = LazyEvent.mappings.LazyFile
     return
   end
 
@@ -39,9 +41,7 @@ function M.lazy_file()
     if #events == 0 then
       return
     end
-    local LazyEvent = require("lazy.core.handler.event")
     vim.api.nvim_del_augroup_by_name("lazy_file")
-    LazyUtil.track({ event = "Core.lazy_file" })
 
     local skips = {}
     for _, event in ipairs(events) do
@@ -65,7 +65,6 @@ function M.lazy_file()
     end
     vim.api.nvim_exec_autocmds("CursorMoved", { modeline = false })
     events = {}
-    LazyUtil.track()
   end
 
   load = vim.schedule_wrap(load)
@@ -77,31 +76,6 @@ function M.lazy_file()
       load()
     end,
   })
-end
-
-function M.fix_lazy_file()
-  local LazyHandler = require("lazy.core.handler")
-  local LazyEvent = require("lazy.core.handler.event")
-  if M.use_lazy_file then
-    local _event = LazyEvent._event
-    ---@diagnostic disable-next-line: duplicate-set-field
-    LazyEvent._event = function(self, value)
-      return value == "LazyFile" and "User LazyFile" or _event(self, value)
-    end
-  else
-    ---@diagnostic disable-next-line: duplicate-set-field
-    function LazyEvent:values(plugin)
-      local ret = LazyHandler.values(self, plugin)
-      if ret["LazyFile"] or ret["User LazyFile"] then
-        for _, event in ipairs(M.lazy_file_events) do
-          ret[event] = event
-        end
-        ret["LazyFile"] = nil
-        ret["User LazyFile"] = nil
-      end
-      return ret
-    end
-  end
 end
 
 function M.has(plugin)
