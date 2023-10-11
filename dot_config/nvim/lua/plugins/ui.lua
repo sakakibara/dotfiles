@@ -133,6 +133,9 @@ return {
   {
     "stevearc/aerial.nvim",
     event = "LazyFile",
+    keys = {
+      { "<leader>ua", "<cmd>AerialToggle<cr>", desc = "Toggle aerial" },
+    },
     opts = {
       attach_mode = "global",
       backends = { "lsp", "treesitter", "markdown", "man" },
