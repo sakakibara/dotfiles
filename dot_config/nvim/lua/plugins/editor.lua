@@ -411,7 +411,7 @@ return {
         function()
           if require("trouble").is_open() then
             require("trouble").previous({ skip_groups = true, jump = true })
-          elseif require("util.lazy").has("qf_helper.nvim") then
+          elseif require("util.plugin").has("qf_helper.nvim") then
             vim.cmd("QPrev")
           else
             local ok, err = pcall(vim.cmd.cprev)
@@ -427,7 +427,7 @@ return {
         function()
           if require("trouble").is_open() then
             require("trouble").next({ skip_groups = true, jump = true })
-          elseif require("util.lazy").has("qf_helper.nvim") then
+          elseif require("util.plugin").has("qf_helper.nvim") then
             vim.cmd("QNext")
           else
             local ok, err = pcall(vim.cmd.cnext)

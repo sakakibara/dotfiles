@@ -1,3 +1,5 @@
+local LazyUtil = require("lazy.core.util")
+
 local M = {}
 
 M.remote_patterns = { "/mnt/" }
@@ -57,7 +59,7 @@ function M.get_path_segments(path)
   if cpath == "" then
     pwd = fnmod(cwd, ":~")
     if cwd ~= M.sep then
-       pwd = pwd .. M.sep
+      pwd = pwd .. M.sep
     end
     reldirpath = nil
     basename = "[No Name]"

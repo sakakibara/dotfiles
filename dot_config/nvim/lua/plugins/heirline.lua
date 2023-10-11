@@ -5,7 +5,7 @@ return {
     config = function()
       local conditions = require("heirline.conditions")
       local utils = require("heirline.utils")
-      local ulazy = require("util.lazy")
+      local uplugin = require("util.plugin")
       local upath = require("util.path")
       local icons = require("config.icons")
 
@@ -53,14 +53,14 @@ return {
       local Space = setmetatable({ provider = " " }, {
         __call = function(_, n)
           return { provider = string.rep(" ", n) }
-        end
+        end,
       })
       local BreadcrumbsSep = {
         provider = "  ",
         hl = { fg = "gray" },
       }
       local LeftCap = {
-        provider = '▌',
+        provider = "▌",
       }
 
       local ViMode = {
@@ -130,8 +130,7 @@ return {
           else
             local extension = vim.fn.fnamemodify(file_path, ":e")
             self.icon, self.icon_color =
-            require("nvim-web-devicons").get_icon_color(
-              file_path, extension, { default = true })
+              require("nvim-web-devicons").get_icon_color(file_path, extension, { default = true })
             self.icon = self.icon and self.icon .. " "
           end
         end,
@@ -141,7 +140,7 @@ return {
         hl = function(self)
           return { fg = self.icon_color }
         end,
-        update = { "BufWinEnter", "BufWritePost" }
+        update = { "BufWinEnter", "BufWritePost" },
       }
 
       local WorkDir = {
@@ -234,7 +233,7 @@ return {
             if opts.max_depth and opts.max_depth > 0 then
               start_index = #data - opts.max_depth
               if start_index > 0 then
-                children[#children + 1] =  {
+                children[#children + 1] = {
                   provider = icons.status.Ellipsis,
                   hl = { fg = "gray" },
                 }
@@ -249,9 +248,11 @@ return {
                   {
                     provider = shorten and d .. icons.status.Ellipsis or d,
                     hl = { fg = "gray" },
-                  }
+                  },
                 }
-                if #data > 1 and i < #data then child[#child + 1] = BreadcrumbsSep end
+                if #data > 1 and i < #data then
+                  child[#child + 1] = BreadcrumbsSep
+                end
                 children[#children + 1] = child
               end
             end
@@ -270,7 +271,7 @@ return {
           local data = self.data or {}
           local is_empty = vim.tbl_isempty(data)
           if opts.prefix and not is_empty then
-            children[#children + 1] =  BreadcrumbsSep
+            children[#children + 1] = BreadcrumbsSep
           end
           local start_index = 0
           if opts.max_depth and opts.max_depth > 0 then
@@ -280,7 +281,7 @@ return {
                 provider = icons.status.Ellipsis,
                 hl = { fg = "gray" },
               }
-              children[#children + 1] =  BreadcrumbsSep
+              children[#children + 1] = BreadcrumbsSep
             end
           end
           for i, d in ipairs(data) do
@@ -298,7 +299,7 @@ return {
                       symbol = symbol:sub(-opts.max_char) .. icons.status.Ellipsis
                     end
                     return symbol
-                  end
+                  end,
                 },
                 on_click = {
                   callback = function(_, minwid)
@@ -309,7 +310,9 @@ return {
                   name = "heirline_aerial",
                 },
               }
-              if #data > 1 and i < #data then child[#child + 1] = BreadcrumbsSep end
+              if #data > 1 and i < #data then
+                child[#child + 1] = BreadcrumbsSep
+              end
               children[#children + 1] = child
             end
             if opts.suffix and not is_empty then
@@ -325,7 +328,7 @@ return {
         {
           init = function(self)
             build_path_breadcrumbs({ suffix = true })(self)
-          end
+          end,
         },
         {
           init = function(self)
@@ -333,7 +336,7 @@ return {
               suffix = true,
               max_depth = 3,
             })(self)
-          end
+          end,
         },
         {
           init = function(self)
@@ -341,7 +344,7 @@ return {
               suffix = true,
               max_char = 1,
             })(self)
-          end
+          end,
         },
         {
           init = function(self)
@@ -350,7 +353,7 @@ return {
               max_char = 1,
               max_depth = 3,
             })(self)
-          end
+          end,
         },
         { provider = "" },
         update = {
@@ -432,8 +435,7 @@ return {
         end,
         init = function(self)
           self.fpath = upath.get_current_file_path()
-          self.pwd, self.reldirpath, self.basename =
-          upath.get_path_segments(self.fpath)
+          self.pwd, self.reldirpath, self.basename = upath.get_path_segments(self.fpath)
         end,
         WorkDir,
         DirPath,
@@ -560,7 +562,7 @@ return {
         {
           init = function(self)
             build_symbol_breadcrumbs({ prefix = true })(self)
-          end
+          end,
         },
         {
           init = function(self)
@@ -568,7 +570,7 @@ return {
               prefix = true,
               max_depth = 3,
             })(self)
-          end
+          end,
         },
         { provider = "" },
       }
@@ -620,7 +622,9 @@ return {
         init = function(self)
           ---@diagnostic disable-next-line: undefined-field
           self.status_dict = vim.b.gitsigns_status_dict
-          self.has_changes = self.status_dict.added ~= 0 or self.status_dict.removed ~= 0 or self.status_dict.changed ~= 0
+          self.has_changes = self.status_dict.added ~= 0
+            or self.status_dict.removed ~= 0
+            or self.status_dict.changed ~= 0
         end,
         on_click = {
           callback = function()
@@ -634,8 +638,7 @@ return {
         hl = { fg = "orange" },
         {
           provider = function(self)
-            return self.status_dict.head and
-              (" " .. self.status_dict.head .. " ")
+            return self.status_dict.head and (" " .. self.status_dict.head .. " ")
           end,
           hl = { bold = true },
         },
@@ -693,7 +696,7 @@ return {
         condition = function()
           local session
 
-          if ulazy.has("dap") then
+          if uplugin.has("dap") then
             session = require("dap").session()
           end
 
@@ -985,7 +988,7 @@ return {
             }, args.buf)
           end,
           colors = setup_colors,
-        }
+        },
       })
 
       vim.api.nvim_create_augroup("Heirline", { clear = true })

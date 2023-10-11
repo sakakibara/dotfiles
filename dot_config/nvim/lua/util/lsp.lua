@@ -34,4 +34,62 @@ function M.get_clients(...)
   return fn(...)
 end
 
+function M.get_config(server)
+  local configs = require("lspconfig.configs")
+  return rawget(configs, server)
+end
+
+function M.disable(server, cond)
+  local util = require("lspconfig.util")
+  local def = M.get_config(server)
+  ---@diagnostic disable-next-line: undefined-field
+  def.document_config.on_new_config = util.add_hook_before(def.document_config.on_new_config, function(config, root_dir)
+    if cond(root_dir, config) then
+      config.enabled = false
+    end
+  end)
+end
+
+function M.filter(name)
+  return function(client)
+    return client.name == name
+  end
+end
+
+function M.formatter(opts)
+  opts = opts or {}
+  local filter = opts.filter
+  filter = type(filter) == "string" and M.filter(filter) or filter
+  local ret = {
+    name = "LSP",
+    primary = true,
+    priority = 1,
+    format = function(buf)
+      M.format({ bufnr = buf, filter = filter })
+    end,
+    sources = function(buf)
+      local clients = M.get_clients({ bufnr = buf })
+      ---@param client lsp.Client
+      local ret = vim.tbl_filter(function(client)
+        return (not filter or filter(client))
+          and (
+            client.supports_method("textDocument/formatting")
+            or client.supports_method("textDocument/rangeFormatting")
+          )
+      end, clients)
+      ---@param client lsp.Client
+      return vim.tbl_map(function(client)
+        return client.name
+      end, ret)
+    end,
+  }
+  return vim.tbl_deep_extend("force", ret, opts)
+end
+
+function M.format(opts)
+  vim.lsp.buf.format(
+    vim.tbl_deep_extend("force", opts or {}, require("lazyvim.util").opts("nvim-lspconfig").format or {})
+  )
+end
+
 return M

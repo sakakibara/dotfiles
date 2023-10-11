@@ -171,7 +171,7 @@ return {
     config = function(_, opts)
       require("mini.ai").setup(opts)
 
-      require("util.lazy").on_load("which-key.nvim", function()
+      require("util.plugin").on_load("which-key.nvim", function()
         local i = {
           [" "] = "Whitespace",
           ['"'] = 'Balanced "',

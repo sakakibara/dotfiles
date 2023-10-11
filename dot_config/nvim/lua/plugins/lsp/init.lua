@@ -25,9 +25,10 @@ return {
       },
     },
     config = function(_, opts)
-      require("plugins.lsp.format").setup(opts)
+      local ulsp = require("util.lsp")
+      require("util.format").register(ulsp.formatter())
 
-      require("util.lsp").on_attach(function(client, buffer)
+      ulsp.on_attach(function(client, buffer)
         require("plugins.lsp.keymaps").on_attach(client, buffer)
       end)
 
@@ -52,7 +53,9 @@ return {
 
       local servers = opts.servers
       local has_cmp, cmp_nvim_lsp = pcall(require, "cmp_nvim_lsp")
-      local capabilities = vim.tbl_deep_extend( "force", {},
+      local capabilities = vim.tbl_deep_extend(
+        "force",
+        {},
         vim.lsp.protocol.make_client_capabilities(),
         has_cmp and cmp_nvim_lsp.default_capabilities() or {},
         opts.capabilities or {}
@@ -98,7 +101,7 @@ return {
       if have_mason then
         mlsp.setup({ ensure_installed = ensure_installed, handlers = { setup } })
       end
-    end
+    end,
   },
 
   {
@@ -136,5 +139,5 @@ return {
     "smjonas/inc-rename.nvim",
     event = "LazyFile",
     config = true,
-  }
+  },
 }

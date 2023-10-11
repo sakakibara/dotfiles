@@ -16,10 +16,21 @@ return {
     },
     init = function()
       vim.o.formatexpr = "v:lua.require'conform'.formatexpr()"
-      require("util.lazy").on_very_lazy(function()
-        require("plugins.lsp.format").custom_format = function(buf)
-          return require("conform").format({ bufnr = buf })
-        end
+      require("util.plugin").on_very_lazy(function()
+        require("util.format").register({
+          name = "conform.nvim",
+          priority = 100,
+          primary = true,
+          format = function(buf)
+            require("conform").format({ bufnr = buf })
+          end,
+          sources = function(buf)
+            local ret = require("conform").list_formatters(buf)
+            return vim.tbl_map(function(v)
+              return v.name
+            end, ret)
+          end,
+        })
       end)
     end,
     opts = {
