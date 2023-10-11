@@ -16,7 +16,7 @@ return {
         "tarPlugin",
         "tohtml",
         "tutor",
-        "zipPlugin"
+        "zipPlugin",
       },
     },
   },

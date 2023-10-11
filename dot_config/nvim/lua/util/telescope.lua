@@ -25,9 +25,7 @@ function M.func(picker, opts)
           local line = action_state.get_current_line()
           M.run(
             params.picker,
-            vim.tbl_deep_extend("force", {},
-              params.opts or {},
-              { cwd = false, default_text = line })
+            vim.tbl_deep_extend("force", {}, params.opts or {}, { cwd = false, default_text = line })
           )()
         end)
         return true

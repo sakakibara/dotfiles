@@ -13,8 +13,7 @@ vim.api.nvim_create_autocmd("BufWritePre", {
     local dir = vim.fn.fnamemodify(file, ":p:h")
     local message = "'" .. dir .. "' does not exist. Create? [y/N] "
     if vim.fn.isdirectory(dir) == 0 then
-      if force == 1
-        or vim.regex("^y\\%[es]$"):match_str(vim.fn.input(message)) then
+      if force == 1 or vim.regex("^y\\%[es]$"):match_str(vim.fn.input(message)) then
         vim.fn.mkdir(dir, "p")
       end
     end
@@ -25,13 +24,17 @@ local visual_mode_relnum = augroup("visual_mode_relnum")
 vim.api.nvim_create_autocmd("ModeChanged", {
   group = visual_mode_relnum,
   pattern = "*:[V\x16]*",
-  callback = function() vim.wo.relativenumber = vim.wo.number end,
+  callback = function()
+    vim.wo.relativenumber = vim.wo.number
+  end,
   desc = "Show relative line numbers",
 })
 vim.api.nvim_create_autocmd("ModeChanged", {
   group = visual_mode_relnum,
-  pattern = '[V\x16]*:*',
-  callback = function() vim.wo.relativenumber = string.find(vim.fn.mode(), '^[V\22]') ~= nil end,
+  pattern = "[V\x16]*:*",
+  callback = function()
+    vim.wo.relativenumber = string.find(vim.fn.mode(), "^[V\22]") ~= nil
+  end,
   desc = "Hide relative line numbers",
 })
 
@@ -39,7 +42,9 @@ if os.getenv("WSL_DISTRO_NAME") then
   vim.api.nvim_create_autocmd({ "BufRead", "BufNewFile" }, {
     group = augroup("disable_fixeol"),
     pattern = "/mnt/*",
-    callback = function() vim.opt_local.fixendofline = false end,
+    callback = function()
+      vim.opt_local.fixendofline = false
+    end,
     desc = "Do not fix end of line",
   })
 end

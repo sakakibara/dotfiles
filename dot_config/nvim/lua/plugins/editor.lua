@@ -37,64 +37,82 @@ return {
     keys = {
       {
         "<C-k>",
-        function() require("readline").kill_line() end,
+        function()
+          require("readline").kill_line()
+        end,
         desc = "Kill line",
         mode = "c",
       },
       {
         "<C-u>",
-        function() require("readline").backward_kill_line() end,
+        function()
+          require("readline").backward_kill_line()
+        end,
         desc = "Backward kill line",
         mode = "c",
       },
       {
         "<M-d>",
-        function() require("readline").kill_word() end,
+        function()
+          require("readline").kill_word()
+        end,
         desc = "Kill word",
         mode = "c",
       },
       {
         "<M-BS>",
-        function() require("readline").backward_kill_word() end,
+        function()
+          require("readline").backward_kill_word()
+        end,
         desc = "Backward kill word",
         mode = "c",
       },
       {
         "<C-w>",
-        function() require("readline").unix_word_rubout() end,
+        function()
+          require("readline").unix_word_rubout()
+        end,
         desc = "Unix word rubout",
         mode = "c",
       },
-      { "<C-d>", "<delete>", desc = "Delete character", mode = "c", },
-      { "<C-h>", "<bs>", desc = "Backward delete character", mode = "c", },
+      { "<C-d>", "<delete>", desc = "Delete character", mode = "c" },
+      { "<C-h>", "<bs>", desc = "Backward delete character", mode = "c" },
       {
         "<C-a>",
-        function() require("readline").beginning_of_line() end,
+        function()
+          require("readline").beginning_of_line()
+        end,
         desc = "Beginning of line",
         mode = "c",
       },
       {
         "<C-e>",
-        function() require("readline").end_of_line() end,
+        function()
+          require("readline").end_of_line()
+        end,
         desc = "End of line",
         mode = "c",
       },
       {
         "<M-f>",
-        function() require("readline").forward_word() end,
+        function()
+          require("readline").forward_word()
+        end,
         desc = "Forward word",
         mode = "c",
       },
       {
         "<M-b>",
-        function() require("readline").backward_word() end,
+        function()
+          require("readline").backward_word()
+        end,
         desc = "Backward word",
         mode = "c",
       },
-      { "<C-f>", "<right>", desc = "Forward char", mode = "c", },
-      { "<C-b>", "<left>", desc = "Backward char", mode = "c", },
-      { "<C-n>", "<down>", desc = "Next line", mode = "c", },
-      { "<C-p>", "<up>", desc = "Previous line", mode = "c", },
+      { "<C-f>", "<right>", desc = "Forward char", mode = "c" },
+      { "<C-b>", "<left>", desc = "Backward char", mode = "c" },
+      { "<C-n>", "<down>", desc = "Next line", mode = "c" },
+      { "<C-p>", "<up>", desc = "Previous line", mode = "c" },
     },
   },
 
@@ -119,8 +137,20 @@ return {
   {
     "echasnovski/mini.bufremove",
     keys = {
-      { "<leader>bd", function() require("mini.bufremove").delete(0, false) end, desc = "Delete buffer" },
-      { "<leader>bD", function() require("mini.bufremove").delete(0, true) end, desc = "Delete buffer (force)" },
+      {
+        "<leader>bd",
+        function()
+          require("mini.bufremove").delete(0, false)
+        end,
+        desc = "Delete buffer",
+      },
+      {
+        "<leader>bD",
+        function()
+          require("mini.bufremove").delete(0, true)
+        end,
+        desc = "Delete buffer (force)",
+      },
     },
   },
 
@@ -129,7 +159,7 @@ return {
     event = "VeryLazy",
     opts = {
       mappings = {
-        toggle = "gs"
+        toggle = "gs",
       },
     },
   },
@@ -138,7 +168,7 @@ return {
     "max397574/better-escape.nvim",
     event = "InsertEnter",
     opts = {
-      mapping = {"jk"}
+      mapping = { "jk" },
     },
   },
 
@@ -147,40 +177,52 @@ return {
     keys = {
       {
         "<C-a>",
-        function() return require("dial.map").inc_normal() end,
+        function()
+          return require("dial.map").inc_normal()
+        end,
         expr = true,
         desc = "Increment",
       },
       {
         "<C-x>",
-        function() return require("dial.map").dec_normal() end,
+        function()
+          return require("dial.map").dec_normal()
+        end,
         expr = true,
         desc = "Decrement",
       },
       {
         "<C-a>",
-        function() return require("dial.map").inc_visual() end,
+        function()
+          return require("dial.map").inc_visual()
+        end,
         expr = true,
         desc = "Increment",
         mode = "v",
       },
       {
         "<C-x>",
-        function() return require("dial.map").dec_visual() end,
+        function()
+          return require("dial.map").dec_visual()
+        end,
         expr = true,
         desc = "Decrement",
         mode = "v",
       },
       {
         "g<C-a>",
-        function() return require("dial.map").inc_gvisual() end,
+        function()
+          return require("dial.map").inc_gvisual()
+        end,
         expr = true,
         desc = "Increment",
         mode = "v",
       },
       {
         "g<C-x>",
-        function() return require("dial.map").dec_gvisual() end,
+        function()
+          return require("dial.map").dec_gvisual()
+        end,
         expr = true,
         desc = "Decrement",
         mode = "v",
@@ -249,7 +291,7 @@ return {
         })
         task:start()
       end, { nargs = "*", bang = true, complete = "file" })
-    end
+    end,
   },
 
   {
@@ -269,8 +311,20 @@ return {
       require("illuminate").configure(opts)
     end,
     keys = {
-      { "]]", function() require("illuminate").goto_next_reference(false) end, desc = "Next reference", },
-      { "[[", function() require("illuminate").goto_prev_reference(false) end, desc = "Prev reference" },
+      {
+        "]]",
+        function()
+          require("illuminate").goto_next_reference(false)
+        end,
+        desc = "Next reference",
+      },
+      {
+        "[[",
+        function()
+          require("illuminate").goto_prev_reference(false)
+        end,
+        desc = "Prev reference",
+      },
     },
   },
 
@@ -285,11 +339,46 @@ return {
       },
     },
     keys = {
-      { "<c-s>", mode = { "n", "o", "x" }, function() require("flash").jump() end, desc = "Flash" },
-      { "<m-s>", mode = { "n", "o", "x" }, function() require("flash").treesitter() end, desc = "Flash treesitter" },
-      { "r", mode = "o", function() require("flash").remote() end, desc = "Remote flash" },
-      { "R", mode = { "o", "x" }, function() require("flash").treesitter_search() end, desc = "Treesitter search" },
-      { "<c-s>", mode = { "c" }, function() require("flash").toggle() end, desc = "Toggle flash search" },
+      {
+        "<c-s>",
+        mode = { "n", "o", "x" },
+        function()
+          require("flash").jump()
+        end,
+        desc = "Flash",
+      },
+      {
+        "<m-s>",
+        mode = { "n", "o", "x" },
+        function()
+          require("flash").treesitter()
+        end,
+        desc = "Flash treesitter",
+      },
+      {
+        "r",
+        mode = "o",
+        function()
+          require("flash").remote()
+        end,
+        desc = "Remote flash",
+      },
+      {
+        "R",
+        mode = { "o", "x" },
+        function()
+          require("flash").treesitter_search()
+        end,
+        desc = "Treesitter search",
+      },
+      {
+        "<c-s>",
+        mode = { "c" },
+        function()
+          require("flash").toggle()
+        end,
+        desc = "Toggle flash search",
+      },
     },
   },
 
@@ -348,9 +437,13 @@ return {
         map("n", "<leader>ghu", gs.undo_stage_hunk, "Undo Stage Hunk")
         map("n", "<leader>ghR", gs.reset_buffer, "Reset Buffer")
         map("n", "<leader>ghp", gs.preview_hunk, "Preview Hunk")
-        map("n", "<leader>ghb", function() gs.blame_line({ full = true }) end, "Blame Line")
+        map("n", "<leader>ghb", function()
+          gs.blame_line({ full = true })
+        end, "Blame Line")
         map("n", "<leader>ghd", gs.diffthis, "Diff This")
-        map("n", "<leader>ghD", function() gs.diffthis("~") end, "Diff This ~")
+        map("n", "<leader>ghD", function()
+          gs.diffthis("~")
+        end, "Diff This ~")
         map({ "o", "x" }, "ih", ":<C-U>Gitsigns select_hunk<CR>", "GitSigns Select Hunk")
       end,
     },
@@ -394,7 +487,7 @@ return {
       loclist = {
         track_location = false,
       },
-    }
+    },
   },
 
   {
@@ -467,10 +560,19 @@ return {
       { "<leader>rsg", utelescope.func("live_grep", { cwd = parent_path }), desc = "Grep (relative)" },
       { "<leader>sw", utelescope.func("grep_string", { cwd = root_path, word_match = "-w" }), desc = "Word" },
       { "<leader>sW", utelescope.func("grep_string", { cwd = false, word_match = "-w" }), desc = "Word (cwd)" },
-      { "<leader>rsw", utelescope.func("grep_string", { cwd = parent_path, word_match = "-w" }), desc = "Word (relative)" },
+      {
+        "<leader>rsw",
+        utelescope.func("grep_string", { cwd = parent_path, word_match = "-w" }),
+        desc = "Word (relative)",
+      },
       { "<leader>sw", utelescope.func("grep_string", { cwd = root_path }), mode = "v", desc = "Selection" },
       { "<leader>sW", utelescope.func("grep_string", { cwd = false }), mode = "v", desc = "Selection (cwd)" },
-      { "<leader>srw", utelescope.func("grep_string", { cwd = parent_path }), mode = "v", desc = "Selection (relative)" },
+      {
+        "<leader>srw",
+        utelescope.func("grep_string", { cwd = parent_path }),
+        mode = "v",
+        desc = "Selection (relative)",
+      },
       { '<leader>s"', "<cmd>Telescope registers<cr>", desc = "Registers" },
       { "<leader>ss", "<cmd>Telescope current_buffer_fuzzy_find<cr>", desc = "Fuzzy search buffer lines" },
       { "<leader>sc", "<cmd>Telescope command_history<cr>", desc = "Command history" },
@@ -634,7 +736,7 @@ return {
     config = function(_, opts)
       require("telescope").setup(opts)
       require("telescope").load_extension("fzf")
-    end
+    end,
   },
   {
     "nvim-telescope/telescope-live-grep-args.nvim",
@@ -645,7 +747,7 @@ return {
     },
     config = function()
       require("telescope").load_extension("live_grep_args")
-    end
+    end,
   },
   {
     "nvim-telescope/telescope-file-browser.nvim",
@@ -658,7 +760,7 @@ return {
     },
     config = function()
       require("telescope").load_extension("file_browser")
-    end
+    end,
   },
   {
     "nvim-telescope/telescope-frecency.nvim",
@@ -669,7 +771,7 @@ return {
     },
     config = function()
       require("telescope").load_extension("frecency")
-    end
+    end,
   },
   {
     "debugloop/telescope-undo.nvim",
@@ -678,7 +780,7 @@ return {
     },
     config = function()
       require("telescope").load_extension("undo")
-    end
+    end,
   },
   {
     "jvgrootveld/telescope-zoxide",
@@ -687,18 +789,26 @@ return {
     },
     config = function()
       require("telescope").load_extension("zoxide")
-    end
+    end,
   },
 
   {
     "mickael-menu/zk-nvim",
     keys = {
       { "<leader>nn", "<cmd>ZkNew { title = vim.fn.input('Title: ') }<cr>", desc = "Create zk note" },
-      { "<leader>nj", "<cmd>ZkNew { dir = os.getenv('ZK_NOTEBOOK_DIR') .. require('util.path').sep .. 'journal', group = 'journal' }<cr>", desc = "Create zk journal note" },
+      {
+        "<leader>nj",
+        "<cmd>ZkNew { dir = os.getenv('ZK_NOTEBOOK_DIR') .. require('util.path').sep .. 'journal', group = 'journal' }<cr>",
+        desc = "Create zk journal note",
+      },
       { "<leader>nf", "<cmd>ZkNotes { sort = { 'modified' } }<cr>", desc = "Open zk note" },
       { "<leader>ns", "<cmd>ZkGrep<cr>", desc = "Search zk note" },
       { "<leader>nt", "<cmd>ZkTags<cr>", desc = "Open zk note by tags" },
-      { "<leader>no", "<cmd>ZkNotes { sort = { 'modified' }, match = { vim.fn.input('Search : ') } }<cr>", desc = "Open zk note by tags" },
+      {
+        "<leader>no",
+        "<cmd>ZkNotes { sort = { 'modified' }, match = { vim.fn.input('Search : ') } }<cr>",
+        desc = "Open zk note by tags",
+      },
       { "<leader>nr", "<cmd>ZkIndex<cr>", desc = "Refresh zk index" },
     },
     opts = {
@@ -711,7 +821,7 @@ return {
         auto_attach = {
           enabled = true,
           filetypes = { "markdown" },
-        }
+        },
       },
     },
     config = function(_, opts)

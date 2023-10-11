@@ -8,11 +8,41 @@ return {
     },
     event = "LazyFile",
     keys = {
-      { "zR", function() require("ufo").openAllFolds() end, desc = "Open all folds" },
-      { "zM", function() require("ufo").closeAllFolds() end, desc = "Close all folds" },
-      { "zr", function() require("ufo").openFoldsExceptKinds() end, desc = "Fold less" },
-      { "zm", function() require("ufo").closeFoldsWith() end, desc = "Fold more" },
-      { "zp", function() require("ufo").peekFoldedLinesUnderCursor() end, desc = "Peek fold" },
+      {
+        "zR",
+        function()
+          require("ufo").openAllFolds()
+        end,
+        desc = "Open all folds",
+      },
+      {
+        "zM",
+        function()
+          require("ufo").closeAllFolds()
+        end,
+        desc = "Close all folds",
+      },
+      {
+        "zr",
+        function()
+          require("ufo").openFoldsExceptKinds()
+        end,
+        desc = "Fold less",
+      },
+      {
+        "zm",
+        function()
+          require("ufo").closeFoldsWith()
+        end,
+        desc = "Fold more",
+      },
+      {
+        "zp",
+        function()
+          require("ufo").peekFoldedLinesUnderCursor()
+        end,
+        desc = "Peek fold",
+      },
     },
     opts = {
       provider_selector = function(_, filetype, _)
@@ -54,10 +84,9 @@ return {
         suffix = " ⋯  " .. (" "):rep(rAlignAppndx) .. suffix
         table.insert(newVirtText, { suffix, "MoreMsg" })
         return newVirtText
-      end
+      end,
     },
   },
-
 
   {
     "stevearc/dressing.nvim",
@@ -144,8 +173,8 @@ return {
           "tsv",
         },
       },
-      scope = { enabled = false, },
-      whitespace = { remove_blankline_trail = false, },
+      scope = { enabled = false },
+      whitespace = { remove_blankline_trail = false },
     },
   },
 
@@ -188,7 +217,7 @@ return {
           { "l", "5zl", { desc = "←/→" } },
           { "H", "zH" },
           { "L", "zL", { desc = "half screen ←/→" } },
-        }
+        },
       })
     end,
   },
@@ -196,7 +225,13 @@ return {
   {
     "stevearc/oil.nvim",
     keys = {
-      { "-", function() require("oil").open() end, desc = "Open parent directory" },
+      {
+        "-",
+        function()
+          require("oil").open()
+        end,
+        desc = "Open parent directory",
+      },
     },
     init = function()
       if vim.fn.argc() == 1 then
@@ -215,7 +250,7 @@ return {
         {
           "mtime",
           highlight = "Statement",
-          format = "%y-%m-%d %T"
+          format = "%y-%m-%d %T",
         },
       },
       buf_options = {
@@ -316,7 +351,7 @@ return {
         callback = function()
           vim.opt_local.number = false
           vim.opt_local.relativenumber = false
-        end
+        end,
       })
     end,
     dependencies = { "nvim-tree/nvim-web-devicons" },
@@ -386,6 +421,6 @@ return {
         { event = events.FILE_RENAMED, handler = on_move },
       })
       require("neo-tree").setup(opts)
-    end
+    end,
   },
 }

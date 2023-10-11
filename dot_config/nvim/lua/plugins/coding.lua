@@ -14,12 +14,12 @@ return {
 
   {
     "altermo/ultimate-autopair.nvim",
-    event={
+    event = {
       "InsertEnter",
-      "CmdlineEnter"
+      "CmdlineEnter",
     },
-    branch="v0.6",
-    opts={},
+    branch = "v0.6",
+    opts = {},
   },
 
   {
@@ -32,7 +32,7 @@ return {
     event = "BufEnter",
     init = function()
       vim.g.matchup_matchparen_offscreen = { method = "popup" }
-    end
+    end,
   },
 
   {
@@ -121,6 +121,7 @@ return {
           { name = "luasnip" },
           { name = "buffer" },
           { name = "path" },
+          { name = "neorg" },
         }),
         formatting = {
           format = function(_, item)
@@ -161,8 +162,8 @@ return {
               from = { line = 1, col = 1 },
               to = {
                 line = fn.line("$"),
-                col = math.max(fn.getline("$"):len(), 1)
-              }
+                col = math.max(fn.getline("$"):len(), 1),
+              },
             }
           end,
         },
@@ -239,7 +240,13 @@ return {
       }
     end,
     keys = {
-      { "<leader>y", function() require("telescope").extensions.yank_history.yank_history({ }) end, desc = "Open yank history" },
+      {
+        "<leader>y",
+        function()
+          require("telescope").extensions.yank_history.yank_history({})
+        end,
+        desc = "Open yank history",
+      },
       { "y", "<Plug>(YankyYank)", mode = { "n", "x" }, desc = "Yank text" },
       { "p", "<Plug>(YankyPutAfter)", mode = { "n", "x" }, desc = "Put yanked text after cursor" },
       { "P", "<Plug>(YankyPutBefore)", mode = { "n", "x" }, desc = "Put yanked text before cursor" },

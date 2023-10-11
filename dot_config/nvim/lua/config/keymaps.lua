@@ -31,7 +31,7 @@ map("n", "]f", ufile.next_file, { desc = "Next file" })
 map("n", "[F", ufile.first_file, { desc = "First file" })
 map("n", "]F", ufile.last_file, { desc = "Last file" })
 
-map("n", "[ ", "v:lua.KeymapsUtil.put_empty_line(v:true)",  { expr = true, desc = "Add empty line above" })
+map("n", "[ ", "v:lua.KeymapsUtil.put_empty_line(v:true)", { expr = true, desc = "Add empty line above" })
 map("n", "] ", "v:lua.KeymapsUtil.put_empty_line(v:false)", { expr = true, desc = "Add empty line below" })
 
 map("n", "<leader>ul", "<cmd>Lazy<cr>", { desc = "Lazy" })
@@ -39,20 +39,61 @@ map("n", "<leader>ul", "<cmd>Lazy<cr>", { desc = "Lazy" })
 map("n", "<leader>qq", "<cmd>qa<cr>", { desc = "Quit all" })
 
 local conceallevel = vim.o.conceallevel > 0 and vim.o.conceallevel or 3
-map("n", "<leader>to", function() ukeymaps.toggle("conceallevel", false, {0, conceallevel}) end, { desc = "Toggle conceal" })
-map("n", "<leader>td", function() ukeymaps.toggle_diagnostics() end, { desc = "Toggle diagnostic" })
-map("n", "<leader>tn", function() ukeymaps.toggle_number() end, { desc = "Toggle line numbers" })
-map("n", "<leader>tN", function() ukeymaps.toggle("number") end, { desc = "Toggle 'number'" })
-map("n", "<leader>tr", function() ukeymaps.toggle("relativenumber") end, { desc = "Toggle 'relativenumber'" })
-map("n", "<leader>ts", function() ukeymaps.toggle("spell") end, { desc = "Toggle 'spell'" })
-map("n", "<leader>tw", function() ukeymaps.toggle("wrap") end, { desc = "Toggle 'wrap'" })
-map("n", "<leader>tc", function() ukeymaps.toggle("cursorline") end, { desc = "Toggle 'cursorline'" })
-map("n", "<leader>tC", function() ukeymaps.toggle("cursorcolumn") end, { desc = "Toggle 'cursorcolumn'" })
-map("n", "<leader>ti", function() ukeymaps.toggle("ignorecase") end, { desc = "Toggle 'ignorecase'" })
-map("n", "<leader>tl", function() ukeymaps.toggle("list") end, { desc = "Toggle 'list'" })
-map("n", "<leader>tb", function() ukeymaps.toggle("background", false, {"dark", "light"}) end, { desc = "Toggle 'background'" })
-map("n", "<leader>tf", function() require("util.format").toggle() end, { desc = "Toggle auto format (global)" })
-map("n", "<leader>tF", function() require("util.format").toggle(true) end, { desc = "Toggle auto format (buffer)" })
+map("n", "<leader>to", function()
+  ukeymaps.toggle("conceallevel", false, { 0, conceallevel })
+end, { desc = "Toggle conceal" })
+
+map("n", "<leader>td", function()
+  ukeymaps.toggle_diagnostics()
+end, { desc = "Toggle diagnostic" })
+
+map("n", "<leader>tn", function()
+  ukeymaps.toggle_number()
+end, { desc = "Toggle line numbers" })
+
+map("n", "<leader>tN", function()
+  ukeymaps.toggle("number")
+end, { desc = "Toggle 'number'" })
+
+map("n", "<leader>tr", function()
+  ukeymaps.toggle("relativenumber")
+end, { desc = "Toggle 'relativenumber'" })
+
+map("n", "<leader>ts", function()
+  ukeymaps.toggle("spell")
+end, { desc = "Toggle 'spell'" })
+
+map("n", "<leader>tw", function()
+  ukeymaps.toggle("wrap")
+end, { desc = "Toggle 'wrap'" })
+
+map("n", "<leader>tc", function()
+  ukeymaps.toggle("cursorline")
+end, { desc = "Toggle 'cursorline'" })
+
+map("n", "<leader>tC", function()
+  ukeymaps.toggle("cursorcolumn")
+end, { desc = "Toggle 'cursorcolumn'" })
+
+map("n", "<leader>ti", function()
+  ukeymaps.toggle("ignorecase")
+end, { desc = "Toggle 'ignorecase'" })
+
+map("n", "<leader>tl", function()
+  ukeymaps.toggle("list")
+end, { desc = "Toggle 'list'" })
+
+map("n", "<leader>tb", function()
+  ukeymaps.toggle("background", false, { "dark", "light" })
+end, { desc = "Toggle 'background'" })
+
+map("n", "<leader>tf", function()
+  require("util.format").toggle()
+end, { desc = "Toggle auto format (global)" })
+
+map("n", "<leader>tF", function()
+  require("util.format").toggle(true)
+end, { desc = "Toggle auto format (buffer)" })
 
 map({ "n", "v" }, "<leader>cf", function()
   require("plugins.lsp.format").format({ force = true })

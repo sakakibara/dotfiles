@@ -13,7 +13,7 @@ function M.lazygit_toggle()
       height = 100000,
     },
     on_open = function(_)
-      vim.cmd "startinsert!"
+      vim.cmd("startinsert!")
     end,
     on_close = function(_) end,
     count = 99,

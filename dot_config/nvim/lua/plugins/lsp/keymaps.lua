@@ -6,14 +6,33 @@ function M.get()
   if M._keys then
     return M._keys
   end
-  M._keys =  {
+  M._keys = {
     { "<leader>cd", vim.diagnostic.open_float, desc = "Line diagnostics" },
     { "<leader>cl", "<cmd>LspInfo<cr>", desc = "Lsp info" },
-    { "gd", function() require("telescope.builtin").lsp_definitions({ reuse_win = true }) end, desc = "Goto definition", has = "definition" },
+    {
+      "gd",
+      function()
+        require("telescope.builtin").lsp_definitions({ reuse_win = true })
+      end,
+      desc = "Goto definition",
+      has = "definition",
+    },
     { "gr", "<cmd>Telescope lsp_references<cr>", desc = "References" },
     { "gD", vim.lsp.buf.declaration, desc = "Goto declaration" },
-    { "gI", function() require("telescope.builtin").lsp_implementations({ reuse_win = true }) end, desc = "Goto implementation" },
-    { "gy", function() require("telescope.builtin").lsp_type_definitions({ reuse_win = true }) end, desc = "Goto t[y]pe Definition" },
+    {
+      "gI",
+      function()
+        require("telescope.builtin").lsp_implementations({ reuse_win = true })
+      end,
+      desc = "Goto implementation",
+    },
+    {
+      "gy",
+      function()
+        require("telescope.builtin").lsp_type_definitions({ reuse_win = true })
+      end,
+      desc = "Goto t[y]pe Definition",
+    },
     { "K", vim.lsp.buf.hover, desc = "Hover" },
     { "gK", vim.lsp.buf.signature_help, desc = "Signature help", has = "signatureHelp" },
     { "<c-k>", vim.lsp.buf.signature_help, mode = "i", desc = "Signature help", has = "signatureHelp" },
@@ -38,7 +57,7 @@ function M.get()
       end,
       desc = "Source action",
       has = "codeAction",
-    }
+    },
   }
   if require("util.plugin").has("inc-rename.nvim") then
     M._keys[#M._keys + 1] = {
