@@ -847,6 +847,83 @@ return {
         end,
       }
 
+      local Fold = {
+        condition = function()
+          return vim.opt.foldcolumn:get() ~= "0"
+        end,
+        provider = function()
+          local fillchars = vim.opt.fillchars:get()
+          local foldopen = fillchars.foldopen
+          local foldclosed = fillchars.foldclose
+          local foldsep = fillchars.foldsep
+          local ffi = require("util.ffi")
+          local wp = ffi.C.find_window_by_handle(0, ffi.new("Error"))
+          local width = ffi.C.compute_foldcolumn(wp, 0)
+          local foldinfo = width > 0 and ffi.C.fold_info(wp, vim.v.lnum)
+            or { start = 0, level = 0, llevel = 0, lines = 0 }
+          local str = ""
+          if width ~= 0 then
+            str = vim.v.relnum > 0 and "%#FoldColumn#" or "%#CursorLineFold#"
+            if foldinfo.level == 0 then
+              str = str .. (" "):rep(width)
+            else
+              local closed = foldinfo.lines > 0
+              local first_level = foldinfo.level - width - (closed and 1 or 0) + 1
+              if first_level < 1 then
+                first_level = 1
+              end
+
+              for col = 1, width do
+                str = str
+                  .. (
+                    (vim.v.virtnum ~= 0 and foldsep)
+                    or ((closed and (col == foldinfo.level or col == width)) and foldclosed)
+                    or ((foldinfo.start == vim.v.lnum and first_level + col > foldinfo.llevel) and foldopen)
+                    or foldsep
+                  )
+                if col == foldinfo.level then
+                  str = str .. (" "):rep(width - col)
+                  break
+                end
+              end
+            end
+          end
+          return str .. "%* "
+        end,
+      }
+
+      local Nu = {
+        condition = function()
+          return vim.opt.number:get() or vim.opt.relativenumber:get()
+        end,
+        provider = function(self)
+          local num, relnum = vim.opt.number:get(), vim.opt.relativenumber:get()
+          local lnum, rnum, virtnum = vim.v.lnum, vim.v.relnum, vim.v.virtnum
+          local signs = vim.opt.signcolumn:get():find("nu")
+            and vim.fn.sign_getplaced(self.bufnr or vim.api.nvim_get_current_buf(), { group = "*", lnum = lnum })[1].signs
+          local str
+          if virtnum ~= 0 then
+            str = "%="
+          elseif signs and #signs > 0 then
+            local sign = vim.fn.sign_getdefined(signs[1].name)[1]
+            str = "%=%#" .. sign.texthl .. "#" .. sign.text .. "%*"
+          elseif not num and not relnum then
+            str = "%="
+          else
+            local cur = relnum and (rnum > 0 and rnum or (num and lnum or 0)) or lnum
+            str = (rnum == 0 and relnum) and cur .. "%=" or "%=" .. cur
+          end
+          return str
+        end,
+      }
+
+      Signs = {
+        condition = function()
+          return vim.opt.signcolumn:get() ~= "no"
+        end,
+        provider = "%s",
+      }
+
       ViMode = { MacroRec, ViMode }
 
       local DefaultStatusline = {
@@ -977,9 +1054,17 @@ return {
         Align,
       }
 
+      local StatusColumns = {
+        Signs,
+        Align,
+        Nu,
+        Fold,
+      }
+
       require("heirline").setup({
         statusline = StatusLines,
         winbar = WinBar,
+        statuscolumn = StatusColumns,
         opts = {
           disable_winbar_cb = function(args)
             return conditions.buffer_matches({
