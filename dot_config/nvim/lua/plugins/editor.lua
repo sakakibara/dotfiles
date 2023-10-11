@@ -33,6 +33,14 @@ return {
   },
 
   {
+    "antoinemadec/FixCursorHold.nvim",
+    event = "UIEnter",
+    init = function()
+      vim.g.cursorhold_updatetime = 100
+    end,
+  },
+
+  {
     "linty-org/readline.nvim",
     keys = {
       {
