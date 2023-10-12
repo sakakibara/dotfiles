@@ -212,6 +212,19 @@ return {
   },
 
   {
+    "nvim-treesitter/nvim-treesitter-context",
+    event = "VeryLazy",
+    cmd = {
+      "TSContextEnable",
+      "TSContextDisable",
+      "TSContextToggle",
+    },
+    keys = {
+      { "<leader>uc", "<cmd>TSContextToggle<cr>", desc = "Toggle treesitter context" },
+    },
+  },
+
+  {
     "anuvyklack/hydra.nvim",
     event = "VeryLazy",
     config = function()
