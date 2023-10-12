@@ -207,6 +207,11 @@ return {
   },
 
   {
+    "Bekaboo/deadcolumn.nvim",
+    event = "VeryLazy",
+  },
+
+  {
     "anuvyklack/hydra.nvim",
     event = "VeryLazy",
     config = function()

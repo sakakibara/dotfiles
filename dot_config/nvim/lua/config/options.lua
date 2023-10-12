@@ -7,6 +7,7 @@ g.markdown_recommended_style = 0
 
 opt.autowrite = true
 opt.clipboard:prepend("unnamedplus")
+opt.colorcolumn = "+0"
 opt.conceallevel = 3
 opt.confirm = true
 opt.cursorline = false
@@ -52,6 +53,7 @@ opt.splitkeep = "screen"
 opt.splitright = true
 opt.tabstop = 2
 opt.termguicolors = true
+opt.textwidth = 80
 opt.timeoutlen = 300
 opt.undofile = true
 opt.undolevels = 10000
