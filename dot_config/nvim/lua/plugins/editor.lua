@@ -459,6 +459,18 @@ return {
   },
 
   {
+    "AckslD/muren.nvim",
+    cmd = {
+      "MurenToggle",
+      "MurenOpen",
+      "MurenClose",
+      "MurenFresh",
+      "MurenUnique",
+    },
+    opts = {},
+  },
+
+  {
     "stefandtw/quickfix-reflector.vim",
     ft = "qf",
     init = function()
