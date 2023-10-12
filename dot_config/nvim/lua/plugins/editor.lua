@@ -23,6 +23,7 @@ return {
         ["<leader>u"] = { name = "+ui" },
         ["["] = { name = "+prev" },
         ["]"] = { name = "+next" },
+        ["gs"] = { name = "+surround" },
       },
     },
     config = function(_, opts)
@@ -167,7 +168,7 @@ return {
     event = "VeryLazy",
     opts = {
       mappings = {
-        toggle = "gs",
+        toggle = "gS",
       },
     },
   },
@@ -348,7 +349,7 @@ return {
     },
     keys = {
       {
-        "<c-s>",
+        "s",
         mode = { "n", "o", "x" },
         function()
           require("flash").jump()
@@ -356,7 +357,7 @@ return {
         desc = "Flash",
       },
       {
-        "<m-s>",
+        "S",
         mode = { "n", "o", "x" },
         function()
           require("flash").treesitter()
