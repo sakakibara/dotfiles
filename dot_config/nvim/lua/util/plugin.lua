@@ -1,18 +1,78 @@
+local LazyUtil = require("lazy.core.util")
+
 local M = {}
+
+function M.setup(opts)
+  require("lazy").setup(opts)
+
+  local no_argc = vim.fn.argc(-1) == 0
+  if not no_argc then
+    M.load("autocmds")
+  end
+
+  vim.api.nvim_create_autocmd("User", {
+    group = vim.api.nvim_create_augroup("Core", { clear = true }),
+    pattern = "VeryLazy",
+    callback = function()
+      if no_argc then
+        M.load("autocmds")
+      end
+      M.load("keymaps")
+      require("util.format").setup()
+    end,
+  })
+
+  LazyUtil.track("colorscheme")
+  LazyUtil.try(function()
+    vim.cmd.colorscheme(opts.install.colorscheme[1])
+  end, {
+    msg = "Failed to load the colorscheme",
+    on_error = function(msg)
+      LazyUtil.error(msg)
+      vim.cmd.colorscheme("colorscheme")
+    end,
+  })
+  LazyUtil.track()
+end
+
+M.inited = false
+function M.init()
+  if M.inited then
+    return
+  end
+  M.inited = true
+  M.delay_notify()
+  M.load("options")
+  M.lazy_file()
+end
+
+function M.load(name)
+  local function _load(mod)
+    if require("lazy.core.cache").find(mod)[1] then
+      LazyUtil.try(function()
+        require(mod)
+      end, { msg = "Failed to load" .. mod })
+    end
+  end
+  _load("config." .. name)
+  if vim.bo.filetype == "lazy" then
+    vim.cmd([[do VimResized]])
+  end
+end
 
 M.use_lazy_file = true
 M.lazy_file_events = { "BufReadPost", "BufNewFile", "BufWritePre" }
 
 function M.lazy_file()
   M.use_lazy_file = M.use_lazy_file and vim.fn.argc(-1) > 0
-  ---@diagnostic disable-next-line: undefined-field
+
   local LazyEvent = require("lazy.core.handler.event")
 
   if M.use_lazy_file then
     LazyEvent.mappings.LazyFile = { id = "LazyFile", event = "User", pattern = "LazyFile" }
     LazyEvent.mappings["User LazyFile"] = LazyEvent.mappings.LazyFile
   else
-    LazyEvent.mappings.LazyFile = { id = "LazyFile", event = { "BufReadPost", "BufNewFile", "BufWritePre" } }
+    LazyEvent.mappings.LazyFile = { id = "LazyFile", event = M.lazy_file_events }
     LazyEvent.mappings["User LazyFile"] = LazyEvent.mappings.LazyFile
     return
   end
@@ -23,6 +83,7 @@ function M.lazy_file()
     if #events == 0 then
       return
     end
+
     vim.api.nvim_del_augroup_by_name("lazy_file")
 
     local skips = {}
