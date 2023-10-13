@@ -255,7 +255,7 @@ return {
       },
     },
     init = function()
-      if vim.fn.argc() == 1 then
+      if vim.fn.argc(-1) == 1 then
         if require("util.path").is_dir(tostring(vim.fn.argv(0))) then
           require("oil")
         end
