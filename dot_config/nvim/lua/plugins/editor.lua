@@ -785,7 +785,7 @@ return {
   },
   {
     "nvim-telescope/telescope-frecency.nvim",
-    event = { "BufReadPre", "BufNewFile" },
+    event = { "LazyFile" },
     keys = {
       { "<leader>sr", "<cmd>Telescope frecency<cr>", desc = "Oldfiles" },
       { "<leader>fr", "<cmd>Telescope frecency<cr>", desc = "Oldfiles" },
