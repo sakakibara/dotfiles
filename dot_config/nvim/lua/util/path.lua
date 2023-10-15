@@ -95,44 +95,6 @@ function M.get_path_segments(path)
   return pwd, reldirpath, basename
 end
 
-M.root_patterns = { ".git", "lua", ".svn", ".vs" }
-
-function M.get_root_path()
-  local path = M.get_current_file_path()
-  path = path ~= "" and vim.loop.fs_realpath(path) or nil
-  local roots = {}
-  if path then
-    for _, client in pairs(require("util.lsp").get_clients({ bufnr = 0 })) do
-      local workspace = client.config.workspace_folders
-      local paths = workspace and vim.tbl_map(function(ws)
-        return vim.uri_to_fname(ws.uri)
-      end, workspace) or client.config.root_dir and { client.config.root_dir } or {}
-      for _, p in ipairs(paths) do
-        local r = vim.loop.fs_realpath(p)
-        if r and path:find(r, 1, true) then
-          roots[#roots + 1] = r
-        end
-      end
-    end
-  end
-  table.sort(roots, function(a, b)
-    return #a > #b
-  end)
-  local root = roots[1]
-  if not root then
-    if path then
-      if not M.is_dir(path) then
-        path = vim.fs.dirname(path)
-      end
-    else
-      path = vim.loop.cwd()
-    end
-    root = vim.fs.find(M.root_patterns, { path = path, upward = true })[1]
-    root = root and vim.fs.dirname(root) or vim.loop.cwd()
-  end
-  return root
-end
-
 function M.get_parent_path()
   return vim.fn.fnamemodify(M.get_current_file_path(), ":h")
 end
