@@ -9,6 +9,24 @@ return {
       "hrsh7th/cmp-nvim-lsp",
     },
     opts = {
+      diagnostics = {
+        underline = true,
+        update_in_insert = false,
+        virtual_text = {
+          spacing = 4,
+          source = "if_many",
+          prefix = "●",
+        },
+        severity_sort = true,
+      },
+      inlay_hints = {
+        enabled = false,
+      },
+      capabilities = {},
+      format = {
+        formatting_options = nil,
+        timeout_ms = nil,
+      },
       servers = {
         lua_ls = {
           settings = {
@@ -49,6 +67,15 @@ return {
         vim.fn.sign_define(name, { text = icon, texthl = name, numhl = "" })
       end
 
+      local inlay_hint = vim.lsp.buf.inlay_hint or vim.lsp.inlay_hint
+
+      if opts.inlay_hints.enabled and inlay_hint then
+        ulsp.on_attach(function(client, buffer)
+          if client.supports_method("textDocument/inlayHint") then
+            inlay_hint(buffer, true)
+          end
+        end)
+      end
       vim.diagnostic.config(vim.deepcopy(opts.diagnostics))
 
       local servers = opts.servers
