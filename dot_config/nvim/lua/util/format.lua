@@ -100,7 +100,7 @@ function M.format(opts)
   end
 
   if not done and opts and opts.force then
-    LazyUtil.warn("No formatter available", { title = "LazyVim" })
+    LazyUtil.warn("No formatter available", { title = "Formatter" })
   end
 end
 

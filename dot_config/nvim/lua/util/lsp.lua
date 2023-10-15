@@ -88,7 +88,7 @@ end
 
 function M.format(opts)
   vim.lsp.buf.format(
-    vim.tbl_deep_extend("force", opts or {}, require("lazyvim.util").opts("nvim-lspconfig").format or {})
+    vim.tbl_deep_extend("force", opts or {}, require("util.plugin").opts("nvim-lspconfig").format or {})
   )
 end
 
