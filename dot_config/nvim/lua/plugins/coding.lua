@@ -38,6 +38,12 @@ return {
   },
 
   {
+    "windwp/nvim-ts-autotag",
+    event = "InsertEnter",
+    opts = {},
+  },
+
+  {
     "andymass/vim-matchup",
     event = "BufEnter",
     init = function()
