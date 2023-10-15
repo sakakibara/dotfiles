@@ -14,6 +14,7 @@ return {
         end,
       },
     },
+    cmd = { "TSUpdateSync", "TSUpdate", "TSInstall" },
     keys = {
       { "<c-space>", desc = "Increment selection" },
       { "<bs>", desc = "Schrink selection", mode = "x" },
