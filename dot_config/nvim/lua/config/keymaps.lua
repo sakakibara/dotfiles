@@ -98,3 +98,19 @@ end, { desc = "Toggle auto format (buffer)" })
 map({ "n", "v" }, "<leader>cf", function()
   require("plugins.lsp.format").format({ force = true })
 end, { desc = "Format" })
+
+local function diagnostic_goto(next, severity)
+  local go = next and vim.diagnostic.goto_next or vim.diagnostic.goto_prev
+  severity = severity and vim.diagnostic.severity[severity] or nil
+  return function()
+    go({ severity = severity })
+  end
+end
+
+map("n", "<leader>cd", vim.diagnostic.open_float, { desc = "Line diagnostics" })
+map("n", "]d", diagnostic_goto(true), { desc = "Next diagnostic" })
+map("n", "[d", diagnostic_goto(false), { desc = "Prev diagnostic" })
+map("n", "]e", diagnostic_goto(true, "ERROR"), { desc = "Next error" })
+map("n", "[e", diagnostic_goto(false, "ERROR"), { desc = "Prev error" })
+map("n", "]w", diagnostic_goto(true, "WARN"), { desc = "Next warning" })
+map("n", "[w", diagnostic_goto(false, "WARN"), { desc = "Prev warning" })

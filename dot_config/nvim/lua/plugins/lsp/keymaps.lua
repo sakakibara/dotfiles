@@ -7,7 +7,6 @@ function M.get()
     return M._keys
   end
   M._keys = {
-    { "<leader>cd", vim.diagnostic.open_float, desc = "Line diagnostics" },
     { "<leader>cl", "<cmd>LspInfo<cr>", desc = "Lsp info" },
     {
       "gd",
@@ -36,12 +35,6 @@ function M.get()
     { "K", vim.lsp.buf.hover, desc = "Hover" },
     { "gK", vim.lsp.buf.signature_help, desc = "Signature help", has = "signatureHelp" },
     { "<c-k>", vim.lsp.buf.signature_help, mode = "i", desc = "Signature help", has = "signatureHelp" },
-    { "]d", M.diagnostic_goto(true), desc = "Next diagnostic" },
-    { "[d", M.diagnostic_goto(false), desc = "Prev diagnostic" },
-    { "]e", M.diagnostic_goto(true, "ERROR"), desc = "Next error" },
-    { "[e", M.diagnostic_goto(false, "ERROR"), desc = "Prev error" },
-    { "]w", M.diagnostic_goto(true, "WARN"), desc = "Next warning" },
-    { "[w", M.diagnostic_goto(false, "WARN"), desc = "Prev warning" },
     { "<leader>ca", vim.lsp.buf.code_action, desc = "Code action", mode = { "n", "v" }, has = "codeAction" },
     {
       "<leader>cA",
@@ -114,14 +107,6 @@ function M.on_attach(_, buffer)
       opts.buffer = buffer
       vim.keymap.set(keys.mode or "n", keys.lhs, keys.rhs, opts)
     end
-  end
-end
-
-function M.diagnostic_goto(next, severity)
-  local go = next and vim.diagnostic.goto_next or vim.diagnostic.goto_prev
-  severity = severity and vim.diagnostic.severity[severity] or nil
-  return function()
-    go({ severity = severity })
   end
 end
 
