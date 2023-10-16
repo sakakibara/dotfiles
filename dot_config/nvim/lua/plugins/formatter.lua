@@ -2,31 +2,16 @@ local LazyUtil = require("lazy.core.util")
 
 local M = {}
 
-local format_opts = {}
+local conform_opts = {}
 
 function M.setup(_, opts)
-  local util = require("conform.util")
-  opts.formatters = opts.formatters or {}
-  for name, formatter in pairs(opts.formatters) do
-    if type(formatter) == "table" then
-      local ok, defaults = pcall(require, "conform.formatters." .. name)
-      if ok and type(defaults) == "table" then
-        opts.formatters[name] = vim.tbl_deep_extend("force", {}, defaults, formatter)
-      end
-      if opts.formatters[name].extra_args then
-        opts.formatters[name].args =
-          util.extend_args(opts.formatters[name].args or {}, opts.formatters[name].extra_args)
-      end
-    end
-  end
-
   for _, key in ipairs({ "format_on_save", "format_after_save" }) do
     if opts[key] then
       LazyUtil.warn(("Setting `opts.%s` for `conform.nvim` is not supported."):format(key))
       opts[key] = nil
     end
   end
-  format_opts = opts.format
+  conform_opts = opts
   require("conform").setup(opts)
 end
 
@@ -54,7 +39,11 @@ return {
           priority = 100,
           primary = true,
           format = function(buf)
-            require("conform").format(LazyUtil.merge(format_opts, { bufnr = buf }))
+            require("conform").format(LazyUtil.merge({
+              timeout_ms = conform_opts.format.timeout_ms,
+              async = conform_opts.format.async,
+              quiet = conform_opts.format.quiet,
+            }, { bufnr = buf }))
           end,
           sources = function(buf)
             local ret = require("conform").list_formatters(buf)
@@ -74,7 +63,9 @@ return {
       end
       return {
         format = {
-          timeout_ms = 1000,
+          timeout_ms = 3000,
+          async = false,
+          quiet = false,
         },
         formatters_by_ft = {
           lua = { "stylua" },
