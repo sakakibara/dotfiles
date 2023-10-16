@@ -21,9 +21,6 @@ function M.detectors.lsp(buf)
     for _, ws in pairs(workspace or {}) do
       roots[#roots + 1] = vim.uri_to_fname(ws.uri)
     end
-    if client.config.root_dir then
-      roots[#roots + 1] = client.config.root_dir
-    end
   end
   return vim.tbl_filter(function(path)
     path = LazyUtil.norm(path)
