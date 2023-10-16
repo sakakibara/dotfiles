@@ -39,6 +39,10 @@ function M.bufpath(buf)
   return M.realpath(vim.api.nvim_buf_get_name(assert(buf)))
 end
 
+function M.cwd()
+  return M.realpath(vim.loop.cwd()) or ""
+end
+
 function M.realpath(path)
   if path == "" or path == nil then
     return nil
@@ -110,43 +114,33 @@ function M.info()
   return roots[1] and roots[1].paths[1] or vim.loop.cwd()
 end
 
-function M.get()
-  local roots = M.detect({ all = false })
-  return roots[1] and roots[1].paths[1] or vim.loop.cwd()
+M.cache = {}
+
+function M.setup()
+  vim.api.nvim_create_user_command("Root", function()
+    M.info()
+  end, { desc = "Root for the current buffer" })
+
+  vim.api.nvim_create_autocmd({ "LspAttach", "BufWritePost" }, {
+    group = vim.api.nvim_create_augroup("root_cache", { clear = true }),
+    callback = function(event)
+      M.cache[event.buf] = nil
+    end,
+  })
 end
 
-M.pretty_cache = {}
-function M.pretty_path()
-  local path = vim.fn.expand("%:p")
-  if path == "" then
-    return ""
+function M.get(opts)
+  local buf = vim.api.nvim_get_current_buf()
+  local ret = M.cache[buf]
+  if not ret then
+    local roots = M.detect({ all = false })
+    ret = roots[1] and roots[1].paths[1] or vim.loop.cwd()
+    M.cache[buf] = ret
   end
-
-  path = LazyUtil.norm(path)
-  if M.pretty_cache[path] then
-    return M.pretty_cache[path]
+  if opts and opts.normalize then
+    return ret
   end
-  local cache_key = path
-  local cwd = M.realpath(vim.loop.cwd()) or ""
-
-  if path:find(cwd, 1, true) == 1 then
-    path = path:sub(#cwd + 2)
-  else
-    local roots = M.detect({ spec = { ".git" } })
-    local root = roots[1] and roots[1].paths[1] or nil
-    if root then
-      path = path:sub(#vim.fs.dirname(root) + 2)
-    end
-  end
-
-  local sep = require("util.path").sep
-  local parts = vim.split(path, "[\\/]")
-  if #parts > 3 then
-    parts = { parts[1], "…", parts[#parts - 1], parts[#parts] }
-  end
-  local ret = table.concat(parts, sep)
-  M.pretty_cache[cache_key] = ret
-  return ret
+  return vim.loop.os_uname().sysname:find("Windows") ~= nil and ret:gsub("/", "\\") or ret
 end
 
 return M

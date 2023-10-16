@@ -19,10 +19,7 @@ function M.setup(opts)
       end
       M.load("keymaps")
       require("util.format").setup()
-
-      vim.api.nvim_create_user_command("Root", function()
-        require("util.root").info()
-      end, { desc = "Show root info for the current buffer" })
+      require("util.root").setup()
     end,
   })
 
