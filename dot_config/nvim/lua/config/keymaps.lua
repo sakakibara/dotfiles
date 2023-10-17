@@ -96,7 +96,7 @@ map("n", "<leader>tF", function()
 end, { desc = "Toggle auto format (buffer)" })
 
 map({ "n", "v" }, "<leader>cf", function()
-  require("plugins.lsp.format").format({ force = true })
+  require("util.format").format({ force = true })
 end, { desc = "Format" })
 
 local function diagnostic_goto(next, severity)
