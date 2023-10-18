@@ -8,14 +8,22 @@ Manage dotfiles using [chezmoi][chezmoi].
 
 Use one of the one-liner below to install both chezmoi and the dotfiles.
 
-### One-liner
+### One-liners
 
-**Using curl**
+#### sh & curl
+
 ```sh
-sh -c "$(curl -fsLS chezmoi.io/get)" -- init --apply sakakibara
+sh -c "$(curl -fsLS get.chezmoi.io/lb)" -- init --apply sakakibara
 ```
 
-**Using wget**
+#### sh & wget
+
 ```sh
-sh -c "$(wget -qO- chezmoi.io/get)" -- init --apply sakakibara
+sh -c "$(wget -qO- get.chezmoi.io/lb)" -- init --apply sakakibara
+```
+
+#### powershell
+
+```pwsh
+'$params = "-BinDir ~/.local/bin -ExecArgs init, --apply, sakakibara"', (irm -useb https://get.chezmoi.io/ps1) | powershell -c -
 ```
