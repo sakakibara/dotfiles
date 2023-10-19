@@ -975,7 +975,6 @@ return {
         condition = function()
           return conditions.buffer_matches({
             buftype = { "nofile", "prompt", "help", "quickfix" },
-            filetype = { "^git.*" },
           })
         end,
         FileType,
@@ -1079,7 +1078,7 @@ return {
           disable_winbar_cb = function(args)
             return conditions.buffer_matches({
               buftype = { "nofile", "prompt", "help", "quickfix" },
-              filetype = { "^git.*", "Trouble", "neo-tree" },
+              filetype = { "Trouble", "neo-tree" },
             }, args.buf)
           end,
           colors = setup_colors,
