@@ -258,7 +258,7 @@ return {
     end,
     keys = {
       {
-        "<leader>y",
+        "<leader>sy",
         function()
           require("telescope").extensions.yank_history.yank_history({})
         end,
