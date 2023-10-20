@@ -334,6 +334,7 @@ return {
         ["~"] = "actions.tcd",
         ["g."] = "actions.toggle_hidden",
         ["go"] = "actions.change_sort",
+        ["gs"] = false,
       },
       use_default_keymaps = true,
       view_options = {
