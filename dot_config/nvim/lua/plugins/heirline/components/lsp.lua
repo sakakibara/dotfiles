@@ -3,7 +3,7 @@ local icons = require("config.icons")
 
 return {
   condition = conditions.lsp_attached,
-  update = { "LspAttach", "LspDetach", "BufEnter" },
+  update = { "LspAttach", "LspDetach" },
   provider = icons.status.Lsp .. "LSP" .. " ",
   hl = { fg = "green", bold = true },
   on_click = {
