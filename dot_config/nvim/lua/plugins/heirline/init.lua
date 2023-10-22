@@ -53,12 +53,11 @@ return {
         },
       })
 
-      vim.api.nvim_create_augroup("Heirline", { clear = true })
       vim.api.nvim_create_autocmd("ColorScheme", {
+        group = vim.api.nvim_create_augroup("Heirline", { clear = true }),
         callback = function()
           require("heirline.utils").on_colorscheme(setup_colors)
         end,
-        group = "Heirline",
       })
     end,
   },
