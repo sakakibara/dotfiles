@@ -42,90 +42,6 @@ return {
   },
 
   {
-    "linty-org/readline.nvim",
-    keys = {
-      {
-        "<C-k>",
-        function()
-          require("readline").kill_line()
-        end,
-        desc = "Kill line",
-        mode = "c",
-      },
-      {
-        "<C-u>",
-        function()
-          require("readline").backward_kill_line()
-        end,
-        desc = "Backward kill line",
-        mode = "c",
-      },
-      {
-        "<M-d>",
-        function()
-          require("readline").kill_word()
-        end,
-        desc = "Kill word",
-        mode = "c",
-      },
-      {
-        "<M-BS>",
-        function()
-          require("readline").backward_kill_word()
-        end,
-        desc = "Backward kill word",
-        mode = "c",
-      },
-      {
-        "<C-w>",
-        function()
-          require("readline").unix_word_rubout()
-        end,
-        desc = "Unix word rubout",
-        mode = "c",
-      },
-      { "<C-d>", "<delete>", desc = "Delete character", mode = "c" },
-      { "<C-h>", "<bs>", desc = "Backward delete character", mode = "c" },
-      {
-        "<C-a>",
-        function()
-          require("readline").beginning_of_line()
-        end,
-        desc = "Beginning of line",
-        mode = "c",
-      },
-      {
-        "<C-e>",
-        function()
-          require("readline").end_of_line()
-        end,
-        desc = "End of line",
-        mode = "c",
-      },
-      {
-        "<M-f>",
-        function()
-          require("readline").forward_word()
-        end,
-        desc = "Forward word",
-        mode = "c",
-      },
-      {
-        "<M-b>",
-        function()
-          require("readline").backward_word()
-        end,
-        desc = "Backward word",
-        mode = "c",
-      },
-      { "<C-f>", "<right>", desc = "Forward char", mode = "c" },
-      { "<C-b>", "<left>", desc = "Backward char", mode = "c" },
-      { "<C-n>", "<down>", desc = "Next line", mode = "c" },
-      { "<C-p>", "<up>", desc = "Previous line", mode = "c" },
-    },
-  },
-
-  {
     "chrishrb/gx.nvim",
     event = { "BufEnter" },
     dependencies = { "nvim-lua/plenary.nvim" },
@@ -638,37 +554,6 @@ return {
             ["<M-p>"] = function(...)
               return require("telescope.actions.layout").toggle_preview(...)
             end,
-            ["<C-k>"] = function()
-              require("readline").kill_line()
-            end,
-            ["<C-u>"] = function()
-              require("readline").backward_kill_line()
-            end,
-            ["<M-d>"] = function()
-              require("readline").kill_word()
-            end,
-            ["<M-BS>"] = function()
-              require("readline").backward_kill_word()
-            end,
-            ["<C-w>"] = function()
-              require("readline").unix_word_rubout()
-            end,
-            ["<C-d>"] = { "<delete>", type = "command" },
-            ["<C-h>"] = { "<bs>", type = "command" },
-            ["<C-a>"] = function()
-              require("readline").beginning_of_line()
-            end,
-            ["<C-e>"] = function()
-              require("readline").end_of_line()
-            end,
-            ["<M-f>"] = function()
-              require("readline").forward_word()
-            end,
-            ["<M-b>"] = function()
-              require("readline").backward_word()
-            end,
-            ["<C-f>"] = { "<right>", type = "command" },
-            ["<C-b>"] = { "<left>", type = "command" },
           },
           n = {
             ["-"] = function(...)
