@@ -1,4 +1,5 @@
 local LazyUtil = require("lazy.core.util")
+local upath = require("util.path")
 
 local M = {}
 
@@ -63,6 +64,14 @@ function M.toggle_diagnostics()
     vim.diagnostic.disable()
     LazyUtil.warn("Disabled diagnostics", { title = "Diagnostics" })
   end
+end
+
+function M.yank_relative_path()
+  vim.fn.setreg("*", vim.fn.fnamemodify(upath.get_current_file_path(), ":~:."))
+end
+
+function M.yank_full_path()
+  vim.fn.setreg("*", upath.get_current_file_path())
 end
 
 return M

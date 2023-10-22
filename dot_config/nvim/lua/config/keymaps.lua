@@ -34,6 +34,9 @@ map("n", "]F", ufile.last_file, { desc = "Last file" })
 map("n", "[ ", "v:lua.KeymapsUtil.put_empty_line(v:true)", { expr = true, desc = "Add empty line above" })
 map("n", "] ", "v:lua.KeymapsUtil.put_empty_line(v:false)", { expr = true, desc = "Add empty line below" })
 
+map("n", "<leader>fy", ukeymaps.yank_relative_path, { desc = "Yank relative path" })
+map("n", "<leader>fY", ukeymaps.yank_full_path, { desc = "Yank full path" })
+
 map("n", "<leader>ul", "<cmd>Lazy<cr>", { desc = "Lazy" })
 
 map("n", "<leader>qq", "<cmd>qa<cr>", { desc = "Quit all" })
