@@ -233,7 +233,7 @@ return {
 
   {
     "Bekaboo/deadcolumn.nvim",
-    event = "LazyFile",
+    event = "VeryLazy",
   },
 
   {
