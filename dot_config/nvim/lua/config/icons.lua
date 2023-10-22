@@ -63,5 +63,8 @@ return {
     Directory = " ",
     DirectoryAlt = "󰉖 ",
     Ellipsis = "…",
+    Separator = {
+      Breadcrumb = "",
+    },
   },
 }
