@@ -779,9 +779,239 @@ return {
 
   {
     "johmsalas/text-case.nvim",
-    event = "VeryLazy",
-    opts = {
-      prefix = "ge",
+    lazy = false,
+    keys = {
+      {
+        "geu",
+        function()
+          require("textcase").current_word("to_upper_case")
+        end,
+        desc = "To upper case",
+      },
+      {
+        "gel",
+        function()
+          require("textcase").current_word("to_lower_case")
+        end,
+        desc = "To lower case",
+      },
+      {
+        "ges",
+        function()
+          require("textcase").current_word("to_snake_case")
+        end,
+        desc = "To snake case",
+      },
+      {
+        "ged",
+        function()
+          require("textcase").current_word("to_dash_case")
+        end,
+        desc = "To dash case",
+      },
+      {
+        "gen",
+        function()
+          require("textcase").current_word("to_constant_case")
+        end,
+        desc = "To constant case",
+      },
+      {
+        "ged",
+        function()
+          require("textcase").current_word("to_dot_case")
+        end,
+        desc = "To dot case",
+      },
+      {
+        "gea",
+        function()
+          require("textcase").current_word("to_phrase_case")
+        end,
+        desc = "To phrase case",
+      },
+      {
+        "gec",
+        function()
+          require("textcase").current_word("to_camel_case")
+        end,
+        desc = "To camel case",
+      },
+      {
+        "gep",
+        function()
+          require("textcase").current_word("to_pascal_case")
+        end,
+        desc = "To pascal case",
+      },
+      {
+        "get",
+        function()
+          require("textcase").current_word("to_title_case")
+        end,
+        desc = "To title case",
+      },
+      {
+        "gef",
+        function()
+          require("textcase").current_word("to_path_case")
+        end,
+        desc = "To path case",
+      },
+      {
+        "geU",
+        function()
+          require("textcase").lsp_rename("to_upper_case")
+        end,
+        desc = "LSP rename to upper case",
+      },
+      {
+        "geL",
+        function()
+          require("textcase").lsp_rename("to_lower_case")
+        end,
+        desc = "LSP rename to lower case",
+      },
+      {
+        "geS",
+        function()
+          require("textcase").lsp_rename("to_snake_case")
+        end,
+        desc = "LSP rename to snake case",
+      },
+      {
+        "geD",
+        function()
+          require("textcase").lsp_rename("to_dash_case")
+        end,
+        desc = "LSP rename to dash case",
+      },
+      {
+        "geN",
+        function()
+          require("textcase").lsp_rename("to_constant_case")
+        end,
+        desc = "LSP rename to constant case",
+      },
+      {
+        "geD",
+        function()
+          require("textcase").lsp_rename("to_dot_case")
+        end,
+        desc = "LSP rename to dot case",
+      },
+      {
+        "geA",
+        function()
+          require("textcase").lsp_rename("to_phrase_case")
+        end,
+        desc = "LSP rename to phrase case",
+      },
+      {
+        "geC",
+        function()
+          require("textcase").lsp_rename("to_camel_case")
+        end,
+        desc = "LSP rename to camel case",
+      },
+      {
+        "geP",
+        function()
+          require("textcase").lsp_rename("to_pascal_case")
+        end,
+        desc = "LSP rename to pascal case",
+      },
+      {
+        "geT",
+        function()
+          require("textcase").lsp_rename("to_title_case")
+        end,
+        desc = "LSP rename to title case",
+      },
+      {
+        "geF",
+        function()
+          require("textcase").lsp_rename("to_path_case")
+        end,
+        desc = "LSP rename to upper case",
+      },
+      {
+        "gEu",
+        function()
+          require("textcase").operator("to_upper_case")
+        end,
+        desc = "To upper case (operator)",
+      },
+      {
+        "gEl",
+        function()
+          require("textcase").operator("to_lower_case")
+        end,
+        desc = "To lower case (operator)",
+      },
+      {
+        "gEs",
+        function()
+          require("textcase").operator("to_snake_case")
+        end,
+        desc = "To snake case (operator)",
+      },
+      {
+        "gEd",
+        function()
+          require("textcase").operator("to_dash_case")
+        end,
+        desc = "To dash case (operator)",
+      },
+      {
+        "gEn",
+        function()
+          require("textcase").operator("to_constant_case")
+        end,
+        desc = "To constant case (operator)",
+      },
+      {
+        "gEd",
+        function()
+          require("textcase").operator("to_dot_case")
+        end,
+        desc = "To dot case (operator)",
+      },
+      {
+        "gEa",
+        function()
+          require("textcase").operator("to_phrase_case")
+        end,
+        desc = "To phrase case (operator)",
+      },
+      {
+        "gEc",
+        function()
+          require("textcase").operator("to_camel_case")
+        end,
+        desc = "To camel case (operator)",
+      },
+      {
+        "gEp",
+        function()
+          require("textcase").operator("to_pascal_case")
+        end,
+        desc = "To pascal case (operator)",
+      },
+      {
+        "gEt",
+        function()
+          require("textcase").operator("to_title_case")
+        end,
+        desc = "To title case (operator)",
+      },
+      {
+        "gEf",
+        function()
+          require("textcase").operator("to_path_case")
+        end,
+        desc = "To path case (operator)",
+      },
     },
   },
 }
