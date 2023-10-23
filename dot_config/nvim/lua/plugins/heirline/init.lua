@@ -1,18 +1,8 @@
 return {
   {
     "rebelot/heirline.nvim",
-    event = "BufEnter",
-    init = function()
-      vim.g.heirline_laststatus = vim.o.laststatus
-      if vim.fn.argc(-1) > 0 then
-        vim.o.statusline = " "
-      else
-        vim.o.laststatus = 0
-      end
-    end,
+    lazy = false,
     config = function()
-      vim.o.laststatus = vim.g.heirline_laststatus
-
       local conditions = require("heirline.conditions")
       local utils = require("heirline.utils")
 
