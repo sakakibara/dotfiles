@@ -24,6 +24,15 @@ function M.setup_colors()
 end
 
 function M.setup_option(name, value, callback)
+  for _, win in ipairs(vim.api.nvim_list_wins()) do
+    local winbuf = vim.api.nvim_win_get_buf(win)
+    local args = { buf = winbuf }
+    if callback and callback(args) == true then
+      vim.api.nvim_set_option_value(name, nil, { win = win })
+    else
+      vim.api.nvim_set_option_value(name, value, { win = win })
+    end
+  end
   local augroup = vim.api.nvim_create_augroup("userconf_heirline_" .. name .. "_update", { clear = true })
   vim.api.nvim_create_autocmd({ "VimEnter", "UIEnter", "BufWinEnter", "FileType", "TermOpen" }, {
     group = augroup,
@@ -93,7 +102,7 @@ return {
     init = function()
       vim.g.heirline_laststatus = vim.o.laststatus
       if vim.fn.argc(-1) > 0 then
-        require("heirline")
+        vim.o.statusline = " "
       else
         vim.o.laststatus = 0
       end
