@@ -11,7 +11,7 @@ return {
   require("plugins.heirline.components.file.modified"),
   require("plugins.heirline.components.file.readonly"),
   update = {
-    "BufWinEnter",
+    "BufEnter",
     "BufWritePost",
     "DirChanged",
     "WinResized",

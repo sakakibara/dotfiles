@@ -9,7 +9,7 @@ return {
     return "bright_fg"
   end,
   update = {
-    "BufWinEnter",
+    "BufEnter",
     "TextChanged",
     "InsertLeave",
     "BufModifiedSet",

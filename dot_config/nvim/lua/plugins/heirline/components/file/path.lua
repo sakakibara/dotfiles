@@ -16,7 +16,7 @@ return {
   require("plugins.heirline.components.file.dir_path"),
   require("plugins.heirline.components.file.basename"),
   update = {
-    "BufWinEnter",
+    "BufEnter",
     "BufWritePost",
     "DirChanged",
     "WinResized",

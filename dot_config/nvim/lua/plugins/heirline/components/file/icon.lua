@@ -18,5 +18,5 @@ return {
   hl = function(self)
     return { fg = self.icon_color }
   end,
-  update = { "BufWinEnter", "BufWritePost" },
+  update = { "BufEnter", "BufWritePost" },
 }

@@ -24,7 +24,7 @@ return {
   },
   { provider = "" },
   update = {
-    "BufWinEnter",
+    "BufEnter",
     "DirChanged",
     "WinResized",
   },
