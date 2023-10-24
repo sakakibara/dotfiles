@@ -783,6 +783,7 @@ return {
     keys = {
       {
         "geu",
+        mode = { "n", "x" },
         function()
           require("textcase").current_word("to_upper_case")
         end,
@@ -790,6 +791,7 @@ return {
       },
       {
         "gel",
+        mode = { "n", "x" },
         function()
           require("textcase").current_word("to_lower_case")
         end,
@@ -797,6 +799,7 @@ return {
       },
       {
         "ges",
+        mode = { "n", "x" },
         function()
           require("textcase").current_word("to_snake_case")
         end,
@@ -804,6 +807,7 @@ return {
       },
       {
         "ged",
+        mode = { "n", "x" },
         function()
           require("textcase").current_word("to_dash_case")
         end,
@@ -811,6 +815,7 @@ return {
       },
       {
         "gen",
+        mode = { "n", "x" },
         function()
           require("textcase").current_word("to_constant_case")
         end,
@@ -818,6 +823,7 @@ return {
       },
       {
         "ged",
+        mode = { "n", "x" },
         function()
           require("textcase").current_word("to_dot_case")
         end,
@@ -825,6 +831,7 @@ return {
       },
       {
         "gea",
+        mode = { "n", "x" },
         function()
           require("textcase").current_word("to_phrase_case")
         end,
@@ -832,6 +839,7 @@ return {
       },
       {
         "gec",
+        mode = { "n", "x" },
         function()
           require("textcase").current_word("to_camel_case")
         end,
@@ -839,6 +847,7 @@ return {
       },
       {
         "gep",
+        mode = { "n", "x" },
         function()
           require("textcase").current_word("to_pascal_case")
         end,
@@ -846,6 +855,7 @@ return {
       },
       {
         "get",
+        mode = { "n", "x" },
         function()
           require("textcase").current_word("to_title_case")
         end,
@@ -853,6 +863,7 @@ return {
       },
       {
         "gef",
+        mode = { "n", "x" },
         function()
           require("textcase").current_word("to_path_case")
         end,
@@ -860,6 +871,7 @@ return {
       },
       {
         "geU",
+        mode = { "n", "x" },
         function()
           require("textcase").lsp_rename("to_upper_case")
         end,
@@ -867,6 +879,7 @@ return {
       },
       {
         "geL",
+        mode = { "n", "x" },
         function()
           require("textcase").lsp_rename("to_lower_case")
         end,
@@ -874,6 +887,7 @@ return {
       },
       {
         "geS",
+        mode = { "n", "x" },
         function()
           require("textcase").lsp_rename("to_snake_case")
         end,
@@ -881,6 +895,7 @@ return {
       },
       {
         "geD",
+        mode = { "n", "x" },
         function()
           require("textcase").lsp_rename("to_dash_case")
         end,
@@ -888,6 +903,7 @@ return {
       },
       {
         "geN",
+        mode = { "n", "x" },
         function()
           require("textcase").lsp_rename("to_constant_case")
         end,
@@ -895,6 +911,7 @@ return {
       },
       {
         "geD",
+        mode = { "n", "x" },
         function()
           require("textcase").lsp_rename("to_dot_case")
         end,
@@ -902,6 +919,7 @@ return {
       },
       {
         "geA",
+        mode = { "n", "x" },
         function()
           require("textcase").lsp_rename("to_phrase_case")
         end,
@@ -909,6 +927,7 @@ return {
       },
       {
         "geC",
+        mode = { "n", "x" },
         function()
           require("textcase").lsp_rename("to_camel_case")
         end,
@@ -916,6 +935,7 @@ return {
       },
       {
         "geP",
+        mode = { "n", "x" },
         function()
           require("textcase").lsp_rename("to_pascal_case")
         end,
@@ -923,6 +943,7 @@ return {
       },
       {
         "geT",
+        mode = { "n", "x" },
         function()
           require("textcase").lsp_rename("to_title_case")
         end,
@@ -930,6 +951,7 @@ return {
       },
       {
         "geF",
+        mode = { "n", "x" },
         function()
           require("textcase").lsp_rename("to_path_case")
         end,
