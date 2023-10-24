@@ -25,7 +25,6 @@ return {
     {
       require("plugins.heirline.components.breadcrumbs"),
       require("plugins.heirline.components.truncate"),
-      require("plugins.heirline.components.nav"),
     },
   },
   require("plugins.heirline.components.align"),
