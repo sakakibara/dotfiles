@@ -1,6 +1,10 @@
 return {
   provider = function()
     local fmt = vim.bo.fileformat
-    return fmt ~= "unix" and fmt:upper() .. " "
+    if fmt == "dos" then
+      return "CRLF"
+    elseif fmt == "mac" then
+      return "CR"
+    end
   end,
 }
