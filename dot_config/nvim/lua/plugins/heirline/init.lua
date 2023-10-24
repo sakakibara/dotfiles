@@ -23,40 +23,104 @@ function M.setup_colors()
   }
 end
 
+function M.setup_option(name, value, callback)
+  local augroup = vim.api.nvim_create_augroup("userconf_heirline_" .. name .. "_update", { clear = true })
+  vim.api.nvim_create_autocmd({ "VimEnter", "UIEnter", "BufWinEnter", "FileType", "TermOpen" }, {
+    group = augroup,
+    callback = function(args)
+      if args.event == "VimEnter" or args.event == "UIEnter" then
+        for _, win in ipairs(vim.api.nvim_list_wins()) do
+          local winbuf = vim.api.nvim_win_get_buf(win)
+          local new_args = vim.deepcopy(args)
+          new_args.buf = winbuf
+          if callback and callback(new_args) == true then
+            vim.api.nvim_set_option_value(name, nil, { win = win })
+          else
+            vim.api.nvim_set_option_value(name, value, { win = win })
+          end
+        end
+      end
+      if callback and callback(args) == true then
+        vim.api.nvim_set_option_value(name, nil, { scope = "local" })
+      else
+        vim.api.nvim_set_option_value(name, value, { scope = "local" })
+      end
+    end,
+    desc = "Heirline update window local option",
+  })
+end
+
+---@param config {statusline: StatusLine, winbar: StatusLine, tabline: StatusLine, statuscolumn: StatusLine, opts: table}
+function M.setup(config)
+  local heirline = require("heirline")
+  local StatusLine = require("heirline.statusline")
+
+  vim.g.qf_disable_statusline = true
+  vim.api.nvim_create_augroup("Heirline_update_autocmds", { clear = true })
+  heirline.reset_highlights()
+
+  local opts = config.opts or {}
+
+  if opts.colors then
+    heirline.load_colors(opts.colors)
+  end
+
+  if config.statusline then
+    heirline.statusline = StatusLine:new(config.statusline)
+    vim.o.statusline = "%{%v:lua.require'heirline'.eval_statusline()%}"
+  end
+
+  if config.winbar then
+    heirline.winbar = StatusLine:new(config.winbar)
+    M.setup_option("winbar", "%{%v:lua.require'heirline'.eval_winbar()%}", opts.disable_winbar_cb)
+  end
+
+  if config.tabline then
+    heirline.tabline = StatusLine:new(config.tabline)
+    vim.o.tabline = "%{%v:lua.require'heirline'.eval_tabline()%}"
+  end
+
+  if config.statuscolumn then
+    heirline.statuscolumn = StatusLine:new(config.statuscolumn)
+    M.setup_option("statuscolumn", "%{%v:lua.require'heirline'.eval_statuscolumn()%}", opts.disable_statuscolumn_cb)
+  end
+end
+
 return {
   {
     "rebelot/heirline.nvim",
     event = "VeryLazy",
     init = function()
+      vim.g.heirline_laststatus = vim.o.laststatus
       if vim.fn.argc(-1) > 0 then
-        require("util.plugin").on_very_lazy(function()
-          for _, win in ipairs(vim.api.nvim_list_wins()) do
-            vim.wo[win].winbar = "%{%v:lua.require'heirline'.eval_winbar()%}"
-            vim.wo[win].statuscolumn = "%{%v:lua.require'heirline'.eval_statuscolumn()%}"
-          end
-        end)
+        require("heirline")
+      else
+        vim.o.laststatus = 0
       end
     end,
     opts = function()
-      local conditions = require("heirline.conditions")
+      vim.o.laststatus = vim.g.heirline_laststatus
+      local special_buffers = {
+        buftype = { "nofile", "prompt", "help", "quickfix" },
+        filetype = { "Trouble", "neo-tree" },
+      }
       return {
         statusline = require("plugins.heirline.statusline"),
         winbar = require("plugins.heirline.winbar"),
         statuscolumn = require("plugins.heirline.statuscolumn"),
         opts = {
           disable_winbar_cb = function(args)
-            return conditions.buffer_matches({
-              buftype = { "nofile", "prompt", "help", "quickfix" },
-              filetype = { "Trouble", "neo-tree" },
-            }, args.buf)
+            return require("heirline.conditions").buffer_matches(special_buffers, args.buf)
           end,
+          disable_statuscolumn_cb = function(args)
+            return require("heirline.conditions").buffer_matches(special_buffers, args.buf)
+          end,
+          colors = M.setup_colors(),
         },
       }
     end,
     config = function(_, opts)
-      local heirline = require("heirline")
-      heirline.load_colors(M.setup_colors())
-      heirline.setup(opts)
+      M.setup(opts)
 
       vim.api.nvim_create_autocmd("ColorScheme", {
         group = vim.api.nvim_create_augroup("Heirline", { clear = true }),
