@@ -2,9 +2,9 @@ return {
   provider = function()
     local fmt = vim.bo.fileformat
     if fmt == "dos" then
-      return "CRLF"
+      return "CRLF "
     elseif fmt == "mac" then
-      return "CR"
+      return "CR "
     end
   end,
 }
