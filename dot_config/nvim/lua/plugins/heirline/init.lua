@@ -98,7 +98,7 @@ end
 return {
   {
     "rebelot/heirline.nvim",
-    event = "VeryLazy",
+    event = "BufEnter",
     init = function()
       vim.g.heirline_laststatus = vim.o.laststatus
       if vim.fn.argc(-1) > 0 then
