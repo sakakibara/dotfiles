@@ -10,6 +10,7 @@ return {
   require("plugins.heirline.components.truncate"),
   require("plugins.heirline.components.align"),
   require("plugins.heirline.components.spell"),
+  require("plugins.heirline.components.task"),
   require("plugins.heirline.components.diagnostics"),
   require("plugins.heirline.components.dap"),
   require("plugins.heirline.components.lsp"),
