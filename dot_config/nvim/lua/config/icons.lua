@@ -66,6 +66,10 @@ return {
     Separator = {
       Breadcrumb = "",
     },
+    Failure = " ",
+    Canceled = "󰜺 ",
+    Success = "󰄴 ",
+    Running = "󰑮 ",
   },
   powerline = {
     vertical_bar_thin = "│",
