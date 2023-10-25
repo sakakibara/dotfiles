@@ -1,6 +1,6 @@
 return {
   provider = function()
-    return string.lower(vim.bo.filetype)
+    return string.upper(vim.bo.filetype)
   end,
   hl = "Type",
   update = { "BufEnter", "FileType" },
