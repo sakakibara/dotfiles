@@ -80,11 +80,13 @@ function M.lazy_file()
 
   local events = {}
 
+  local done = false
   local function load()
-    if #events == 0 then
+    if #events == 0 or done then
       return
     end
 
+    done = true
     vim.api.nvim_del_augroup_by_name("lazy_file")
 
     local skips = {}
@@ -94,17 +96,19 @@ function M.lazy_file()
 
     vim.api.nvim_exec_autocmds("User", { pattern = "LazyFile", modeline = false })
     for _, event in ipairs(events) do
-      LazyEvent.trigger({
-        event = event.event,
-        exclude = skips[event.event],
-        data = event.data,
-        buf = event.buf,
-      })
-      if vim.bo[event.buf].filetype then
+      if vim.api.nvim_buf_is_valid(event.buf) then
         LazyEvent.trigger({
-          event = "FileType",
+          event = event.event,
+          exclude = skips[event.event],
+          data = event.data,
           buf = event.buf,
         })
+        if vim.bo[event.buf].filetype then
+          LazyEvent.trigger({
+            event = "FileType",
+            buf = event.buf,
+          })
+        end
       end
     end
     vim.api.nvim_exec_autocmds("CursorMoved", { modeline = false })
