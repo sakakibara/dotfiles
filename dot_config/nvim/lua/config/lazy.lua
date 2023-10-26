@@ -1,6 +1,7 @@
 return {
   spec = {
     { import = "plugins" },
+    { import = "plugins.lang" },
   },
   install = { colorscheme = { "catppuccin" } },
   performance = {
