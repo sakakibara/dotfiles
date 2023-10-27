@@ -23,6 +23,15 @@ function M.setup_colors()
   }
 end
 
+function M.can_set_option_value(name, win)
+  local win_id = win or 0
+  local ret = true
+  if name == "winbar" and vim.api.nvim_win_get_height(win_id) <= 1 then
+    ret = false
+  end
+  return ret
+end
+
 function M.set_option_value_cb(name, value, callback)
   local params = { name = name, value = value, callback = callback }
   return function(args)
@@ -35,19 +44,34 @@ function M.set_option_value_cb(name, value, callback)
         if callback and callback(new_args) == true then
           vim.api.nvim_set_option_value(name, nil, { win = win })
         else
-          vim.api.nvim_set_option_value(name, value, { win = win })
+          if M.can_set_option_value(name, win) then
+            vim.api.nvim_set_option_value(name, value, { win = win })
+          end
         end
       end
     end
     if callback and callback(args) == true then
       vim.api.nvim_set_option_value(name, nil, { scope = "local" })
     else
-      vim.api.nvim_set_option_value(name, value, { scope = "local" })
+      if M.can_set_option_value(name) then
+        vim.api.nvim_set_option_value(name, value, { scope = "local" })
+      end
     end
   end
 end
 
 function M.setup_option(name, value, callback)
+  for _, win in ipairs(vim.api.nvim_list_wins()) do
+    local winbuf = vim.api.nvim_win_get_buf(win)
+    local args = { buf = winbuf }
+    if callback and callback(args) == true then
+      vim.api.nvim_set_option_value(name, nil, { win = win })
+    else
+      if M.can_set_option_value(name, win) then
+        vim.api.nvim_set_option_value(name, value, { win = win })
+      end
+    end
+  end
   local augroup = vim.api.nvim_create_augroup("userconf_heirline_" .. name .. "_update", { clear = true })
   vim.api.nvim_create_autocmd({ "VimEnter", "UIEnter", "BufWinEnter", "FileType", "TermOpen" }, {
     group = augroup,
@@ -95,7 +119,7 @@ end
 return {
   {
     "rebelot/heirline.nvim",
-    event = "BufEnter",
+    event = "VeryLazy",
     init = function()
       vim.g.heirline_laststatus = vim.o.laststatus
       if vim.fn.argc(-1) > 0 then
