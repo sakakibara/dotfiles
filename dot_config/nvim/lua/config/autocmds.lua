@@ -11,9 +11,8 @@ vim.api.nvim_create_autocmd("BufWritePre", {
     local file = vim.loop.fs_realpath(event.match) or event.match
     local force = vim.v.cmdbang
     local dir = vim.fn.fnamemodify(file, ":p:h")
-    local message = "'" .. dir .. "' does not exist. Create? [y/N] "
     if vim.fn.isdirectory(dir) == 0 then
-      if force == 1 or vim.regex("^y\\%[es]$"):match_str(vim.fn.input(message)) then
+      if force == 1 or vim.fn.confirm(("%q does not exist. Create?"):format(dir), "&Yes\n&No") == 1 then
         vim.fn.mkdir(dir, "p")
       end
     end
