@@ -99,4 +99,6 @@ if status --is-interactive
   # Keybind
   bind \e\cP history-token-search-backward
   bind \e\cN history-token-search-forward
+
+  starship init fish | source
 end
