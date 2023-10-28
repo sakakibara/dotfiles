@@ -7,7 +7,7 @@ return {
       buftype = { "quickfix" },
     })
   end,
-  require("heirline.utils").surround({ icons.powerline.block, icons.powerline.slant_right }, "dark_red", {
+  require("heirline.utils").surround({ icons.powerline.block, icons.powerline.slant_right }, "gray", {
     hl = {
       fg = "fg",
       force = true,
