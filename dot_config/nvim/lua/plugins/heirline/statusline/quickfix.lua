@@ -9,7 +9,7 @@ return {
   end,
   require("heirline.utils").surround({ icons.powerline.block, icons.powerline.slant_right }, "dark_red", {
     hl = {
-      fg = "bright_fg",
+      fg = "fg",
       force = true,
     },
     require("plugins.heirline.components.quickfix.label"),

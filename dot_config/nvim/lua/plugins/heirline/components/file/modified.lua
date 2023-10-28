@@ -3,7 +3,7 @@ return {
     return vim.bo.modified
   end,
   provider = " [+]",
-  hl = { fg = "green" },
+  hl = { fg = "red" },
   update = {
     "TextChanged",
     "InsertLeave",

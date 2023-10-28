@@ -4,7 +4,7 @@ return {
   end,
   hl = function()
     if vim.bo.modified then
-      return { fg = "bright_fg", bold = true, italic = true }
+      return { fg = "orange", bold = true, italic = true }
     end
     return "bright_fg"
   end,
