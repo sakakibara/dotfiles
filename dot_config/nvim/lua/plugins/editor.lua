@@ -76,6 +76,31 @@ return {
         end,
         desc = "Delete buffer (force)",
       },
+      {
+        "<leader>bw",
+        function()
+          local bw = require("mini.bufremove").wipeout
+          if vim.bo.modified then
+            local choice = vim.fn.confirm(("Save changes to %q?"):format(vim.fn.bufname()), "&Yes\n&No\n&Cancel")
+            if choice == 1 then
+              vim.cmd.write()
+              bw(0)
+            elseif choice == 2 then
+              bw(0, true)
+            end
+          else
+            bw(0)
+          end
+        end,
+        desc = "Wipeout buffer",
+      },
+      {
+        "<leader>bW",
+        function()
+          require("mini.bufremove").wipeout(0, true)
+        end,
+        desc = "Wipeout buffer (force)",
+      },
     },
   },
 
