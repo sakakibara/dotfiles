@@ -1,5 +1,6 @@
 local g, opt = vim.g, vim.opt
 local ftadd = vim.filetype.add
+local icons = require("config.icons")
 
 g.mapleader = " "
 g.maplocalleader = "\\"
@@ -16,9 +17,9 @@ opt.fileencodings = { "ucs-bom", "utf-8", "iso-2022-jp", "cp932", "euc-jp", "lat
 opt.fileformats = { "unix", "dos", "mac" }
 opt.fillchars = {
   fold = " ",
-  foldclose = "",
-  foldopen = "",
-  foldsep = " ",
+  foldclose = icons.status.FoldClose,
+  foldopen = icons.status.FoldOpen,
+  foldsep = icons.status.FoldSeparator,
 }
 opt.foldcolumn = "1"
 opt.foldenable = true

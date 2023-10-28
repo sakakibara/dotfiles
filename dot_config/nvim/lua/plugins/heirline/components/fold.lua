@@ -1,3 +1,5 @@
+local icons = require("config.icons")
+
 return {
   static = {
     fillchars = vim.opt.fillchars:get(),
@@ -7,9 +9,9 @@ return {
     return vim.opt.foldcolumn:get() ~= "0"
   end,
   provider = function(self)
-    local foldopen = self.fillchars.foldopen
-    local foldclosed = self.fillchars.foldclose
-    local foldsep = self.fillchars.foldsep
+    local foldopen = self.fillchars.foldopen or icons.status.FoldOpen
+    local foldclosed = self.fillchars.foldclose or icons.status.FoldClose
+    local foldsep = self.fillchars.foldsep or icons.status.FoldSeparator
     local wp = self.ffi.C.find_window_by_handle(0, self.ffi.new("Error"))
     local width = self.ffi.C.compute_foldcolumn(wp, 0)
     local foldinfo = width > 0 and self.ffi.C.fold_info(wp, vim.v.lnum)

@@ -70,6 +70,9 @@ return {
     Canceled = "󰜺 ",
     Success = "󰄴 ",
     Running = "󰑮 ",
+    FoldClose = "",
+    FoldOpen = "",
+    FoldSeparator = " ",
   },
   powerline = {
     vertical_bar_thin = "│",
