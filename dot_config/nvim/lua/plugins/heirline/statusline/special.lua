@@ -7,7 +7,7 @@ return {
       buftype = { "nofile", "prompt", "help" },
     })
   end,
-  require("heirline.utils").surround({ icons.powerline.block, icons.powerline.slant_right }, "gray", {
+  require("heirline.utils").surround({ icons.powerline.block, icons.powerline.block }, "gray", {
     hl = {
       fg = "fg",
       force = true,
