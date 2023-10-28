@@ -1,5 +1,5 @@
-local g, opt = vim.g, vim.opt
 local ftadd = vim.filetype.add
+local g, opt = vim.g, vim.opt
 local icons = require("config.icons")
 
 g.mapleader = " "
