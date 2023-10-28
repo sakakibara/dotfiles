@@ -126,6 +126,27 @@ return {
   },
 
   {
+    "echasnovski/mini.trailspace",
+    event = "LazyFile",
+    keys = {
+      {
+        "<leader>edt",
+        function()
+          require("mini.trailspace").trim()
+        end,
+        desc = "Trim trailing whitespace",
+      },
+      {
+        "<leader>edl",
+        function()
+          require("mini.trailspace").trim_last_lines()
+        end,
+        desc = "Trim trailing empty lines",
+      },
+    },
+  },
+
+  {
     "max397574/better-escape.nvim",
     event = "InsertEnter",
     opts = {
