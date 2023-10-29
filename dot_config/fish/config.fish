@@ -3,37 +3,37 @@
 # dirs  755 drwxr-xr-x (777 minus 022)
 umask 022
 
-set -x OSNAME (osname)
+set -gx OSNAME (osname)
 
 if not set -q XDG_CONFIG_HOME
-    set -x XDG_CONFIG_HOME $HOME/.config
+    set -gx XDG_CONFIG_HOME $HOME/.config
 end
 
 if not set -q XDG_CACHE_HOME
-    set -x XDG_CACHE_HOME $HOME/.cache
+    set -gx XDG_CACHE_HOME $HOME/.cache
 end
 
 if not set -q XDG_DATA_HOME
-    set -x XDG_DATA_HOME $HOME/.local/share
+    set -gx XDG_DATA_HOME $HOME/.local/share
 end
 
 if not set -q XDG_RUNTIME_DIR
-    set -x XDG_RUNTIME_DIR $HOME/.xdg
+    set -gx XDG_RUNTIME_DIR $HOME/.xdg
 end
 
 if string match -q -- $OSNAME "darwin*"
-    set -x XDG_DESKTOP_DIR $HOME/Desktop
-    set -x XDG_DOCUMENTS_DIR $HOME/Documents
-    set -x XDG_DOWNLOAD_DIR $HOME/Downloads
-    set -x XDG_MUSIC_DIR $HOME/Music
-    set -x XDG_PICTURES_DIR $HOME/Pictures
-    set -x XDG_VIDEOS_DIR $HOME/Videos
-    set -x XDG_PROJECTS_DIR $HOME/Projects
+    set -gx XDG_DESKTOP_DIR $HOME/Desktop
+    set -gx XDG_DOCUMENTS_DIR $HOME/Documents
+    set -gx XDG_DOWNLOAD_DIR $HOME/Downloads
+    set -gx XDG_MUSIC_DIR $HOME/Music
+    set -gx XDG_PICTURES_DIR $HOME/Pictures
+    set -gx XDG_VIDEOS_DIR $HOME/Videos
+    set -gx XDG_PROJECTS_DIR $HOME/Projects
 end
 
 # Set default language to English UTF-8
-set -x LANG en_US.UTF-8
-set -x LC_ALL en_US.UTF-8
+set -gx LANG en_US.UTF-8
+set -gx LC_ALL en_US.UTF-8
 
 # Run if fish is invoked as a login shell
 if status --is-interactive
@@ -41,10 +41,10 @@ if status --is-interactive
     set fish_greeting
 
     # Export dotfiles directory variable
-    set -x DOTFILES $HOME/.dotfiles
+    set -gx DOTFILES $HOME/.dotfiles
 
     # Export gopath
-    set -x GOPATH $HOME/.go
+    set -gx GOPATH $HOME/.go
 
     # Add path
     fish_add_path -pP $HOME/.fzf/bin
@@ -62,21 +62,21 @@ if status --is-interactive
     end
 
     if test (command -v ec)
-        set -x EDITOR ec
+        set -gx EDITOR ec
     else if test (command -v emacs)
-        set -x EDITOR emacs
+        set -gx EDITOR emacs
     else if test (command -v nvim)
-        set -x EDITOR nvim
+        set -gx EDITOR nvim
     else
-        set -x EDITOR vim
+        set -gx EDITOR vim
     end
-    set -x VISUAL $EDITOR
+    set -gx VISUAL $EDITOR
 
     # Set oracle language
-    set -x NLS_LANG AMERICAN_AMERICA.AL32UTF8
+    set -gx NLS_LANG AMERICAN_AMERICA.AL32UTF8
 
     # Disable microsoft .NET telemetry
-    set -x DOTNET_CLI_TELEMETRY_OPTOUT 1
+    set -gx DOTNET_CLI_TELEMETRY_OPTOUT 1
 
     # Navigation aliases
     abbr -a e $EDITOR
@@ -90,10 +90,10 @@ if status --is-interactive
 
     # Fzf settings
     if test (command -v fzf)
-        set -x FZF_DEFAULT_COMMAND 'fd --type file --follow --hidden --exclude .git'
-        set -x FZF_DEFAULT_OPTS --ansi
-        set -x FZF_CTRL_T_COMMAND $FZF_DEFAULT_COMMAND
-        set -x FZF_ALT_C_COMMAND 'fd --type directory --follow --hidden'
+        set -gx FZF_DEFAULT_COMMAND 'fd --type file --follow --hidden --exclude .git'
+        set -gx FZF_DEFAULT_OPTS --ansi
+        set -gx FZF_CTRL_T_COMMAND $FZF_DEFAULT_COMMAND
+        set -gx FZF_ALT_C_COMMAND 'fd --type directory --follow --hidden'
     end
 
     # Keybind
