@@ -3,12 +3,21 @@ local upath = require("util.path")
 
 local M = {}
 
-M.spec = { "lsp", { ".git", "lua", ".svn", ".vs" }, "cwd" }
+M.spec = { "lsp", { ".git", "lua", ".svn", ".vs" }, "cwd", "rel" }
 
 M.detectors = {}
 
+function M.detectors.rel()
+  return upath.get_parent_path()
+end
+
 function M.detectors.cwd()
-  return { vim.loop.cwd() }
+  local cwd = assert(vim.loop.cwd())
+  local parent = upath.get_parent_path()
+  if parent:find(cwd, 1, true) then
+    return cwd
+  end
+  return {}
 end
 
 function M.detectors.lsp(buf)
