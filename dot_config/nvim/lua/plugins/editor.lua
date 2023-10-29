@@ -562,7 +562,7 @@ return {
       { "<leader>sw", utelescope.func("grep_string", { cwd = root_path }), mode = "v", desc = "Selection" },
       { "<leader>sW", utelescope.func("grep_string", { cwd = false }), mode = "v", desc = "Selection (cwd)" },
       {
-        "<leader>srw",
+        "<leader>rsw",
         utelescope.func("grep_string", { cwd = parent_path }),
         mode = "v",
         desc = "Selection (relative)",
