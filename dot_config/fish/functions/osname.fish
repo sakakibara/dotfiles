@@ -1,4 +1,4 @@
-function get_os -d "Get the current OS name"
+function osname -d "Get the current OS name"
   set -l os
   switch (uname)
   case Darwin

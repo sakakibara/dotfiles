@@ -3,7 +3,7 @@
 # dirs  755 drwxr-xr-x (777 minus 022)
 umask 022
 
-set -x OSNAME (get_os)
+set -x OSNAME (osname)
 
 if not set -q XDG_CONFIG_HOME
   set -x XDG_CONFIG_HOME $HOME/.config
