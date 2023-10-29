@@ -541,39 +541,50 @@ return {
     version = false,
     keys = {
       { "<leader><space>", utelescope.func("files", { cwd = root_path }), desc = "Files" },
-      { "<leader>sb", "<cmd>Telescope buffers<cr>", desc = "Buffers" },
       { "<leader>bb", "<cmd>Telescope buffers<cr>", desc = "Buffers" },
-      { "<leader>sf", utelescope.func("files", { cwd = root_path }), desc = "Files" },
-      { "<leader>sF", utelescope.func("files", { cwd = false }), desc = "Files (cwd)" },
-      { "<leader>rsf", utelescope.func("find_files", { cwd = parent_path }), desc = "Find files (relative)" },
       { "<leader>ff", utelescope.func("files", { cwd = root_path }), desc = "Files" },
-      { "<leader>fF", utelescope.func("files", { cwd = false }), desc = "Files (cwd)" },
-      { "<leader>rff", utelescope.func("find_files", { cwd = parent_path }), desc = "Find files (relative)" },
-      { "<leader>sg", utelescope.func("live_grep", { cwd = root_path }), desc = "Grep" },
-      { "<leader>sG", utelescope.func("live_grep", { cwd = false }), desc = "Grep (cwd)" },
-      { "<leader>rsg", utelescope.func("live_grep", { cwd = parent_path }), desc = "Grep (relative)" },
-      { "<leader>sw", utelescope.func("grep_string", { cwd = root_path, word_match = "-w" }), desc = "Word" },
-      { "<leader>sW", utelescope.func("grep_string", { cwd = false, word_match = "-w" }), desc = "Word (cwd)" },
+      { "<leader>fF", utelescope.func("find_files", { cwd = parent_path }), desc = "Find files (relative)" },
+      { "<leader>fg", utelescope.func("live_grep", { cwd = root_path }), desc = "Grep" },
+      { "<leader>fG", utelescope.func("live_grep", { cwd = parent_path }), desc = "Grep (relative)" },
+      { "<leader>fw", utelescope.func("grep_string", { cwd = root_path, word_match = "-w" }), desc = "Word" },
       {
-        "<leader>rsw",
+        "<leader>fW",
         utelescope.func("grep_string", { cwd = parent_path, word_match = "-w" }),
         desc = "Word (relative)",
       },
-      { "<leader>sw", utelescope.func("grep_string", { cwd = root_path }), mode = "v", desc = "Selection" },
-      { "<leader>sW", utelescope.func("grep_string", { cwd = false }), mode = "v", desc = "Selection (cwd)" },
+      { "<leader>fw", utelescope.func("grep_string", { cwd = root_path }), mode = "v", desc = "Selection" },
       {
-        "<leader>rsw",
+        "<leader>fW",
         utelescope.func("grep_string", { cwd = parent_path }),
         mode = "v",
         desc = "Selection (relative)",
       },
-      { '<leader>s"', "<cmd>Telescope registers<cr>", desc = "Registers" },
+      {
+        "<leader>fs",
+        function()
+          require("telescope.builtin").lsp_document_symbols({
+            symbols = require("util.filter").get_kind_filter(),
+          })
+        end,
+        desc = "Goto symbol",
+      },
+      {
+        "<leader>fS",
+        function()
+          require("telescope.builtin").lsp_dynamic_workspace_symbols({
+            symbols = require("util.filter").get_kind_filter(),
+          })
+        end,
+        desc = "Goto symbol (workspace)",
+      },
+      { '<leader>"', "<cmd>Telescope registers<cr>", desc = "Registers" },
       { "<leader>ss", "<cmd>Telescope current_buffer_fuzzy_find<cr>", desc = "Fuzzy search buffer lines" },
-      { "<leader>sc", "<cmd>Telescope command_history<cr>", desc = "Command history" },
+      { "<leader>:", "<cmd>Telescope command_history<cr>", desc = "Command history" },
+      { "<leader>sk", "<cmd>Telescope keymaps<cr>", desc = "Keymaps" },
       { "<leader>sh", "<cmd>Telescope help_tags<cr>", desc = "Help tags" },
       { "<leader>sk", "<cmd>Telescope keymaps<cr>", desc = "Keymaps" },
       { "<leader>tt", utelescope.func("colorscheme", { enable_preview = true }), desc = "Colorschemes" },
-      { "<leader>:", "<cmd>Telescope commands<cr>", desc = "Commands" },
+      { "<leader>;", "<cmd>Telescope commands<cr>", desc = "Commands" },
       { "<leader>'", "<cmd>Telescope resume<cr>", desc = "Resume" },
     },
     opts = {
@@ -704,9 +715,8 @@ return {
   {
     "nvim-telescope/telescope-live-grep-args.nvim",
     keys = {
-      { "<leader>sa", utelescope.func("live_grep_args", { cwd = root_path }), desc = "Grep with args" },
-      { "<leader>sA", utelescope.func("live_grep_args", { cwd = false }), desc = "Grep with args (cwd)" },
-      { "<leader>rsa", utelescope.func("live_grep_args", { cwd = parent_path }), desc = "Grep with args (relative)" },
+      { "<leader>fa", utelescope.func("live_grep_args", { cwd = root_path }), desc = "Grep with args" },
+      { "<leader>fA", utelescope.func("live_grep_args", { cwd = parent_path }), desc = "Grep with args (relative)" },
     },
     config = function()
       require("telescope").load_extension("live_grep_args")
@@ -729,7 +739,6 @@ return {
     "nvim-telescope/telescope-frecency.nvim",
     event = { "VeryLazy" },
     keys = {
-      { "<leader>sr", "<cmd>Telescope frecency<cr>", desc = "Oldfiles" },
       { "<leader>fr", "<cmd>Telescope frecency<cr>", desc = "Oldfiles" },
     },
     config = function()
