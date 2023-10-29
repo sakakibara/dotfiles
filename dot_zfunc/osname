@@ -16,10 +16,6 @@ case "${OSTYPE}" in
     elif [[ -f /etc/debian_version ]]; then
       OSNAME="debian"
     fi
-
-    if [[ -n "${OSNAME}" && -f "/proc/version" ]]; then
-      grep -q "Microsoft" "/proc/version" && OSNAME="${OSNAME}_wsl"
-    fi
     ;;
 esac
 OSNAME="${OSNAME//\"/}"

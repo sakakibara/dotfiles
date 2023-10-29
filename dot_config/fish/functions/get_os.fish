@@ -13,11 +13,6 @@ function get_os -d "Get the current OS name"
     else if test -f /etc/debian_version
       set os "debian"
     end
-
-    if test -n "$os" && test -f /proc/version \
-        && grep -q "Microsoft" "/proc/version"
-      set os (string join "" $os _wsl)
-    end
   end
 
   if test -n "$os"
