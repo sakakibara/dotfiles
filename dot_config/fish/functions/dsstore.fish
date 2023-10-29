@@ -1,3 +1,3 @@
 function dsstore
-  find . -name '*.DS_Store' -type f -ls -delete
+    find . -name '*.DS_Store' -type f -ls -delete
 end
