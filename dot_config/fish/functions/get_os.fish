@@ -10,8 +10,10 @@ function get_os -d "Get the current OS name"
       set os (awk -F= '$1=="ID" { print tolower($2) ;}' "/etc/os-release")
     else if command -v lsb_release &>/dev/null
       set os (lsb_release -si)
+    else if test -f /etc/lsb-release
+      set os (awk -F= '$1=="DISTRIB_ID" { print tolower($2) ;}' "/etc/lsb-release")
     else if test -f /etc/debian_version
-      set os "debian"
+      set os debian
     end
   end
 
