@@ -41,13 +41,15 @@ function M.is_dir(path)
 end
 
 function M.get_current_file_path()
-  local path
-  if vim.bo.filetype == "oil" then
-    path = require("oil").get_current_dir()
-  else
-    path = vim.api.nvim_buf_get_name(0)
+  return M.buf_get_name(vim.api.nvim_get_current_buf())
+end
+
+function M.buf_get_name(buf)
+  local ft = vim.api.nvim_buf_get_option(buf, "filetype")
+  if ft == "oil" then
+    return require("oil").get_current_dir()
   end
-  return path
+  return vim.api.nvim_buf_get_name(0)
 end
 
 function M.get_path_segments(path)

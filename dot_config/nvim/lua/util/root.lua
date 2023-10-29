@@ -1,4 +1,5 @@
 local LazyUtil = require("lazy.core.util")
+local upath = require("util.path")
 
 local M = {}
 
@@ -36,7 +37,7 @@ function M.detectors.pattern(buf, patterns)
 end
 
 function M.bufpath(buf)
-  return M.realpath(vim.api.nvim_buf_get_name(assert(buf)))
+  return M.realpath(upath.buf_get_name(assert(buf)))
 end
 
 function M.cwd()
