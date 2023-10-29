@@ -35,48 +35,80 @@ end
 set -gx LANG en_US.UTF-8
 set -gx LC_ALL en_US.UTF-8
 
+# Set editor
+if test (command -v nvim)
+    set -gx EDITOR nvim
+else
+    set -gx EDITOR vim
+end
+set -gx VISUAL $EDITOR
+
+# Set oracle language
+set -gx NLS_LANG AMERICAN_AMERICA.AL32UTF8
+
+# Disable microsoft .NET telemetry
+set -gx DOTNET_CLI_TELEMETRY_OPTOUT 1
+
+# Export dotfiles directory variable
+set -gx DOTFILES $HOME/.dotfiles
+
+# Add path
+fish_add_path $HOME/.fzf/bin
+fish_add_path $HOME/.local/bin
+
+if string match -q -- $OSNAME macos
+    if test -f /opt/homebrew/bin/brew
+        eval (/opt/homebrew/bin/brew shellenv)
+    end
+    if test -f /usr/local/bin/brew
+        eval (/usr/local/bin/brew shellenv)
+    end
+end
+
+if test -d $XDG_CONFIG_HOME/emacs/bin
+    fish_add_path $XDG_CONFIG_HOME/emacs/bin
+end
+
+if test (command -v go)
+    set -gx GOPATH $HOME/.go
+    fish_add_path --append $GOPATH/bin
+end
+
+if set -q IS_WSL; or set -q WSL_DISTRO_NAME
+    set -gx TZ /usr/share/zoneinfo/Japan
+    set -gx DISPLAY localhost:0.0
+end
+
 # Run if fish is invoked as a login shell
 if status --is-interactive
     # Disable greeting message
     set fish_greeting
 
-    # Export dotfiles directory variable
-    set -gx DOTFILES $HOME/.dotfiles
-
-    # Export gopath
-    set -gx GOPATH $HOME/.go
-
-    # Add path
-    fish_add_path -pP $HOME/.fzf/bin
-    fish_add_path -pP $HOME/.composer/vendor/bin
-    fish_add_path -pP $GOPATH/bin
-    fish_add_path -pP $HOME/.local/bin
-
-    if string match -q -- $OSNAME "darwin*"
-        if test -f /opt/homebrew/bin/brew
-            eval (/opt/homebrew/bin/brew shellenv)
+    # Fzf settings
+    if test (command -v fzf)
+        set -l fd_command
+        if test (command -v fd)
+            set fd_command fd
+        else if test (command -v fdfind)
+            set fd_command fdfind
         end
-        if test -f /usr/local/bin/brew
-            eval (/usr/local/bin/brew shellenv)
-        end
+        set -gx FZF_DEFAULT_COMMAND "$fd_command --type file --follow --hidden --exclude .git"
+        set -gx FZF_DEFAULT_OPTS --ansi
+        set -gx FZF_CTRL_T_COMMAND $FZF_DEFAULT_COMMAND
+        set -gx FZF_ALT_C_COMMAND "$fd_command --type directory --follow --hidden"
     end
 
-    if test (command -v ec)
-        set -gx EDITOR ec
-    else if test (command -v emacs)
-        set -gx EDITOR emacs
-    else if test (command -v nvim)
-        set -gx EDITOR nvim
-    else
-        set -gx EDITOR vim
+    if test (command -v zoxide)
+        set -gx _ZO_DATA_DIR "$XDG_DATA_HOME/zoxide"
     end
-    set -gx VISUAL $EDITOR
 
-    # Set oracle language
-    set -gx NLS_LANG AMERICAN_AMERICA.AL32UTF8
+    if test (command -v zk)
+        set -gx ZK_NOTEBOOK_DIR "$HOME/notes"
+    end
 
-    # Disable microsoft .NET telemetry
-    set -gx DOTNET_CLI_TELEMETRY_OPTOUT 1
+    # Keybind
+    bind \e\cP history-token-search-backward
+    bind \e\cN history-token-search-forward
 
     # Navigation aliases
     abbr -a e $EDITOR
@@ -88,15 +120,7 @@ if status --is-interactive
     abbr -a ..... cd ../../../..
     abbr -a -- - cd -
 
-    # Fzf settings
-    if test (command -v fzf)
-        set -gx FZF_DEFAULT_COMMAND 'fd --type file --follow --hidden --exclude .git'
-        set -gx FZF_DEFAULT_OPTS --ansi
-        set -gx FZF_CTRL_T_COMMAND $FZF_DEFAULT_COMMAND
-        set -gx FZF_ALT_C_COMMAND 'fd --type directory --follow --hidden'
+    if test (command -v fdfind)
+        abbr -a fd fdfind
     end
-
-    # Keybind
-    bind \e\cP history-token-search-backward
-    bind \e\cN history-token-search-forward
 end
