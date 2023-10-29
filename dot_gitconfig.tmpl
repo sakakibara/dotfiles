@@ -53,3 +53,9 @@
 [credential "https://gist.github.com"]
 	helper =
 	helper = !gh auth git-credential
+{{ if eq .chezmoi.os "windows" -}}
+[http]
+	proxy = http://127.0.0.1:3128
+[https]
+	proxy = http://127.0.0.1:3128
+{{ end -}}
