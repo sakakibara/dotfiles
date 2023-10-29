@@ -24,14 +24,6 @@ fi
 export LANG=en_US.UTF-8
 export LC_ALL=en_US.UTF-8
 
-# Set editor
-if (( ${+commands[nvim]} )); then
-  export EDITOR=nvim
-else
-  export EDITOR=vim
-fi
-export VISUAL="${EDITOR}"
-
 # Set oracle language
 export NLS_LANG=AMERICAN_AMERICA.AL32UTF8
 
@@ -81,6 +73,14 @@ if (( ${+commands[go]} )); then
   export GOBIN="${GOPATH}/bin"
   path+=("${GOBIN}")
 fi
+
+# Set editor
+if (( ${+commands[nvim]} )); then
+  export EDITOR=nvim
+else
+  export EDITOR=vim
+fi
+export VISUAL="${EDITOR}"
 
 if [[ -n "${IS_WSL}" || -n "${WSL_DISTRO_NAME}" ]]; then
   export TZ=/usr/share/zoneinfo/Japan

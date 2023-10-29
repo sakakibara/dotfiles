@@ -35,14 +35,6 @@ end
 set -gx LANG en_US.UTF-8
 set -gx LC_ALL en_US.UTF-8
 
-# Set editor
-if test (command -v nvim)
-    set -gx EDITOR nvim
-else
-    set -gx EDITOR vim
-end
-set -gx VISUAL $EDITOR
-
 # Set oracle language
 set -gx NLS_LANG AMERICAN_AMERICA.AL32UTF8
 
@@ -73,6 +65,14 @@ if test (command -v go)
     set -gx GOPATH $HOME/.go
     fish_add_path --append $GOPATH/bin
 end
+
+# Set editor
+if test (command -v nvim)
+    set -gx EDITOR nvim
+else
+    set -gx EDITOR vim
+end
+set -gx VISUAL $EDITOR
 
 if set -q IS_WSL; or set -q WSL_DISTRO_NAME
     set -gx TZ /usr/share/zoneinfo/Japan
