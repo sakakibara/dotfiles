@@ -40,10 +40,6 @@ function M.bufpath(buf)
   return M.realpath(upath.buf_get_name(assert(buf)))
 end
 
-function M.cwd()
-  return M.realpath(vim.loop.cwd()) or ""
-end
-
 function M.realpath(path)
   if path == "" or path == nil then
     return nil
