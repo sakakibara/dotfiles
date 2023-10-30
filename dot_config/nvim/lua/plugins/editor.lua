@@ -1,4 +1,5 @@
 local utelescope = require("util.telescope")
+local upath = require("util.path")
 local root_path = require("util.root").get
 local parent_path = require("util.path").get_parent_path
 return {
@@ -777,10 +778,25 @@ return {
   {
     "mickael-menu/zk-nvim",
     keys = {
-      { "<leader>nn", "<cmd>ZkNew { title = vim.fn.input('Title: ') }<cr>", desc = "Create zk note" },
+      {
+        "<leader>nn",
+        function()
+          vim.ui.input({ prompt = "Title" }, function(input)
+            if input then
+              require("zk").new({ title = input })
+            end
+          end)
+        end,
+        desc = "Create zk note",
+      },
       {
         "<leader>nj",
-        "<cmd>ZkNew { dir = os.getenv('ZK_NOTEBOOK_DIR') .. require('util.path').sep .. 'journal', group = 'journal' }<cr>",
+        function()
+          require("zk").new({
+            dir = vim.env.ZK_NOTEBOOK_DIR .. upath.sep .. "journal",
+            group = "journal",
+          })
+        end,
         desc = "Create zk journal note",
       },
       { "<leader>nf", "<cmd>ZkNotes { sort = { 'modified' } }<cr>", desc = "Open zk note" },
@@ -788,13 +804,19 @@ return {
       { "<leader>nt", "<cmd>ZkTags<cr>", desc = "Open zk note by tags" },
       {
         "<leader>no",
-        "<cmd>ZkNotes { sort = { 'modified' }, match = { vim.fn.input('Search : ') } }<cr>",
-        desc = "Open zk note by tags",
+        function()
+          vim.ui.input({ prompt = "Search" }, function(input)
+            if input then
+              require("zk").edit({ sort = { "modified" }, match = { input } })
+            end
+          end)
+        end,
+        desc = "Search and open zk notes",
       },
       { "<leader>nr", "<cmd>ZkIndex<cr>", desc = "Refresh zk index" },
     },
     opts = {
-      picker = "select",
+      picker = "telescope",
       lsp = {
         config = {
           cmd = { "zk", "lsp" },
