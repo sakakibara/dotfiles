@@ -112,11 +112,11 @@ function M.setup()
     end,
   })
 
-  vim.api.nvim_create_user_command("LazyFormat", function()
+  vim.api.nvim_create_user_command("Format", function()
     M.format({ force = true })
   end, { desc = "Format selection or buffer" })
 
-  vim.api.nvim_create_user_command("LazyFormatInfo", function()
+  vim.api.nvim_create_user_command("FormatInfo", function()
     M.info()
   end, { desc = "Show info about the formatters for the current buffer" })
 end

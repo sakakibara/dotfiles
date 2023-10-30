@@ -123,7 +123,7 @@ end
 M.cache = {}
 
 function M.setup()
-  vim.api.nvim_create_user_command("Root", function()
+  vim.api.nvim_create_user_command("RootInfo", function()
     M.info()
   end, { desc = "Root for the current buffer" })
 
