@@ -653,6 +653,16 @@ return {
           override_file_sorter = true,
           case_mode = "smart_case",
         },
+        live_grep_args = {
+          auto_quoting = true,
+          mappings = {
+            i = {
+              ["<M-q>"] = function(...)
+                return require("telescope-live-grep-args.actions").quote_prompt()(...)
+              end,
+            },
+          },
+        },
         undo = {
           use_delta = false,
           use_custom_command = nil,
