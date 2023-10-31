@@ -48,6 +48,9 @@ set -gx DOTFILES $HOME/.dotfiles
 if test (command -v fzf)
     fish_add_path $HOME/.fzf/bin
 end
+if test (command -v cargo)
+    fish_add_path $HOME/.cargo/bin
+end
 fish_add_path $HOME/.local/bin
 
 if string match -q -- $OSNAME macos
