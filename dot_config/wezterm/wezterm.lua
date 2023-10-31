@@ -49,7 +49,7 @@ launch_menu = {
   },
   {
     label = "Zsh",
-    args = { "Zsh", "--login" },
+    args = { "zsh", "--login" },
   },
   {
     label = "Bash",
