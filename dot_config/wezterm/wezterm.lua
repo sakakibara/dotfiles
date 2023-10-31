@@ -44,6 +44,10 @@ config.mouse_bindings = {
 
 launch_menu = {
   {
+    label = "Fish",
+    args = { "fish", "--login" },
+  },
+  {
     label = "Zsh",
     args = { "Zsh", "--login" },
   },
