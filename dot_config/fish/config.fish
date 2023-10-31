@@ -45,7 +45,9 @@ set -gx DOTNET_CLI_TELEMETRY_OPTOUT 1
 set -gx DOTFILES $HOME/.dotfiles
 
 # Add path
-fish_add_path $HOME/.fzf/bin
+if test (command -v fzf)
+    fish_add_path $HOME/.fzf/bin
+end
 fish_add_path $HOME/.local/bin
 
 if string match -q -- $OSNAME macos
