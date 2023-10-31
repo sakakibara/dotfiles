@@ -424,13 +424,6 @@ return {
       {
         "<leader>fE",
         function()
-          require("neo-tree.command").execute({ toggle = true, dir = vim.loop.cwd() })
-        end,
-        desc = "Explorer neotree (cwd)",
-      },
-      {
-        "<leader>rfe",
-        function()
           require("neo-tree.command").execute({ toggle = true, dir = parent_path() })
         end,
         desc = "Explorer neotree (relative)",
