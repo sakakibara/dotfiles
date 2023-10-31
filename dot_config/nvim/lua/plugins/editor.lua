@@ -820,6 +820,8 @@ return {
         end,
         desc = "Search and open zk notes",
       },
+      { "<leader>nl", "<cmd>ZkLinks<cr>", desc = "Open zk links" },
+      { "<leader>nb", "<cmd>ZkBacklinks<cr>", desc = "Open zk backlinks" },
       { "<leader>nr", "<cmd>ZkIndex<cr>", desc = "Refresh zk index" },
     },
     opts = {
