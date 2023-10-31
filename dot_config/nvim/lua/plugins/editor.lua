@@ -781,7 +781,7 @@ return {
       {
         "<leader>nn",
         function()
-          vim.ui.input({ prompt = "Title" }, function(input)
+          vim.ui.input({ prompt = "Title:" }, function(input)
             if input then
               require("zk").new({ title = input })
             end
@@ -812,7 +812,7 @@ return {
       {
         "<leader>no",
         function()
-          vim.ui.input({ prompt = "Search" }, function(input)
+          vim.ui.input({ prompt = "Search:" }, function(input)
             if input then
               require("zk").edit({ sort = { "modified" }, match = { input } })
             end
