@@ -22,6 +22,7 @@ launch_menu = {
 }
 
 if wezterm.target_triple == "x86_64-pc-windows-msvc" then
+  config.font_size = 10.0
   table.insert(launch_menu, {
     label = "PowerShell",
     args = { "powershell.exe", "-NoLogo" },
