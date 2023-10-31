@@ -792,10 +792,17 @@ return {
       {
         "<leader>nj",
         function()
-          require("zk").new({
-            dir = vim.env.ZK_NOTEBOOK_DIR .. upath.sep .. "journal",
-            group = "journal",
-          })
+          vim.ui.select({ "today", "yesterday", "tomorrow" }, {
+            prompt = "Open journal:",
+          }, function(choice)
+            if choice then
+              require("zk").new({
+                date = choice == "today" and false or choice,
+                dir = vim.env.ZK_NOTEBOOK_DIR .. upath.sep .. "journal",
+                group = "journal",
+              })
+            end
+          end)
         end,
         desc = "Create zk journal note",
       },
