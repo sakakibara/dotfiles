@@ -201,34 +201,8 @@ return {
           "tsv",
         },
       },
-      scope = { enabled = false },
       whitespace = { remove_blankline_trail = false },
     },
-  },
-
-  {
-    "echasnovski/mini.indentscope",
-    version = false,
-    event = "LazyFile",
-    opts = {
-      symbol = "│",
-      options = { try_as_border = true },
-    },
-    config = function(_, opts)
-      vim.api.nvim_create_autocmd("FileType", {
-        pattern = {
-          "Trouble",
-          "help",
-          "lazy",
-          "mason",
-          "notify",
-        },
-        callback = function()
-          vim.b.miniindentscope_disable = true
-        end,
-      })
-      require("mini.indentscope").setup(opts)
-    end,
   },
 
   {
