@@ -50,59 +50,57 @@ map("n", "<leader>ul", "<cmd>Lazy<cr>", { desc = "Lazy" })
 map("n", "<leader>qq", "<cmd>qa<cr>", { desc = "Quit all" })
 
 local conceallevel = vim.o.conceallevel > 0 and vim.o.conceallevel or 3
-map("n", "<leader>uto", function()
+map("n", "<leader>oo", function()
   ukeymaps.toggle("conceallevel", false, { 0, conceallevel })
 end, { desc = "Toggle conceal" })
 
-map("n", "<leader>utd", function()
+map("n", "<leader>od", function()
   ukeymaps.toggle_diagnostics()
 end, { desc = "Toggle diagnostic" })
 
-map("n", "<leader>utn", function()
-  ukeymaps.toggle_number()
-end, { desc = "Toggle line numbers" })
+map("n", "<leader>on", function() end, { desc = "Toggle line numbers" })
 
-map("n", "<leader>utN", function()
+map("n", "<leader>oN", function()
   ukeymaps.toggle("number")
 end, { desc = "Toggle 'number'" })
 
-map("n", "<leader>utr", function()
+map("n", "<leader>or", function()
   ukeymaps.toggle("relativenumber")
 end, { desc = "Toggle 'relativenumber'" })
 
-map("n", "<leader>uts", function()
+map("n", "<leader>os", function()
   ukeymaps.toggle("spell")
 end, { desc = "Toggle 'spell'" })
 
-map("n", "<leader>utw", function()
+map("n", "<leader>ow", function()
   ukeymaps.toggle("wrap")
 end, { desc = "Toggle 'wrap'" })
 
-map("n", "<leader>utc", function()
+map("n", "<leader>oc", function()
   ukeymaps.toggle("cursorline")
 end, { desc = "Toggle 'cursorline'" })
 
-map("n", "<leader>utC", function()
+map("n", "<leader>oC", function()
   ukeymaps.toggle("cursorcolumn")
 end, { desc = "Toggle 'cursorcolumn'" })
 
-map("n", "<leader>uti", function()
+map("n", "<leader>oi", function()
   ukeymaps.toggle("ignorecase")
 end, { desc = "Toggle 'ignorecase'" })
 
-map("n", "<leader>utl", function()
+map("n", "<leader>ol", function()
   ukeymaps.toggle("list")
 end, { desc = "Toggle 'list'" })
 
-map("n", "<leader>utb", function()
+map("n", "<leader>ob", function()
   ukeymaps.toggle("background", false, { "dark", "light" })
 end, { desc = "Toggle 'background'" })
 
-map("n", "<leader>utf", function()
+map("n", "<leader>of", function()
   require("util.format").toggle()
 end, { desc = "Toggle auto format (global)" })
 
-map("n", "<leader>utF", function()
+map("n", "<leader>oF", function()
   require("util.format").toggle(true)
 end, { desc = "Toggle auto format (buffer)" })
 
