@@ -2,8 +2,6 @@ local map = vim.keymap.set
 local ufile, ukeymaps = require("util.file"), require("util.keymaps")
 ukeymaps.setup()
 
-map("n", "<leader>w", "<C-w>")
-
 map({ "n", "x" }, "j", "v:count == 0 ? 'gj' : 'j'", { expr = true, silent = true })
 map({ "n", "x" }, "k", "v:count == 0 ? 'gk' : 'k'", { expr = true, silent = true })
 
