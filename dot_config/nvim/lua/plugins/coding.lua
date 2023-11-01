@@ -45,7 +45,7 @@ return {
 
   {
     "andymass/vim-matchup",
-    event = "BufEnter",
+    event = "LazyFile",
     init = function()
       vim.g.matchup_matchparen_deferred = 1
       vim.g.matchup_matchparen_nomode = "vV<c-v>"
