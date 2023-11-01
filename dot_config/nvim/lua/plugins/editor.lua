@@ -790,6 +790,24 @@ return {
         desc = "Create zk note",
       },
       {
+        "<leader>nn",
+        function()
+          require("util.keymaps").feed_escape()
+          require("zk.commands").get("ZkNewFromTitleSelection")()
+        end,
+        mode = "v",
+        desc = "Create zk note from title selection",
+      },
+      {
+        "<leader>nc",
+        function()
+          require("util.keymaps").feed_escape()
+          require("zk.commands").get("ZkNewFromContentSelection")()
+        end,
+        mode = "v",
+        desc = "Create zk note from content selection",
+      },
+      {
         "<leader>nj",
         function()
           vim.ui.select({ "today", "yesterday", "tomorrow" }, {
@@ -821,6 +839,16 @@ return {
         desc = "Search and open zk notes",
       },
       { "<leader>ni", "<cmd>ZkInsertLink<cr>", ft = "markdown", desc = "Insert zk link" },
+      {
+        "<leader>ni",
+        function()
+          require("util.keymaps").feed_escape()
+          require("zk.commands").get("ZkInsertLinkAtSelection")()
+        end,
+        mode = "v",
+        ft = "markdown",
+        desc = "Insert zk link",
+      },
       { "<leader>nl", "<cmd>ZkLinks<cr>", ft = "markdown", desc = "Open zk links" },
       { "<leader>nb", "<cmd>ZkBacklinks<cr>", ft = "markdown", desc = "Open zk backlinks" },
       { "<leader>nr", "<cmd>ZkIndex<cr>", desc = "Refresh zk index" },
