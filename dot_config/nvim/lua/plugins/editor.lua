@@ -620,6 +620,9 @@ return {
             ["<M-p>"] = function(...)
               return require("telescope.actions.layout").toggle_preview(...)
             end,
+            ["<C-b>"] = { "<Left>", type = "command" },
+            ["<C-f>"] = { "<Right>", type = "command" },
+            ["<C-u>"] = false,
           },
           n = {
             ["-"] = function(...)
@@ -1139,5 +1142,10 @@ return {
         desc = "To path case (operator)",
       },
     },
+  },
+
+  {
+    "tpope/vim-rsi",
+    event = "InsertEnter",
   },
 }
