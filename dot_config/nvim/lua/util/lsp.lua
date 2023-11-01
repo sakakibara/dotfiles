@@ -88,7 +88,7 @@ function M.formatter(opts)
 end
 
 function M.format(opts)
-  opts = vim.tbl_deep_extend("force", {}, opts or {}, require("lazyvim.util").opts("nvim-lspconfig").format or {})
+  opts = vim.tbl_deep_extend("force", {}, opts or {}, require("util.plugin").opts("nvim-lspconfig").format or {})
   local ok, conform = pcall(require, "conform")
   if ok then
     opts.formatters = {}
