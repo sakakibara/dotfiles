@@ -37,6 +37,14 @@ map("n", "] ", "v:lua.KeymapsUtil.put_empty_line(v:false)", { expr = true, desc 
 map("n", "<leader>fy", ukeymaps.yank_relative_path, { desc = "Yank relative path" })
 map("n", "<leader>fY", ukeymaps.yank_full_path, { desc = "Yank full path" })
 
+map({ "i", "n" }, "<esc>", "<cmd>nohlsearch<cr><esc>", { desc = "Escape and clear hlsearch" })
+map(
+  "n",
+  "<leader>ur",
+  "<cmd>nohlsearch<bar>diffupdate<bar>normal! <C-l><cr>",
+  { desc = "Redraw / clear hlsearch / diff update" }
+)
+
 map("n", "<leader>ul", "<cmd>Lazy<cr>", { desc = "Lazy" })
 
 map("n", "<leader>qq", "<cmd>qa<cr>", { desc = "Quit all" })
