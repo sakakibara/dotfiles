@@ -128,4 +128,13 @@ if status --is-interactive
     if test (command -v fdfind)
         abbr -a fd fdfind
     end
+    if test (command -v task)
+        abbr -a t task
+    end
+    if test (command -v timew)
+        abbr -a tw timew
+    end
+    if test (command -v taskwarrior-tui)
+        abbr -a ti taskwarrior-tui
+    end
 end
