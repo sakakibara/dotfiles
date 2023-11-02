@@ -137,4 +137,9 @@ if status --is-interactive
     if test (command -v taskwarrior-tui)
         abbr -a ti taskwarrior-tui
     end
+    if test (command -v zk)
+        abbr -a n zk
+        abbr -a ne zk edit --interactive
+        abbr -a nj zk journal
+    end
 end
