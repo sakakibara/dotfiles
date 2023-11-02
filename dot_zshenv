@@ -47,6 +47,7 @@ export DOTFILES=${HOME}/.dotfiles
 
 path=(
   "${HOME}/.local/bin"
+  "${HOME}/.cargo/bin"
   "${HOME}/.fzf/bin"
   "${DOTFILES}/bin"
   ${path}
