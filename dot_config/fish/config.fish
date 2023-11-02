@@ -142,4 +142,9 @@ if status --is-interactive
         abbr -a ne zk edit --interactive
         abbr -a nj zk journal
     end
+
+    # LS_COLORS settings
+    if test (command -v vivid)
+        set -gx LS_COLORS (vivid generate catppuccin-mocha)
+    end
 end
