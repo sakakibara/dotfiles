@@ -91,6 +91,7 @@ return {
 
       local luasnip = require("luasnip")
       local cmp = require("cmp")
+      local defaults = require("cmp.config.default")()
 
       return {
         completion = {
@@ -154,6 +155,7 @@ return {
             hl_group = "CmpGhostText",
           },
         },
+        sorting = defaults.sorting,
       }
     end,
   },
