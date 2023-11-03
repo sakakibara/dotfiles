@@ -1,0 +1,6 @@
+add_newline = false
+
+{{ if lookPath "starship.exe" -}}
+[git_status]
+windows_starship = "{{ lookPath "starship.exe" }}"
+{{ end -}}
