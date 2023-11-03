@@ -158,6 +158,12 @@ return {
         sorting = defaults.sorting,
       }
     end,
+    config = function(_, opts)
+      for _, source in ipairs(opts.sources) do
+        source.group_index = source.group_index or 1
+      end
+      require("cmp").setup(opts)
+    end,
   },
 
   {
