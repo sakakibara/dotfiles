@@ -1,3 +1,16 @@
+{{ $proxy_url := "" -}}
+{{ $proxy_envs := list
+     "http_proxy"
+     "https_proxy"
+     "HTTP_PROXY"
+     "HTTPS_PROXY" -}}
+{{ range $proxy_envs -}}
+{{   if env . -}}
+{{     $proxy_url = env . -}}
+{{     break -}}
+{{   end -}}
+{{ end -}}
+
 [filter "lfs"]
 	required = true
 	clean = git-lfs clean %f
@@ -53,9 +66,10 @@
 [credential "https://gist.github.com"]
 	helper =
 	helper = !gh auth git-credential
-{{ if eq .chezmoi.os "windows" -}}
+
+{{- if ne $proxy_url "" }}
 [http]
-	proxy = http://127.0.0.1:3128
+	proxy = {{ $proxy_url }}
 [https]
-	proxy = http://127.0.0.1:3128
-{{ end -}}
+	proxy = {{ $proxy_url }}
+{{- end }}
