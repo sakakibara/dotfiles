@@ -45,7 +45,6 @@ set -gx DOTNET_CLI_TELEMETRY_OPTOUT 1
 set -gx DOTFILES $HOME/.dotfiles
 
 # Add path
-fish_add_path $HOME/.local/bin
 fish_add_path $HOME/.fzf/bin
 fish_add_path $HOME/.cargo/bin
 
@@ -66,6 +65,7 @@ if test (command -v go)
     set -gx GOPATH $HOME/.go
     fish_add_path --append $GOPATH/bin
 end
+fish_add_path $HOME/.local/bin
 
 # Set editor
 if test (command -v nvim)
