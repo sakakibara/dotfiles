@@ -207,12 +207,13 @@ return {
 
   {
     "Bekaboo/deadcolumn.nvim",
-    event = "VeryLazy",
+    event = "UIEnter",
     init = function()
       if vim.fn.argc(-1) > 0 then
         require("deadcolumn")
       end
     end,
+    opts = {},
   },
 
   {
