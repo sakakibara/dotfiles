@@ -62,10 +62,9 @@ if test -d $XDG_CONFIG_HOME/emacs/bin
     fish_add_path $XDG_CONFIG_HOME/emacs/bin
 end
 
-if test (command -v go)
-    set -gx GOPATH $HOME/.go
-    fish_add_path --append $GOPATH/bin
-end
+set -gx GOPATH $HOME/.go
+fish_add_path --append $GOPATH/bin
+
 fish_add_path $HOME/.local/bin
 
 # Set editor
