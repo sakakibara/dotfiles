@@ -134,13 +134,10 @@ return {
             end
           end, { "i", "s" }),
         }),
-        sources = cmp.config.sources({
-          { name = "nvim_lsp" },
-          { name = "luasnip" },
-          { name = "buffer" },
-          { name = "path" },
-          { name = "neorg" },
-        }),
+        sources = cmp.config.sources(
+          { { name = "nvim_lsp" }, { name = "luasnip" }, { name = "path" } },
+          { { name = "buffer" } }
+        ),
         formatting = {
           format = function(_, item)
             local icons = require("config.icons").kinds
