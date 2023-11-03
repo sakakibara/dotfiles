@@ -46,6 +46,7 @@ set -gx DOTFILES $HOME/.dotfiles
 
 # Add path
 fish_add_path $HOME/.fzf/bin
+fish_add_path $HOME/.nimble/bin
 fish_add_path $HOME/.cargo/bin
 
 if string match -q -- $OSNAME macos
