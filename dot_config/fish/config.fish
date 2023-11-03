@@ -45,13 +45,9 @@ set -gx DOTNET_CLI_TELEMETRY_OPTOUT 1
 set -gx DOTFILES $HOME/.dotfiles
 
 # Add path
-if test (command -v fzf)
-    fish_add_path $HOME/.fzf/bin
-end
-if test (command -v cargo)
-    fish_add_path $HOME/.cargo/bin
-end
 fish_add_path $HOME/.local/bin
+fish_add_path $HOME/.fzf/bin
+fish_add_path $HOME/.cargo/bin
 
 if string match -q -- $OSNAME macos
     if test -f /opt/homebrew/bin/brew
