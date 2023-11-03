@@ -1,6 +1,6 @@
 add_newline = false
 
-{{ if lookPath "starship.exe" -}}
+{{ if (and (env "WSL_DISTRO_NAME") (lookPath "starship.exe"))  -}}
 [git_status]
 windows_starship = "{{ lookPath "starship.exe" }}"
 {{ end -}}
