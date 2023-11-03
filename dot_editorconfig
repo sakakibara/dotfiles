@@ -7,6 +7,7 @@ end_of_line = crlf
 
 [*.{md,org}]
 end_of_line = lf
+indent_size = 4
 trim_trailing_whitespace = false
 insert_final_newline = true
 
