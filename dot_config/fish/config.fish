@@ -3,7 +3,12 @@
 # dirs  755 drwxr-xr-x (777 minus 022)
 umask 022
 
-set -gx OSNAME (osname)
+# Set directory for cache of eval commands
+if test -z $FISH_EVALCACHE_DIR
+    set -gx FISH_EVALCACHE_DIR $HOME/.fish-evalcache
+end
+
+_evalcache osname init
 
 if not set -q XDG_CONFIG_HOME
     set -gx XDG_CONFIG_HOME $HOME/.config
@@ -40,11 +45,6 @@ set -gx NLS_LANG AMERICAN_AMERICA.AL32UTF8
 
 # Disable microsoft .NET telemetry
 set -gx DOTNET_CLI_TELEMETRY_OPTOUT 1
-
-# Set directory for cache of eval commands
-if test -z $FISH_EVALCACHE_DIR
-    set -gx FISH_EVALCACHE_DIR $HOME/.fish-evalcache
-end
 
 # Add path
 if string match -q -- $OSNAME macos
