@@ -24,13 +24,27 @@ if not set -q XDG_RUNTIME_DIR
 end
 
 if string match -q -- $OSNAME "darwin*"
-    set -gx XDG_DESKTOP_DIR $HOME/Desktop
-    set -gx XDG_DOCUMENTS_DIR $HOME/Documents
-    set -gx XDG_DOWNLOAD_DIR $HOME/Downloads
-    set -gx XDG_MUSIC_DIR $HOME/Music
-    set -gx XDG_PICTURES_DIR $HOME/Pictures
-    set -gx XDG_VIDEOS_DIR $HOME/Videos
-    set -gx XDG_PROJECTS_DIR $HOME/Projects
+    if not set -q XDG_DESKTOP_DIR
+        set -gx XDG_DESKTOP_DIR $HOME/Desktop
+    end
+    if not set -q XDG_DOCUMENTS_DIR
+        set -gx XDG_DOCUMENTS_DIR $HOME/Documents
+    end
+    if not set -q XDG_DOWNLOAD_DIR
+        set -gx XDG_DOWNLOAD_DIR $HOME/Downloads
+    end
+    if not set -q XDG_MUSIC_DIR
+        set -gx XDG_MUSIC_DIR $HOME/Music
+    end
+    if not set -q XDG_PICTURES_DIR
+        set -gx XDG_PICTURES_DIR $HOME/Pictures
+    end
+    if not set -q XDG_VIDEOS_DIR
+        set -gx XDG_VIDEOS_DIR $HOME/Videos
+    end
+    if not set -q XDG_PROJECTS_DIR
+        set -gx XDG_PROJECTS_DIR $HOME/Projects
+    end
 end
 
 # Set default language to English UTF-8
