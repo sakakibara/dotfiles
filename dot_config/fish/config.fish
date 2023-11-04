@@ -47,10 +47,6 @@ if test -z $FISH_EVALCACHE_DIR
 end
 
 # Add path
-fish_add_path $HOME/.fzf/bin
-fish_add_path $HOME/.nimble/bin
-fish_add_path $HOME/.cargo/bin
-
 if string match -q -- $OSNAME macos
     if test -f /opt/homebrew/bin/brew
         _evalcache /opt/homebrew/bin/brew shellenv
@@ -65,8 +61,11 @@ if test -d $XDG_CONFIG_HOME/emacs/bin
 end
 
 set -gx GOPATH $HOME/.go
-fish_add_path --append $GOPATH/bin
 
+fish_add_path $GOPATH/bin
+fish_add_path $HOME/.fzf/bin
+fish_add_path $HOME/.nimble/bin
+fish_add_path $HOME/.cargo/bin
 fish_add_path $HOME/.local/bin
 
 # Set editor
