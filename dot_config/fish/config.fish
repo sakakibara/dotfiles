@@ -46,9 +46,6 @@ if test -z $FISH_EVALCACHE_DIR
     set -gx FISH_EVALCACHE_DIR $HOME/.fish-evalcache
 end
 
-# Export dotfiles directory variable
-set -gx DOTFILES $HOME/.dotfiles
-
 # Add path
 fish_add_path $HOME/.fzf/bin
 fish_add_path $HOME/.nimble/bin
