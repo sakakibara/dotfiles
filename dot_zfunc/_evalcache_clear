@@ -1,0 +1,2 @@
+#!/usr/bin/env zsh
+rm -i "${ZSH_EVALCACHE_DIR}"/init-*.sh

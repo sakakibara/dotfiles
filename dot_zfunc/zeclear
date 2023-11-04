@@ -1,2 +1,0 @@
-#!/usr/bin/env zsh
-rm -i "${ZSH_EVAL_CACHE}"/init-*.sh

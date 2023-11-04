@@ -174,7 +174,7 @@ antidote load
 
 # Uncomment the line below when zi alias collides
 # (( ${+aliases[zi]} )) && unalias zi
-zecache zoxide init zsh
+_evalcache zoxide init zsh
 
 #
 # Completions
@@ -187,7 +187,7 @@ if (( ${+functions[asdf]} )); then
   fpath+=(${HOME}/.asdf/completions)
 fi
 
-zecache pip completion --zsh
+_evalcache pip completion --zsh
 
 #
 # Compdump

@@ -31,7 +31,7 @@ export NLS_LANG=AMERICAN_AMERICA.AL32UTF8
 export DOTNET_CLI_TELEMETRY_OPTOUT=1
 
 # Set directory for cache of eval commands
-export ZSH_EVAL_CACHE=${ZSH_EVAL_CACHE:-"${HOME}/.zecache"}
+export ZSH_EVALCACHE_DIR=${ZSH_EVALCACHE_DIR:-"${HOME}/.zsh-evalcache"}
 
 # Set custom zsh functions directory to fpath
 fpath=(${HOME}/.zfunc ${fpath})
@@ -40,7 +40,7 @@ fpath=(${HOME}/.zfunc ${fpath})
 autoload -Uz ${HOME}/.zfunc/*(.,@:t)
 
 # Set or load OSNAME variable
-zecache osname init
+_evalcache osname init
 
 # Set dotfiles environment variable
 export DOTFILES=${HOME}/.dotfiles
@@ -56,9 +56,9 @@ path=(
 # Set OS specific environment variable
 if [[ "${OSTYPE}" == darwin* ]]; then
   if [[ -f "/opt/homebrew/bin/brew" ]]; then
-    zecache /opt/homebrew/bin/brew shellenv
+    _evalcache /opt/homebrew/bin/brew shellenv
   elif [[ -f "/usr/local/bin/brew" ]]; then
-    zecache /usr/local/bin/brew shellenv
+    _evalcache /usr/local/bin/brew shellenv
   fi
 fi
 
