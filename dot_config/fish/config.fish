@@ -41,6 +41,11 @@ set -gx NLS_LANG AMERICAN_AMERICA.AL32UTF8
 # Disable microsoft .NET telemetry
 set -gx DOTNET_CLI_TELEMETRY_OPTOUT 1
 
+# Set directory for cache of eval commands
+if test -z $FISH_EVALCACHE_DIR
+    set -gx FISH_EVALCACHE_DIR $HOME/.fish-evalcache
+end
+
 # Export dotfiles directory variable
 set -gx DOTFILES $HOME/.dotfiles
 
@@ -51,10 +56,10 @@ fish_add_path $HOME/.cargo/bin
 
 if string match -q -- $OSNAME macos
     if test -f /opt/homebrew/bin/brew
-        eval (/opt/homebrew/bin/brew shellenv)
+        _evalcache /opt/homebrew/bin/brew shellenv
     end
     if test -f /usr/local/bin/brew
-        eval (/usr/local/bin/brew shellenv)
+        _evalcache /usr/local/bin/brew shellenv
     end
 end
 
