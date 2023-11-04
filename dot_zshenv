@@ -5,6 +5,18 @@
 
 # export ZDOTDIR=${ZDOTDIR:-$HOME/.config/zsh}
 
+# Set directory for cache of eval commands
+export ZSH_EVALCACHE_DIR=${ZSH_EVALCACHE_DIR:-"${HOME}/.zsh-evalcache"}
+
+# Set custom zsh functions directory to fpath
+fpath=(${HOME}/.zfunc ${fpath})
+
+# Autoload all functions in custom zsh functions directory
+autoload -Uz ${HOME}/.zfunc/*(.,@:t)
+
+# Set or load OSNAME variable
+_evalcache osname init
+
 export XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-$HOME/.config}
 export XDG_CACHE_HOME=${XDG_CACHE_HOME:-$HOME/.cache}
 export XDG_DATA_HOME=${XDG_DATA_HOME:-$HOME/.local/share}
@@ -29,18 +41,6 @@ export NLS_LANG=AMERICAN_AMERICA.AL32UTF8
 
 # Disable microsoft .NET telemetry
 export DOTNET_CLI_TELEMETRY_OPTOUT=1
-
-# Set directory for cache of eval commands
-export ZSH_EVALCACHE_DIR=${ZSH_EVALCACHE_DIR:-"${HOME}/.zsh-evalcache"}
-
-# Set custom zsh functions directory to fpath
-fpath=(${HOME}/.zfunc ${fpath})
-
-# Autoload all functions in custom zsh functions directory
-autoload -Uz ${HOME}/.zfunc/*(.,@:t)
-
-# Set or load OSNAME variable
-_evalcache osname init
 
 # Add path
 if [[ "${OSTYPE}" == darwin* ]]; then
