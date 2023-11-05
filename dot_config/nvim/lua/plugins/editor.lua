@@ -581,7 +581,7 @@ return {
       { "<leader>:", "<cmd>Telescope command_history<cr>", desc = "Command history" },
       { "<leader>sh", "<cmd>Telescope help_tags<cr>", desc = "Help tags" },
       { "<leader>sk", "<cmd>Telescope keymaps<cr>", desc = "Keymaps" },
-      { "<leader>uc", utelescope.func("colorscheme", { enable_preview = true }), desc = "Colorschemes" },
+      { "<leader>uC", utelescope.func("colorscheme", { enable_preview = true }), desc = "Colorschemes" },
       { "<leader>;", "<cmd>Telescope commands<cr>", desc = "Commands" },
       { "<leader>'", "<cmd>Telescope resume<cr>", desc = "Resume" },
     },
