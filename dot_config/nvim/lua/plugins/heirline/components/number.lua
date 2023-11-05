@@ -21,4 +21,16 @@ return {
     end
     return str
   end,
+  on_click = {
+    name = "number_click",
+    callback = function(...)
+      local args = require("plugins.heirline.components.util.statuscolumn").clickargs(...)
+      if args.mods:find("c") then
+        local dap_available, dap = pcall(require, "dap")
+        if dap_available then
+          vim.schedule(dap.toggle_breakpoint)
+        end
+      end
+    end,
+  },
 }
