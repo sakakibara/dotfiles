@@ -579,7 +579,6 @@ return {
       { '<leader>"', "<cmd>Telescope registers<cr>", desc = "Registers" },
       { "<leader>ss", "<cmd>Telescope current_buffer_fuzzy_find<cr>", desc = "Fuzzy search buffer lines" },
       { "<leader>:", "<cmd>Telescope command_history<cr>", desc = "Command history" },
-      { "<leader>sk", "<cmd>Telescope keymaps<cr>", desc = "Keymaps" },
       { "<leader>sh", "<cmd>Telescope help_tags<cr>", desc = "Help tags" },
       { "<leader>sk", "<cmd>Telescope keymaps<cr>", desc = "Keymaps" },
       { "<leader>uc", utelescope.func("colorscheme", { enable_preview = true }), desc = "Colorschemes" },
