@@ -45,4 +45,17 @@ return {
     end
     return str .. "%* "
   end,
+  on_click = {
+    name = "fold_click",
+    callback = function(...)
+      local args = require("plugins.heirline.components.util.statuscolumn").clickargs(...)
+      local char = args.char
+      local fillchars = vim.opt_local.fillchars:get()
+      if char == (fillchars.foldopen or icons.status.FoldOpen) then
+        vim.cmd("norm! zc")
+      elseif char == (fillchars.foldcolse or icons.status.FoldClose) then
+        vim.cmd("norm! zo")
+      end
+    end,
+  },
 }
