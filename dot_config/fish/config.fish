@@ -114,7 +114,6 @@ if status --is-interactive
             set fd_command fdfind
         end
         set -gx FZF_DEFAULT_COMMAND "$fd_command --type file --follow --hidden --exclude .git"
-        set -gx FZF_DEFAULT_OPTS --ansi
         set -gx FZF_CTRL_T_COMMAND $FZF_DEFAULT_COMMAND
         set -gx FZF_ALT_C_COMMAND "$fd_command --type directory --follow --hidden"
     end
