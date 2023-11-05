@@ -99,7 +99,7 @@ if status --is-interactive
 
     if not set -q TMUX
         if tmux has-session -t home 2>/dev/null
-            exec tmux attach-session -t home
+            exec tmux new-session -t home
         else
             exec tmux new-session -A -s home
         end

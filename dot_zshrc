@@ -1,6 +1,6 @@
 if [[ -o interactive && -z "${TMUX}" ]]; then
   if tmux has-session -t home 2> /dev/null; then
-    exec tmux attach-session -t home
+    exec tmux new-session -t home
   else
     exec tmux new-session -A -s home
   fi
