@@ -29,4 +29,26 @@ function M.clickargs(self, minwid, clicks, button, mods)
   return args
 end
 
+function M.gitsigns_click_handler(_)
+  local gitsigns_available, gitsigns = pcall(require, "gitsigns")
+  if gitsigns_available then
+    vim.schedule(gitsigns.preview_hunk)
+  end
+end
+
+function M.diagnostics_click_handler(args)
+  if args.mods:find("c") then
+    vim.schedule(vim.lsp.buf.code_action)
+  else
+    vim.schedule(vim.diagnostic.open_float)
+  end
+end
+
+function M.dap_breakpoint_click_handler(_)
+  local dap_available, dap = pcall(require, "dap")
+  if dap_available then
+    vim.schedule(dap.toggle_breakpoint)
+  end
+end
+
 return M
