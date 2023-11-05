@@ -98,10 +98,10 @@ if status --is-interactive
     set fish_greeting
 
     if not set -q TMUX
-        if tmux has-session -t work 2>/dev/null
-            exec tmux new-session -t work
+        if tmux has-session 2>/dev/null
+            exec tmux new-session
         else
-            exec tmux new-session -A -s work
+            exec tmux new-session -A
         end
     end
 

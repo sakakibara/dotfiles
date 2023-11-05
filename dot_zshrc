@@ -1,8 +1,8 @@
 if [[ -o interactive && -z "${TMUX}" ]]; then
-  if tmux has-session -t work 2> /dev/null; then
-    exec tmux new-session -t work
+  if tmux has-session 2> /dev/null; then
+    exec tmux new-session
   else
-    exec tmux new-session -A -s work
+    exec tmux new-session -A
   fi
 fi
 
