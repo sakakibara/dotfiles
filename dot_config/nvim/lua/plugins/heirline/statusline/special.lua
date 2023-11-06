@@ -9,7 +9,7 @@ return {
   end,
   require("heirline.utils").surround({ icons.powerline.block, icons.powerline.block }, "gray", {
     hl = {
-      fg = "fg",
+      fg = false,
       force = true,
     },
     require("plugins.heirline.components.file.type"),

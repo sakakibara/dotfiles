@@ -3,8 +3,6 @@ local M = {}
 function M.setup_colors()
   local utils = require("heirline.utils")
   return {
-    bg = utils.get_highlight("Normal").bg,
-    fg = utils.get_highlight("Normal").fg,
     bright_bg = utils.get_highlight("Folded").bg,
     bright_fg = utils.get_highlight("Folded").fg,
     red = utils.get_highlight("DiagnosticError").fg,
