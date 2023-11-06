@@ -1,5 +1,5 @@
-local upath = require("util.path")
 local conditions = require("heirline.conditions")
+local upath = require("util.path")
 
 return {
   condition = function()

@@ -1,5 +1,5 @@
-local icons = require("config.icons")
 local SegmentSeparator = require("plugins.heirline.components.segment_separator")
+local icons = require("config.icons")
 
 local M = {}
 
