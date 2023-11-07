@@ -9,9 +9,16 @@ fzf::setup() {
     git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
   fi
 
-  # Exit if, for some reason, fzf is not installed
+  # Exit if, for some reason, fzf is not downloaded
   if [[ ! -f "${HOME}/.fzf/bin/fzf" ]]; then
-    echo "fzf failed to install." >&2
-    # return 1
+    msg::error "Failed to download fzf"
+    return 1
   fi
+
+  "${HOME}"/.fzf/install
+  if [[ ! "$(command -v fzf)" ]]; then
+    msg::error "Fzf installation has failed"
+    return 1
+  fi
+  msg::success "Fzf is installed"
 }
