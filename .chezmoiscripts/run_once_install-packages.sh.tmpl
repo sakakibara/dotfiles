@@ -2,7 +2,7 @@
 #!/usr/bin/env bash
 source {{ joinPath .chezmoi.sourceDir "etc" "bash" "lib" "init.bash" | quote }}
 
-import unix darwin brew mpv tpm fzf asdf
+import unix darwin brew tpm fzf asdf
 
 main() {
   # Try to avoid having to type in the passwords over and over
@@ -14,7 +14,6 @@ main() {
   # Brewfile hash: {{ include "etc/darwin/Brewfile" | sha256sum }}
   ask_to_run brew::setup
 
-  ask_to_run mpv::setup
   ask_to_run fzf::setup
   ask_to_run asdf::setup
 }
