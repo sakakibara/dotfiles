@@ -1,7 +1,5 @@
 #.editorconfig
 
-root = true
-
 [*.txt]
 end_of_line = crlf
 
