@@ -32,7 +32,7 @@ return {
           settings = {
             Lua = {
               workspace = {
-                checkThirdParty = false,
+                checkThirdParty = "Disable",
               },
               completion = {
                 callSnippet = "Replace",
