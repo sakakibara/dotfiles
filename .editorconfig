@@ -2,25 +2,23 @@
 
 root = true
 
-[*]
-insert_final_newline = true
-
 [*.txt]
-end_of_line = lf
+end_of_line = crlf
 
 [*.{md,org}]
 end_of_line = lf
+indent_size = 4
 trim_trailing_whitespace = false
 insert_final_newline = true
 
-[*.{js,jsx,json,py}]
+[*.{js,jsx,json,py,fish}]
 indent_style = space
 indent_size = 4
 end_of_line = lf
 trim_trailing_whitespace = true
 insert_final_newline = true
 
-[*.{sh,html,css,sass,scss}]
+[*.{sh,bash,lua,html,css,sass,scss}]
 indent_style = space
 indent_size = 2
 end_of_line = lf
