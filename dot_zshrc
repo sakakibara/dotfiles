@@ -198,7 +198,7 @@ antidote load
 #
 
 [[ -r "${HOME}/.asdf/asdf.sh" ]] && source "${HOME}/.asdf/asdf.sh"
-[[ -r "${HOME}/.fzf.zsh" ]] && source "${HOME}/.fzf.zsh"
+[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
 # Uncomment the line below when zi alias collides
 # (( ${+aliases[zi]} )) && unalias zi
