@@ -13,6 +13,7 @@ return {
         ["<leader>b"] = { name = "+buffer" },
         ["<leader>c"] = { name = "+code" },
         ["<leader>f"] = { name = "+file" },
+        ["<leader>fc"] = { name = "+config" },
         ["<leader>g"] = { name = "+git" },
         ["<leader>gh"] = { name = "+hunks" },
         ["<leader>n"] = { name = "+notes" },
@@ -576,6 +577,19 @@ return {
         end,
         desc = "Goto symbol (workspace)",
       },
+      { "<leader>fcf", utelescope.func("files", { cwd = vim.fn.stdpath("config") }), desc = "Files (config)" },
+      { "<leader>fcg", utelescope.func("live_grep", { cwd = vim.fn.stdpath("config") }), desc = "Grep (config)" },
+      {
+        "<leader>fcw",
+        utelescope.func("grep_string", { cwd = vim.fn.stdpath("config"), word_match = "-w" }),
+        desc = "Word (config)",
+      },
+      {
+        "<leader>fcw",
+        utelescope.func("grep_string", { cwd = vim.fn.stdpath("config") }),
+        mode = "v",
+        desc = "Selection (config)",
+      },
       { '<leader>"', "<cmd>Telescope registers<cr>", desc = "Registers" },
       { "<leader>ss", "<cmd>Telescope current_buffer_fuzzy_find<cr>", desc = "Fuzzy search buffer lines" },
       { "<leader>:", "<cmd>Telescope command_history<cr>", desc = "Command history" },
@@ -736,6 +750,11 @@ return {
     keys = {
       { "<leader>fa", utelescope.func("live_grep_args", { cwd = root_path }), desc = "Grep with args" },
       { "<leader>fA", utelescope.func("live_grep_args", { cwd = parent_path }), desc = "Grep with args (relative)" },
+      {
+        "<leader>fca",
+        utelescope.func("live_grep_args", { cwd = vim.fn.stdpath("config") }),
+        desc = "Grep with args (config)",
+      },
     },
     config = function()
       require("telescope").load_extension("live_grep_args")
