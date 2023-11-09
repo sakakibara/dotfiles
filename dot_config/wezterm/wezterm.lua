@@ -30,16 +30,6 @@ config.mouse_bindings = {
     mods = "NONE",
     action = act.ScrollByLine(1),
   },
-  {
-    event = { Down = { streak = 1, button = { WheelUp = 1 } } },
-    mods = "CTRL",
-    action = act.IncreaseFontSize,
-  },
-  {
-    event = { Down = { streak = 1, button = { WheelDown = 1 } } },
-    mods = "CTRL",
-    action = act.DecreaseFontSize,
-  },
 }
 
 launch_menu = {
