@@ -97,16 +97,16 @@ if status --is-interactive
     # Disable greeting message
     set fish_greeting
 
-    if test (command -v tmux); and not set -q TMUX
-        set -l attach_session (tmux ls -F '#{session_name}|#{?session_attached,attached,not attached}' 2>/dev/null |
-        grep 'not attached$' | tail -n 1 | cut -d '|' -f1)
-
-        if test -n "$attach_session"
-            exec tmux attach-session -t $attach_session
-        else
-            exec tmux new-session
-        end
-    end
+    # if test (command -v tmux); and not set -q TMUX
+    #     set -l attach_session (tmux ls -F '#{session_name}|#{?session_attached,attached,not attached}' 2>/dev/null |
+    #     grep 'not attached$' | tail -n 1 | cut -d '|' -f1)
+    #
+    #     if test -n "$attach_session"
+    #         exec tmux attach-session -t $attach_session
+    #     else
+    #         exec tmux new-session
+    #     end
+    # end
 
     # Fzf settings
     if test (command -v fzf)

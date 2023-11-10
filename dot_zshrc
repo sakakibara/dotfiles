@@ -1,13 +1,13 @@
-if (( ${+commands[tmux]} )) && [[ -o interactive && -z "${TMUX}" ]]; then
-  attach_session="$(tmux ls -F '#{session_name}|#{?session_attached,attached,not attached}' 2>/dev/null |
-    grep 'not attached$' | tail -n 1 | cut -d '|' -f1)"
-
-  if [[ -n "$attach_session" ]]; then
-    exec tmux attach-session -t $attach_session
-  else
-    exec tmux new-session
-  fi
-fi
+# if (( ${+commands[tmux]} )) && [[ -o interactive && -z "${TMUX}" ]]; then
+#   attach_session="$(tmux ls -F '#{session_name}|#{?session_attached,attached,not attached}' 2>/dev/null |
+#     grep 'not attached$' | tail -n 1 | cut -d '|' -f1)"
+#
+#   if [[ -n "$attach_session" ]]; then
+#     exec tmux attach-session -t $attach_session
+#   else
+#     exec tmux new-session
+#   fi
+# fi
 
 # Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
 # Initialization code that may require console input (password prompts, [y/n]
