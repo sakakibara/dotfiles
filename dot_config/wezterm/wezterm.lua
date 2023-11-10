@@ -15,6 +15,7 @@ config.scrollback_lines = 35000
 config.enable_scroll_bar = true
 config.hide_tab_bar_if_only_one_tab = false
 config.treat_east_asian_ambiguous_width_as_wide = false
+config.adjust_window_size_when_changing_font_size = false
 config.keys = {
   { key = "UpArrow", mods = "SHIFT", action = act.ScrollByLine(-1) },
   { key = "DownArrow", mods = "SHIFT", action = act.ScrollByLine(1) },
