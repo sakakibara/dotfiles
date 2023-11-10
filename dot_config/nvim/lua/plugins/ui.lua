@@ -155,6 +155,7 @@ return {
       },
       default_amount = 1,
       at_edge = "stop",
+      multiplexer_integration = nil,
     },
   },
 
