@@ -295,6 +295,9 @@ return {
     opts = {},
     keys = {
       { "<F7>", mode = { "n", "x", "o", "t" }, "<cmd>ToggleTerm<cr>", desc = "Toggle terminal" },
+      { "<leader>utf", "<cmd>ToggleTerm direction=float<cr>", desc = "Toggle terminal (float)" },
+      { "<leader>uth", "<cmd>ToggleTerm size=10 direction=horizontal<cr>", desc = "Toggle terminal (horizontal)" },
+      { "<leader>utv", "<cmd>ToggleTerm size=80 direction=vertical<cr>", desc = "Toggle terminal (vertical)" },
       { "<leader>gl", require("util.terminal").lazygit_toggle, desc = "Lazygit" },
     },
   },
