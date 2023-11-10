@@ -132,7 +132,7 @@ return {
       vim.o.laststatus = vim.g.heirline_laststatus
       local special_buffers = {
         buftype = { "nofile", "prompt", "help", "quickfix" },
-        filetype = { "Trouble", "neo-tree" },
+        filetype = { "Trouble", "neo-tree", "dashboard" },
       }
       return {
         statusline = require("plugins.heirline.statusline"),

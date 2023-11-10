@@ -8,7 +8,6 @@ return {
       light = "latte",
       dark = "mocha",
     },
-    show_end_of_buffer = true,
     dim_inactive = {
       enabled = true,
       shade = "dark",
@@ -21,6 +20,7 @@ return {
         enabled = true,
         enable_ui = true,
       },
+      dashboard = true,
       flash = true,
       gitsigns = true,
       headlines = true,
