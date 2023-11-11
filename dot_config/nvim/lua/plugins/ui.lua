@@ -117,7 +117,7 @@ return {
       },
     },
     init = function()
-      vim.notify = vim.schedule_wrap(require("notify"))
+      vim.notify = require("notify")
     end,
     opts = {
       timeout = 3000,
