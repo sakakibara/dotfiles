@@ -8,33 +8,28 @@ end_of_line = crlf
 [*.{md,org}]
 end_of_line = lf
 indent_size = 2
-trim_trailing_whitespace = false
 insert_final_newline = true
 
 [*.{js,jsx,json,py,fish}]
 indent_style = space
 indent_size = 4
 end_of_line = lf
-trim_trailing_whitespace = true
 insert_final_newline = true
 
 [*.{sh,bash,lua,html,css,sass,scss}]
 indent_style = space
 indent_size = 2
 end_of_line = lf
-trim_trailing_whitespace = true
 insert_final_newline = true
 
 [.*rc]
 indent_style = space
 indent_size = 2
 end_of_line = lf
-trim_trailing_whitespace = true
 insert_final_newline = true
 
 [*.go]
 indent_style = tab
 indent_size = 8
 end_of_line = lf
-trim_trailing_whitespace = true
 insert_final_newline = true
