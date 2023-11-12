@@ -63,14 +63,14 @@ if [[ -d "${XDG_CONFIG_HOME}/emacs/bin" ]]; then
   )
 fi
 
-export GOROOT="${HOME}/.go"
+export GOPATH="${HOME}/.go"
 
 path=(
   "${HOME}/.local/bin"
   "${HOME}/.cargo/bin"
   "${HOME}/.nimble/bin"
   "${HOME}/.fzf/bin"
-  "${GOROOT}/bin"
+  "${GOPATH}/.go/bin"
   ${path}
 )
 
