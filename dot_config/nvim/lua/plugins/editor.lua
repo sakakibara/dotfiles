@@ -126,7 +126,6 @@ return {
 
   {
     "echasnovski/mini.trailspace",
-    event = "LazyFile",
     keys = {
       {
         "<leader>edt",
