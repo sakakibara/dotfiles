@@ -71,9 +71,9 @@ if test -d $XDG_CONFIG_HOME/emacs/bin
     fish_add_path $XDG_CONFIG_HOME/emacs/bin
 end
 
-set -gx GOPATH $HOME/.go
+set -gx GOROOT $HOME/.go
 
-fish_add_path $GOPATH/bin
+fish_add_path $GOROOT/bin
 fish_add_path $HOME/.fzf/bin
 fish_add_path $HOME/.nimble/bin
 fish_add_path $HOME/.cargo/bin
