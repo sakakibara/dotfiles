@@ -264,6 +264,7 @@ return {
     },
     opts = {
       enable = false,
+      mode = "topline",
     },
   },
 
