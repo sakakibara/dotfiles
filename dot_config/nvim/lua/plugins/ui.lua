@@ -262,6 +262,9 @@ return {
     keys = {
       { "<leader>uc", "<cmd>TSContextToggle<cr>", desc = "Toggle treesitter context" },
     },
+    opts = {
+      enable = false,
+    },
   },
 
   {
