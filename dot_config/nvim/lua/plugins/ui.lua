@@ -131,6 +131,11 @@ return {
   },
 
   {
+    "j-hui/fidget.nvim",
+    opts = {},
+  },
+
+  {
     "mrjones2014/smart-splits.nvim",
     keys = {
       { "<M-S-h>", mode = { "n", "t" }, require("smart-splits").resize_left, desc = "Resize window left" },
