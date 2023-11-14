@@ -49,7 +49,7 @@ function M.next_file()
   if index and index + 1 <= #files then
     local path_sep = package.config:sub(1, 1)
     local target_path = dir .. path_sep .. files[index + 1]
-    vim.cmd("edit " .. target_path)
+    vim.cmd("edit " .. vim.fn.fnameescape(target_path))
   end
 end
 
@@ -63,7 +63,7 @@ function M.prev_file()
   if index and index > 1 then
     local path_sep = package.config:sub(1, 1)
     local target_path = dir .. path_sep .. files[index - 1]
-    vim.cmd("edit " .. target_path)
+    vim.cmd("edit " .. vim.fn.fnameescape(target_path))
   end
 end
 
@@ -75,7 +75,7 @@ function M.first_file()
   end
   local path_sep = package.config:sub(1, 1)
   local target_path = dir .. path_sep .. files[1]
-  vim.cmd("edit " .. target_path)
+  vim.cmd("edit " .. vim.fn.fnameescape(target_path))
 end
 
 function M.last_file()
@@ -86,7 +86,7 @@ function M.last_file()
   end
   local path_sep = package.config:sub(1, 1)
   local target_path = dir .. path_sep .. files[#files]
-  vim.cmd("edit " .. target_path)
+  vim.cmd("edit " .. vim.fn.fnameescape(target_path))
 end
 
 return M
