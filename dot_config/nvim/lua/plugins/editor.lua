@@ -66,7 +66,11 @@ return {
         function()
           local bd = require("mini.bufremove").delete
           if vim.bo.modified then
-            local choice = vim.fn.confirm(("Save changes to %q?"):format(vim.fn.bufname()), "&Yes\n&No\n&Cancel")
+            local bufname = vim.fn.bufname()
+            local choice = vim.fn.confirm(
+              ("Save changes to %q?"):format(bufname ~= "" and bufname or "[No Name]"),
+              "&Yes\n&No\n&Cancel"
+            )
             if choice == 1 then
               vim.cmd.write()
               bd(0)
@@ -91,7 +95,11 @@ return {
         function()
           local bw = require("mini.bufremove").wipeout
           if vim.bo.modified then
-            local choice = vim.fn.confirm(("Save changes to %q?"):format(vim.fn.bufname()), "&Yes\n&No\n&Cancel")
+            local bufname = vim.fn.bufname()
+            local choice = vim.fn.confirm(
+              ("Save changes to %q?"):format(bufname ~= "" and bufname or "[No Name]"),
+              "&Yes\n&No\n&Cancel"
+            )
             if choice == 1 then
               vim.cmd.write()
               bw(0)
