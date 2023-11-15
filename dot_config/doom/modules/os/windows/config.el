@@ -47,10 +47,17 @@
 ;;; Packages
 
 (after! ls-lisp
-  (setq ls-lisp-format-time-list '("%Y-%m-%d %H:%M" "%Y-%m-%d %H:%M")
+  (setq ls-lisp-use-insert-directory-program t
+        ls-lisp-format-time-list '("%Y-%m-%d %H:%M" "%Y-%m-%d %H:%M")
         ls-lisp-dirs-first t
         ls-lisp-ignore-case t
         ls-lisp-UCA-like-collation nil))
+
+(after! files
+  (if-let (ls (executable-find "ls"))
+      (setq insert-directory-program ls))
+  (advice-add #'insert-directory
+              :around #'+windows--coding-system-for-rw-undecided-utf-8-a))
 
 (when (modulep! :completion vertico)
   (after! consult
@@ -96,7 +103,8 @@
         :gn [C-M-return] #'dired-w32explore))
 
 (after! dired
-  (setq dired-listing-switches "-alG"))
+  (setq dired-use-ls-dired t
+        dired-listing-switches "-alUG"))
 
 (use-package! alert-toast
   :after alert
