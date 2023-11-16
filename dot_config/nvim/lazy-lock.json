@@ -100,6 +100,7 @@
   "vim-eunuch": { "branch": "master", "commit": "67f3dd32b4dcd1c427085f42ff5f29c7adc645c6" },
   "vim-illuminate": { "branch": "master", "commit": "3bd2ab64b5d63b29e05691e624927e5ebbf0fb86" },
   "vim-matchup": { "branch": "master", "commit": "d30b72d20f01478a8486f15a57c89fe3177373db" },
+  "vim-ps1": { "branch": "master", "commit": "44e76421e210f4d22faae1f9801cb64285004917" },
   "vim-rsi": { "branch": "master", "commit": "45540637ead22f011e8215f1c90142e49d946a54" },
   "vimtex": { "branch": "master", "commit": "7d1dbd0eebe041fbda4d1132622bf051b1546497" },
   "which-key.nvim": { "branch": "main", "commit": "4433e5ec9a507e5097571ed55c02ea9658fb268a" },
