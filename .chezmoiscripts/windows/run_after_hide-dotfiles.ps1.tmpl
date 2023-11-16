@@ -1,0 +1,4 @@
+{{- if eq .chezmoi.os "windows" -}}
+Get-ChildItem -Path $env:USERPROFILE -Filter ".*" -Force | foreach {$_.Attributes = "Hidden"}
+Get-ChildItem -Path $env:USERPROFILE -Filter "_*" -Force | foreach {$_.Attributes = "Hidden"}
+{{- end -}}
