@@ -1,4 +1,6 @@
 return {
+  { "sakakibara/vim-ps1" },
+
   {
     "williamboman/mason.nvim",
     opts = function(_, opts)
