@@ -783,8 +783,10 @@ return {
   {
     "nvim-telescope/telescope-frecency.nvim",
     event = { "VeryLazy" },
+    cmd = { "FrecencyMigrate", "FrecencyValidate" },
     keys = {
-      { "<leader>fr", "<cmd>Telescope frecency<cr>", desc = "Oldfiles" },
+      { "<leader>fr", "<cmd>Telescope frecency<cr>", desc = "Frecency" },
+      { "<leader>fv", "<cmd>FrecencyValidate<cr>", desc = "Frecency validate" },
     },
     config = function()
       require("telescope").load_extension("frecency")
