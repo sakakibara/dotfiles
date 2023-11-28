@@ -1,5 +1,8 @@
 return {
-  { "sakakibara/vim-ps1" },
+  {
+    "sakakibara/vim-ps1",
+    ft = "ps1",
+  },
 
   {
     "williamboman/mason.nvim",
