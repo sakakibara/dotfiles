@@ -53,7 +53,7 @@ return {
       local fillchars = vim.opt_local.fillchars:get()
       if char == (fillchars.foldopen or icons.status.FoldOpen) then
         vim.cmd("norm! zc")
-      elseif char == (fillchars.foldcolse or icons.status.FoldClose) then
+      elseif char == (fillchars.foldclose or icons.status.FoldClose) then
         vim.cmd("norm! zo")
       end
     end,
