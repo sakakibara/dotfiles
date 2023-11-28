@@ -621,15 +621,15 @@ return {
         selection_caret = " ",
         mappings = {
           i = {
-            ["<c-t>"] = function(...)
+            ["<C-t>"] = function(...)
               return require("trouble.providers.telescope").open_with_trouble(...)
             end,
-            ["<a-i>"] = function()
+            ["<M-i>"] = function()
               local action_state = require("telescope.actions.state")
               local line = action_state.get_current_line()
               utelescope.func("find_files", { no_ignore = true, default_text = line })()
             end,
-            ["<a-h>"] = function()
+            ["<M-h>"] = function()
               local action_state = require("telescope.actions.state")
               local line = action_state.get_current_line()
               utelescope.func("find_files", { hidden = true, default_text = line })()
