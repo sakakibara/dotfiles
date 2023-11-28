@@ -15,7 +15,6 @@ return {
       "FlutterQuit",
       "FlutterDetach",
       "FlutterOutlineToggle",
-      "FlutterOutlineOpen",
       "FlutterDevTools",
       "FlutterDevToolsActivate",
       "FlutterCopyProfilerUrl",
