@@ -4,7 +4,7 @@
 umask 022
 
 # Set directory for cache of eval commands
-if test -z $FISH_EVALCACHE_DIR
+if not set -q $FISH_EVALCACHE_DIR
     set -gx FISH_EVALCACHE_DIR $HOME/.fish-evalcache
 end
 
