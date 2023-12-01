@@ -149,10 +149,6 @@ if status --is-interactive
         set -gx _ZO_DATA_DIR "$XDG_DATA_HOME/zoxide"
     end
 
-    if test (command -v zk)
-        set -gx ZK_NOTEBOOK_DIR "$HOME/notes"
-    end
-
     # Keybind
     bind \e\cP history-token-search-backward
     bind \e\cN history-token-search-forward
@@ -184,11 +180,6 @@ if status --is-interactive
     end
     if test (command -v taskwarrior-tui)
         abbr -a ti taskwarrior-tui
-    end
-    if test (command -v zk)
-        abbr -a n zk
-        abbr -a ne zk edit --interactive
-        abbr -a nj zk journal
     end
 
     # LS_COLORS settings

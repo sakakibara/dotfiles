@@ -812,37 +812,15 @@ return {
   },
 
   {
-    "mickael-menu/zk-nvim",
+    "nvim-neorg/neorg",
+    build = ":Neorg sync-parsers",
+    dependencies = { "nvim-lua/plenary.nvim" },
     keys = {
-      {
-        "<leader>nn",
-        function()
-          vim.ui.input({ prompt = "Title:" }, function(input)
-            if input then
-              require("zk").new({ title = input })
-            end
-          end)
-        end,
-        desc = "Create zk note",
-      },
-      {
-        "<leader>nn",
-        function()
-          require("util.keymaps").feed_escape()
-          require("zk.commands").get("ZkNewFromTitleSelection")()
-        end,
-        mode = "v",
-        desc = "Create zk note from title selection",
-      },
-      {
-        "<leader>nc",
-        function()
-          require("util.keymaps").feed_escape()
-          require("zk.commands").get("ZkNewFromContentSelection")()
-        end,
-        mode = "v",
-        desc = "Create zk note from content selection",
-      },
+      { "<leader>nf", "<cmd>Telescope neorg find_norg_files<cr>", desc = "Search neorg notes" },
+      { "<leader>ni", "<cmd>Telescope neorg insert_link<cr>", desc = "Insert neorg link" },
+      { "<leader>nI", "<cmd>Telescope neorg insert_file_link<cr>", desc = "Insert neorg file link" },
+      { "<leader>nh", "<cmd>Telescope neorg search_headings<cr>", desc = "Search neorg headings" },
+      { "<leader>nl", "<cmd>Telescope neorg find_linkable<cr>", desc = "Search neorg linkables" },
       {
         "<leader>nj",
         function()
@@ -850,83 +828,41 @@ return {
             prompt = "Open journal:",
           }, function(choice)
             if choice then
-              require("zk").new({
-                date = choice == "today" and false or choice,
-                dir = vim.env.ZK_NOTEBOOK_DIR .. upath.sep .. "journal",
-                group = "journal",
-              })
+              vim.schedule(function()
+                vim.api.nvim_cmd({ cmd = "Neorg", args = { "journal", choice } }, {})
+              end)
             end
           end)
         end,
-        desc = "Create zk journal note",
+        desc = "Create neorg journal note",
       },
-      { "<leader>nf", "<cmd>ZkNotes { sort = { 'modified' } }<cr>", desc = "Open zk note" },
-      { "<leader>ns", "<cmd>ZkGrep<cr>", desc = "Search zk note" },
-      { "<leader>nt", "<cmd>ZkTags<cr>", desc = "Open zk note by tags" },
-      {
-        "<leader>no",
-        function()
-          vim.ui.input({ prompt = "Search:" }, function(input)
-            if input then
-              require("zk").edit({ sort = { "modified" }, match = { input } })
-            end
-          end)
-        end,
-        desc = "Search and open zk notes",
-      },
-      { "<leader>ni", "<cmd>ZkInsertLink<cr>", ft = "markdown", desc = "Insert zk link" },
-      {
-        "<leader>ni",
-        function()
-          require("util.keymaps").feed_escape()
-          require("zk.commands").get("ZkInsertLinkAtSelection")()
-        end,
-        mode = "v",
-        ft = "markdown",
-        desc = "Insert zk link",
-      },
-      { "<leader>nl", "<cmd>ZkLinks<cr>", ft = "markdown", desc = "Open zk links" },
-      { "<leader>nb", "<cmd>ZkBacklinks<cr>", ft = "markdown", desc = "Open zk backlinks" },
-      { "<leader>nr", "<cmd>ZkIndex<cr>", desc = "Refresh zk index" },
+      { "<cmd>Telescope neorg find_linkable<cr>", desc = "Search neorg linkables" },
     },
-    opts = {
-      picker = "telescope",
-      lsp = {
-        config = {
-          cmd = { "zk", "lsp" },
-          name = "zk",
+    config = function()
+      require("neorg").setup({
+        load = {
+          ["core.defaults"] = {},
+          ["core.concealer"] = {
+            config = {
+              icons = {
+                todo = false,
+              },
+            },
+          },
+          ["core.dirman"] = {
+            config = {
+              default_workspace = "notes",
+              workspaces = {
+                notes = "~/notes",
+              },
+            },
+          },
+          ["core.integrations.telescope"] = {},
         },
-        auto_attach = {
-          enabled = true,
-          filetypes = { "markdown" },
-        },
-      },
-    },
-    config = function(_, opts)
-      require("zk").setup(opts)
-
-      local function grep_notes()
-        local collection = {}
-        local list_opts = { select = { "title", "path", "absPath" } }
-        require("zk.api").list(vim.env.ZK_NOTEBOOK_DIR, list_opts, function(_, notes)
-          for _, note in ipairs(notes) do
-            collection[note.absPath] = note.title or note.path
-          end
-        end)
-        local options = vim.tbl_deep_extend("force", {
-          prompt_title = "Notes",
-          search_dirs = { vim.env.ZK_NOTEBOOK_DIR },
-          disable_coordinates = true,
-          path_display = function(_, path)
-            return collection[path]
-          end,
-        }, opts or {})
-        require("telescope.builtin").live_grep(options)
-      end
-
-      vim.api.nvim_create_user_command("ZkGrep", grep_notes, {})
+      })
     end,
   },
+  { "nvim-neorg/neorg-telescope" },
 
   {
     "tpope/vim-eunuch",
