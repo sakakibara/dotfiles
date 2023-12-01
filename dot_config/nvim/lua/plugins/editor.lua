@@ -816,6 +816,19 @@ return {
     build = ":Neorg sync-parsers",
     dependencies = { "nvim-lua/plenary.nvim" },
     keys = {
+      {
+        "<leader>nn",
+        function()
+          vim.ui.input({ prompt = "Title:" }, function(input)
+            if input then
+              vim.schedule(function()
+                vim.api.nvim_cmd({ cmd = "edit", args = { "~/notes/" .. input .. ".norg" } }, {})
+              end)
+            end
+          end)
+        end,
+        desc = "Open neorg index",
+      },
       { "<leader>nx", "<cmd>Neorg index<cr>", desc = "Open neorg index" },
       { "<leader>nf", "<cmd>Telescope neorg find_norg_files<cr>", desc = "Search neorg notes" },
       { "<leader>ni", "<cmd>Telescope neorg insert_link<cr>", desc = "Insert neorg link" },
