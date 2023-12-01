@@ -762,6 +762,11 @@ return {
         utelescope.func("live_grep_args", { cwd = vim.fn.stdpath("config") }),
         desc = "Grep with args (config)",
       },
+      {
+        "<leader>na",
+        utelescope.func("live_grep_args", { cwd = "~/notes" }),
+        desc = "Grep neorg notes with args",
+      },
     },
     config = function()
       require("telescope").load_extension("live_grep_args")
@@ -850,7 +855,7 @@ return {
         end,
         desc = "Create neorg journal note",
       },
-      { "<cmd>Telescope neorg find_linkable<cr>", desc = "Search neorg linkables" },
+      { "<leader>ng", utelescope.func("live_grep", { cwd = "~/notes" }), desc = "Grep neorg notes" },
     },
     config = function()
       require("neorg").setup({
