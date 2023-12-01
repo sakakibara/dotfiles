@@ -23,7 +23,16 @@ return {
       "FlutterReanalyze",
       "FlutterRename",
     },
-    opts = {},
+    opts = {
+      debugger = {
+        enabled = true,
+        run_via_dap = true,
+        exception_breakpoints = "default",
+      },
+      dev_log = {
+        enabled = false,
+      },
+    },
     keys = {
       { "<leader>cs", "<cmd>FlutterRun<cr>", ft = "dart", desc = "Flutter start" },
       { "<leader>cE", "<cmd>FlutterDevices<cr>", ft = "dart", desc = "Flutter devices" },
