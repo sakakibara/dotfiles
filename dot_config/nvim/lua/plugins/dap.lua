@@ -7,7 +7,7 @@ return {
         {
           "<leader>du",
           function()
-            require("dapui").toggle({})
+            require("dapui").toggle({ reset = true })
           end,
           desc = "Dap UI",
         },

@@ -628,4 +628,175 @@ return {
       return opts
     end,
   },
+
+  {
+    "folke/edgy.nvim",
+    event = "VeryLazy",
+    keys = {
+      {
+        "<leader>ue",
+        function()
+          require("edgy").toggle()
+        end,
+        desc = "Edgy Toggle",
+      },
+      {
+        "<leader>uE",
+        function()
+          require("edgy").select()
+        end,
+        desc = "Edgy Select Window",
+      },
+    },
+    opts = function()
+      local opts = {
+        bottom = {
+          {
+            ft = "toggleterm",
+            size = { height = 0.4 },
+            filter = function(_, win)
+              return vim.api.nvim_win_get_config(win).relative == ""
+            end,
+          },
+          "Trouble",
+          {
+            ft = "trouble",
+            filter = function(_, win)
+              return vim.api.nvim_win_get_config(win).relative == ""
+            end,
+          },
+          { ft = "qf", title = "QuickFix" },
+          {
+            ft = "help",
+            size = { height = 20 },
+            filter = function(buf)
+              return vim.bo[buf].buftype == "help"
+            end,
+          },
+          { title = "Neotest Output", ft = "neotest-output-panel", size = { height = 15 } },
+          {
+            ft = "dapui_console",
+            title = "Debug Console",
+            wo = { winbar = " Debug Console" },
+            open = function()
+              require("dapui").open()
+            end,
+          },
+          {
+            ft = "dap-repl",
+            title = "Debug REPL",
+            wo = { winbar = false, statuscolumn = "" },
+            open = function()
+              require("dapui").open()
+            end,
+          },
+        },
+        left = {
+          {
+            title = "Files",
+            ft = "neo-tree",
+            filter = function(buf)
+              return vim.b[buf].neo_tree_source == "filesystem"
+            end,
+            pinned = true,
+            open = "Neotree action=show position=left filesystem",
+            size = { height = 0.5 },
+          },
+          { title = "Neotest Summary", ft = "neotest-summary" },
+          {
+            title = "Git",
+            ft = "neo-tree",
+            filter = function(buf)
+              return vim.b[buf].neo_tree_source == "git_status"
+            end,
+            open = "Neotree action=show position=right git_status",
+          },
+          {
+            title = "Buffers",
+            ft = "neo-tree",
+            filter = function(buf)
+              return vim.b[buf].neo_tree_source == "buffers"
+            end,
+            open = "Neotree action=show position=top buffers",
+          },
+          {
+            ft = "dapui_watches",
+            wo = { winbar = " Watches" },
+            open = function()
+              require("dapui").open()
+            end,
+          },
+          {
+            ft = "dapui_stacks",
+            wo = { winbar = " Stacks" },
+            open = function()
+              require("dapui").open()
+            end,
+          },
+          {
+            ft = "dapui_breakpoints",
+            wo = { winbar = " Breakpoints" },
+            open = function()
+              require("dapui").open()
+            end,
+          },
+          {
+            ft = "dapui_scopes",
+            wo = { winbar = " Scopes" },
+            open = function()
+              require("dapui").open()
+            end,
+          },
+        },
+        right = {
+          {
+            title = "Aerial",
+            ft = "aerial",
+            pinned = true,
+            open = function()
+              require("aerial").open({ focus = false, direction = "right" })
+            end,
+          },
+        },
+        keys = {
+          ["<C-Right>"] = function(win)
+            win:resize("width", 1)
+          end,
+          ["<C-Left>"] = function(win)
+            win:resize("width", -1)
+          end,
+          ["<C-Up>"] = function(win)
+            win:resize("height", 1)
+          end,
+          ["<C-Down>"] = function(win)
+            win:resize("height", -1)
+          end,
+        },
+      }
+      return opts
+    end,
+  },
+
+  {
+    "nvim-telescope/telescope.nvim",
+    optional = true,
+    opts = {
+      defaults = {
+        get_selection_window = function()
+          require("edgy").goto_main()
+          return 0
+        end,
+      },
+    },
+  },
+
+  {
+    "nvim-neo-tree/neo-tree.nvim",
+    optional = true,
+    opts = function(_, opts)
+      opts.open_files_do_not_replace_types = opts.open_files_do_not_replace_types
+        or { "terminal", "Trouble", "qf", "Outline", "trouble" }
+      table.insert(opts.open_files_do_not_replace_types, "edgy")
+    end,
+  },
 }
