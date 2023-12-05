@@ -41,16 +41,6 @@ return {
       opts = {},
     },
     {
-      "folke/which-key.nvim",
-      optional = true,
-      opts = {
-        defaults = {
-          ["<leader>d"] = { name = "+debug" },
-          ["<leader>da"] = { name = "+adapters" },
-        },
-      },
-    },
-    {
       "jay-babu/mason-nvim-dap.nvim",
       dependencies = "mason.nvim",
       cmd = { "DapInstall", "DapUninstall" },
