@@ -631,6 +631,9 @@ return {
 
   {
     "folke/edgy.nvim",
+    dependencies = {
+      "stevearc/aerial.nvim",
+    },
     event = "VeryLazy",
     keys = {
       {
@@ -754,7 +757,7 @@ return {
             ft = "aerial",
             pinned = true,
             open = function()
-              require("aerial").open({ focus = false, direction = "right" })
+              require("aerial").toggle({ focus = false, direction = "right" })
             end,
           },
         },
