@@ -5,11 +5,11 @@ return {
       "rcarriga/nvim-dap-ui",
       keys = {
         {
-          "<leader>du",
+          "<leader>ud",
           function()
             require("dapui").toggle({ reset = true })
           end,
-          desc = "Dap UI",
+          desc = "Toggle dap ui",
         },
         {
           "<leader>de",

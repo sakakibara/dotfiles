@@ -11,14 +11,18 @@ return {
         mode = { "n", "v" },
         ["<leader>b"] = { name = "+buffer" },
         ["<leader>c"] = { name = "+code" },
+        ["<leader>e"] = { name = "+editor" },
         ["<leader>f"] = { name = "+file" },
         ["<leader>fc"] = { name = "+config" },
         ["<leader>g"] = { name = "+git" },
         ["<leader>gh"] = { name = "+hunks" },
         ["<leader>n"] = { name = "+notes" },
+        ["<leader>o"] = { name = "+option" },
+        ["<leader>q"] = { name = "+quit" },
         ["<leader>s"] = { name = "+search" },
         ["<leader>t"] = { name = "+test" },
         ["<leader>u"] = { name = "+ui" },
+        ["<leader>ut"] = { name = "+terminal" },
         ["["] = { name = "+prev" },
         ["]"] = { name = "+next" },
         ["gs"] = { name = "+surround" },
@@ -135,14 +139,14 @@ return {
     "echasnovski/mini.trailspace",
     keys = {
       {
-        "<leader>edt",
+        "<leader>ew",
         function()
           require("mini.trailspace").trim()
         end,
         desc = "Trim trailing whitespace",
       },
       {
-        "<leader>edl",
+        "<leader>eW",
         function()
           require("mini.trailspace").trim_last_lines()
         end,
@@ -477,8 +481,8 @@ return {
       "Reject",
     },
     keys = {
-      { "<leader>xl", "<cmd>LLToggle<cr>", desc = "Location list" },
-      { "<leader>xq", "<cmd>QFToggle<cr>", desc = "Quickfix list" },
+      { "<leader>el", "<cmd>LLToggle<cr>", desc = "Location list" },
+      { "<leader>eq", "<cmd>QFToggle<cr>", desc = "Quickfix list" },
     },
     opts = {
       quickfix = {
@@ -495,10 +499,10 @@ return {
     cmd = { "TroubleToggle", "Trouble" },
     opts = { use_diagnostic_signs = true },
     keys = {
-      { "<leader>xx", "<cmd>TroubleToggle document_diagnostics<cr>", desc = "Document diagnostics (trouble)" },
-      { "<leader>xX", "<cmd>TroubleToggle workspace_diagnostics<cr>", desc = "Workspace diagnostics (trouble)" },
-      { "<leader>xL", "<cmd>TroubleToggle loclist<cr>", desc = "Location list (trouble)" },
-      { "<leader>xQ", "<cmd>TroubleToggle quickfix<cr>", desc = "Quickfix list (trouble)" },
+      { "<leader>ed", "<cmd>TroubleToggle document_diagnostics<cr>", desc = "Document diagnostics (trouble)" },
+      { "<leader>eD", "<cmd>TroubleToggle workspace_diagnostics<cr>", desc = "Workspace diagnostics (trouble)" },
+      { "<leader>eL", "<cmd>TroubleToggle loclist<cr>", desc = "Location list (trouble)" },
+      { "<leader>eQ", "<cmd>TroubleToggle quickfix<cr>", desc = "Quickfix list (trouble)" },
       {
         "[q",
         function()
@@ -1190,8 +1194,8 @@ return {
         end,
         desc = "Previous todo comment",
       },
-      { "<leader>xt", "<cmd>TodoTrouble<cr>", desc = "Todo (trouble)" },
-      { "<leader>xT", "<cmd>TodoTrouble keywords=TODO,FIX,FIXME<cr>", desc = "Todo/Fix/Fixme (trouble)" },
+      { "<leader>et", "<cmd>TodoTrouble<cr>", desc = "Todo (trouble)" },
+      { "<leader>eT", "<cmd>TodoTrouble keywords=TODO,FIX,FIXME<cr>", desc = "Todo/Fix/Fixme (trouble)" },
       { "<leader>st", "<cmd>TodoTelescope<cr>", desc = "Todo" },
       { "<leader>sT", "<cmd>TodoTelescope keywords=TODO,FIX,FIXME<cr>", desc = "Todo/Fix/Fixme" },
     },

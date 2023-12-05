@@ -412,18 +412,18 @@ return {
     cmd = "Neotree",
     keys = {
       {
-        "<leader>fe",
+        "<leader>uf",
         function()
           require("neo-tree.command").execute({ toggle = true, dir = root_path() })
         end,
-        desc = "Explorer neotree",
+        desc = "Toggle neotree explorer",
       },
       {
-        "<leader>fE",
+        "<leader>uF",
         function()
           require("neo-tree.command").execute({ toggle = true, dir = parent_path() })
         end,
-        desc = "Explorer neotree (relative)",
+        desc = "Toggle neotree explorer (relative)",
       },
     },
     deactivate = function()
@@ -638,14 +638,14 @@ return {
         function()
           require("edgy").toggle()
         end,
-        desc = "Edgy Toggle",
+        desc = "Toggle edgy",
       },
       {
         "<leader>uE",
         function()
           require("edgy").select()
         end,
-        desc = "Edgy Select Window",
+        desc = "Select edgy window",
       },
     },
     opts = function()
