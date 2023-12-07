@@ -47,11 +47,9 @@ map("n", "<leader>od", function()
   ukeymaps.toggle_diagnostics()
 end, { desc = "Toggle diagnostic" })
 
-map("n", "<leader>on", function() end, { desc = "Toggle line numbers" })
-
-map("n", "<leader>oN", function()
-  ukeymaps.toggle("number")
-end, { desc = "Toggle 'number'" })
+map("n", "<leader>on", function()
+  ukeymaps.toggle_number()
+end, { desc = "Toggle line numbers" })
 
 map("n", "<leader>or", function()
   ukeymaps.toggle("relativenumber")
