@@ -1,5 +1,5 @@
 local map = vim.keymap.set
-local ufile, ukeymaps = require("util.file"), require("util.keymaps")
+local ufile, ukeymaps, utoggle = require("util.file"), require("util.keymaps"), require("util.toggle")
 ukeymaps.setup()
 
 map({ "n", "x" }, "j", "v:count == 0 ? 'gj' : 'j'", { expr = true, silent = true })
@@ -40,47 +40,47 @@ map("n", "<leader>qq", "<cmd>qa<cr>", { desc = "Quit all" })
 
 local conceallevel = vim.o.conceallevel > 0 and vim.o.conceallevel or 3
 map("n", "<leader>oo", function()
-  ukeymaps.toggle("conceallevel", false, { 0, conceallevel })
+  utoggle("conceallevel", false, { 0, conceallevel })
 end, { desc = "Toggle conceal" })
 
 map("n", "<leader>od", function()
-  ukeymaps.toggle_diagnostics()
+  utoggle.diagnostics()
 end, { desc = "Toggle diagnostic" })
 
 map("n", "<leader>on", function()
-  ukeymaps.toggle_number()
+  utoggle.number()
 end, { desc = "Toggle line numbers" })
 
 map("n", "<leader>or", function()
-  ukeymaps.toggle("relativenumber")
+  utoggle("relativenumber")
 end, { desc = "Toggle 'relativenumber'" })
 
 map("n", "<leader>os", function()
-  ukeymaps.toggle("spell")
+  utoggle("spell")
 end, { desc = "Toggle 'spell'" })
 
 map("n", "<leader>ow", function()
-  ukeymaps.toggle("wrap")
+  utoggle("wrap")
 end, { desc = "Toggle 'wrap'" })
 
 map("n", "<leader>oc", function()
-  ukeymaps.toggle("cursorline")
+  utoggle("cursorline")
 end, { desc = "Toggle 'cursorline'" })
 
 map("n", "<leader>oC", function()
-  ukeymaps.toggle("cursorcolumn")
+  utoggle("cursorcolumn")
 end, { desc = "Toggle 'cursorcolumn'" })
 
 map("n", "<leader>oi", function()
-  ukeymaps.toggle("ignorecase")
+  utoggle("ignorecase")
 end, { desc = "Toggle 'ignorecase'" })
 
 map("n", "<leader>ol", function()
-  ukeymaps.toggle("list")
+  utoggle("list")
 end, { desc = "Toggle 'list'" })
 
 map("n", "<leader>ob", function()
-  ukeymaps.toggle("background", false, { "dark", "light" })
+  utoggle("background", false, { "dark", "light" })
 end, { desc = "Toggle 'background'" })
 
 map("n", "<leader>of", function()
