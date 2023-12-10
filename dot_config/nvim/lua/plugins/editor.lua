@@ -634,7 +634,7 @@ return {
               local line = action_state.get_current_line()
               utelescope.func("find_files", { no_ignore = true, default_text = line })()
             end,
-            ["<M-h>"] = function()
+            ["<M-.>"] = function()
               local action_state = require("telescope.actions.state")
               local line = action_state.get_current_line()
               utelescope.func("find_files", { hidden = true, default_text = line })()
@@ -650,6 +650,18 @@ return {
             end,
             ["<C-p>"] = function(...)
               return require("telescope.actions").move_selection_previous(...)
+            end,
+            ["<M-h>"] = function(...)
+              return require("telescope.actions").results_scrolling_left(...)
+            end,
+            ["<M-j>"] = function(...)
+              return require("telescope.actions").results_scrolling_down(...)
+            end,
+            ["<M-k>"] = function(...)
+              return require("telescope.actions").results_scrolling_up(...)
+            end,
+            ["<M-l>"] = function(...)
+              return require("telescope.actions").results_scrolling_right(...)
             end,
             ["<M-p>"] = function(...)
               return require("telescope.actions.layout").toggle_preview(...)
