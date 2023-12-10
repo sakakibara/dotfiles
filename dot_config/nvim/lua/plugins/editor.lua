@@ -651,6 +651,12 @@ return {
             ["<C-p>"] = function(...)
               return require("telescope.actions").move_selection_previous(...)
             end,
+            ["<C-j>"] = function(...)
+              return require("telescope.actions").move_selection_next(...)
+            end,
+            ["<C-k>"] = function(...)
+              return require("telescope.actions").move_selection_previous(...)
+            end,
             ["<M-h>"] = function(...)
               return require("telescope.actions").results_scrolling_left(...)
             end,
