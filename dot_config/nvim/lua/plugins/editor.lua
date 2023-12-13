@@ -901,6 +901,18 @@ return {
               },
             },
           },
+          ["core.keybinds"] = {
+            config = {
+              hook = function(keybinds)
+                keybinds.map(
+                  "norg",
+                  "n",
+                  "<localleader>c",
+                  "<cmd>Neorg keybind norg core.looking-glass.magnify-code-block<cr>"
+                )
+              end,
+            },
+          },
           ["core.completion"] = {
             config = {
               engine = "nvim-cmp",
