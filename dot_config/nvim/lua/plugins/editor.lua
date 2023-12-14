@@ -857,7 +857,7 @@ return {
             end
           end)
         end,
-        desc = "Open neorg index",
+        desc = "Edit neorg file",
       },
       { "<leader>nx", "<cmd>Neorg index<cr>", desc = "Open neorg index" },
       { "<leader>nf", "<cmd>Telescope neorg find_norg_files<cr>", desc = "Search neorg notes" },
@@ -920,6 +920,20 @@ return {
           },
           ["core.integrations.telescope"] = {},
         },
+      })
+
+      vim.api.nvim_create_autocmd("FileType", {
+        pattern = "norg",
+        callback = function(args)
+          local wk = require("which-key")
+          wk.register({
+            ["<localleader>i"] = { name = "+Insert" },
+            ["<localleader>l"] = { name = "+List" },
+            ["<localleader>m"] = { name = "+Mode" },
+            ["<localleader>n"] = { name = "+New" },
+            ["<localleader>t"] = { name = "+Todo" },
+          }, { mode = "n", buffer = args.buf })
+        end,
       })
     end,
   },
