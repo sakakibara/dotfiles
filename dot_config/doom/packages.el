@@ -25,6 +25,9 @@
 
 (when (modulep! :lang org)
   (package! org-wild-notifier :pin "9a503675a0b33decadca4eb2e52ac5b6bc8d3efb"))
+  (package! org-modern)
+  (package! org-modern-indent
+    :recipe (:host github :repo "jdtsmith/org-modern-indent")))
 
 (when (modulep! :lang sh +xonsh)
   (package! xonsh-mode
@@ -41,6 +44,12 @@
 ;; (when (modulep! :lang org +roam2)
 ;;   (unpin! org-roam)
 ;;   (package! org-roam-ui))
+(when (modulep! :lang org)
+  (unpin! org))
+
+(when (modulep! :lang org +roam2)
+  (unpin! org-roam)
+  (package! org-roam-ui))
 
 ;; To install a package directly from a remote git repo, you must specify a
 ;; `:recipe'. You'll find documentation on what `:recipe' accepts here:

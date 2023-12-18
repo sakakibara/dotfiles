@@ -210,7 +210,13 @@
   (add-to-list 'org-file-apps '("\\.xls.?\\'" . default))
   (add-to-list 'org-file-apps '("\\.doc.?\\'" . default))
   (setq org-startup-folded 'show2levels
-        org-ellipsis " [...] ")
+        org-ellipsis " ... "
+        org-hide-emphasis-markers t
+        org-pretty-entities t
+        org-agenda-block-separator ?─
+        org-agenda-current-time-string
+        "⭠ now ─────────────────────────────────────────────────")
+
   (setq! org-log-into-drawer t)
   (add-to-list 'org-modules 'org-habit)
   (setq org-todo-keywords
@@ -246,6 +252,52 @@
           ("s" "Schedule" entry (file+headline "todo.org" "Schedule")
            "* [ ] %?\nSCHEDULED: <%(org-read-date)>\n\n%i\n%a"
            :prepend t))))
+
+(use-package org-modern
+  :hook (org-mode . org-modern-mode)
+  :hook (org-agenda-finalize . org-modern-agenda)
+  :config
+  (let ((active-bg "#a60000")
+        (hold-bg "#813e00")
+        (project-bg "#2a486a"))
+    (setq org-modern-todo-faces
+          `(("TODO"
+             :foreground "white"
+             :background ,active-bg
+             :weight bold)
+            ("[-]"
+             :foreground "white"
+             :foreground ,active-bg
+             :weight bold)
+            ("STRT"
+             :foreground "white"
+             :background ,active-bg
+             :weight bold)
+            ("[?]"
+             :foreground "white"
+             :foreground ,hold-bg
+             :weight bold)
+            ("WAIT"
+             :foreground "white"
+             :background ,hold-bg
+             :weight bold)
+            ("HOLD"
+             :foreground "white"
+             :background ,hold-bg
+             :weight bold)
+            ("PROJ"
+             :foreground "white"
+             :background ,project-bg
+             :weight bold)
+            ("NO"
+             :background gray90
+             :weight bold)
+            ("KILL"
+             :background gray90
+             :weight bold)))))
+
+(use-package org-modern-indent
+  :hook (org-mode . org-modern-indent-mode))
 
 (setq org-roam-directory org-directory
       org-roam-db-location (concat org-directory ".org-roam.db")
