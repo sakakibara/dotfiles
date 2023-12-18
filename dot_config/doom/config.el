@@ -136,8 +136,6 @@
    (:prefix "s"
     :desc "Undo history" "u" #'undo-tree-visualize))
 
- ;; (:prefix "t"
- ;;  :desc "Line numbers" "l" #'display-line-numbers-mode)
 
  (:prefix ("z" . "zoom")
   :desc "Zoom font" "f" #'+hydra/text-zoom/body))
