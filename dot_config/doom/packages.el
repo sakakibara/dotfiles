@@ -41,9 +41,6 @@
 ;; (when (modulep! :os macos)
 ;;   (package! osx-trash :disable t))
 
-;; (when (modulep! :lang org +roam2)
-;;   (unpin! org-roam)
-;;   (package! org-roam-ui))
 (when (modulep! :lang org)
   (unpin! org))
 
