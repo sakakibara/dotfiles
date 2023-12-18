@@ -137,9 +137,6 @@
     :desc "Undo history" "u" #'undo-tree-visualize))
 
 
- (:prefix ("z" . "zoom")
-  :desc "Zoom font" "f" #'+hydra/text-zoom/body))
-
 (use-package! eaw
   :hook (doom-first-input . eaw-fullwidth))
 
