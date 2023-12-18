@@ -19,8 +19,7 @@
 ;;      (not (fboundp 'system-move-file-to-trash))
 ;;      (defalias 'system-move-file-to-trash #'ns-move-file-to-trash))
 
-(setq-default indicate-empty-lines t
-              line-spacing 2)
+(setq-default indicate-empty-lines t)
 
 (setq evil-split-window-below t
       evil-vsplit-window-right t)
