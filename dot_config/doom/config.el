@@ -134,8 +134,7 @@
 
  (:when (modulep! :emacs undo +tree)
    (:prefix "s"
-    :desc "Undo history" "u" #'undo-tree-visualize))
-
+    :desc "Undo history" "u" #'undo-tree-visualize)))
 
 (use-package! eaw
   :hook (doom-first-input . eaw-fullwidth))
