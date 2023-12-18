@@ -24,7 +24,7 @@
     :pin "b6c82e8ac7996d96494a54454015a98ceb883feb"))
 
 (when (modulep! :lang org)
-  (package! org-wild-notifier :pin "9a503675a0b33decadca4eb2e52ac5b6bc8d3efb"))
+  ;; (package! org-wild-notifier)
   (package! org-modern)
   (package! org-modern-indent
     :recipe (:host github :repo "jdtsmith/org-modern-indent")))
