@@ -51,6 +51,7 @@
   (unpin! org-roam)
   (package! org-roam-ui))
 
+(package! ligature :pin "3d1460470736777fd8329e4bb4ac359bf4f1460a")
 ;; To install a package directly from a remote git repo, you must specify a
 ;; `:recipe'. You'll find documentation on what `:recipe' accepts here:
 ;; https://github.com/raxod502/straight.el#the-recipe-format

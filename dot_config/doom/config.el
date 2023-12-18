@@ -471,5 +471,13 @@
   (setq rjsx-comment-start-skip "[[:space:]]*\\(?://+\\|{?/\\*+\\)")
   (advice-add #'rjsx-uncomment-region-function :override #'+rjsx--uncomment-region-function))
 
+(use-package! ligature
+  :hook (doom-first-buffer . global-ligature-mode)
+  :config
+  (ligature-set-ligatures 't '("<---" "<--"  "<<-" "<-" "->" "-->" "--->" "<->" "<-->" "<--->" "<---->" "<!--"
+                               "<==" "<===" "<=" "=>" "=>>" "==>" "===>" ">=" "<=>" "<==>" "<===>" "<====>" "<!---"
+                               "<~~" "<~" "~>" "~~>" "::" ":::" "==" "!=" "===" "!=="
+                               ":=" ":-" ":+" "<*" "<*>" "*>" "<|" "<|>" "|>" "+:" "-:" "=:" "<******>" "++" "+++")))
+
 ;; Load local lisp file if it exists
 (load! "local" nil t)
