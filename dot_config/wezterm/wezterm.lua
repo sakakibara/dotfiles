@@ -10,7 +10,7 @@ end
 config.color_scheme = "Catppuccin Mocha"
 config.font = wezterm.font("Sarasa Term J Nerd Font")
 config.font_size = 14.0
-config.use_fancy_tab_bar = false
+config.use_fancy_tab_bar = true
 config.scrollback_lines = 35000
 config.enable_scroll_bar = true
 config.hide_tab_bar_if_only_one_tab = false
