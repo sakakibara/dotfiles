@@ -3,11 +3,12 @@
 ;;;###autoload
 (defun +windows--coding-system-setup ()
   "Setup windows coding system"
-  (setq locale-coding-system 'utf-8
-        default-process-coding-system '(undecided-dos . utf-8-unix))
+  (prefer-coding-system 'utf-8-unix)
   (set-keyboard-coding-system 'utf-8)
   (set-terminal-coding-system 'utf-8)
   (set-file-name-coding-system 'cp932)
+  (setq locale-coding-system 'utf-8-unix
+        default-process-coding-system '(undecided-dos . utf-8-unix))
   (setq-default selection-coding-system 'utf-16le-dos))
 
 ;;;###autoload
