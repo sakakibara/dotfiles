@@ -20,6 +20,7 @@ config.keys = {
   { key = "Enter", mods = "ALT", action = "DisableDefaultAssignment" },
   { key = "UpArrow", mods = "SHIFT", action = act.ScrollByLine(-1) },
   { key = "DownArrow", mods = "SHIFT", action = act.ScrollByLine(1) },
+  { key = "F11", mods = "NONE", action = act.ToggleFullScreen },
 }
 config.mouse_bindings = {
   {
@@ -53,9 +54,6 @@ if wezterm.target_triple == "x86_64-pc-windows-msvc" then
   config.font_size = 10.0
   config.default_prog = { "wsl.exe" }
   config.default_domain = "WSL:Fedora"
-  config.keys = {
-    { key = "F11", mods = "NONE", action = act.ToggleFullScreen },
-  }
   table.insert(launch_menu, {
     label = "PowerShell",
     args = { "fish", "-c", "pwsh.exe -NoLogo -WorkingDirectory '~'" },
