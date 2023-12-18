@@ -8,7 +8,7 @@
     (remove-hook 'server-after-make-frame-hook #'+windows--w32-frame-setup)
 
     ;; IME font setting
-    (modify-all-frames-parameters '((ime-font . "PlemolJP-10")))
+    (modify-all-frames-parameters '((ime-font . "Sarasa Term J Nerd Font-10")))
 
     ;; tr-ime
     (tr-ime-advanced-install t)

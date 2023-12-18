@@ -75,10 +75,10 @@
 ;; font string. You generally only need these two:
 ;; (setq doom-font (font-spec :family "monospace" :size 12 :weight 'semi-light)
 ;;       doom-variable-pitch-font (font-spec :family "sans" :size 13))
-(setq doom-font (font-spec :family "PlemolJP" :size (if IS-MAC 14 13))
-      doom-big-font (font-spec :family "PlemolJP" :size 19)
-      doom-unicode-font (font-spec :family "PlemolJP")
-      doom-variable-pitch-font (font-spec :family "IBM Plex Sans JP" :size 13))
+(setq doom-font (font-spec :family "Sarasa Term J Nerd Font" :size 14)
+      doom-big-font (font-spec :family "Sarasa Term J Nerd Font" :size 19)
+      ;; doom-unicode-font (font-spec :family "Sarasa Term J Nerd Font")
+      doom-variable-pitch-font (font-spec :family "Sarasa Term J Nerd Font" :size 14))
 
 ;; Transparency
 ;; (set-frame-parameter (selected-frame) 'alpha '(90 . 50))
