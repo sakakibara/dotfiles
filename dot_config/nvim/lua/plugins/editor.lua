@@ -697,6 +697,9 @@ return {
               ["<Tab>"] = function(...)
                 return require("telescope.actions").select_default(...)
               end,
+              ["<M-.>"] = function(...)
+                require("telescope").extensions.file_browser.actions.toggle_hidden(...)
+              end,
             },
           },
         },
