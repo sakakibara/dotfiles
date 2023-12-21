@@ -9,5 +9,5 @@ etc/**
 .config/fish/functions/show_desktop.fish
 {{ end }}
 {{ if ne .chezmoi.os "windows" }}
-Documents/PowerShell/Modules/AesEncrypt/AesEncrypt.psm1
+Documents/**
 {{ end }}
