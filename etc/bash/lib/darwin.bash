@@ -34,7 +34,7 @@ darwin::install_clt() {
   fi
 
   # Use the version sort option if it's available
-  if (( $(bc -l <<< "${macos_version} >= 10.13") )); then
+  if (($(bc -l <<<"${macos_version} >= 10.13"))); then
     clt_sort_opt="-V"
   else
     clt_sort_opt="--"
@@ -45,14 +45,14 @@ darwin::install_clt() {
   clt_tmp="/tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress"
   sudo touch "${clt_tmp}"
 
-  clt_label="$(softwareupdate -l \
-    | grep -B 1 -E 'Command Line (Developer|Tools)' \
-    | awk -F'*' '/^ +\\*/ {print $2}' \
-    | grep "${clt_macos_version}" \
-    | sort "${clt_sort_opt}" \
-    | sed 's/^ *//' \
-    | tail -n1 \
-    | tr -d '\n')"
+  clt_label="$(softwareupdate -l |
+    grep -B 1 -E 'Command Line (Developer|Tools)' |
+    awk -F'*' '/^ +\\*/ {print $2}' |
+    grep "${clt_macos_version}" |
+    sort "${clt_sort_opt}" |
+    sed 's/^ *//' |
+    tail -n1 |
+    tr -d '\n')"
 
   # Attempt to install command line tools
   if [[ -n "${clt_label}" ]]; then

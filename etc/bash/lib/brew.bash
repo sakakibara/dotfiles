@@ -15,8 +15,8 @@ brew::require() {
     brew::install_homebrew
     # Exit if, for some reason, homebrew is not installed
     if [[ ! "$(command -v brew)" ]]; then
-        msg::error "Homebrew installation has failed"
-        return 1
+      msg::error "Homebrew installation has failed"
+      return 1
     fi
   fi
   msg::success "Homebrew is installed"

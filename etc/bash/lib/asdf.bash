@@ -27,7 +27,7 @@ asdf::setup() {
 
   while IFS= read -r line; do
     langs+=("${line%% *}")
-  done < "${HOME}/${ASDF_CONFIG_FILE:-.tool-versions}"
+  done <"${HOME}/${ASDF_CONFIG_FILE:-.tool-versions}"
 
   while IFS= read -r plugin; do
     [[ "${plugin}" != '*' ]] && plugins+=("${plugin}")
@@ -41,7 +41,10 @@ asdf::setup() {
   for lang in "${langs[@]}"; do
     skip=
     for plugin in "${plugins[@]}"; do
-      [[ "${lang}" == "${plugin}" ]] && { skip=1; break; }
+      [[ "${lang}" == "${plugin}" ]] && {
+        skip=1
+        break
+      }
     done
     [[ -z "${skip}" ]] && installs+=("${lang}")
   done

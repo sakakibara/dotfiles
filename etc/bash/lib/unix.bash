@@ -3,7 +3,9 @@
 # Attempt to keep sudo timestamp refreshed
 unix::keep_sudo() {
   while true; do
-    sudo -n true; sleep 10; kill -0 "$$" || exit
+    sudo -n true
+    sleep 10
+    kill -0 "$$" || exit
   done 2>/dev/null &
 }
 

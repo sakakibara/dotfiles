@@ -12,16 +12,16 @@ ask_to_run() {
     read -r -p "Run ${*/::/ }? [Y/n] " input
 
     case "${input}" in
-      [yY][eE][sS]|[yY])
-        "$@"
-        break
-        ;;
-      [nN][oO]|[nN])
-        break
-        ;;
-      *)
-        echo "Invalid input..."
-        ;;
+    [yY][eE][sS] | [yY])
+      "$@"
+      break
+      ;;
+    [nN][oO] | [nN])
+      break
+      ;;
+    *)
+      echo "Invalid input..."
+      ;;
     esac
   done
 }
@@ -39,7 +39,7 @@ import() {
 
     if [[ -z "${!imported}" ]]; then
       # shellcheck disable=SC2229
-      read -r "${imported}" <<< 1
+      read -r "${imported}" <<<1
       #shellcheck disable=SC1090
       source "${BASH_LIB_DIR}/${arg}.bash"
     fi
