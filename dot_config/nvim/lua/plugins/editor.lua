@@ -943,23 +943,10 @@ return {
   { "nvim-neorg/neorg-telescope" },
 
   {
-    "tpope/vim-eunuch",
+    "lambdalisue/suda.vim",
     cmd = {
-      "Remove",
-      "Delete",
-      "Move",
-      "Rename",
-      "Copy",
-      "Duplicate",
-      "Chmod",
-      "Mkdir",
-      "Cfind",
-      "Clocate",
-      "Lfind",
-      "Llocate",
-      "Wall",
-      "SudoWrite",
-      "SudoEdit",
+      "SudaRead",
+      "SudaWrite",
     },
   },
 
