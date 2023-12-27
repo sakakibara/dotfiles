@@ -2,10 +2,7 @@ local icons = require("config.icons")
 
 return {
   condition = function()
-    local ok, _ = pcall(require, "overseer")
-    if ok then
-      return true
-    end
+    return package.loaded["overseer"]
   end,
   init = function(self)
     self.overseer = require("overseer")
