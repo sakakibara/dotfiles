@@ -751,22 +751,22 @@ return {
             default = {
               action = function(selection)
                 vim.cmd.cd(selection.path)
-                require("oil").open(selection.path)
+                require("mini.files").open(selection.path, true)
               end,
             },
             ["<C-s>"] = {
               before_action = function()
-                require("oil")
+                require("mini.files")
               end,
             },
             ["<C-v>"] = {
               before_action = function()
-                require("oil")
+                require("mini.files")
               end,
             },
             ["<C-e>"] = {
               before_action = function()
-                require("oil")
+                require("mini.files")
               end,
             },
           },
