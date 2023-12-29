@@ -527,6 +527,19 @@ return {
           require("util.lsp").on_rename(event.data.from, event.data.to)
         end,
       })
+
+      local files_set_cwd = function(path)
+        local cur_entry_path = MiniFiles.get_fs_entry().path
+        local cur_directory = vim.fs.dirname(cur_entry_path)
+        vim.fn.chdir(cur_directory)
+      end
+
+      vim.api.nvim_create_autocmd("User", {
+        pattern = "MiniFilesBufferCreate",
+        callback = function(args)
+          vim.keymap.set("n", "`", files_set_cwd, { buffer = args.data.buf_id, desc = "Set cwd" })
+        end,
+      })
     end,
   },
 
