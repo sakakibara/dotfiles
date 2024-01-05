@@ -558,6 +558,13 @@ return {
       { "<leader>fF", utelescope.func("find_files", { cwd = parent_path }), desc = "Find files (relative)" },
       { "<leader>fg", utelescope.func("live_grep", { cwd = root_path }), desc = "Grep" },
       { "<leader>fG", utelescope.func("live_grep", { cwd = parent_path }), desc = "Grep (relative)" },
+      {
+        "<leader>ft",
+        function()
+          require("telescope.builtin").filetypes()
+        end,
+        desc = "Filetypes",
+      },
       { "<leader>fw", utelescope.func("grep_string", { cwd = root_path, word_match = "-w" }), desc = "Word" },
       {
         "<leader>fW",
