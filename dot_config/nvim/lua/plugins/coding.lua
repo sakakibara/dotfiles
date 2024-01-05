@@ -322,4 +322,9 @@ return {
     },
     opts = {},
   },
+
+  {
+    "tpope/vim-sleuth",
+    event = "LazyFile",
+  },
 }
