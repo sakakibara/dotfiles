@@ -40,7 +40,10 @@ return {
     },
     opts = {
       highlight = { enable = true },
-      indent = { enable = false },
+      indent = {
+        enable = true,
+        disable = { "html" },
+      },
       context_commentstring = { enable = true, enable_autocmd = false },
       ensure_installed = {
         "bash",
