@@ -547,6 +547,12 @@ return {
       {
         "nvim-telescope/telescope-fzf-native.nvim",
         build = "make",
+        enabled = vim.fn.executable("make") == 1,
+        config = function()
+          require("util.plugin").on_load("telescope.nvim", function()
+            require("telescope").load_extension("fzf")
+          end)
+        end,
       },
     },
     cmd = "Telescope",
@@ -782,7 +788,6 @@ return {
     },
     config = function(_, opts)
       require("telescope").setup(opts)
-      require("telescope").load_extension("fzf")
     end,
   },
   {
