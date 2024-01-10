@@ -2,6 +2,8 @@ local ftadd = vim.filetype.add
 local g, opt = vim.g, vim.opt
 local icons = require("config.icons")
 
+vim.api.nvim_exec("language en_US", true)
+
 g.mapleader = " "
 g.maplocalleader = "\\"
 g.markdown_recommended_style = 0
