@@ -247,18 +247,16 @@ return {
 
   {
     "gbprod/yanky.nvim",
-    dependencies = { "kkharji/sqlite.lua" },
-    opts = function()
-      return {
-        highlight = { timer = 200 },
-        ring = { storage = jit.os:find("Windows") and "shada" or "sqlite" },
-        picker = {
-          telescope = {
-            mappings = nil,
-          },
+    dependencies = { { "kkharji/sqlite.lua", enabled = not jit.os:find("Windows") } },
+    opts = {
+      highlight = { timer = 200 },
+      ring = { storage = jit.os:find("Windows") and "shada" or "sqlite" },
+      picker = {
+        telescope = {
+          mappings = nil,
         },
-      }
-    end,
+      },
+    },
     keys = {
       {
         "<leader>sy",
@@ -326,5 +324,9 @@ return {
   {
     "tpope/vim-sleuth",
     event = "LazyFile",
+    cmd = "Sleuth",
+    init = function()
+      vim.g.sleuth_heuristics = 0
+    end,
   },
 }
