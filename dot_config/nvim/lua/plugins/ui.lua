@@ -580,13 +580,6 @@ return {
             end,
           },
           { ft = "qf", title = "QuickFix" },
-          {
-            ft = "help",
-            size = { height = 20 },
-            filter = function(buf)
-              return vim.bo[buf].buftype == "help"
-            end,
-          },
           { title = "Neotest Output", ft = "neotest-output-panel", size = { height = 15 } },
           {
             ft = "dapui_console",
