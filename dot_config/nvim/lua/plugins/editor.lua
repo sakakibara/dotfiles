@@ -18,6 +18,7 @@ return {
         ["<leader>fc"] = { name = "+Config" },
         ["<leader>g"] = { name = "+Git" },
         ["<leader>gh"] = { name = "+Hunks" },
+        ["<leader>h"] = { name = "+Harpoon" },
         ["<leader>n"] = { name = "+Notes" },
         ["<leader>o"] = { name = "+Option" },
         ["<leader>q"] = { name = "+Quit" },
@@ -1221,6 +1222,72 @@ return {
         desc = "To path case (operator)",
       },
     },
+  },
+
+  {
+    "ThePrimeagen/harpoon",
+    branch = "harpoon2",
+    dependencies = { "nvim-lua/plenary.nvim" },
+    keys = {
+      {
+        "<leader>ha",
+        function()
+          require("harpoon"):list():append()
+        end,
+        desc = "Add to harpoon",
+      },
+      {
+        "<leader>hh",
+        function()
+          local harpoon = require("harpoon")
+          harpoon.ui:toggle_quick_menu(harpoon:list())
+        end,
+        desc = "Toggle harpoon menu",
+      },
+      {
+        "<leader>h1",
+        function()
+          require("harpoon"):list():select(1)
+        end,
+        desc = "Select harpoon 1",
+      },
+      {
+        "<leader>h2",
+        function()
+          require("harpoon"):list():select(2)
+        end,
+        desc = "Select harpoon 2",
+      },
+      {
+        "<leader>h3",
+        function()
+          require("harpoon"):list():select(3)
+        end,
+        desc = "Select harpoon 3",
+      },
+      {
+        "<leader>h4",
+        function()
+          require("harpoon"):list():select(4)
+        end,
+        desc = "Select harpoon 4",
+      },
+      {
+        "<leader>hn",
+        function()
+          require("harpoon"):list():next()
+        end,
+        desc = "Select next harpoon",
+      },
+      {
+        "<leader>hp",
+        function()
+          require("harpoon"):list():prev()
+        end,
+        desc = "Select previous harpoon",
+      },
+    },
+    opts = {},
   },
 
   {
