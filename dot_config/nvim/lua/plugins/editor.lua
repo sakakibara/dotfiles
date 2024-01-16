@@ -923,7 +923,8 @@ return {
                   "norg",
                   "n",
                   "<localleader>c",
-                  "<cmd>Neorg keybind norg core.looking-glass.magnify-code-block<cr>"
+                  "<cmd>Neorg keybind norg core.looking-glass.magnify-code-block<cr>",
+                  { desc = "[neorg] Looking glass" }
                 )
               end,
             },
