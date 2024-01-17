@@ -1,2 +1,0 @@
-#!/usr/bin/env zsh
-command dotfiles "$@" && source "${HOME}/.zshrc"
