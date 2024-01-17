@@ -12,6 +12,8 @@ function osname -d "Get the current OS name"
                 set osname (lsb_release -si)
             else if test -f /etc/lsb-release
                 set osname (awk -F= '$1=="DISTRIB_ID" { print tolower($2) ;}' "/etc/lsb-release")
+            else if test -f /etc/fedora-release
+                set osname fedora
             else if test -f /etc/debian_version
                 set osname debian
             end
