@@ -149,6 +149,10 @@ if status --is-interactive
         set -gx _ZO_DATA_DIR "$XDG_DATA_HOME/zoxide"
     end
 
+    if test (command -v chezmoi)
+        _evalcache chezmoi completion fish
+    end
+
     # Keybind
     bind \e\cP history-token-search-backward
     bind \e\cN history-token-search-forward

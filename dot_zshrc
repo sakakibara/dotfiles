@@ -213,6 +213,10 @@ fi
 
 _evalcache pip completion --zsh
 
+if (( ${+commands[chezmoi]} )); then
+  _evalcache chezmoi completion zsh
+fi
+
 #
 # Compdump
 #
