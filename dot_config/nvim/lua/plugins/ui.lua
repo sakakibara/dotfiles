@@ -274,13 +274,20 @@ return {
     event = "VeryLazy",
     keys = {
       {
-        "<leader>u-",
+        "-",
         function()
           require("oil").open()
         end,
         desc = "Open parent directory",
       },
     },
+    init = function()
+      if vim.fn.argc(-1) == 1 then
+        if require("util.path").is_dir(tostring(vim.fn.argv(0))) then
+          require("oil")
+        end
+      end
+    end,
     opts = {
       columns = {
         "icon",
@@ -308,7 +315,7 @@ return {
         conceallevel = 3,
         concealcursor = "n",
       },
-      default_file_explorer = false,
+      default_file_explorer = true,
       restore_win_options = true,
       skip_confirm_for_simple_edits = false,
       delete_to_trash = false,
@@ -463,13 +470,6 @@ return {
     "echasnovski/mini.files",
     dependencies = { "nvim-tree/nvim-web-devicons" },
     event = "VeryLazy",
-    init = function()
-      if vim.fn.argc(-1) == 1 then
-        if require("util.path").is_dir(tostring(vim.fn.argv(0))) then
-          require("mini.files")
-        end
-      end
-    end,
     opts = {
       windows = {
         preview = false,
@@ -477,7 +477,7 @@ return {
         width_preview = 30,
       },
       options = {
-        use_as_default_explorer = true,
+        use_as_default_explorer = false,
       },
     },
     keys = {
