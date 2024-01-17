@@ -22,6 +22,7 @@ return {
         ["<leader>n"] = { name = "+Notes" },
         ["<leader>o"] = { name = "+Option" },
         ["<leader>q"] = { name = "+Quit" },
+        ["<leader>r"] = { name = "+REST" },
         ["<leader>s"] = { name = "+Search" },
         ["<leader>t"] = { name = "+Test" },
         ["<leader>u"] = { name = "+UI" },
