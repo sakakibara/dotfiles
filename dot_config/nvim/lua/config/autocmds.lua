@@ -37,6 +37,14 @@ vim.api.nvim_create_autocmd("ModeChanged", {
   desc = "Hide relative line numbers",
 })
 
+vim.api.nvim_create_autocmd({ "FileType" }, {
+  group = augroup("json_conceal"),
+  pattern = { "json", "jsonc", "json5" },
+  callback = function()
+    vim.opt_local.conceallevel = 0
+  end,
+})
+
 if os.getenv("WSL_DISTRO_NAME") then
   vim.api.nvim_create_autocmd({ "BufRead", "BufNewFile" }, {
     group = augroup("disable_fixeol"),
