@@ -441,6 +441,11 @@ return {
       window = {
         mappings = {
           ["<space>"] = "none",
+          ["Y"] = function(state)
+            local node = state.tree:get_node()
+            local path = node:get_id()
+            vim.fn.setreg("+", path, "c")
+          end,
         },
       },
       filesystem = {
