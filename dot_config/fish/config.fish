@@ -89,7 +89,7 @@ set -gx VISUAL $EDITOR
 
 if set -q IS_WSL; or set -q WSL_DISTRO_NAME
     set -gx TZ /usr/share/zoneinfo/Japan
-    set -gx DISPLAY localhost:0.0
+    set -gx DISPLAY ":0"
 end
 
 # Run if fish is invoked as a login shell
