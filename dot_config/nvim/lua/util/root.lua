@@ -146,7 +146,7 @@ function M.get(opts)
   if opts and opts.normalize then
     return ret
   end
-  return vim.loop.os_uname().sysname:find("Windows") ~= nil and ret:gsub("/", "\\") or ret
+  return jit.os:find("Windows") ~= nil and ret:gsub("/", "\\") or ret
 end
 
 return M
