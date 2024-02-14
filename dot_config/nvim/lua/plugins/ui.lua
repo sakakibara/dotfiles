@@ -157,7 +157,7 @@ return {
         "nofile",
         "quickfix",
         "prompt",
-        "neo-tree",
+        "NvimTree",
       },
       default_amount = 1,
       at_edge = "stop",
@@ -407,68 +407,35 @@ return {
   },
 
   {
-    "nvim-neo-tree/neo-tree.nvim",
-    branch = "v3.x",
-    cmd = "Neotree",
+    "nvim-tree/nvim-tree.lua",
+    lazy = false,
+    dependencies = { "nvim-tree/nvim-web-devicons" },
     keys = {
       {
         "<leader>uf",
         function()
-          require("neo-tree.command").execute({ toggle = true, dir = root_path() })
+          require("nvim-tree.api").tree.toggle({ path = root_path() })
         end,
-        desc = "Toggle neotree explorer",
+        desc = "Toggle nvim-tree explorer",
       },
       {
         "<leader>uF",
         function()
-          require("neo-tree.command").execute({ toggle = true, dir = parent_path() })
+          require("nvim-tree.api").tree.toggle({ path = parent_path() })
         end,
-        desc = "Toggle neotree explorer (relative)",
+        desc = "Toggle nvim-tree explorer (relative)",
       },
     },
-    deactivate = function()
-      vim.cmd([[Neotree close]])
-    end,
-    opts = {
-      default_component_configs = {
-        indent = {
-          with_expanders = true,
-          expander_collapsed = "",
-          expander_expanded = "",
-          expander_highlight = "NeoTreeExpander",
-        },
-      },
-      window = {
-        mappings = {
-          ["<space>"] = "none",
-          ["Y"] = function(state)
-            local node = state.tree:get_node()
-            local path = node:get_id()
-            vim.fn.setreg("+", path, "c")
-          end,
-        },
-      },
-      filesystem = {
-        bind_to_cwd = false,
-        follow_current_file = { enabled = true },
-        use_libuv_file_watcher = true,
-      },
-      hijack_netrw_behavior = "disabled",
-      sources = { "filesystem", "buffers", "git_status", "document_symbols" },
-      open_files_do_not_replace_types = { "terminal", "Trouble", "qf", "Outline" },
+    opts = {},
+  },
+
+  {
+    "antosha417/nvim-lsp-file-operations",
+    dependencies = {
+      "nvim-lua/plenary.nvim",
+      "nvim-tree/nvim-tree.lua",
     },
-    config = function(_, opts)
-      local function on_move(data)
-        require("util.lsp").on_rename(data.source, data.destination)
-      end
-      local events = require("neo-tree.events")
-      opts.event_handlers = opts.event_handlers or {}
-      vim.list_extend(opts.event_handlers, {
-        { event = events.FILE_MOVED, handler = on_move },
-        { event = events.FILE_RENAMED, handler = on_move },
-      })
-      require("neo-tree").setup(opts)
-    end,
+    opts = {},
   },
 
   {
