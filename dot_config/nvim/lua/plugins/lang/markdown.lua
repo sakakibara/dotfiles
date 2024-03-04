@@ -66,6 +66,7 @@ return {
         opts[ft] = {
           headline_highlights = {},
           fat_headlines = false,
+          bullets = { "◎", "○", "✺", "▶", "⤷" },
         }
         for i = 1, 6 do
           local hl = "Headline" .. i
