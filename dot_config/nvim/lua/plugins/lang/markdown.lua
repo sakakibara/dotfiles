@@ -146,7 +146,7 @@ return {
             end
           end)
         end,
-        desc = "Edit neorg file",
+        desc = "Edit markdown file",
       },
       { "<leader>nf", utelescope.func("files", { cwd = unotes.notes_root }), desc = "Files (notes)" },
       { "<leader>ng", utelescope.func("live_grep", { cwd = unotes.notes_root }), desc = "Grep (notes)" },
@@ -169,7 +169,7 @@ return {
             end
           end)
         end,
-        desc = "Create neorg journal note",
+        desc = "Create journal note",
       },
     },
   },
