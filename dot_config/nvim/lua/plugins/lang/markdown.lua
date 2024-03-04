@@ -141,7 +141,7 @@ return {
           vim.ui.input({ prompt = "Title:" }, function(input)
             if input then
               vim.schedule(function()
-                vim.api.nvim_cmd({ cmd = "edit", args = { unotes.notes_root .. upath.sep .. input .. ".norg" } }, {})
+                vim.api.nvim_cmd({ cmd = "edit", args = { unotes.notes_root .. upath.sep .. input .. ".md" } }, {})
               end)
             end
           end)
