@@ -274,7 +274,7 @@ return {
     event = "VeryLazy",
     keys = {
       {
-        "-",
+        "<leader>-",
         function()
           require("oil").open()
         end,
