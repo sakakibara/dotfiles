@@ -754,7 +754,7 @@ return {
             default = {
               action = function(selection)
                 vim.cmd.cd(selection.path)
-                require("oil").open(selection.path, true)
+                require("oil").open(selection.path)
               end,
             },
             ["<C-s>"] = {
