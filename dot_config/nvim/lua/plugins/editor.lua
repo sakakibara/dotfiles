@@ -790,11 +790,6 @@ return {
         utelescope.func("live_grep_args", { cwd = vim.fn.stdpath("config") }),
         desc = "Grep with args (config)",
       },
-      {
-        "<leader>na",
-        utelescope.func("live_grep_args", { cwd = "~/notes" }),
-        desc = "Grep neorg notes with args",
-      },
     },
     config = function()
       require("telescope").load_extension("live_grep_args")
