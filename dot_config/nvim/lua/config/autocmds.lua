@@ -38,6 +38,14 @@ vim.api.nvim_create_autocmd("ModeChanged", {
 })
 
 vim.api.nvim_create_autocmd({ "FileType" }, {
+  group = augroup("markdown_colorcolumn"),
+  pattern = { "markdown" },
+  callback = function()
+    vim.opt_local.colorcolumn = "80"
+  end,
+})
+
+vim.api.nvim_create_autocmd({ "FileType" }, {
   group = augroup("markdown_conceal"),
   pattern = { "markdown" },
   callback = function()
