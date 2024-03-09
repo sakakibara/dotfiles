@@ -22,6 +22,9 @@ return {
       inlay_hints = {
         enabled = false,
       },
+      codelens = {
+        enabled = false,
+      },
       capabilities = {},
       format = {
         formatting_options = nil,
@@ -33,6 +36,9 @@ return {
             Lua = {
               workspace = {
                 checkThirdParty = "Disable",
+              },
+              codeLens = {
+                enable = true,
               },
               completion = {
                 callSnippet = "Replace",
@@ -71,6 +77,18 @@ return {
         ulsp.on_attach(function(client, buffer)
           if client.supports_method("textDocument/inlayHint") then
             require("util.toggle").inlay_hints(buffer, true)
+          end
+        end)
+      end
+
+      if opts.codelens.enabled and vim.lsp.codelens then
+        ulsp.on_attach(function(client, buffer)
+          if client.supports_method("textDocument/codeLens") then
+            vim.lsp.codelens.refresh()
+            vim.api.nvim_create_autocmd({ "BufEnter", "CursorHold", "InsertLeave" }, {
+              buffer = buffer,
+              callback = vim.lsp.codelens.refresh,
+            })
           end
         end)
       end
