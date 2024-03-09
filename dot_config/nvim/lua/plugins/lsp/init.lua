@@ -81,7 +81,7 @@ return {
         end)
       end
 
-      if opts.codelens.enabled and vim.lsp.codelens then
+      if opts.codelens and vim.lsp.codelens.enabled then
         ulsp.on_attach(function(client, buffer)
           if client.supports_method("textDocument/codeLens") then
             vim.lsp.codelens.refresh()
