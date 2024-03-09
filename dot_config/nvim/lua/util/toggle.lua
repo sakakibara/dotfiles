@@ -14,9 +14,9 @@ function M.option(option, silent, values)
   vim.opt_local[option] = not vim.opt_local[option]:get()
   if not silent then
     if vim.opt_local[option]:get() then
-      LazyUtil.info("Enabled " .. option, { title = "Options" })
+      LazyUtil.info("Enabled " .. option, { title = "Option" })
     else
-      LazyUtil.warn("Disabled " .. option, { title = "Options" })
+      LazyUtil.warn("Disabled " .. option, { title = "Option" })
     end
   end
 end
@@ -27,11 +27,11 @@ function M.number()
     nu = { number = vim.opt_local.number:get(), relativenumber = vim.opt_local.relativenumber:get() }
     vim.opt_local.number = false
     vim.opt_local.relativenumber = false
-    LazyUtil.warn("Disabled line numbers", { title = "Options" })
+    LazyUtil.warn("Disabled line numbers", { title = "Option" })
   else
     vim.opt_local.number = nu.number
     vim.opt_local.relativenumber = nu.relativenumber
-    LazyUtil.info("Enabled line numbers", { title = "Options" })
+    LazyUtil.info("Enabled line numbers", { title = "Option" })
   end
 end
 
