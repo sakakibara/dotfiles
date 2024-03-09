@@ -37,7 +37,11 @@ end
 
 local diagnostic_enabled = true
 function M.diagnostics()
+  if vim.diagnostic.is_disabled then
+    diagnostic_enabled = not vim.diagnostic.is_disabled()
+  end
   diagnostic_enabled = not diagnostic_enabled
+
   if diagnostic_enabled then
     vim.diagnostic.enable()
     LazyUtil.info("Enabled diagnostics", { title = "Diagnostics" })
