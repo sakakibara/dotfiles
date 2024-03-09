@@ -20,6 +20,11 @@ function M.setup(opts)
       M.load("keymaps")
       require("util.format").setup()
       require("util.root").setup()
+
+      vim.api.nvim_create_user_command("LazyHealth", function()
+        vim.cmd([[Lazy! load all]])
+        vim.cmd([[checkhealth]])
+      end, { desc = "Load all plugins and run :checkhealth" })
     end,
   })
 
