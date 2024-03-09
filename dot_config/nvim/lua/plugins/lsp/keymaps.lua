@@ -51,6 +51,8 @@ function M.get()
       desc = "Source action",
       has = "codeAction",
     },
+    { "<leader>cc", vim.lsp.codelens.run, desc = "Run codelens", mode = { "n", "v" }, has = "codeLens" },
+    { "<leader>cC", vim.lsp.codelens.refresh, desc = "Refresh & display codelens", mode = { "n" }, has = "codeLens" },
   }
   if require("util.plugin").has("inc-rename.nvim") then
     M._keys[#M._keys + 1] = {
