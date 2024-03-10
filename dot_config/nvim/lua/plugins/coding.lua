@@ -102,6 +102,33 @@ return {
         mode = { "i", "s" },
       },
     },
+    config = function(_, opts)
+      local ls = require("luasnip")
+      vim.api.nvim_create_autocmd("CursorMovedI", {
+        group = vim.api.nvim_create_augroup("userconf_unlink_luasnip", { clear = true }),
+        pattern = "*",
+        callback = function(ev)
+          if not ls.session or not ls.session.current_nodes[ev.buf] or ls.session.jump_active then
+            return
+          end
+
+          local current_node = ls.session.current_nodes[ev.buf]
+          local current_start, current_end = current_node:get_buf_position()
+          current_start[1] = current_start[1] + 1
+          current_end[1] = current_end[1] + 1
+          local cursor = vim.api.nvim_win_get_cursor(0)
+
+          if
+            cursor[1] < current_start[1]
+            or cursor[1] > current_end[1]
+            or cursor[2] < current_start[2]
+            or cursor[2] > current_end[2]
+          then
+            ls.unlink_current()
+          end
+        end,
+      })
+    end,
   },
 
   {
