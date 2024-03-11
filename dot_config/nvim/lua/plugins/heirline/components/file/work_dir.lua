@@ -7,7 +7,7 @@ return {
   hl = { fg = "gray", bold = true },
   on_click = {
     callback = function()
-      vim.cmd("Neotree toggle")
+      vim.cmd("NvimTreeToggle")
     end,
     name = "heirline_workdir",
   },
