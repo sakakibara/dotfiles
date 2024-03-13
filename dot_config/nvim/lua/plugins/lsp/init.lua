@@ -1,3 +1,5 @@
+local icons = require("config.icons")
+
 return {
   {
     "neovim/nvim-lspconfig",
@@ -19,6 +21,14 @@ return {
           prefix = "●",
         },
         severity_sort = true,
+        signs = {
+          text = {
+            [vim.diagnostic.severity.ERROR] = icons.diagnostics.Error,
+            [vim.diagnostic.severity.HINT] = icons.diagnostics.Hint,
+            [vim.diagnostic.severity.INFO] = icons.diagnostics.Info,
+            [vim.diagnostic.severity.WARN] = icons.diagnostics.Warn,
+          },
+        },
       },
       inlay_hints = {
         enabled = false,
