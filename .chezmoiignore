@@ -8,6 +8,7 @@ etc/**
 .config/fish/functions/show.fish
 .config/fish/functions/show_desktop.fish
 .zfunc/macosnotify
+Library/**
 {{ end }}
 {{ if ne .chezmoi.os "windows" }}
 Documents/**
