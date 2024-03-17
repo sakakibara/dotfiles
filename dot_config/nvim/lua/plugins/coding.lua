@@ -341,7 +341,7 @@ return {
 
   {
     "NvChad/nvim-colorizer.lua",
-    event = "VeryLazy",
+    event = "LazyFile",
     opts = {
       filetypes = { "css", "html", "scss", "sass" },
       user_default_options = { mode = "virtualtext" },
