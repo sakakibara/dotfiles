@@ -16,6 +16,7 @@ return {
         ["<leader>e"] = { name = "+Editor" },
         ["<leader>f"] = { name = "+File" },
         ["<leader>fc"] = { name = "+Config" },
+        ["<leader>fp"] = { name = "+Parent" },
         ["<leader>g"] = { name = "+Git" },
         ["<leader>gh"] = { name = "+Hunks" },
         ["<leader>h"] = { name = "+Harpoon" },
@@ -551,9 +552,11 @@ return {
       { "<leader><space>", utelescope.func("files", { cwd = root_path }), desc = "Files" },
       { "<leader>bb", "<cmd>Telescope buffers<cr>", desc = "Buffers" },
       { "<leader>ff", utelescope.func("files", { cwd = root_path }), desc = "Files" },
-      { "<leader>fF", utelescope.func("find_files", { cwd = parent_path }), desc = "Find files (relative)" },
+      { "<leader>fF", utelescope.func("files", { cwd = vim.loop.cwd }), desc = "Files (cwd)" },
+      { "<leader>fpf", utelescope.func("find_files", { cwd = parent_path }), desc = "Find files (parent)" },
       { "<leader>fg", utelescope.func("live_grep", { cwd = root_path }), desc = "Grep" },
-      { "<leader>fG", utelescope.func("live_grep", { cwd = parent_path }), desc = "Grep (relative)" },
+      { "<leader>fG", utelescope.func("live_grep", { cwd = vim.loop.cwd }), desc = "Grep (cwd)" },
+      { "<leader>fpg", utelescope.func("live_grep", { cwd = parent_path }), desc = "Grep (parent)" },
       {
         "<leader>ft",
         function()
@@ -562,17 +565,19 @@ return {
         desc = "Filetypes",
       },
       { "<leader>fw", utelescope.func("grep_string", { cwd = root_path, word_match = "-w" }), desc = "Word" },
+      { "<leader>fW", utelescope.func("grep_string", { cwd = vim.loop.cwd, word_match = "-w" }), desc = "Word (cwd)" },
       {
-        "<leader>fW",
+        "<leader>fpw",
         utelescope.func("grep_string", { cwd = parent_path, word_match = "-w" }),
-        desc = "Word (relative)",
+        desc = "Word (parent)",
       },
       { "<leader>fw", utelescope.func("grep_string", { cwd = root_path }), mode = "v", desc = "Selection" },
+      { "<leader>fW", utelescope.func("grep_string", { cwd = vim.loop.cwd }), mode = "v", desc = "Selection (cwd)" },
       {
-        "<leader>fW",
+        "<leader>fpw",
         utelescope.func("grep_string", { cwd = parent_path }),
         mode = "v",
-        desc = "Selection (relative)",
+        desc = "Selection (parent)",
       },
       {
         "<leader>fs",
@@ -784,7 +789,8 @@ return {
     "nvim-telescope/telescope-live-grep-args.nvim",
     keys = {
       { "<leader>fa", utelescope.func("live_grep_args", { cwd = root_path }), desc = "Grep with args" },
-      { "<leader>fA", utelescope.func("live_grep_args", { cwd = parent_path }), desc = "Grep with args (relative)" },
+      { "<leader>fA", utelescope.func("live_grep_args", { cwd = vim.loop.cwd }), desc = "Grep with args (cwd)" },
+      { "<leader>fpa", utelescope.func("live_grep_args", { cwd = parent_path }), desc = "Grep with args (parent)" },
       {
         "<leader>fca",
         utelescope.func("live_grep_args", { cwd = vim.fn.stdpath("config") }),
@@ -800,8 +806,18 @@ return {
     keys = {
       {
         "<leader>fb",
-        utelescope.func("file_browser", { cwd = parent_path }),
+        utelescope.func("file_browser", { cwd = root_path }),
         desc = "File browser",
+      },
+      {
+        "<leader>fB",
+        utelescope.func("file_browser", { cwd = vim.loop.cwd }),
+        desc = "File browser (cwd)",
+      },
+      {
+        "<leader>fpb",
+        utelescope.func("file_browser", { cwd = parent_path }),
+        desc = "File browser (parent)",
       },
     },
     config = function()

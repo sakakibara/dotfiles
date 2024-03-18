@@ -421,6 +421,13 @@ return {
       {
         "<leader>uF",
         function()
+          require("nvim-tree.api").tree.toggle({ path = vim.loop.cwd() })
+        end,
+        desc = "Toggle nvim-tree explorer (cwd)",
+      },
+      {
+        "<leader>upf",
+        function()
           require("nvim-tree.api").tree.toggle({ path = parent_path() })
         end,
         desc = "Toggle nvim-tree explorer (relative)",
