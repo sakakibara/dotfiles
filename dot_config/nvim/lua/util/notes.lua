@@ -2,7 +2,7 @@ local ubuffer = require("util.buffer")
 local upath = require("util.path")
 local M = {}
 
-M.notes_root = upath.home .. upath.sep .. "notes"
+M.notes_root = upath.home .. upath.sep .. "Notes"
 M.journal_root = M.notes_root .. upath.sep .. "journal"
 
 function M.open_journal(time)
