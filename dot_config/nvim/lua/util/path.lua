@@ -1,5 +1,3 @@
-local LazyUtil = require("lazy.core.util")
-
 local M = {}
 
 M.remote_patterns = { "/mnt/" }
