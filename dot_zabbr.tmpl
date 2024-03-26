@@ -11,3 +11,15 @@ abbr "tkss"="tmux kill-session -t"
 abbr "tksv"="tmux kill-server"
 abbr "tl"="tmux list-sessions"
 abbr "ts"="tmux new-session -s"
+{{ if lookPath "fdfind" -}}
+abbr "fd"="fdfind"
+{{ end -}}
+{{ if lookPath "task" -}}
+abbr "t"="task"
+{{ end -}}
+{{ if lookPath "timew" -}}
+abbr "tw"="timew"
+{{ end -}}
+{{ if lookPath "taskwarrior-tui" -}}
+abbr "ti"="taskwarrior-tui"
+{{ end -}}
