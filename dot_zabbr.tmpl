@@ -14,6 +14,12 @@ abbr "ts"="tmux new-session -s"
 {{ if lookPath "fdfind" -}}
 abbr "fd"="fdfind"
 {{ end -}}
+{{ if lookPath "lazydocker" -}}
+abbr "lad"="lazydocker"
+{{ end -}}
+{{ if lookPath "lazygit" -}}
+abbr "lag"="lazygit"
+{{ end -}}
 {{ if lookPath "task" -}}
 abbr "t"="task"
 {{ end -}}

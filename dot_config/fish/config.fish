@@ -176,6 +176,12 @@ if status --is-interactive
     if test (command -v fdfind)
         abbr -a fd fdfind
     end
+    if test (command -v lazydocker)
+        abbr -a lad lazydocker
+    end
+    if test (command -v lazygit)
+        abbr -a lag lazygit
+    end
     if test (command -v task)
         abbr -a t task
     end
