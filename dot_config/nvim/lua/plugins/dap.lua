@@ -30,7 +30,7 @@ return {
             return
           end
 
-          vim.cmd("tabedit %")
+          vim.api.nvim_command("tabedit %")
           debug_win = vim.fn.win_getid()
           debug_tab = vim.api.nvim_win_get_tabpage(debug_win)
           debug_tabnr = vim.api.nvim_tabpage_get_number(debug_tab)
@@ -42,7 +42,7 @@ return {
           dapui.close()
 
           if debug_tab and vim.api.nvim_tabpage_is_valid(debug_tab) then
-            vim.api.nvim_exec("tabclose " .. debug_tabnr, false)
+            vim.api.nvim_command("tabclose " .. debug_tabnr)
           end
 
           debug_win = nil
