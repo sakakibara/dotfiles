@@ -1,4 +1,5 @@
 local conditions = require("heirline.conditions")
+local uplugin = require("util.plugin")
 
 return {
   condition = conditions.is_git_repo,
@@ -9,9 +10,11 @@ return {
   end,
   on_click = {
     callback = function()
-      vim.defer_fn(function()
-        vim.cmd("Lazygit %:p:h")
-      end, 100)
+      if uplugin.has("telescope.nvim") then
+        vim.defer_fn(function()
+          require("telescope.builtin").git_branches({ use_file_path = true })
+        end, 100)
+      end
     end,
     name = "heirline_git",
     update = false,
