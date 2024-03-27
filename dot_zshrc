@@ -239,6 +239,14 @@ fi
 _evalcache zoxide init zsh
 
 #
+# LS_COLORS settings
+#
+
+if (( ${+commands[vivid]} )); then
+  export LS_COLORS="$(vivid generate catppuccin-mocha)"
+fi
+
+#
 # Completions
 #
 
