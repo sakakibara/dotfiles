@@ -1,5 +1,5 @@
 romkatv/powerlevel10k
 zsh-users/zsh-completions
-zsh-users/zsh-syntax-highlighting
 zsh-users/zsh-autosuggestions
 olets/zsh-abbr kind:defer
+zdharma-continuum/fast-syntax-highlighting
