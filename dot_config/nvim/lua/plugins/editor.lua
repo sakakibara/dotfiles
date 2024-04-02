@@ -19,7 +19,6 @@ return {
         ["<leader>fp"] = { name = "+Parent" },
         ["<leader>g"] = { name = "+Git" },
         ["<leader>gh"] = { name = "+Hunks" },
-        ["<leader>h"] = { name = "+Harpoon" },
         ["<leader>n"] = { name = "+Notes" },
         ["<leader>o"] = { name = "+Option" },
         ["<leader>q"] = { name = "+Quit" },
