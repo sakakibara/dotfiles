@@ -32,7 +32,6 @@ return {
   fallthrough = false,
   require("plugins.heirline.statusline.dashboard"),
   require("plugins.heirline.statusline.quickfix"),
-  require("plugins.heirline.statusline.special"),
   require("plugins.heirline.statusline.terminal"),
   require("plugins.heirline.statusline.default"),
 }

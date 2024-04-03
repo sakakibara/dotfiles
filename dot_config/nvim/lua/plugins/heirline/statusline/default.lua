@@ -1,12 +1,21 @@
+local conditions = require("heirline.conditions")
+
 return {
   require("plugins.heirline.components.cap"),
   require("plugins.heirline.components.space"),
   require("plugins.heirline.components.vi_mode"),
   require("plugins.heirline.components.space"),
   require("plugins.heirline.components.git"),
-  require("plugins.heirline.components.file.path"),
-  require("plugins.heirline.components.file.modified"),
-  require("plugins.heirline.components.file.readonly"),
+  {
+    condition = function()
+      return not conditions.buffer_matches({
+        buftype = { "acwrite", "nofile", "prompt", "help" },
+      })
+    end,
+    require("plugins.heirline.components.file.path"),
+    require("plugins.heirline.components.file.modified"),
+    require("plugins.heirline.components.file.readonly"),
+  },
   require("plugins.heirline.components.truncate"),
   require("plugins.heirline.components.align"),
   require("plugins.heirline.components.spell"),
