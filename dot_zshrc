@@ -129,9 +129,6 @@ accept-and-end-of-line() {
 }
 zle -N accept-and-end-of-line
 
-# Enable shift-tab to cycle backwards
-bindkey "^[[Z" reverse-menu-complete
-
 # Open editor to edit input
 bindkey "^X^E" edit-command-line
 
