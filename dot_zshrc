@@ -100,38 +100,125 @@ setopt no_list_beep
 setopt no_flow_control
 
 #
-# Bindkeys
+# Key bind variables
 #
 
-# Use emacs style keybindings
-bindkey -e
+zmodload zsh/terminfo
 
-function expand-or-complete-non-nil() {
-  if [[ ${#BUFFER} != 0 ]]; then
-    zle expand-or-complete
+typeset -gA keyinfo
+keyinfo=(
+  'Control'         '\C-'
+  'ControlLeft'     '\e[1;5D \e[5D \e\e[D \eOd'
+  'ControlRight'    '\e[1;5C \e[5C \e\e[C \eOc'
+  'ControlPageUp'   '\e[5;5~'
+  'ControlPageDown' '\e[6;5~'
+  'Escape'          '\e'
+  'Meta'            '\M-'
+  'Backspace'       "$terminfo[kbs]"
+  'Delete'          "$terminfo[kdch1]"
+  'F1'              "$terminfo[kf1]"
+  'F2'              "$terminfo[kf2]"
+  'F3'              "$terminfo[kf3]"
+  'F4'              "$terminfo[kf4]"
+  'F5'              "$terminfo[kf5]"
+  'F6'              "$terminfo[kf6]"
+  'F7'              "$terminfo[kf7]"
+  'F8'              "$terminfo[kf8]"
+  'F9'              "$terminfo[kf9]"
+  'F10'             "$terminfo[kf10]"
+  'F11'             "$terminfo[kf11]"
+  'F12'             "$terminfo[kf12]"
+  'Insert'          "$terminfo[kich1]"
+  'Home'            "$terminfo[khome]"
+  'PageUp'          "$terminfo[kpp]"
+  'End'             "$terminfo[kend]"
+  'PageDown'        "$terminfo[knp]"
+  'Up'              "$terminfo[kcuu1]"
+  'Left'            "$terminfo[kcub1]"
+  'Down'            "$terminfo[kcud1]"
+  'Right'           "$terminfo[kcuf1]"
+  'BackTab'         "$terminfo[kcbt]"
+)
+
+for key in "${(k)keyinfo[@]}"; do
+  if [[ -z "$keyinfo[$key]" ]]; then
+    keyinfo[$key]='�'
   fi
-}
-zle -N expand-or-complete-non-nil
-bindkey '^I' expand-or-complete-non-nil
+done
 
 autoload -Uz edit-command-line
 zle -N edit-command-line
 
-zmodload zsh/complist
+#
+# Key bind functions
+#
 
-function accept-and-beginning-of-line() {
+# Runs bindkey but for all of the keymaps. Running it with no arguments will
+# print out the mappings for all of the keymaps.
+function bindkey-all {
+  local keymap=''
+  for keymap in $(bindkey -l); do
+    [[ "$#" -eq 0 ]] && printf "#### %s\n" "${keymap}" 1>&2
+    bindkey -M "${keymap}" "$@"
+  done
+}
+
+# Enables terminal application mode
+function zle-line-init {
+  # The terminal must be in application mode when ZLE is active for $terminfo
+  # values to be valid.
+  if (( $+terminfo[smkx] )); then
+    # Enable terminal application mode
+    echoti smkx
+  fi
+}
+zle -N zle-line-init
+
+# Disables terminal application mode
+function zle-line-finish {
+  # The terminal must be in application mode when ZLE is active for $terminfo
+  # values to be valid.
+  if (( $+terminfo[rmkx] )); then
+    # Disable terminal application mode
+    echoti rmkx
+  fi
+}
+zle -N zle-line-finish
+
+# Accept current target and place cursor at the beginning of the line
+function accept-and-beginning-of-line {
   zle accept-search
   zle beginning-of-line
 }
 zle -N accept-and-beginning-of-line
 
-function accept-and-end-of-line() {
+# Accept current target and place cursor at the end of the line
+function accept-and-end-of-line {
   zle accept-search
   zle end-of-line
 }
 zle -N accept-and-end-of-line
 
-function prepend-sudo() {
+# Expand or complete only if buffer is not empty
+function expand-or-complete-non-nil {
+  if [[ ${#BUFFER} != 0 ]]; then
+    zle expand-or-complete
+  fi
+}
+zle -N expand-or-complete-non-nil
+
+# Expands .... to ../..
+function expand-dot-to-parent-directory-path {
+  if [[ $LBUFFER = *.. ]]; then
+    LBUFFER+='/..'
+  else
+    LBUFFER+='.'
+  fi
+}
+zle -N expand-dot-to-parent-directory-path
+
+# Inserts 'sudo ' at the beginning of the line
+function prepend-sudo {
   if [[ "$BUFFER" != su(do|)\ * ]]; then
     BUFFER="sudo $BUFFER"
     (( CURSOR += 5 ))
@@ -139,52 +226,211 @@ function prepend-sudo() {
 }
 zle -N prepend-sudo
 
-bindkey "^X^S" prepend-sudo
+# Expand aliases
+function glob-alias {
+  zle _expand_alias
+  zle expand-word
+  zle magic-space
+}
+zle -N glob-alias
 
-# Open editor to edit input
-bindkey "^X^E" edit-command-line
+# Toggle the comment character at the start of the line. This is meant to work
+# around a buggy implementation of pound-insert in zsh.
+#
+# This is currently only used for the emacs keys because vi-pound-insert has
+# been reported to work properly.
+function pound-toggle {
+  if [[ "$BUFFER" = '#'* ]]; then
+    # Because of an oddity in how zsh handles the cursor when the buffer size
+    # changes, we need to make this check before we modify the buffer and let
+    # zsh handle moving the cursor back if it's past the end of the line.
+    if [[ $CURSOR != $#BUFFER ]]; then
+      (( CURSOR -= 1 ))
+    fi
+    BUFFER="${BUFFER:1}"
+  else
+    BUFFER="#$BUFFER"
+    (( CURSOR += 1 ))
+  fi
+}
+zle -N pound-toggle
 
-bindkey -M menuselect "^A" accept-and-beginning-of-line
-bindkey -M menuselect "^E" accept-and-end-of-line
-bindkey -M menuselect "\E" accept-search
-bindkey -M menuselect "^S" history-incremental-search-forward
-bindkey -M menuselect "^R" history-incremental-search-backward
+# Reset to default key bindings
+bindkey -d
 
-typeset -g -A key
+#
+# Emacs key bindings
+#
 
-key[Home]="${terminfo[khome]}"
-key[End]="${terminfo[kend]}"
-key[Insert]="${terminfo[kich1]}"
-key[Backspace]="${terminfo[kbs]}"
-key[Delete]="${terminfo[kdch1]}"
-key[Up]="${terminfo[kcuu1]}"
-key[Down]="${terminfo[kcud1]}"
-key[Left]="${terminfo[kcub1]}"
-key[Right]="${terminfo[kcuf1]}"
-key[PageUp]="${terminfo[kpp]}"
-key[PageDown]="${terminfo[knp]}"
-key[Shift-Tab]="${terminfo[kcbt]}"
+for key in "$keyinfo[Escape]"{B,b} "${(s: :)keyinfo[ControlLeft]}" \
+  "${keyinfo[Escape]}${keyinfo[Left]}"
+  bindkey -M emacs "$key" emacs-backward-word
+for key in "$keyinfo[Escape]"{F,f} "${(s: :)keyinfo[ControlRight]}" \
+  "${keyinfo[Escape]}${keyinfo[Right]}"
+  bindkey -M emacs "$key" emacs-forward-word
 
-[[ -n "${key[Home]}" ]] && bindkey -- "${key[Home]}" beginning-of-line
-[[ -n "${key[End]}" ]] && bindkey -- "${key[End]}" end-of-line
-[[ -n "${key[Insert]}" ]] && bindkey -- "${key[Insert]}" overwrite-mode
-[[ -n "${key[Backspace]}" ]] && bindkey -- "${key[Backspace]}" backward-delete-char
-[[ -n "${key[Delete]}" ]] && bindkey -- "${key[Delete]}" delete-char
-[[ -n "${key[Up]}" ]] && bindkey -- "${key[Up]}" up-line-or-history
-[[ -n "${key[Down]}" ]] && bindkey -- "${key[Down]}" down-line-or-history
-[[ -n "${key[Left]}" ]] && bindkey -- "${key[Left]}" backward-char
-[[ -n "${key[Right]}" ]] && bindkey -- "${key[Right]}" forward-char
-[[ -n "${key[PageUp]}" ]] && bindkey -- "${key[PageUp]}" beginning-of-buffer-or-history
-[[ -n "${key[PageDown]}" ]] && bindkey -- "${key[PageDown]}" end-of-buffer-or-history
-[[ -n "${key[Shift-Tab]}" ]] && bindkey -- "${key[Shift-Tab]}" reverse-menu-complete
+# Kill to the beginning of the line.
+for key in "$keyinfo[Escape]"{K,k}
+  bindkey -M emacs "$key" backward-kill-line
 
-if (( ${+terminfo[smkx]} && ${+terminfo[rmkx]} )); then
-	autoload -Uz add-zle-hook-widget
-	function zle_application_mode_start { echoti smkx }
-	function zle_application_mode_stop { echoti rmkx }
-	add-zle-hook-widget -Uz zle-line-init zle_application_mode_start
-	add-zle-hook-widget -Uz zle-line-finish zle_application_mode_stop
+# Redo
+bindkey -M emacs "$keyinfo[Escape]_" redo
+
+# Search previous character
+bindkey -M emacs "$keyinfo[Control]X$keyinfo[Control]B" vi-find-prev-char
+
+# Match bracket
+bindkey -M emacs "$keyinfo[Control]X$keyinfo[Control]]" vi-match-bracket
+
+# Edit command in an external editor.
+bindkey -M emacs "$keyinfo[Control]X$keyinfo[Control]E" edit-command-line
+
+if (( $+widgets[history-incremental-pattern-search-backward] )); then
+  bindkey -M emacs "$keyinfo[Control]R" \
+    history-incremental-pattern-search-backward
+  bindkey -M emacs "$keyinfo[Control]S" \
+    history-incremental-pattern-search-forward
 fi
+
+# Toggle comment at the start of the line. Note that we use pound-toggle which
+# is similar to pount insert, but meant to work around some issues that were
+# being seen in iTerm.
+bindkey -M emacs "$keyinfo[Escape];" pound-toggle
+
+#
+# Vi key bindings
+#
+
+# Edit command in an external editor emacs style (v is used for visual mode)
+bindkey -M vicmd "$keyinfo[Control]X$keyinfo[Control]E" edit-command-line
+
+# Undo/Redo
+bindkey -M vicmd "u" undo
+bindkey -M viins "$keyinfo[Control]_" undo
+bindkey -M vicmd "$keyinfo[Control]R" redo
+
+if (( $+widgets[history-incremental-pattern-search-backward] )); then
+  bindkey -M vicmd "?" history-incremental-pattern-search-backward
+  bindkey -M vicmd "/" history-incremental-pattern-search-forward
+else
+  bindkey -M vicmd "?" history-incremental-search-backward
+  bindkey -M vicmd "/" history-incremental-search-forward
+fi
+
+# Toggle comment at the start of the line
+bindkey -M vicmd "#" vi-pound-insert
+
+#
+# Emacs and vi key bindings
+#
+
+# Unbound keys in vicmd and viins mode will cause really odd things to happen
+# such as the casing of all the characters you have typed changing or other
+# undefined things. In emacs mode they just insert a tilde, but bind these keys
+# in the main keymap to a noop op so if there is no keybind in the users mode
+# it will fall back and do nothing.
+function _zle-noop {  ; }
+zle -N _zle-noop
+local -a unbound_keys
+unbound_keys=(
+  "${keyinfo[F1]}"
+  "${keyinfo[F2]}"
+  "${keyinfo[F3]}"
+  "${keyinfo[F4]}"
+  "${keyinfo[F5]}"
+  "${keyinfo[F6]}"
+  "${keyinfo[F7]}"
+  "${keyinfo[F8]}"
+  "${keyinfo[F9]}"
+  "${keyinfo[F10]}"
+  "${keyinfo[F11]}"
+  "${keyinfo[F12]}"
+  "${keyinfo[PageUp]}"
+  "${keyinfo[PageDown]}"
+  "${keyinfo[ControlPageUp]}"
+  "${keyinfo[ControlPageDown]}"
+)
+
+for keymap in $unbound_keys; do
+  bindkey -M viins "${keymap}" _zle-noop
+  bindkey -M vicmd "${keymap}" _zle-noop
+done
+
+for keymap in 'emacs' 'viins' 'vicmd'; do
+  bindkey -M "$keymap" "$keyinfo[Home]" beginning-of-line
+  bindkey -M "$keymap" "$keyinfo[End]" end-of-line
+done
+
+# Keybinds for all vi keymaps
+for keymap in 'viins' 'vicmd'; do
+  # Ctrl + Left and Ctrl + Right bindings to forward/backward word
+  for key in "${(s: :)keyinfo[ControlLeft]}"
+    bindkey -M "$keymap" "$key" vi-backward-word
+  for key in "${(s: :)keyinfo[ControlRight]}"
+    bindkey -M "$keymap" "$key" vi-forward-word
+done
+
+# Keybinds for emacs and vi insert mode
+for keymap in 'emacs' 'viins'; do
+  bindkey -M "$keymap" "$keyinfo[Insert]" overwrite-mode
+  bindkey -M "$keymap" "$keyinfo[Delete]" delete-char
+  bindkey -M "$keymap" "$keyinfo[Backspace]" backward-delete-char
+
+  bindkey -M "$keymap" "$keyinfo[Left]" backward-char
+  bindkey -M "$keymap" "$keyinfo[Right]" forward-char
+
+  # Expand history on space
+  bindkey -M "$keymap" ' ' magic-space
+
+  # Clear screen
+  bindkey -M "$keymap" "$keyinfo[Control]L" clear-screen
+
+  # Expand command name to full path
+  for key in "$keyinfo[Escape]"{E,e}
+    bindkey -M "$keymap" "$key" expand-cmd-path
+
+  # Duplicate the previous word
+  for key in "$keyinfo[Escape]"{M,m}
+    bindkey -M "$keymap" "$key" copy-prev-shell-word
+
+  # Use a more flexible push-line
+  for key in "$keyinfo[Control]Q" "$keyinfo[Escape]"{q,Q}
+    bindkey -M "$keymap" "$key" push-line-or-edit
+
+  # Bind Shift + Tab to go to the previous menu item
+  bindkey -M "$keymap" "$keyinfo[BackTab]" reverse-menu-complete
+
+  # Complete in the middle of word
+  bindkey -M "$keymap" "$keyinfo[Control]I" expand-or-complete-non-nil
+
+  # Expand .... to ../..
+  bindkey -M "$keymap" "." expand-dot-to-parent-directory-path
+
+  # Insert 'sudo ' at the beginning of the line
+  bindkey -M "$keymap" "$keyinfo[Control]X$keyinfo[Control]S" prepend-sudo
+
+  # control-space expands all aliases, including global
+  bindkey -M "$keymap" "$keyinfo[Control] " glob-alias
+done
+
+# Delete key deletes character in vimcmd cmd mode instead of weird default functionality
+bindkey -M vicmd "$keyinfo[Delete]" delete-char
+
+# Do not expand .... to ../.. during incremental search
+bindkey -M isearch . self-insert 2> /dev/null
+
+zmodload zsh/complist
+
+bindkey -M menuselect "\E" accept-search
+bindkey -M menuselect "$keyinfo[Control]A" accept-and-beginning-of-line
+bindkey -M menuselect "$keyinfo[Control]E" accept-and-end-of-line
+bindkey -M menuselect "$keyinfo[Control]S" history-incremental-search-forward
+bindkey -M menuselect "$keyinfo[Control]R" history-incremental-search-backward
+
+# Use emacs style keybindings
+bindkey -e
+
+unset keymap
 
 #
 # Aliases
