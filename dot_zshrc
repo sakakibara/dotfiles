@@ -118,17 +118,20 @@ autoload -Uz edit-command-line
 zle -N edit-command-line
 
 zmodload zsh/complist
-accept-and-beginning-of-line() {
+
+function accept-and-beginning-of-line() {
   zle accept-search
   zle beginning-of-line
 }
 zle -N accept-and-beginning-of-line
-accept-and-end-of-line() {
+
+function accept-and-end-of-line() {
   zle accept-search
   zle end-of-line
 }
 zle -N accept-and-end-of-line
-prepend-sudo() {
+
+function prepend-sudo() {
   if [[ "$BUFFER" != su(do|)\ * ]]; then
     BUFFER="sudo $BUFFER"
     (( CURSOR += 5 ))
