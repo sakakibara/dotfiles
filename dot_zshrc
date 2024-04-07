@@ -112,6 +112,12 @@ keyinfo=(
   'ControlRight'    '\e[1;5C \e[5C \e\e[C \eOc'
   'ControlPageUp'   '\e[5;5~'
   'ControlPageDown' '\e[6;5~'
+  'ShiftLeft'       '\e[1;2D'
+  'ShiftRight'      '\e[1;2C'
+  'ShiftUp'         '\e[1;2A'
+  'ShiftDown'       '\e[1;2B'
+  'ShiftHome'       '\e[1;2H'
+  'ShiftEnd'        '\e[1;2F'
   'Escape'          '\e'
   'Meta'            '\M-'
   'Backspace'       "$terminfo[kbs]"
@@ -359,6 +365,9 @@ done
 for keymap in 'emacs' 'viins' 'vicmd'; do
   bindkey -M "$keymap" "$keyinfo[Home]" beginning-of-line
   bindkey -M "$keymap" "$keyinfo[End]" end-of-line
+
+  bindkey -M "$keymap" "$keyinfo[ShiftHome]" beginning-of-line
+  bindkey -M "$keymap" "$keyinfo[ShiftEnd]" end-of-line
 done
 
 # Keybinds for all vi keymaps
@@ -378,6 +387,9 @@ for keymap in 'emacs' 'viins'; do
 
   bindkey -M "$keymap" "$keyinfo[Left]" backward-char
   bindkey -M "$keymap" "$keyinfo[Right]" forward-char
+
+  bindkey -M "$keymap" "$keyinfo[ShiftLeft]" backward-char
+  bindkey -M "$keymap" "$keyinfo[ShiftRight]" forward-char
 
   bindkey -M "$keymap" "$keyinfo[PageUp]" beginning-of-buffer-or-history
   bindkey -M "$keymap" "$keyinfo[PageDown]" end-of-buffer-or-history
