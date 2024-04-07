@@ -379,6 +379,9 @@ for keymap in 'emacs' 'viins'; do
   bindkey -M "$keymap" "$keyinfo[Left]" backward-char
   bindkey -M "$keymap" "$keyinfo[Right]" forward-char
 
+  bindkey -M "$keymap" "$keyinfo[PageUp]" beginning-of-buffer-or-history
+  bindkey -M "$keymap" "$keyinfo[PageDown]" end-of-buffer-or-history
+
   # Expand history on space
   bindkey -M "$keymap" ' ' magic-space
 
