@@ -137,4 +137,9 @@ return {
       },
     },
   },
+
+  {
+    "nfrid/due.nvim",
+    opts = {},
+  },
 }
