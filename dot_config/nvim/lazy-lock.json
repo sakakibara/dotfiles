@@ -18,6 +18,7 @@
   "deadcolumn.nvim": { "branch": "master", "commit": "af13928aa281f36273e8f220b19e78d497c7fb87" },
   "dial.nvim": { "branch": "master", "commit": "27eb570085db2ef44bff4f620d3806039184651c" },
   "dressing.nvim": { "branch": "master", "commit": "18e5beb3845f085b6a33c24112b37988f3f93c06" },
+  "due.nvim": { "branch": "main", "commit": "70a93319fa0345c116f2b57cf1f99e0d20026c5e" },
   "fidget.nvim": { "branch": "main", "commit": "933db4596e4bab1b09b6d48a10e21819e4cc458f" },
   "flash.nvim": { "branch": "main", "commit": "48817af25f51c0590653bbc290866e4890fe1cbe" },
   "flutter-tools.nvim": { "branch": "main", "commit": "4f18033c3b78aa5450e538d81dfbbb3e67aeadec" },
