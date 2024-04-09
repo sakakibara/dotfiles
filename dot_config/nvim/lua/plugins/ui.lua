@@ -430,7 +430,7 @@ return {
         function()
           require("nvim-tree.api").tree.toggle({ path = parent_path() })
         end,
-        desc = "Toggle nvim-tree explorer (relative)",
+        desc = "Toggle nvim-tree explorer (parent)",
       },
     },
     opts = {},
