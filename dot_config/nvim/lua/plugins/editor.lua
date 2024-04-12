@@ -1127,51 +1127,36 @@ return {
     "ThePrimeagen/harpoon",
     branch = "harpoon2",
     dependencies = { "nvim-lua/plenary.nvim" },
-    keys = {
-      {
-        "<leader>H",
-        function()
-          require("harpoon"):list():append()
-        end,
-        desc = "Add to harpoon",
-      },
-      {
-        "<leader>h",
-        function()
-          local harpoon = require("harpoon")
-          harpoon.ui:toggle_quick_menu(harpoon:list())
-        end,
-        desc = "Toggle harpoon menu",
-      },
-      {
-        "<leader>1",
-        function()
-          require("harpoon"):list():select(1)
-        end,
-        desc = "Select harpoon 1",
-      },
-      {
-        "<leader>2",
-        function()
-          require("harpoon"):list():select(2)
-        end,
-        desc = "Select harpoon 2",
-      },
-      {
-        "<leader>3",
-        function()
-          require("harpoon"):list():select(3)
-        end,
-        desc = "Select harpoon 3",
-      },
-      {
-        "<leader>4",
-        function()
-          require("harpoon"):list():select(4)
-        end,
-        desc = "Select harpoon 4",
-      },
-    },
+    keys = function()
+      local keys = {
+        {
+          "<leader>H",
+          function()
+            require("harpoon"):list():add()
+          end,
+          desc = "Add to harpoon",
+        },
+        {
+          "<leader>h",
+          function()
+            local harpoon = require("harpoon")
+            harpoon.ui:toggle_quick_menu(harpoon:list())
+          end,
+          desc = "Toggle harpoon menu",
+        },
+      }
+
+      for i = 1, 5 do
+        table.insert(keys, {
+          "<leader>" .. i,
+          function()
+            require("harpoon"):list():select(i)
+          end,
+          desc = "Select harpoon " .. i,
+        })
+      end
+      return keys
+    end,
     opts = {},
   },
 
