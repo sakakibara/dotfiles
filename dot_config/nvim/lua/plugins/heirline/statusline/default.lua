@@ -27,6 +27,7 @@ return {
   require("plugins.heirline.components.file.type"),
   require("plugins.heirline.components.space"),
   require("plugins.heirline.components.file.encoding"),
+  require("plugins.heirline.components.file.bomb"),
   require("plugins.heirline.components.file.format"),
   require("plugins.heirline.components.ruler"),
   require("plugins.heirline.components.search_count"),
