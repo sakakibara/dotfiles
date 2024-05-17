@@ -60,10 +60,10 @@ return {
       },
     },
     config = function(_, opts)
+      local uplugin = require("util.plugin")
       local ulsp = require("util.lsp")
-      if require("util.plugin").has("neoconf.nvim") then
-        local plugin = require("lazy.core.config").spec.plugins["neoconf.nvim"]
-        require("neoconf").setup(require("lazy.core.plugin").values(plugin, "opts", false))
+      if uplugin.has("neoconf.nvim") then
+        require("neoconf").setup(uplugin.opts("neoconf.nvim"))
       end
 
       require("util.format").register(ulsp.formatter())
