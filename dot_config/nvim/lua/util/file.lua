@@ -2,27 +2,49 @@ local M = {}
 
 local upath = require("util.path")
 
-local function get_files(dir)
-  local handle = vim.loop.fs_scandir(dir)
-  if handle == nil then
-    return
+local function fs_normalize_path(path)
+  local res = path:gsub("\\", "/"):gsub("/+", "/"):gsub("(.)/$", "%1")
+  return res
+end
+
+local function fs_is_present_path(path)
+  return vim.loop.fs_stat(path) ~= nil
+end
+
+local function fs_child_path(dir, name)
+  return fs_normalize_path(string.format("%s/%s", dir, name))
+end
+
+local function fs_get_type(path)
+  if not fs_is_present_path(path) then
+    return nil
   end
-  local files_stream = function()
-    return vim.loop.fs_scandir_next(handle)
+  return vim.fn.isdirectory(path) == 1 and "directory" or "file"
+end
+
+local function get_files(path)
+  local fs = vim.loop.fs_scandir(path)
+  local res = {}
+  if not fs then
+    return res
   end
 
-  local files = {}
-  for basename, fs_type in files_stream do
-    if fs_type == "file" then
-      table.insert(files, basename)
+  local name, fs_type = vim.loop.fs_scandir_next(fs)
+  while name do
+    if not (fs_type == "file" or fs_type == "directory") then
+      fs_type = fs_get_type(fs_child_path(path, name))
     end
+    if fs_type == "file" then
+      table.insert(res, name)
+    end
+    name, fs_type = vim.loop.fs_scandir_next(fs)
   end
 
-  table.sort(files, function(x, y)
+  table.sort(res, function(x, y)
     return x:lower() < y:lower()
   end)
 
-  return files
+  return res
 end
 
 local function current_file_index(files)
