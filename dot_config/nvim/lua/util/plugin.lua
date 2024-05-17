@@ -135,8 +135,8 @@ function M.lazy_file()
   })
 end
 
-function M.has(plugin)
-  return require("lazy.core.config").spec.plugins[plugin] ~= nil
+function M.has(name)
+  return require("lazy.core.config").spec.plugins[name] ~= nil
 end
 
 function M.opts(name)
