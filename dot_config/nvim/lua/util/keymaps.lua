@@ -1,4 +1,3 @@
-local LazyUtil = require("lazy.core.util")
 local upath = require("util.path")
 
 local M = {}
