@@ -206,7 +206,6 @@ return {
     dependencies = { "nvim-treesitter-textobjects" },
     opts = function()
       local ai = require("mini.ai")
-      local fn = vim.fn
       return {
         n_lines = 500,
         custom_textobjects = {
@@ -216,15 +215,61 @@ return {
           }, {}),
           f = ai.gen_spec.treesitter({ a = "@function.outer", i = "@function.inner" }, {}),
           c = ai.gen_spec.treesitter({ a = "@class.outer", i = "@class.inner" }, {}),
-          g = function()
-            return {
-              from = { line = 1, col = 1 },
-              to = {
-                line = fn.line("$"),
-                col = math.max(fn.getline("$"):len(), 1),
-              },
-            }
+          t = { "<([%p%w]-)%f[^<%w][^<>]->.-</%1>", "^<.->().*()</[^/]->$" },
+          d = { "%f[%d]%d+" },
+          e = {
+            { "%u[%l%d]+%f[^%l%d]", "%f[%S][%l%d]+%f[^%l%d]", "%f[%P][%l%d]+%f[^%l%d]", "^[%l%d]+%f[^%l%d]" },
+            "^().*()$",
+          },
+          i = function(ai_type)
+            local spaces = (" "):rep(vim.o.tabstop)
+            local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+            local indents = {}
+
+            for l, line in ipairs(lines) do
+              if not line:find("^%s*$") then
+                indents[#indents + 1] = { line = l, indent = #line:gsub("\t", spaces):match("^%s*"), text = line }
+              end
+            end
+
+            local ret = {}
+
+            for i = 1, #indents do
+              if i == 1 or indents[i - 1].indent < indents[i].indent then
+                local from, to = i, i
+                for j = i + 1, #indents do
+                  if indents[j].indent < indents[i].indent then
+                    break
+                  end
+                  to = j
+                end
+                from = ai_type == "a" and from > 1 and from - 1 or from
+                to = ai_type == "a" and to < #indents and to + 1 or to
+                ret[#ret + 1] = {
+                  indent = indents[i].indent,
+                  from = { line = indents[from].line, col = ai_type == "a" and 1 or indents[from].indent + 1 },
+                  to = { line = indents[to].line, col = #indents[to].text },
+                }
+              end
+            end
+
+            return ret
           end,
+          g = function(ai_type)
+            local start_line, end_line = 1, vim.fn.line("$")
+            if ai_type == "i" then
+              local first_nonblank, last_nonblank = vim.fn.nextnonblank(start_line), vim.fn.prevnonblank(end_line)
+              if first_nonblank == 0 or last_nonblank == 0 then
+                return { from = { line = start_line, col = 1 } }
+              end
+              start_line, end_line = first_nonblank, last_nonblank
+            end
+
+            local to_col = math.max(vim.fn.getline(end_line):len(), 1)
+            return { from = { line = start_line, col = 1 }, to = { line = end_line, col = to_col } }
+          end,
+          u = ai.gen_spec.function_call(),
+          U = ai.gen_spec.function_call({ name_pattern = "[%w_]" }),
         },
       }
     end,
