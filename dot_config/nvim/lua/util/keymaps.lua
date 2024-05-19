@@ -33,4 +33,11 @@ function M.feed_escape()
   vim.api.nvim_feedkeys(esc, "x", false)
 end
 
+function M.create_undo()
+  local create_undo = vim.api.nvim_replace_termcodes("<C-g>u", true, true, true)
+  if vim.api.nvim_get_mode().mode == "i" then
+    vim.api.nvim_feedkeys(create_undo, "n", false)
+  end
+end
+
 return M
