@@ -28,11 +28,13 @@ return {
 
   {
     "neovim/nvim-lspconfig",
-    opts = {
-      servers = {
-        dockerls = {},
-        docker_compose_language_service = {},
-      },
-    },
+    opts = function(_, opts)
+      opts = vim.tbl_deep_extend("force", opts, {
+        servers = {
+          dockerls = {},
+          docker_compose_language_service = {},
+        },
+      })
+    end,
   },
 }

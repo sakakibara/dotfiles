@@ -52,14 +52,14 @@ function M.diagnostics()
 end
 
 function M.inlay_hints(buf, value)
-  local inlay_hint = vim.lsp.buf.inlay_hint or vim.lsp.inlay_hint
-  if type(inlay_hint) == "function" then
-    inlay_hint(buf, value)
-  elseif type(inlay_hint) == "table" and inlay_hint.enable then
+  local ih = vim.lsp.buf.inlay_hint or vim.lsp.inlay_hint
+  if type(ih) == "function" then
+    ih(buf, value)
+  elseif type(ih) == "table" and ih.enable then
     if value == nil then
-      value = not inlay_hint.is_enabled({ bufnr = buf or 0 })
+      value = not ih.is_enabled({ bufnr = buf or 0 })
     end
-    inlay_hint.enable(buf, value)
+    ih.enable(value, { bufnr = buf })
   end
 end
 

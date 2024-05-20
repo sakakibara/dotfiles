@@ -19,11 +19,13 @@ return {
 
   {
     "neovim/nvim-lspconfig",
-    opts = {
-      servers = {
-        terraformls = {},
-      },
-    },
+    opts = function(_, opts)
+      opts = vim.tbl_deep_extend("force", opts, {
+        servers = {
+          terraformls = {},
+        },
+      })
+    end,
   },
 
   {

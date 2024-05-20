@@ -43,14 +43,16 @@ return {
   {
     "neovim/nvim-lspconfig",
     optional = true,
-    opts = {
-      servers = {
-        texlab = {
-          keys = {
-            { "<Leader>K", "<plug>(vimtex-doc-package)", desc = "Vimtex Docs", silent = true },
+    opts = function(_, opts)
+      opts = vim.tbl_deep_extend("force", opts, {
+        servers = {
+          texlab = {
+            keys = {
+              { "<Leader>K", "<plug>(vimtex-doc-package)", desc = "Vimtex Docs", silent = true },
+            },
           },
         },
-      },
-    },
+      })
+    end,
   },
 }

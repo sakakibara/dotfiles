@@ -10,97 +10,99 @@ return {
 
   {
     "neovim/nvim-lspconfig",
-    opts = {
-      servers = {
-        tsserver = {
-          keys = {
-            {
-              "<leader>co",
-              function()
-                vim.lsp.buf.code_action({
-                  apply = true,
-                  context = {
-                    only = { "source.organizeImports.ts" },
-                    diagnostics = {},
-                  },
-                })
-              end,
-              desc = "Organize Imports",
+    opts = function(_, opts)
+      opts = vim.tbl_deep_extend("force", opts, {
+        servers = {
+          tsserver = {
+            keys = {
+              {
+                "<leader>co",
+                function()
+                  vim.lsp.buf.code_action({
+                    apply = true,
+                    context = {
+                      only = { "source.organizeImports.ts" },
+                      diagnostics = {},
+                    },
+                  })
+                end,
+                desc = "Organize Imports",
+              },
+              {
+                "<leader>cR",
+                function()
+                  vim.lsp.buf.code_action({
+                    apply = true,
+                    context = {
+                      only = { "source.removeUnused.ts" },
+                      diagnostics = {},
+                    },
+                  })
+                end,
+                desc = "Remove Unused Imports",
+              },
             },
-            {
-              "<leader>cR",
-              function()
-                vim.lsp.buf.code_action({
-                  apply = true,
-                  context = {
-                    only = { "source.removeUnused.ts" },
-                    diagnostics = {},
-                  },
-                })
-              end,
-              desc = "Remove Unused Imports",
+            settings = {
+              typescript = {
+                format = {
+                  indentSize = vim.o.shiftwidth,
+                  convertTabsToSpaces = vim.o.expandtab,
+                  tabSize = vim.o.tabstop,
+                },
+              },
+              javascript = {
+                format = {
+                  indentSize = vim.o.shiftwidth,
+                  convertTabsToSpaces = vim.o.expandtab,
+                  tabSize = vim.o.tabstop,
+                },
+              },
+              completions = {
+                completeFunctionCalls = true,
+              },
             },
           },
-          settings = {
-            typescript = {
-              format = {
-                indentSize = vim.o.shiftwidth,
-                convertTabsToSpaces = vim.o.expandtab,
-                tabSize = vim.o.tabstop,
-              },
-            },
-            javascript = {
-              format = {
-                indentSize = vim.o.shiftwidth,
-                convertTabsToSpaces = vim.o.expandtab,
-                tabSize = vim.o.tabstop,
-              },
-            },
-            completions = {
-              completeFunctionCalls = true,
+          eslint = {
+            settings = {
+              workingDirectories = { mode = "auto" },
             },
           },
         },
-        eslint = {
-          settings = {
-            workingDirectories = { mode = "auto" },
-          },
-        },
-      },
-      setup = {
-        eslint = function()
-          local function get_client(buf)
-            return require("util.lsp").get_clients({ name = "eslint", bufnr = buf })[1]
-          end
-
-          local formatter = require("util.lsp").formatter({
-            name = "eslint: lsp",
-            primary = false,
-            priority = 200,
-            filter = "eslint",
-          })
-
-          if not pcall(require, "vim.lsp._dynamic") then
-            formatter.name = "eslint: EslintFixAll"
-            formatter.sources = function(buf)
-              local client = get_client(buf)
-              return client and { "eslint" } or {}
+        setup = {
+          eslint = function()
+            local function get_client(buf)
+              return require("util.lsp").get_clients({ name = "eslint", bufnr = buf })[1]
             end
-            formatter.format = function(buf)
-              local client = get_client(buf)
-              if client then
-                local diag = vim.diagnostic.get(buf, { namespace = vim.lsp.diagnostic.get_namespace(client.id) })
-                if #diag > 0 then
-                  vim.cmd("EslintFixAll")
+
+            local formatter = require("util.lsp").formatter({
+              name = "eslint: lsp",
+              primary = false,
+              priority = 200,
+              filter = "eslint",
+            })
+
+            if not pcall(require, "vim.lsp._dynamic") then
+              formatter.name = "eslint: EslintFixAll"
+              formatter.sources = function(buf)
+                local client = get_client(buf)
+                return client and { "eslint" } or {}
+              end
+              formatter.format = function(buf)
+                local client = get_client(buf)
+                if client then
+                  local diag = vim.diagnostic.get(buf, { namespace = vim.lsp.diagnostic.get_namespace(client.id) })
+                  if #diag > 0 then
+                    vim.cmd("EslintFixAll")
+                  end
                 end
               end
             end
-          end
 
-          require("util.format").register(formatter)
-        end,
-      },
-    },
+            require("util.format").register(formatter)
+          end,
+        },
+      })
+    end,
   },
 
   {

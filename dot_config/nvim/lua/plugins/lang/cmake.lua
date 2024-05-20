@@ -28,11 +28,13 @@ return {
 
   {
     "neovim/nvim-lspconfig",
-    opts = {
-      servers = {
-        neocmake = {},
-      },
-    },
+    opts = function(_, opts)
+      opts = vim.tbl_deep_extend("force", opts, {
+        servers = {
+          neomake = {},
+        },
+      })
+    end,
   },
 
   {

@@ -10,37 +10,39 @@ return {
 
   {
     "neovim/nvim-lspconfig",
-    opts = {
-      servers = {
-        pyright = {},
-        ruff_lsp = {
-          keys = {
-            {
-              "<leader>co",
-              function()
-                vim.lsp.buf.code_action({
-                  apply = true,
-                  context = {
-                    only = { "source.organizeImports" },
-                    diagnostics = {},
-                  },
-                })
-              end,
-              desc = "Organize Imports",
+    opts = function(_, opts)
+      opts = vim.tbl_deep_extend("force", opts, {
+        servers = {
+          pyright = {},
+          ruff_lsp = {
+            keys = {
+              {
+                "<leader>co",
+                function()
+                  vim.lsp.buf.code_action({
+                    apply = true,
+                    context = {
+                      only = { "source.organizeImports" },
+                      diagnostics = {},
+                    },
+                  })
+                end,
+                desc = "Organize Imports",
+              },
             },
           },
         },
-      },
-      setup = {
-        ruff_lsp = function()
-          require("util.lsp").on_attach(function(client, _)
-            if client.name == "ruff_lsp" then
-              client.server_capabilities.hoverProvider = false
-            end
-          end)
-        end,
-      },
-    },
+        setup = {
+          ruff_lsp = function()
+            require("util.lsp").on_attach(function(client, _)
+              if client.name == "ruff_lsp" then
+                client.server_capabilities.hoverProvider = false
+              end
+            end)
+          end,
+        },
+      })
+    end,
   },
 
   {

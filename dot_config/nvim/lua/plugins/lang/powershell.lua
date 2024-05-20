@@ -14,14 +14,14 @@ return {
 
   {
     "neovim/nvim-lspconfig",
-    opts = function()
-      return {
+    opts = function(_, opts)
+      opts = vim.tbl_deep_extend("force", opts, {
         servers = {
           powershell_es = {
             bundle_path = vim.fn.stdpath("data") .. "/mason/packages/powershell-editor-services",
           },
         },
-      }
+      })
     end,
   },
 }

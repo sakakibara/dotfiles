@@ -36,16 +36,18 @@ return {
 
   {
     "neovim/nvim-lspconfig",
-    opts = {
-      servers = {
-        jdtls = {},
-      },
-      setup = {
-        jdtls = function()
-          return true
-        end,
-      },
-    },
+    opts = function(_, opts)
+      opts = vim.tbl_deep_extend("force", opts, {
+        servers = {
+          jdtls = {},
+        },
+        setup = {
+          jdtls = function()
+            return true
+          end,
+        },
+      })
+    end,
   },
 
   {
@@ -88,9 +90,7 @@ return {
         test = true,
       }
     end,
-    config = function()
-      local opts = uplugin.opts("nvim-jdtls") or {}
-
+    config = function(_, opts)
       local mason_registry = require("mason-registry")
       local bundles = {}
       if opts.dap and uplugin.has("nvim-dap") and mason_registry.is_installed("java-debug-adapter") then
