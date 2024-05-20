@@ -42,55 +42,53 @@ return {
 
   {
     "neovim/nvim-lspconfig",
-    opts = function(_, opts)
-      opts = vim.tbl_deep_extend("force", opts, {
-        servers = {
-          clangd = {
-            keys = {
-              { "<leader>cR", "<cmd>ClangdSwitchSourceHeader<cr>", desc = "Switch Source/Header (C/C++)" },
-            },
-            root_dir = function(fname)
-              return require("lspconfig.util").root_pattern(
-                "Makefile",
-                "configure.ac",
-                "configure.in",
-                "config.h.in",
-                "meson.build",
-                "meson_options.txt",
-                "build.ninja"
-              )(fname) or require("lspconfig.util").root_pattern(
-                "compile_commands.json",
-                "compile_flags.txt"
-              )(fname) or require("lspconfig.util").find_git_ancestor(fname)
-            end,
-            capabilities = {
-              offsetEncoding = { "utf-16" },
-            },
-            cmd = {
-              "clangd",
-              "--background-index",
-              "--clang-tidy",
-              "--header-insertion=iwyu",
-              "--completion-style=detailed",
-              "--function-arg-placeholders",
-              "--fallback-style=llvm",
-            },
-            init_options = {
-              usePlaceholders = true,
-              completeUnimported = true,
-              clangdFileStatus = true,
-            },
+    optional = true,
+    opts = {
+      servers = {
+        clangd = {
+          keys = {
+            { "<leader>cR", "<cmd>ClangdSwitchSourceHeader<cr>", desc = "Switch Source/Header (C/C++)" },
+          },
+          root_dir = function(fname)
+            return require("lspconfig.util").root_pattern(
+              "Makefile",
+              "configure.ac",
+              "configure.in",
+              "config.h.in",
+              "meson.build",
+              "meson_options.txt",
+              "build.ninja"
+            )(fname) or require("lspconfig.util").root_pattern("compile_commands.json", "compile_flags.txt")(
+              fname
+            ) or require("lspconfig.util").find_git_ancestor(fname)
+          end,
+          capabilities = {
+            offsetEncoding = { "utf-16" },
+          },
+          cmd = {
+            "clangd",
+            "--background-index",
+            "--clang-tidy",
+            "--header-insertion=iwyu",
+            "--completion-style=detailed",
+            "--function-arg-placeholders",
+            "--fallback-style=llvm",
+          },
+          init_options = {
+            usePlaceholders = true,
+            completeUnimported = true,
+            clangdFileStatus = true,
           },
         },
-        setup = {
-          clangd = function(_, opts)
-            local clangd_ext_opts = uplugin.opts("clangd_extensions.nvim") or {}
-            require("clangd_extensions").setup(vim.tbl_deep_extend("force", clangd_ext_opts, { server = opts }))
-            return false
-          end,
-        },
-      })
-    end,
+      },
+      setup = {
+        clangd = function(_, opts)
+          local clangd_ext_opts = uplugin.opts("clangd_extensions.nvim") or {}
+          require("clangd_extensions").setup(vim.tbl_deep_extend("force", clangd_ext_opts, { server = opts }))
+          return false
+        end,
+      },
+    },
   },
 
   {

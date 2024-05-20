@@ -1,3 +1,14 @@
+local inlay_hints_settings = {
+  includeInlayEnumMemberValueHints = true,
+  includeInlayFunctionLikeReturnTypeHints = true,
+  includeInlayFunctionParameterTypeHints = true,
+  includeInlayParameterNameHints = "literal",
+  includeInlayParameterNameHintsWhenArgumentMatchesName = false,
+  includeInlayPropertyDeclarationTypeHints = true,
+  includeInlayVariableTypeHints = false,
+  includeInlayVariableTypeHintsWhenTypeMatchesName = false,
+}
+
 return {
   {
     "nvim-treesitter/nvim-treesitter",
@@ -10,99 +21,90 @@ return {
 
   {
     "neovim/nvim-lspconfig",
-    opts = function(_, opts)
-      opts = vim.tbl_deep_extend("force", opts, {
-        servers = {
-          tsserver = {
-            keys = {
-              {
-                "<leader>co",
-                function()
-                  vim.lsp.buf.code_action({
-                    apply = true,
-                    context = {
-                      only = { "source.organizeImports.ts" },
-                      diagnostics = {},
-                    },
-                  })
-                end,
-                desc = "Organize Imports",
-              },
-              {
-                "<leader>cR",
-                function()
-                  vim.lsp.buf.code_action({
-                    apply = true,
-                    context = {
-                      only = { "source.removeUnused.ts" },
-                      diagnostics = {},
-                    },
-                  })
-                end,
-                desc = "Remove Unused Imports",
-              },
+    optional = true,
+    opts = {
+      servers = {
+        tsserver = {
+          keys = {
+            {
+              "<leader>co",
+              function()
+                vim.lsp.buf.code_action({
+                  apply = true,
+                  context = {
+                    only = { "source.organizeImports.ts" },
+                    diagnostics = {},
+                  },
+                })
+              end,
+              desc = "Organize Imports",
             },
-            settings = {
-              typescript = {
-                format = {
-                  indentSize = vim.o.shiftwidth,
-                  convertTabsToSpaces = vim.o.expandtab,
-                  tabSize = vim.o.tabstop,
-                },
-              },
-              javascript = {
-                format = {
-                  indentSize = vim.o.shiftwidth,
-                  convertTabsToSpaces = vim.o.expandtab,
-                  tabSize = vim.o.tabstop,
-                },
-              },
-              completions = {
-                completeFunctionCalls = true,
-              },
+            {
+              "<leader>cR",
+              function()
+                vim.lsp.buf.code_action({
+                  apply = true,
+                  context = {
+                    only = { "source.removeUnused.ts" },
+                    diagnostics = {},
+                  },
+                })
+              end,
+              desc = "Remove Unused Imports",
             },
           },
-          eslint = {
-            settings = {
-              workingDirectories = { mode = "auto" },
+          settings = {
+            typescript = {
+              inlayHints = inlay_hints_settings,
+            },
+            javascript = {
+              inlayHints = inlay_hints_settings,
+            },
+            completions = {
+              completeFunctionCalls = true,
             },
           },
         },
-        setup = {
-          eslint = function()
-            local function get_client(buf)
-              return require("util.lsp").get_clients({ name = "eslint", bufnr = buf })[1]
+        eslint = {
+          settings = {
+            workingDirectories = { mode = "auto" },
+          },
+        },
+      },
+      setup = {
+        eslint = function()
+          local function get_client(buf)
+            return require("util.lsp").get_clients({ name = "eslint", bufnr = buf })[1]
+          end
+
+          local formatter = require("util.lsp").formatter({
+            name = "eslint: lsp",
+            primary = false,
+            priority = 200,
+            filter = "eslint",
+          })
+
+          if not pcall(require, "vim.lsp._dynamic") then
+            formatter.name = "eslint: EslintFixAll"
+            formatter.sources = function(buf)
+              local client = get_client(buf)
+              return client and { "eslint" } or {}
             end
-
-            local formatter = require("util.lsp").formatter({
-              name = "eslint: lsp",
-              primary = false,
-              priority = 200,
-              filter = "eslint",
-            })
-
-            if not pcall(require, "vim.lsp._dynamic") then
-              formatter.name = "eslint: EslintFixAll"
-              formatter.sources = function(buf)
-                local client = get_client(buf)
-                return client and { "eslint" } or {}
-              end
-              formatter.format = function(buf)
-                local client = get_client(buf)
-                if client then
-                  local diag = vim.diagnostic.get(buf, { namespace = vim.lsp.diagnostic.get_namespace(client.id) })
-                  if #diag > 0 then
-                    vim.cmd("EslintFixAll")
-                  end
+            formatter.format = function(buf)
+              local client = get_client(buf)
+              if client then
+                local diag = vim.diagnostic.get(buf, { namespace = vim.lsp.diagnostic.get_namespace(client.id) })
+                if #diag > 0 then
+                  vim.cmd("EslintFixAll")
                 end
               end
             end
+          end
 
-            require("util.format").register(formatter)
-          end,
-        },
-      })
-    end,
+          require("util.format").register(formatter)
+        end,
+      },
+    },
   },
 
   {
@@ -134,6 +136,20 @@ return {
           },
         }
       end
+      if not dap.adapters["node"] then
+        dap.adapters["node"] = function(cb, config)
+          if config.type == "node" then
+            config.type = "pwa-node"
+          end
+          local nativeAdapter = dap.adapters["pwa-node"]
+          if type(nativeAdapter) == "function" then
+            nativeAdapter(cb, config)
+          else
+            cb(nativeAdapter)
+          end
+        end
+      end
+
       for _, language in ipairs({ "typescript", "javascript", "typescriptreact", "javascriptreact" }) do
         if not dap.configurations[language] then
           dap.configurations[language] = {

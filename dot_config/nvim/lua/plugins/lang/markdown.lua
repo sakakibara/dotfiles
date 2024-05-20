@@ -32,13 +32,12 @@ return {
 
   {
     "neovim/nvim-lspconfig",
-    opts = function(_, opts)
-      opts = vim.tbl_deep_extend("force", opts, {
-        servers = {
-          marksman = {},
-        },
-      })
-    end,
+    optional = true,
+    opts = {
+      servers = {
+        marksman = {},
+      },
+    },
   },
 
   {

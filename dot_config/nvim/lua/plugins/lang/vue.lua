@@ -14,28 +14,26 @@ return {
         .. "/node_modules/@vue/language-server"
         .. "/node_modules/@vue/typescript-plugin"
 
-      opts = vim.tbl_deep_extend("force", opts, {
-        servers = {
-          volar = {},
-          tsserver = {
-            init_options = {
-              plugins = {
-                {
-                  name = "@vue/typescript-plugin",
-                  location = vue_typescript_plugin,
-                  languages = { "javascript", "typescript", "vue" },
-                },
+      opts.servers = vim.tbl_deep_extend("force", opts.servers, {
+        volar = {},
+        tsserver = {
+          init_options = {
+            plugins = {
+              {
+                name = "@vue/typescript-plugin",
+                location = vue_typescript_plugin,
+                languages = { "javascript", "typescript", "vue" },
               },
             },
-            filetypes = {
-              "javascript",
-              "javascriptreact",
-              "javascript.jsx",
-              "typescript",
-              "typescriptreact",
-              "typescript.tsx",
-              "vue",
-            },
+          },
+          filetypes = {
+            "javascript",
+            "javascriptreact",
+            "javascript.jsx",
+            "typescript",
+            "typescriptreact",
+            "typescript.tsx",
+            "vue",
           },
         },
       })
