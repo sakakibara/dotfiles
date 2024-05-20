@@ -43,6 +43,20 @@ map("n", "<leader>oo", function()
   utoggle("conceallevel", false, { 0, conceallevel })
 end, { desc = "Toggle conceal" })
 
+if vim.lsp.buf.inlay_hint or vim.lsp.inlay_hint then
+  map("n", "<leader>oh", function()
+    utoggle.inlay_hints()
+  end, { desc = "Toggle inlay hints" })
+end
+
+map("n", "<leader>oT", function()
+  if vim.b.ts_highlight then
+    vim.treesitter.stop()
+  else
+    vim.treesitter.start()
+  end
+end, { desc = "Toggle treesitter highlight" })
+
 map("n", "<leader>od", function()
   utoggle.diagnostics()
 end, { desc = "Toggle diagnostic" })
