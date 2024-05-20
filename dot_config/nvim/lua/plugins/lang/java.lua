@@ -86,7 +86,17 @@ return {
         end,
 
         dap = { hotcodereplace = "auto", config_overrides = {} },
+        dap_main = {},
         test = true,
+        settings = {
+          java = {
+            inlayHints = {
+              parameterNames = {
+                enabled = "all",
+              },
+            },
+          },
+        },
       }
     end,
     config = function(_, opts)
@@ -121,7 +131,8 @@ return {
           init_options = {
             bundles = bundles,
           },
-          capabilities = require("cmp_nvim_lsp").default_capabilities(),
+          settings = opts.settings,
+          capabilities = uplugin.has("cmp-nvim-lsp") and require("cmp_nvim_lsp").default_capabilities() or nil,
         }, opts.jdtls)
 
         require("jdtls").start_or_attach(config)
