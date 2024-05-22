@@ -1,5 +1,6 @@
 local root_path = require("util.root").get
 local parent_path = require("util.path").get_parent_path
+
 return {
   {
     "kevinhwang91/nvim-ufo",
