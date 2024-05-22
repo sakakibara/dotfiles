@@ -2,8 +2,6 @@ local LazyUtil = require("lazy.core.util")
 
 local M = {}
 
-local conform_opts = {}
-
 function M.setup(_, opts)
   for _, key in ipairs({ "format_on_save", "format_after_save" }) do
     if opts[key] then
@@ -11,7 +9,6 @@ function M.setup(_, opts)
       opts[key] = nil
     end
   end
-  conform_opts = opts
   require("conform").setup(opts)
 end
 
@@ -25,25 +22,21 @@ return {
       {
         "<leader>cF",
         function()
-          require("conform").format({ formatters = { "injected" } })
+          require("conform").format({ formatters = { "injected" }, timeout_ms = 3000 })
         end,
         mode = { "n", "v" },
         desc = "Format treesitter injected languages",
       },
     },
     init = function()
-      vim.o.formatexpr = "v:lua.require'conform'.formatexpr()"
       require("util.plugin").on_very_lazy(function()
         require("util.format").register({
           name = "conform.nvim",
           priority = 100,
           primary = true,
           format = function(buf)
-            require("conform").format(LazyUtil.merge({
-              timeout_ms = conform_opts.format.timeout_ms,
-              async = conform_opts.format.async,
-              quiet = conform_opts.format.quiet,
-            }, { bufnr = buf }))
+            local opts = require("util.plugin").opts("conform.nvim")
+            require("conform").format(LazyUtil.merge({}, opts.format, { bufnr = buf }))
           end,
           sources = function(buf)
             local ret = require("conform").list_formatters(buf)
@@ -61,7 +54,7 @@ return {
           "Don't set `plugin.config` for `conform.nvim`.",
         }, { title = "Core" })
       end
-      return {
+      local opts = {
         format = {
           timeout_ms = 3000,
           async = false,
@@ -98,6 +91,7 @@ return {
           },
         },
       }
+      return opts
     end,
     config = M.setup,
   },
