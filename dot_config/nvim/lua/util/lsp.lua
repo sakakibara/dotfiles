@@ -22,7 +22,7 @@ end
 
 M._supports_method = {}
 
-function M.setup_dynamic_capability()
+function M.setup()
   local register_capability = vim.lsp.handlers["client/registerCapability"]
   ---@diagnostic disable-next-line: duplicate-set-field
   vim.lsp.handlers["client/registerCapability"] = function(err, res, ctx)
