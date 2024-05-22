@@ -9,7 +9,6 @@ return {
       { "folke/neodev.nvim", opts = {} },
       "williamboman/mason.nvim",
       "williamboman/mason-lspconfig.nvim",
-      "hrsh7th/cmp-nvim-lsp",
     },
     opts = {
       diagnostics = {
@@ -87,7 +86,7 @@ return {
         require("plugins.lsp.keymaps").on_attach(client, buffer)
       end)
 
-      ulsp.setup_dynamic_capability()
+      ulsp.setup()
       ulsp.on_dynamic_capability(require("plugins.lsp.keymaps").on_attach)
 
       ulsp.words.setup(opts.document_highlight)
