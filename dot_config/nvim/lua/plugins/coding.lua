@@ -385,11 +385,11 @@ return {
   },
 
   {
-    "NvChad/nvim-colorizer.lua",
+    "brenoprata10/nvim-highlight-colors",
     event = "LazyFile",
     opts = {
-      filetypes = { "css", "html", "scss", "sass" },
-      user_default_options = { mode = "virtualtext" },
+      render = "virtual",
+      enable_tailwind = true,
     },
   },
 
