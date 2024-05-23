@@ -104,7 +104,9 @@ return {
       if vim.fn.has("nvim-0.10") == 1 then
         if opts.inlay_hints.enabled then
           ulsp.on_supports_method("textDocument/inlayHint", function(_, buffer)
-            require("util.toggle").inlay_hints(buffer, true)
+            if vim.api.nvim_buf_is_valid(buffer) and vim.bo[buffer].buftype == "" then
+              require("util.toggle").inlay_hints(buffer, true)
+            end
           end)
         end
 
