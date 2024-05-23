@@ -1,4 +1,5 @@
 local LazyUtil = require("lazy.core.util")
+local uplugin = require("util.plugin")
 
 local M = {}
 
@@ -29,12 +30,13 @@ function M.setup()
     ---@diagnostic disable-next-line: no-unknown
     local ret = register_capability(err, res, ctx)
     local client = vim.lsp.get_client_by_id(ctx.client_id)
-    local buffer = vim.api.nvim_get_current_buf()
     if client then
-      vim.api.nvim_exec_autocmds("User", {
-        pattern = "LspDynamicCapability",
-        data = { client_id = client.id, buffer = buffer },
-      })
+      for buffer in ipairs(client.attached_buffers) do
+        vim.api.nvim_exec_autocmds("User", {
+          pattern = "LspDynamicCapability",
+          data = { client_id = client.id, buffer = buffer },
+        })
+      end
     end
     return ret
   end
@@ -43,6 +45,15 @@ function M.setup()
 end
 
 function M._check_methods(client, buffer)
+  if not vim.api.nvim_buf_is_valid(buffer) then
+    return
+  end
+  if not vim.bo[buffer].buflisted then
+    return
+  end
+  if vim.bo[buffer].buftype == "nofile" then
+    return
+  end
   for method, clients in pairs(M._supports_method) do
     clients[client] = clients[client] or {}
     if not clients[client][buffer] then
@@ -149,8 +160,8 @@ function M.format(opts)
     "force",
     {},
     opts or {},
-    require("util.plugin").opts("nvim-lspconfig").format or {},
-    require("util.plugin").opts("conform.nvim").format or {}
+    uplugin.opts("nvim-lspconfig").format or {},
+    uplugin.opts("conform.nvim").format or {}
   )
   local ok, conform = pcall(require, "conform")
   if ok then
