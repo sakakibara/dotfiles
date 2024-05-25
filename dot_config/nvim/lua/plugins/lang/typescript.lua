@@ -114,8 +114,9 @@ return {
       {
         "williamboman/mason.nvim",
         opts = function(_, opts)
-          opts.ensure_installed = opts.ensure_installed or {}
-          table.insert(opts.ensure_installed, "js-debug-adapter")
+          if type(opts.ensure_installed) == "table" then
+            vim.list_extend(opts.ensure_installed, { "js-debug-adapter" })
+          end
         end,
       },
     },

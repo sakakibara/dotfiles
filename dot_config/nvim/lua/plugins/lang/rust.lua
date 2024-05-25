@@ -14,16 +14,18 @@ return {
       },
     },
     opts = function(_, opts)
-      opts.sources = opts.sources or {}
-      table.insert(opts.sources, { name = "crates" })
+      if type(opts.sources) == "table" then
+        table.insert(opts.sources, { name = "crates" })
+      end
     end,
   },
 
   {
     "nvim-treesitter/nvim-treesitter",
     opts = function(_, opts)
-      opts.ensure_installed = opts.ensure_installed or {}
-      vim.list_extend(opts.ensure_installed, { "ron", "rust", "toml" })
+      if type(opts.ensure_installed) == "table" then
+        vim.list_extend(opts.ensure_installed, { "ron", "rust", "toml" })
+      end
     end,
   },
 
@@ -31,8 +33,9 @@ return {
     "williamboman/mason.nvim",
     optional = true,
     opts = function(_, opts)
-      opts.ensure_installed = opts.ensure_installed or {}
-      vim.list_extend(opts.ensure_installed, { "codelldb" })
+      if type(opts.ensure_installed) == "table" then
+        vim.list_extend(opts.ensure_installed, { "codelldb" })
+      end
     end,
   },
 
@@ -113,10 +116,11 @@ return {
     "nvim-neotest/neotest",
     optional = true,
     opts = function(_, opts)
-      opts.adapters = opts.adapters or {}
-      vim.list_extend(opts.adapters, {
-        require("rustaceanvim.neotest"),
-      })
+      if type(opts.adapters) == "table" then
+        vim.list_extend(opts.adapters, {
+          require("rustaceanvim.neotest"),
+        })
+      end
     end,
   },
 }
