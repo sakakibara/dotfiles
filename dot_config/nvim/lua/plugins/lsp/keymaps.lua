@@ -1,3 +1,6 @@
+local ulsp = require("util.lsp")
+local uplugin = require("util.plugin")
+
 local M = {}
 
 M._keys = nil
@@ -53,8 +56,30 @@ function M.get()
     },
     { "<leader>cc", vim.lsp.codelens.run, desc = "Run codelens", mode = { "n", "v" }, has = "codeLens" },
     { "<leader>cC", vim.lsp.codelens.refresh, desc = "Refresh & display codelens", mode = { "n" }, has = "codeLens" },
+    {
+      "]]",
+      function()
+        ulsp.words.jump(vim.v.count1)
+      end,
+      has = "documentHighlight",
+      desc = "Next reference",
+      cond = function()
+        return ulsp.words.enabled
+      end,
+    },
+    {
+      "[[",
+      function()
+        ulsp.words.jump(-vim.v.count1)
+      end,
+      has = "documentHighlight",
+      desc = "Prev reference",
+      cond = function()
+        return ulsp.words.enabled
+      end,
+    },
   }
-  if require("util.plugin").has("inc-rename.nvim") then
+  if uplugin.has("inc-rename.nvim") then
     M._keys[#M._keys + 1] = {
       "<leader>cr",
       function()
@@ -73,7 +98,7 @@ end
 
 function M.has(buffer, method)
   method = method:find("/") and method or "textDocument/" .. method
-  local clients = require("util.lsp").get_clients({ bufnr = buffer })
+  local clients = ulsp.get_clients({ bufnr = buffer })
   for _, client in ipairs(clients) do
     if client.supports_method(method) then
       return true
@@ -88,8 +113,8 @@ function M.resolve(buffer)
     return {}
   end
   local spec = M.get()
-  local opts = require("util.plugin").opts("nvim-lspconfig")
-  local clients = require("util.lsp").get_clients({ bufnr = buffer })
+  local opts = uplugin.opts("nvim-lspconfig")
+  local clients = ulsp.get_clients({ bufnr = buffer })
   for _, client in ipairs(clients) do
     local maps = opts.servers[client.name] and opts.servers[client.name].keys or {}
     vim.list_extend(spec, maps)
@@ -102,8 +127,12 @@ function M.on_attach(_, buffer)
   local keymaps = M.resolve(buffer)
 
   for _, keys in pairs(keymaps) do
-    if not keys.has or M.has(buffer, keys.has) then
+    local has = not keys.has or M.has(buffer, keys.has)
+    local cond = not (keys.cond == false or ((type(keys.cond) == "function") and not keys.cond()))
+
+    if has and cond then
       local opts = Keys.opts(keys)
+      opts.cond = nil
       opts.has = nil
       opts.silent = opts.silent ~= false
       opts.buffer = buffer

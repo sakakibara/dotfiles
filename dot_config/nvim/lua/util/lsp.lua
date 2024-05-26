@@ -5,7 +5,17 @@ local M = {}
 
 function M.get_clients(opts)
   local ret = {}
-  ret = vim.lsp.get_clients(opts)
+  if vim.lsp.get_clients then
+    ret = vim.lsp.get_clients(opts)
+  else
+    ---@diagnostic disable-next-line: deprecated
+    ret = vim.lsp.get_active_clients(opts)
+    if opts and opts.method then
+      ret = vim.tbl_filter(function(client)
+        return client.supports_method(opts.method, { bufnr = opts.bufnr })
+      end, ret)
+    end
+  end
   return opts and opts.filter and vim.tbl_filter(opts.filter, ret) or ret
 end
 
@@ -31,7 +41,7 @@ function M.setup()
     local ret = register_capability(err, res, ctx)
     local client = vim.lsp.get_client_by_id(ctx.client_id)
     if client then
-      for buffer in ipairs(client.attached_buffers) do
+      for buffer in pairs(client.attached_buffers) do
         vim.api.nvim_exec_autocmds("User", {
           pattern = "LspDynamicCapability",
           data = { client_id = client.id, buffer = buffer },
@@ -173,20 +183,22 @@ function M.format(opts)
 end
 
 M.words = {}
+M.words.enabled = false
 M.words.ns = vim.api.nvim_create_namespace("vim_lsp_references")
 
----@param opts? {enabled?: boolean}
 function M.words.setup(opts)
   opts = opts or {}
   if not opts.enabled then
     return
   end
+  M.words.enabled = true
   local handler = vim.lsp.handlers["textDocument/documentHighlight"]
   ---@diagnostic disable-next-line: duplicate-set-field
   vim.lsp.handlers["textDocument/documentHighlight"] = function(err, result, ctx, config)
     if not vim.api.nvim_buf_is_loaded(ctx.bufnr) then
       return
     end
+    vim.lsp.buf.clear_references()
     return handler(err, result, ctx, config)
   end
 
@@ -195,7 +207,7 @@ function M.words.setup(opts)
       group = vim.api.nvim_create_augroup("lsp_word_" .. buf, { clear = true }),
       buffer = buf,
       callback = function(ev)
-        if not M.words.at() then
+        if not ({ M.words.get() })[2] then
           if ev.event:find("CursorMoved") then
             vim.lsp.buf.clear_references()
           else
@@ -209,33 +221,30 @@ end
 
 function M.words.get()
   local cursor = vim.api.nvim_win_get_cursor(0)
-  return vim.tbl_map(function(extmark)
-    local ret = {
+  local current, ret = nil, {}
+  for _, extmark in ipairs(vim.api.nvim_buf_get_extmarks(0, M.words.ns, 0, -1, { details = true })) do
+    local w = {
       from = { extmark[2] + 1, extmark[3] },
       to = { extmark[4].end_row + 1, extmark[4].end_col },
     }
-    if cursor[1] >= ret.from[1] and cursor[1] <= ret.to[1] and cursor[2] >= ret.from[2] and cursor[2] <= ret.to[2] then
-      ret.current = true
-    end
-    return ret
-  end, vim.api.nvim_buf_get_extmarks(0, M.words.ns, 0, -1, { details = true }))
-end
-
-function M.words.at(words)
-  for idx, word in ipairs(words or M.words.get()) do
-    if word.current then
-      return word, idx
+    ret[#ret + 1] = w
+    if cursor[1] >= w.from[1] and cursor[1] <= w.to[1] and cursor[2] >= w.from[2] and cursor[2] <= w.to[2] then
+      current = #ret
     end
   end
+  return ret, current
 end
 
-function M.words.jump(count)
-  local words = M.words.get()
-  local _, idx = M.words.at(words)
+function M.words.jump(count, cycle)
+  local words, idx = M.words.get()
   if not idx then
     return
   end
-  local target = words[idx + count]
+  idx = idx + count
+  if cycle then
+    idx = (idx - 1) % #words + 1
+  end
+  local target = words[idx]
   if target then
     vim.api.nvim_win_set_cursor(0, target.from)
   end

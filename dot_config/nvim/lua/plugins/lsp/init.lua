@@ -10,69 +10,71 @@ return {
       "williamboman/mason.nvim",
       "williamboman/mason-lspconfig.nvim",
     },
-    opts = {
-      diagnostics = {
-        underline = true,
-        update_in_insert = false,
-        virtual_text = {
-          spacing = 4,
-          source = "if_many",
-          prefix = "●",
-        },
-        severity_sort = true,
-        signs = {
-          text = {
-            [vim.diagnostic.severity.ERROR] = cicons.diagnostics.Error,
-            [vim.diagnostic.severity.HINT] = cicons.diagnostics.Hint,
-            [vim.diagnostic.severity.INFO] = cicons.diagnostics.Info,
-            [vim.diagnostic.severity.WARN] = cicons.diagnostics.Warn,
+    opts = function()
+      return {
+        diagnostics = {
+          underline = true,
+          update_in_insert = false,
+          virtual_text = {
+            spacing = 4,
+            source = "if_many",
+            prefix = "●",
+          },
+          severity_sort = true,
+          signs = {
+            text = {
+              [vim.diagnostic.severity.ERROR] = cicons.diagnostics.Error,
+              [vim.diagnostic.severity.HINT] = cicons.diagnostics.Hint,
+              [vim.diagnostic.severity.INFO] = cicons.diagnostics.Info,
+              [vim.diagnostic.severity.WARN] = cicons.diagnostics.Warn,
+            },
           },
         },
-      },
-      inlay_hints = {
-        enabled = true,
-      },
-      codelens = {
-        enabled = false,
-      },
-      document_highlight = {
-        enabled = true,
-      },
-      capabilities = {},
-      format = {
-        formatting_options = nil,
-        timeout_ms = nil,
-      },
-      servers = {
-        lua_ls = {
-          settings = {
-            Lua = {
-              workspace = {
-                checkThirdParty = false,
-              },
-              codeLens = {
-                enable = true,
-              },
-              completion = {
-                callSnippet = "Replace",
-              },
-              doc = {
-                privateName = { "^_" },
-              },
-              hint = {
-                enable = true,
-                setType = false,
-                paramType = true,
-                paramName = "Disable",
-                semicolon = "Disable",
-                arrayIndex = "Disable",
+        inlay_hints = {
+          enabled = true,
+        },
+        codelens = {
+          enabled = false,
+        },
+        document_highlight = {
+          enabled = true,
+        },
+        capabilities = {},
+        format = {
+          formatting_options = nil,
+          timeout_ms = nil,
+        },
+        servers = {
+          lua_ls = {
+            settings = {
+              Lua = {
+                workspace = {
+                  checkThirdParty = false,
+                },
+                codeLens = {
+                  enable = true,
+                },
+                completion = {
+                  callSnippet = "Replace",
+                },
+                doc = {
+                  privateName = { "^_" },
+                },
+                hint = {
+                  enable = true,
+                  setType = false,
+                  paramType = true,
+                  paramName = "Disable",
+                  semicolon = "Disable",
+                  arrayIndex = "Disable",
+                },
               },
             },
           },
         },
-      },
-      setup = {},
-    },
+        setup = {},
+      }
+    end,
     config = function(_, opts)
       local uplugin = require("util.plugin")
       local ulsp = require("util.lsp")
