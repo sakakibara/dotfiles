@@ -29,7 +29,7 @@ function M.yank_full_path()
 end
 
 function M.feed_escape()
-  local esc = vim.api.nvim_replace_termcodes("<esc>", true, true, true)
+  local esc = vim.api.nvim_replace_termcodes("<Esc>", true, true, true)
   vim.api.nvim_feedkeys(esc, "x", false)
 end
 

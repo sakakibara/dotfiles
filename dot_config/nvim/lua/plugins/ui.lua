@@ -110,7 +110,7 @@ return {
     "rcarriga/nvim-notify",
     keys = {
       {
-        "<leader>un",
+        "<Leader>un",
         function()
           require("notify").dismiss({ silent = true, pending = true })
         end,
@@ -157,10 +157,10 @@ return {
       { "<M-j>", mode = { "n", "t" }, require("smart-splits").move_cursor_down, desc = "Move to window below" },
       { "<M-k>", mode = { "n", "t" }, require("smart-splits").move_cursor_up, desc = "Move to window above" },
       { "<M-l>", mode = { "n", "t" }, require("smart-splits").move_cursor_right, desc = "Move to right window" },
-      { "<leader>bh", require("smart-splits").swap_buf_left, desc = "Swap with left buffer" },
-      { "<leader>bj", require("smart-splits").swap_buf_down, desc = "Swap with buffer below" },
-      { "<leader>bk", require("smart-splits").swap_buf_up, desc = "Swap with buffer above" },
-      { "<leader>bl", require("smart-splits").swap_buf_right, desc = "Swap with right buffer" },
+      { "<Leader>bh", require("smart-splits").swap_buf_left, desc = "Swap with left buffer" },
+      { "<Leader>bj", require("smart-splits").swap_buf_down, desc = "Swap with buffer below" },
+      { "<Leader>bk", require("smart-splits").swap_buf_up, desc = "Swap with buffer above" },
+      { "<Leader>bl", require("smart-splits").swap_buf_right, desc = "Swap with right buffer" },
     },
     opts = {
       ignored_filetypes = {
@@ -179,7 +179,7 @@ return {
     "stevearc/aerial.nvim",
     event = "LazyFile",
     keys = {
-      { "<leader>ua", "<cmd>AerialToggle<cr>", desc = "Toggle aerial" },
+      { "<Leader>ua", "<Cmd>AerialToggle<CR>", desc = "Toggle aerial" },
     },
     opts = function()
       local kinds_filter = require("config.kinds")
@@ -271,7 +271,7 @@ return {
       "TSContextToggle",
     },
     keys = {
-      { "<leader>uc", "<cmd>TSContextToggle<cr>", desc = "Toggle treesitter context" },
+      { "<Leader>uc", "<Cmd>TSContextToggle<CR>", desc = "Toggle treesitter context" },
     },
     opts = {
       enable = false,
@@ -284,7 +284,7 @@ return {
     event = "VeryLazy",
     keys = {
       {
-        "<leader>-",
+        "<Leader>-",
         function()
           require("oil").open()
         end,
@@ -422,21 +422,21 @@ return {
     dependencies = { "nvim-tree/nvim-web-devicons" },
     keys = {
       {
-        "<leader>uf",
+        "<Leader>uf",
         function()
           require("nvim-tree.api").tree.toggle({ path = root_path() })
         end,
         desc = "Toggle nvim-tree explorer",
       },
       {
-        "<leader>uF",
+        "<Leader>uF",
         function()
           require("nvim-tree.api").tree.toggle({ path = vim.loop.cwd() })
         end,
         desc = "Toggle nvim-tree explorer (cwd)",
       },
       {
-        "<leader>upf",
+        "<Leader>upf",
         function()
           require("nvim-tree.api").tree.toggle({ path = parent_path() })
         end,
@@ -471,14 +471,14 @@ return {
     },
     keys = {
       {
-        "<leader>fm",
+        "<Leader>fm",
         function()
           require("mini.files").open(require("util.path").get_current_file_path(), true)
         end,
         desc = "Open mini files",
       },
       {
-        "<leader>fM",
+        "<Leader>fM",
         function()
           require("mini.files").open(vim.loop.cwd(), true)
         end,

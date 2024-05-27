@@ -27,7 +27,7 @@ return {
         tsserver = {
           keys = {
             {
-              "<leader>co",
+              "<Leader>co",
               function()
                 vim.lsp.buf.code_action({
                   apply = true,
@@ -40,7 +40,7 @@ return {
               desc = "Organize Imports",
             },
             {
-              "<leader>cR",
+              "<Leader>cR",
               function()
                 vim.lsp.buf.code_action({
                   apply = true,

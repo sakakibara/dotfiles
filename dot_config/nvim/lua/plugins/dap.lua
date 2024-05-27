@@ -6,7 +6,7 @@ return {
       dependencies = { "nvim-neotest/nvim-nio" },
       keys = {
         {
-          "<leader>de",
+          "<Leader>de",
           function()
             require("dapui").eval()
           end,
@@ -79,14 +79,14 @@ return {
       "jbyuki/one-small-step-for-vimkind",
       keys = {
         {
-          "<leader>daL",
+          "<Leader>daL",
           function()
             require("osv").launch({ port = 8086 })
           end,
           desc = "Adapter lua server",
         },
         {
-          "<leader>dal",
+          "<Leader>dal",
           function()
             require("osv").run_this()
           end,
@@ -111,112 +111,112 @@ return {
   },
   keys = {
     {
-      "<leader>dB",
+      "<Leader>dB",
       function()
         require("dap").set_breakpoint(vim.fn.input("Breakpoint condition: "))
       end,
       desc = "Breakpoint condition",
     },
     {
-      "<leader>db",
+      "<Leader>db",
       function()
         require("dap").toggle_breakpoint()
       end,
       desc = "Toggle breakpoint",
     },
     {
-      "<leader>dc",
+      "<Leader>dc",
       function()
         require("dap").continue()
       end,
       desc = "Continue",
     },
     {
-      "<leader>dC",
+      "<Leader>dC",
       function()
         require("dap").run_to_cursor()
       end,
       desc = "Run to cursor",
     },
     {
-      "<leader>dg",
+      "<Leader>dg",
       function()
         require("dap").goto_()
       end,
       desc = "Go to line (no execute)",
     },
     {
-      "<leader>di",
+      "<Leader>di",
       function()
         require("dap").step_into()
       end,
       desc = "Step into",
     },
     {
-      "<leader>dj",
+      "<Leader>dj",
       function()
         require("dap").down()
       end,
       desc = "Down",
     },
     {
-      "<leader>dk",
+      "<Leader>dk",
       function()
         require("dap").up()
       end,
       desc = "Up",
     },
     {
-      "<leader>dl",
+      "<Leader>dl",
       function()
         require("dap").run_last()
       end,
       desc = "Run last",
     },
     {
-      "<leader>do",
+      "<Leader>do",
       function()
         require("dap").step_over()
       end,
       desc = "Step over",
     },
     {
-      "<leader>dO",
+      "<Leader>dO",
       function()
         require("dap").step_out()
       end,
       desc = "Step out",
     },
     {
-      "<leader>dp",
+      "<Leader>dp",
       function()
         require("dap").pause()
       end,
       desc = "Pause",
     },
     {
-      "<leader>dr",
+      "<Leader>dr",
       function()
         require("dap").repl.toggle()
       end,
       desc = "Toggle REPL",
     },
     {
-      "<leader>ds",
+      "<Leader>ds",
       function()
         require("dap").session()
       end,
       desc = "Session",
     },
     {
-      "<leader>dt",
+      "<Leader>dt",
       function()
         require("dap").terminate()
       end,
       desc = "Terminate",
     },
     {
-      "<leader>dw",
+      "<Leader>dw",
       function()
         require("dap.ui.widgets").hover()
       end,

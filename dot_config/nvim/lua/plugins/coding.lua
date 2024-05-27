@@ -343,7 +343,7 @@ return {
     },
     keys = {
       {
-        "<leader>sy",
+        "<Leader>sy",
         function()
           require("telescope").extensions.yank_history.yank_history({})
         end,
@@ -376,11 +376,11 @@ return {
     version = "*",
     opts = {},
     keys = {
-      { "<F7>", mode = { "n", "x", "o", "t" }, "<cmd>ToggleTerm<cr>", desc = "Toggle terminal" },
-      { "<leader>utf", "<cmd>ToggleTerm direction=float<cr>", desc = "Toggle terminal (float)" },
-      { "<leader>uth", "<cmd>ToggleTerm size=10 direction=horizontal<cr>", desc = "Toggle terminal (horizontal)" },
-      { "<leader>utv", "<cmd>ToggleTerm size=80 direction=vertical<cr>", desc = "Toggle terminal (vertical)" },
-      { "<leader>gl", require("util.terminal").lazygit_toggle, desc = "Lazygit" },
+      { "<F7>", mode = { "n", "x", "o", "t" }, "<Cmd>ToggleTerm<CR>", desc = "Toggle terminal" },
+      { "<Leader>utf", "<Cmd>ToggleTerm direction=float<CR>", desc = "Toggle terminal (float)" },
+      { "<Leader>uth", "<Cmd>ToggleTerm size=10 direction=horizontal<CR>", desc = "Toggle terminal (horizontal)" },
+      { "<Leader>utv", "<Cmd>ToggleTerm size=80 direction=vertical<CR>", desc = "Toggle terminal (vertical)" },
+      { "<Leader>gl", require("util.terminal").lazygit_toggle, desc = "Lazygit" },
     },
   },
 

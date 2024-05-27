@@ -17,7 +17,7 @@ return {
         ruff_lsp = {
           keys = {
             {
-              "<leader>co",
+              "<Leader>co",
               function()
                 vim.lsp.buf.code_action({
                   apply = true,
@@ -73,7 +73,7 @@ return {
         "mfussenegger/nvim-dap-python",
         keys = {
           {
-            "<leader>dPt",
+            "<Leader>dPt",
             function()
               require("dap-python").test_method()
             end,
@@ -81,7 +81,7 @@ return {
             ft = "python",
           },
           {
-            "<leader>dPc",
+            "<Leader>dPc",
             function()
               require("dap-python").test_class()
             end,
@@ -114,7 +114,7 @@ return {
       })
     end,
     keys = {
-      { "<leader>cv", "<cmd>VenvSelect<cr>", ft = "python", desc = "Select virtualenv" },
+      { "<Leader>cv", "<Cmd>VenvSelect<CR>", ft = "python", desc = "Select virtualenv" },
     },
   },
 }

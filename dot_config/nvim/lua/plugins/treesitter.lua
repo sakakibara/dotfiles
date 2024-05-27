@@ -36,8 +36,8 @@ return {
     end,
     cmd = { "TSUpdateSync", "TSUpdate", "TSInstall" },
     keys = {
-      { "<c-space>", desc = "Increment selection" },
-      { "<bs>", desc = "Schrink selection", mode = "x" },
+      { "<C-space>", desc = "Increment selection" },
+      { "<BS>", desc = "Schrink selection", mode = "x" },
     },
     opts = {
       highlight = { enable = true },
@@ -70,7 +70,7 @@ return {
           init_selection = "<C-space>",
           node_incremental = "<C-space>",
           scope_incremental = false,
-          node_decremental = "<bs>",
+          node_decremental = "<BS>",
         },
       },
       textobjects = {

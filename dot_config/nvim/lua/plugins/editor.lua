@@ -9,25 +9,25 @@ return {
       plugins = { spelling = true },
       defaults = {
         mode = { "n", "v" },
-        ["<leader>b"] = { name = "+Buffer" },
-        ["<leader>c"] = { name = "+Code" },
-        ["<leader>d"] = { name = "+Debug" },
-        ["<leader>da"] = { name = "+Adapters" },
-        ["<leader>e"] = { name = "+Editor" },
-        ["<leader>f"] = { name = "+File" },
-        ["<leader>fc"] = { name = "+Config" },
-        ["<leader>fp"] = { name = "+Parent" },
-        ["<leader>g"] = { name = "+Git" },
-        ["<leader>gh"] = { name = "+Hunks" },
-        ["<leader>n"] = { name = "+Notes" },
-        ["<leader>o"] = { name = "+Option" },
-        ["<leader>q"] = { name = "+Quit" },
-        ["<leader>r"] = { name = "+REST" },
-        ["<leader>s"] = { name = "+Search" },
-        ["<leader>t"] = { name = "+Test" },
-        ["<leader>u"] = { name = "+UI" },
-        ["<leader>up"] = { name = "+Parent" },
-        ["<leader>ut"] = { name = "+Terminal" },
+        ["<Leader>b"] = { name = "+Buffer" },
+        ["<Leader>c"] = { name = "+Code" },
+        ["<Leader>d"] = { name = "+Debug" },
+        ["<Leader>da"] = { name = "+Adapters" },
+        ["<Leader>e"] = { name = "+Editor" },
+        ["<Leader>f"] = { name = "+File" },
+        ["<Leader>fc"] = { name = "+Config" },
+        ["<Leader>fp"] = { name = "+Parent" },
+        ["<Leader>g"] = { name = "+Git" },
+        ["<Leader>gh"] = { name = "+Hunks" },
+        ["<Leader>n"] = { name = "+Notes" },
+        ["<Leader>o"] = { name = "+Option" },
+        ["<Leader>q"] = { name = "+Quit" },
+        ["<Leader>r"] = { name = "+REST" },
+        ["<Leader>s"] = { name = "+Search" },
+        ["<Leader>t"] = { name = "+Test" },
+        ["<Leader>u"] = { name = "+UI" },
+        ["<Leader>up"] = { name = "+Parent" },
+        ["<Leader>ut"] = { name = "+Terminal" },
         ["["] = { name = "+Prev" },
         ["]"] = { name = "+Next" },
         ["gs"] = { name = "+Surround" },
@@ -53,7 +53,7 @@ return {
     dependencies = { "nvim-lua/plenary.nvim" },
     cmd = { "Browse" },
     keys = {
-      { "gx", "<cmd>Browse<cr>", mode = { "n", "x" } },
+      { "gx", "<Cmd>Browse<CR>", mode = { "n", "x" } },
     },
     opts = {
       handlers = {
@@ -73,7 +73,7 @@ return {
     "echasnovski/mini.bufremove",
     keys = {
       {
-        "<leader>bd",
+        "<Leader>bd",
         function()
           local bd = require("mini.bufremove").delete
           if vim.bo.modified then
@@ -95,14 +95,14 @@ return {
         desc = "Delete buffer",
       },
       {
-        "<leader>bD",
+        "<Leader>bD",
         function()
           require("mini.bufremove").delete(0, true)
         end,
         desc = "Delete buffer (force)",
       },
       {
-        "<leader>bw",
+        "<Leader>bw",
         function()
           local bw = require("mini.bufremove").wipeout
           if vim.bo.modified then
@@ -124,7 +124,7 @@ return {
         desc = "Wipeout buffer",
       },
       {
-        "<leader>bW",
+        "<Leader>bW",
         function()
           require("mini.bufremove").wipeout(0, true)
         end,
@@ -147,14 +147,14 @@ return {
     "echasnovski/mini.trailspace",
     keys = {
       {
-        "<leader>ew",
+        "<Leader>ew",
         function()
           require("mini.trailspace").trim()
         end,
         desc = "Trim trailing whitespace",
       },
       {
-        "<leader>eW",
+        "<Leader>eW",
         function()
           require("mini.trailspace").trim_last_lines()
         end,
@@ -372,7 +372,7 @@ return {
         desc = "Treesitter search",
       },
       {
-        "<c-s>",
+        "<C-s>",
         mode = { "c" },
         function()
           require("flash").toggle()
@@ -405,7 +405,7 @@ return {
         })
       end
       opts.defaults = vim.tbl_deep_extend("force", opts.defaults or {}, {
-        mappings = { n = { s = flash }, i = { ["<c-s>"] = flash } },
+        mappings = { n = { s = flash }, i = { ["<C-s>"] = flash } },
       })
     end,
   },
@@ -431,17 +431,17 @@ return {
 
         map("n", "]h", gs.next_hunk, "Next Hunk")
         map("n", "[h", gs.prev_hunk, "Prev Hunk")
-        map({ "n", "v" }, "<leader>ghs", ":Gitsigns stage_hunk<CR>", "Stage Hunk")
-        map({ "n", "v" }, "<leader>ghr", ":Gitsigns reset_hunk<CR>", "Reset Hunk")
-        map("n", "<leader>ghS", gs.stage_buffer, "Stage Buffer")
-        map("n", "<leader>ghu", gs.undo_stage_hunk, "Undo Stage Hunk")
-        map("n", "<leader>ghR", gs.reset_buffer, "Reset Buffer")
-        map("n", "<leader>ghp", gs.preview_hunk, "Preview Hunk")
-        map("n", "<leader>ghb", function()
+        map({ "n", "v" }, "<Leader>ghs", ":Gitsigns stage_hunk<CR>", "Stage Hunk")
+        map({ "n", "v" }, "<Leader>ghr", ":Gitsigns reset_hunk<CR>", "Reset Hunk")
+        map("n", "<Leader>ghS", gs.stage_buffer, "Stage Buffer")
+        map("n", "<Leader>ghu", gs.undo_stage_hunk, "Undo Stage Hunk")
+        map("n", "<Leader>ghR", gs.reset_buffer, "Reset Buffer")
+        map("n", "<Leader>ghp", gs.preview_hunk, "Preview Hunk")
+        map("n", "<Leader>ghb", function()
           gs.blame_line({ full = true })
         end, "Blame Line")
-        map("n", "<leader>ghd", gs.diffthis, "Diff This")
-        map("n", "<leader>ghD", function()
+        map("n", "<Leader>ghd", gs.diffthis, "Diff This")
+        map("n", "<Leader>ghD", function()
           gs.diffthis("~")
         end, "Diff This ~")
         map({ "o", "x" }, "ih", ":<C-U>Gitsigns select_hunk<CR>", "GitSigns Select Hunk")
@@ -477,8 +477,8 @@ return {
       "Reject",
     },
     keys = {
-      { "<leader>el", "<cmd>LLToggle<cr>", desc = "Location list" },
-      { "<leader>eq", "<cmd>QFToggle<cr>", desc = "Quickfix list" },
+      { "<Leader>el", "<Cmd>LLToggle<CR>", desc = "Location list" },
+      { "<Leader>eq", "<Cmd>QFToggle<CR>", desc = "Quickfix list" },
     },
     opts = {
       quickfix = {
@@ -495,10 +495,10 @@ return {
     cmd = { "TroubleToggle", "Trouble" },
     opts = { use_diagnostic_signs = true },
     keys = {
-      { "<leader>ed", "<cmd>TroubleToggle document_diagnostics<cr>", desc = "Document diagnostics (trouble)" },
-      { "<leader>eD", "<cmd>TroubleToggle workspace_diagnostics<cr>", desc = "Workspace diagnostics (trouble)" },
-      { "<leader>eL", "<cmd>TroubleToggle loclist<cr>", desc = "Location list (trouble)" },
-      { "<leader>eQ", "<cmd>TroubleToggle quickfix<cr>", desc = "Quickfix list (trouble)" },
+      { "<Leader>ed", "<Cmd>TroubleToggle document_diagnostics<CR>", desc = "Document diagnostics (trouble)" },
+      { "<Leader>eD", "<Cmd>TroubleToggle workspace_diagnostics<CR>", desc = "Workspace diagnostics (trouble)" },
+      { "<Leader>eL", "<Cmd>TroubleToggle loclist<CR>", desc = "Location list (trouble)" },
+      { "<Leader>eQ", "<Cmd>TroubleToggle quickfix<CR>", desc = "Quickfix list (trouble)" },
       {
         "[q",
         function()
@@ -552,38 +552,38 @@ return {
     cmd = "Telescope",
     version = false,
     keys = {
-      { "<leader><space>", utelescope.func("files", { cwd = root_path }), desc = "Files" },
-      { "<leader>bb", "<cmd>Telescope buffers<cr>", desc = "Buffers" },
-      { "<leader>ff", utelescope.func("files", { cwd = root_path }), desc = "Files" },
-      { "<leader>fF", utelescope.func("files", { cwd = vim.loop.cwd }), desc = "Files (cwd)" },
-      { "<leader>fpf", utelescope.func("find_files", { cwd = parent_path }), desc = "Find files (parent)" },
-      { "<leader>fg", utelescope.func("live_grep", { cwd = root_path }), desc = "Grep" },
-      { "<leader>fG", utelescope.func("live_grep", { cwd = vim.loop.cwd }), desc = "Grep (cwd)" },
-      { "<leader>fpg", utelescope.func("live_grep", { cwd = parent_path }), desc = "Grep (parent)" },
+      { "<Leader><Space>", utelescope.func("files", { cwd = root_path }), desc = "Files" },
+      { "<Leader>bb", "<Cmd>Telescope buffers<CR>", desc = "Buffers" },
+      { "<Leader>ff", utelescope.func("files", { cwd = root_path }), desc = "Files" },
+      { "<Leader>fF", utelescope.func("files", { cwd = vim.loop.cwd }), desc = "Files (cwd)" },
+      { "<Leader>fpf", utelescope.func("find_files", { cwd = parent_path }), desc = "Find files (parent)" },
+      { "<Leader>fg", utelescope.func("live_grep", { cwd = root_path }), desc = "Grep" },
+      { "<Leader>fG", utelescope.func("live_grep", { cwd = vim.loop.cwd }), desc = "Grep (cwd)" },
+      { "<Leader>fpg", utelescope.func("live_grep", { cwd = parent_path }), desc = "Grep (parent)" },
       {
-        "<leader>ft",
+        "<Leader>ft",
         function()
           require("telescope.builtin").filetypes()
         end,
         desc = "Filetypes",
       },
-      { "<leader>fw", utelescope.func("grep_string", { cwd = root_path, word_match = "-w" }), desc = "Word" },
-      { "<leader>fW", utelescope.func("grep_string", { cwd = vim.loop.cwd, word_match = "-w" }), desc = "Word (cwd)" },
+      { "<Leader>fw", utelescope.func("grep_string", { cwd = root_path, word_match = "-w" }), desc = "Word" },
+      { "<Leader>fW", utelescope.func("grep_string", { cwd = vim.loop.cwd, word_match = "-w" }), desc = "Word (cwd)" },
       {
-        "<leader>fpw",
+        "<Leader>fpw",
         utelescope.func("grep_string", { cwd = parent_path, word_match = "-w" }),
         desc = "Word (parent)",
       },
-      { "<leader>fw", utelescope.func("grep_string", { cwd = root_path }), mode = "v", desc = "Selection" },
-      { "<leader>fW", utelescope.func("grep_string", { cwd = vim.loop.cwd }), mode = "v", desc = "Selection (cwd)" },
+      { "<Leader>fw", utelescope.func("grep_string", { cwd = root_path }), mode = "v", desc = "Selection" },
+      { "<Leader>fW", utelescope.func("grep_string", { cwd = vim.loop.cwd }), mode = "v", desc = "Selection (cwd)" },
       {
-        "<leader>fpw",
+        "<Leader>fpw",
         utelescope.func("grep_string", { cwd = parent_path }),
         mode = "v",
         desc = "Selection (parent)",
       },
       {
-        "<leader>fs",
+        "<Leader>fs",
         function()
           require("telescope.builtin").lsp_document_symbols({
             symbols = require("util.filter").get_kind_filter(),
@@ -592,7 +592,7 @@ return {
         desc = "Goto symbol",
       },
       {
-        "<leader>fS",
+        "<Leader>fS",
         function()
           require("telescope.builtin").lsp_dynamic_workspace_symbols({
             symbols = require("util.filter").get_kind_filter(),
@@ -600,35 +600,35 @@ return {
         end,
         desc = "Goto symbol (workspace)",
       },
-      { "<leader>fcf", utelescope.func("files", { cwd = vim.fn.stdpath("config") }), desc = "Files (config)" },
-      { "<leader>fcg", utelescope.func("live_grep", { cwd = vim.fn.stdpath("config") }), desc = "Grep (config)" },
+      { "<Leader>fcf", utelescope.func("files", { cwd = vim.fn.stdpath("config") }), desc = "Files (config)" },
+      { "<Leader>fcg", utelescope.func("live_grep", { cwd = vim.fn.stdpath("config") }), desc = "Grep (config)" },
       {
-        "<leader>fcw",
+        "<Leader>fcw",
         utelescope.func("grep_string", { cwd = vim.fn.stdpath("config"), word_match = "-w" }),
         desc = "Word (config)",
       },
       {
-        "<leader>fcw",
+        "<Leader>fcw",
         utelescope.func("grep_string", { cwd = vim.fn.stdpath("config") }),
         mode = "v",
         desc = "Selection (config)",
       },
-      { '<leader>"', "<cmd>Telescope registers<cr>", desc = "Registers" },
-      { "<leader>ss", "<cmd>Telescope current_buffer_fuzzy_find<cr>", desc = "Fuzzy search buffer lines" },
-      { "<leader>:", "<cmd>Telescope command_history<cr>", desc = "Command history" },
-      { "<leader>/", "<cmd>Telescope search_history<cr>", desc = "Search history" },
-      { "<leader>`", "<cmd>Telescope marks<cr>", desc = "Marks" },
-      { "<leader>sa", "<cmd>Telescope autocommands<cr>", desc = "Auto commands" },
-      { "<leader>sh", "<cmd>Telescope help_tags<cr>", desc = "Help tags" },
-      { "<leader>sH", "<cmd>Telescope highlights<cr>", desc = "Highlights" },
-      { "<leader>sj", "<cmd>Telescope jumplist<cr>", desc = "Jump list" },
-      { "<leader>sk", "<cmd>Telescope keymaps<cr>", desc = "Keymaps" },
-      { "<leader>sl", "<cmd>Telescope loclist<cr>", desc = "Location list" },
-      { "<leader>sq", "<cmd>Telescope quickfix<cr>", desc = "Quickfix list" },
-      { "<leader>sQ", "<cmd>Telescope quickfixhistory<cr>", desc = "Quickfix history" },
-      { "<leader>uC", utelescope.func("colorscheme", { enable_preview = true }), desc = "Colorschemes" },
-      { "<leader>;", "<cmd>Telescope commands<cr>", desc = "Commands" },
-      { "<leader>'", "<cmd>Telescope resume<cr>", desc = "Resume" },
+      { '<Leader>"', "<Cmd>Telescope registers<CR>", desc = "Registers" },
+      { "<Leader>ss", "<Cmd>Telescope current_buffer_fuzzy_find<CR>", desc = "Fuzzy search buffer lines" },
+      { "<Leader>:", "<Cmd>Telescope command_history<CR>", desc = "Command history" },
+      { "<Leader>/", "<Cmd>Telescope search_history<CR>", desc = "Search history" },
+      { "<Leader>`", "<Cmd>Telescope marks<CR>", desc = "Marks" },
+      { "<Leader>sa", "<Cmd>Telescope autocommands<CR>", desc = "Auto commands" },
+      { "<Leader>sh", "<Cmd>Telescope help_tags<CR>", desc = "Help tags" },
+      { "<Leader>sH", "<Cmd>Telescope highlights<CR>", desc = "Highlights" },
+      { "<Leader>sj", "<Cmd>Telescope jumplist<CR>", desc = "Jump list" },
+      { "<Leader>sk", "<Cmd>Telescope keymaps<CR>", desc = "Keymaps" },
+      { "<Leader>sl", "<Cmd>Telescope loclist<CR>", desc = "Location list" },
+      { "<Leader>sq", "<Cmd>Telescope quickfix<CR>", desc = "Quickfix list" },
+      { "<Leader>sQ", "<Cmd>Telescope quickfixhistory<CR>", desc = "Quickfix history" },
+      { "<Leader>uC", utelescope.func("colorscheme", { enable_preview = true }), desc = "Colorschemes" },
+      { "<Leader>;", "<Cmd>Telescope commands<CR>", desc = "Commands" },
+      { "<Leader>'", "<Cmd>Telescope resume<CR>", desc = "Resume" },
     },
     opts = {
       defaults = {
@@ -791,11 +791,11 @@ return {
   {
     "nvim-telescope/telescope-live-grep-args.nvim",
     keys = {
-      { "<leader>fa", utelescope.func("live_grep_args", { cwd = root_path }), desc = "Grep with args" },
-      { "<leader>fA", utelescope.func("live_grep_args", { cwd = vim.loop.cwd }), desc = "Grep with args (cwd)" },
-      { "<leader>fpa", utelescope.func("live_grep_args", { cwd = parent_path }), desc = "Grep with args (parent)" },
+      { "<Leader>fa", utelescope.func("live_grep_args", { cwd = root_path }), desc = "Grep with args" },
+      { "<Leader>fA", utelescope.func("live_grep_args", { cwd = vim.loop.cwd }), desc = "Grep with args (cwd)" },
+      { "<Leader>fpa", utelescope.func("live_grep_args", { cwd = parent_path }), desc = "Grep with args (parent)" },
       {
-        "<leader>fca",
+        "<Leader>fca",
         utelescope.func("live_grep_args", { cwd = vim.fn.stdpath("config") }),
         desc = "Grep with args (config)",
       },
@@ -808,17 +808,17 @@ return {
     "nvim-telescope/telescope-file-browser.nvim",
     keys = {
       {
-        "<leader>fb",
+        "<Leader>fb",
         utelescope.func("file_browser", { cwd = root_path }),
         desc = "File browser",
       },
       {
-        "<leader>fB",
+        "<Leader>fB",
         utelescope.func("file_browser", { cwd = vim.loop.cwd }),
         desc = "File browser (cwd)",
       },
       {
-        "<leader>fpb",
+        "<Leader>fpb",
         utelescope.func("file_browser", { cwd = parent_path }),
         desc = "File browser (parent)",
       },
@@ -832,8 +832,8 @@ return {
     event = { "VeryLazy" },
     cmd = { "FrecencyMigrate", "FrecencyValidate" },
     keys = {
-      { "<leader>fr", "<cmd>Telescope frecency<cr>", desc = "Frecency" },
-      { "<leader>fv", "<cmd>FrecencyValidate<cr>", desc = "Frecency validate" },
+      { "<Leader>fr", "<Cmd>Telescope frecency<CR>", desc = "Frecency" },
+      { "<Leader>fv", "<Cmd>FrecencyValidate<CR>", desc = "Frecency validate" },
     },
     config = function()
       require("telescope").load_extension("frecency")
@@ -842,7 +842,7 @@ return {
   {
     "debugloop/telescope-undo.nvim",
     keys = {
-      { "<leader>su", "<cmd>Telescope undo<cr>", desc = "Undo history" },
+      { "<Leader>su", "<Cmd>Telescope undo<CR>", desc = "Undo history" },
     },
     config = function()
       require("telescope").load_extension("undo")
@@ -851,7 +851,7 @@ return {
   {
     "jvgrootveld/telescope-zoxide",
     keys = {
-      { "<leader>sz", "<cmd>Telescope zoxide list<cr>", desc = "Zoxide" },
+      { "<Leader>sz", "<Cmd>Telescope zoxide list<CR>", desc = "Zoxide" },
     },
     config = function()
       require("telescope").load_extension("zoxide")
@@ -1133,14 +1133,14 @@ return {
     keys = function()
       local keys = {
         {
-          "<leader>H",
+          "<Leader>H",
           function()
             require("harpoon"):list():add()
           end,
           desc = "Add to harpoon",
         },
         {
-          "<leader>h",
+          "<Leader>h",
           function()
             local harpoon = require("harpoon")
             harpoon.ui:toggle_quick_menu(harpoon:list())
@@ -1151,7 +1151,7 @@ return {
 
       for i = 1, 5 do
         table.insert(keys, {
-          "<leader>" .. i,
+          "<Leader>" .. i,
           function()
             require("harpoon"):list():select(i)
           end,
@@ -1183,10 +1183,10 @@ return {
         end,
         desc = "Previous todo comment",
       },
-      { "<leader>et", "<cmd>TodoTrouble<cr>", desc = "Todo (trouble)" },
-      { "<leader>eT", "<cmd>TodoTrouble keywords=TODO,FIX,FIXME<cr>", desc = "Todo/Fix/Fixme (trouble)" },
-      { "<leader>st", "<cmd>TodoTelescope<cr>", desc = "Todo" },
-      { "<leader>sT", "<cmd>TodoTelescope keywords=TODO,FIX,FIXME<cr>", desc = "Todo/Fix/Fixme" },
+      { "<Leader>et", "<Cmd>TodoTrouble<CR>", desc = "Todo (trouble)" },
+      { "<Leader>eT", "<Cmd>TodoTrouble keywords=TODO,FIX,FIXME<CR>", desc = "Todo/Fix/Fixme (trouble)" },
+      { "<Leader>st", "<Cmd>TodoTelescope<CR>", desc = "Todo" },
+      { "<Leader>sT", "<Cmd>TodoTelescope keywords=TODO,FIX,FIXME<CR>", desc = "Todo/Fix/Fixme" },
     },
   },
 

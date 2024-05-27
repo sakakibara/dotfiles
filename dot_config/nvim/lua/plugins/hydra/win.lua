@@ -21,7 +21,7 @@ return require("hydra")({
     },
   },
   mode = "n",
-  body = "<leader>w",
+  body = "<Leader>w",
   heads = {
     { "h", "<C-w>h" },
     { "j", "<C-w>j" },

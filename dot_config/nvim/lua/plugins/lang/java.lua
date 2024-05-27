@@ -151,26 +151,26 @@ return {
           if client and client.name == "jdtls" then
             local wk = require("which-key")
             wk.register({
-              ["<leader>cx"] = { name = "+extract" },
-              ["<leader>cxv"] = { require("jdtls").extract_variable_all, "Extract Variable" },
-              ["<leader>cxc"] = { require("jdtls").extract_constant, "Extract Constant" },
+              ["<Leader>cx"] = { name = "+extract" },
+              ["<Leader>cxv"] = { require("jdtls").extract_variable_all, "Extract Variable" },
+              ["<Leader>cxc"] = { require("jdtls").extract_constant, "Extract Constant" },
               ["gs"] = { require("jdtls").super_implementation, "Goto Super" },
               ["gS"] = { require("jdtls.tests").goto_subjects, "Goto Subjects" },
-              ["<leader>co"] = { require("jdtls").organize_imports, "Organize Imports" },
+              ["<Leader>co"] = { require("jdtls").organize_imports, "Organize Imports" },
             }, { mode = "n", buffer = args.buf })
             wk.register({
-              ["<leader>c"] = { name = "+code" },
-              ["<leader>cx"] = { name = "+extract" },
-              ["<leader>cxm"] = {
-                [[<ESC><CMD>lua require('jdtls').extract_method(true)<CR>]],
+              ["<Leader>c"] = { name = "+code" },
+              ["<Leader>cx"] = { name = "+extract" },
+              ["<Leader>cxm"] = {
+                [[<Esc><Cmd>lua require('jdtls').extract_method(true)<CR>]],
                 "Extract Method",
               },
-              ["<leader>cxv"] = {
-                [[<ESC><CMD>lua require('jdtls').extract_variable_all(true)<CR>]],
+              ["<Leader>cxv"] = {
+                [[<Esc><Cmd>lua require('jdtls').extract_variable_all(true)<CR>]],
                 "Extract Variable",
               },
-              ["<leader>cxc"] = {
-                [[<ESC><CMD>lua require('jdtls').extract_constant(true)<CR>]],
+              ["<Leader>cxc"] = {
+                [[<Esc><Cmd>lua require('jdtls').extract_constant(true)<CR>]],
                 "Extract Constant",
               },
             }, { mode = "v", buffer = args.buf })
@@ -181,10 +181,10 @@ return {
 
               if opts.test and mason_registry.is_installed("java-test") then
                 wk.register({
-                  ["<leader>t"] = { name = "+test" },
-                  ["<leader>tt"] = { require("jdtls.dap").test_class, "Run All Test" },
-                  ["<leader>tr"] = { require("jdtls.dap").test_nearest_method, "Run Nearest Test" },
-                  ["<leader>tT"] = { require("jdtls.dap").pick_test, "Run Test" },
+                  ["<Leader>t"] = { name = "+test" },
+                  ["<Leader>tt"] = { require("jdtls.dap").test_class, "Run All Test" },
+                  ["<Leader>tr"] = { require("jdtls.dap").test_nearest_method, "Run Nearest Test" },
+                  ["<Leader>tT"] = { require("jdtls.dap").pick_test, "Run Test" },
                 }, { mode = "n", buffer = args.buf })
               end
             end

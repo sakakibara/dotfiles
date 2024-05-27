@@ -85,49 +85,49 @@ return {
     end,
     keys = {
       {
-        "<leader>tt",
+        "<Leader>tt",
         function()
           require("neotest").run.run(vim.fn.expand("%"))
         end,
         desc = "Run File",
       },
       {
-        "<leader>tT",
+        "<Leader>tT",
         function()
           require("neotest").run.run(vim.loop.cwd())
         end,
         desc = "Run All Test Files",
       },
       {
-        "<leader>tr",
+        "<Leader>tr",
         function()
           require("neotest").run.run()
         end,
         desc = "Run Nearest",
       },
       {
-        "<leader>ts",
+        "<Leader>ts",
         function()
           require("neotest").summary.toggle()
         end,
         desc = "Toggle Summary",
       },
       {
-        "<leader>to",
+        "<Leader>to",
         function()
           require("neotest").output.open({ enter = true, auto_close = true })
         end,
         desc = "Show Output",
       },
       {
-        "<leader>tO",
+        "<Leader>tO",
         function()
           require("neotest").output_panel.toggle()
         end,
         desc = "Toggle Output Panel",
       },
       {
-        "<leader>tS",
+        "<Leader>tS",
         function()
           require("neotest").run.stop()
         end,
@@ -141,7 +141,7 @@ return {
     optional = true,
     keys = {
       {
-        "<leader>td",
+        "<Leader>td",
         function()
           require("neotest").run.run({ strategy = "dap" })
         end,

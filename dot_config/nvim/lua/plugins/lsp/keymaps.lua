@@ -10,7 +10,7 @@ function M.get()
     return M._keys
   end
   M._keys = {
-    { "<leader>cl", "<cmd>LspInfo<cr>", desc = "Lsp info" },
+    { "<Leader>cl", "<Cmd>LspInfo<CR>", desc = "Lsp info" },
     {
       "gd",
       function()
@@ -19,7 +19,7 @@ function M.get()
       desc = "Goto definition",
       has = "definition",
     },
-    { "gr", "<cmd>Telescope lsp_references<cr>", desc = "References" },
+    { "gr", "<Cmd>Telescope lsp_references<CR>", desc = "References" },
     { "gD", vim.lsp.buf.declaration, desc = "Goto declaration" },
     {
       "gI",
@@ -37,10 +37,10 @@ function M.get()
     },
     { "K", vim.lsp.buf.hover, desc = "Hover" },
     { "gK", vim.lsp.buf.signature_help, desc = "Signature help", has = "signatureHelp" },
-    { "<c-k>", vim.lsp.buf.signature_help, mode = "i", desc = "Signature help", has = "signatureHelp" },
-    { "<leader>ca", vim.lsp.buf.code_action, desc = "Code action", mode = { "n", "v" }, has = "codeAction" },
+    { "<C-k>", vim.lsp.buf.signature_help, mode = "i", desc = "Signature help", has = "signatureHelp" },
+    { "<Leader>ca", vim.lsp.buf.code_action, desc = "Code action", mode = { "n", "v" }, has = "codeAction" },
     {
-      "<leader>cA",
+      "<Leader>cA",
       function()
         vim.lsp.buf.code_action({
           context = {
@@ -54,8 +54,8 @@ function M.get()
       desc = "Source action",
       has = "codeAction",
     },
-    { "<leader>cc", vim.lsp.codelens.run, desc = "Run codelens", mode = { "n", "v" }, has = "codeLens" },
-    { "<leader>cC", vim.lsp.codelens.refresh, desc = "Refresh & display codelens", mode = { "n" }, has = "codeLens" },
+    { "<Leader>cc", vim.lsp.codelens.run, desc = "Run codelens", mode = { "n", "v" }, has = "codeLens" },
+    { "<Leader>cC", vim.lsp.codelens.refresh, desc = "Refresh & display codelens", mode = { "n" }, has = "codeLens" },
     {
       "]]",
       function()
@@ -81,7 +81,7 @@ function M.get()
   }
   if uplugin.has("inc-rename.nvim") then
     M._keys[#M._keys + 1] = {
-      "<leader>cr",
+      "<Leader>cr",
       function()
         local inc_rename = require("inc_rename")
         return ":" .. inc_rename.config.cmd_name .. " " .. vim.fn.expand("<cword>")
@@ -91,7 +91,7 @@ function M.get()
       has = "rename",
     }
   else
-    M._keys[#M._keys + 1] = { "<leader>cr", vim.lsp.buf.rename, desc = "Rename", has = "rename" }
+    M._keys[#M._keys + 1] = { "<Leader>cr", vim.lsp.buf.rename, desc = "Rename", has = "rename" }
   end
   return M._keys
 end

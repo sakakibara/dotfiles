@@ -60,9 +60,9 @@ return {
     end,
     keys = {
       {
-        "<leader>cp",
+        "<Leader>cp",
         ft = "markdown",
-        "<cmd>MarkdownPreviewToggle<cr>",
+        "<Cmd>MarkdownPreviewToggle<CR>",
         desc = "Markdown Preview",
       },
     },
@@ -102,7 +102,7 @@ return {
     "nvim-telescope/telescope.nvim",
     keys = {
       {
-        "<leader>nn",
+        "<Leader>nn",
         function()
           vim.ui.input({ prompt = "Title:" }, function(input)
             if input then
@@ -114,10 +114,10 @@ return {
         end,
         desc = "Edit markdown file",
       },
-      { "<leader>nf", utelescope.func("files", { cwd = unotes.notes_root }), desc = "Files (notes)" },
-      { "<leader>ng", utelescope.func("live_grep", { cwd = unotes.notes_root }), desc = "Grep (notes)" },
+      { "<Leader>nf", utelescope.func("files", { cwd = unotes.notes_root }), desc = "Files (notes)" },
+      { "<Leader>ng", utelescope.func("live_grep", { cwd = unotes.notes_root }), desc = "Grep (notes)" },
       {
-        "<leader>nj",
+        "<Leader>nj",
         function()
           vim.ui.select({ "today", "yesterday", "tomorrow" }, {
             prompt = "Open journal:",
@@ -144,7 +144,7 @@ return {
     "nvim-telescope/telescope-live-grep-args.nvim",
     keys = {
       {
-        "<leader>na",
+        "<Leader>na",
         utelescope.func("live_grep_args", { cwd = unotes.notes_root }),
         desc = "Grep with args (notes)",
       },
