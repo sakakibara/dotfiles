@@ -32,6 +32,7 @@ return {
         },
         inlay_hints = {
           enabled = true,
+          exclude = {},
         },
         codelens = {
           enabled = false,
@@ -106,7 +107,11 @@ return {
       if vim.fn.has("nvim-0.10") == 1 then
         if opts.inlay_hints.enabled then
           ulsp.on_supports_method("textDocument/inlayHint", function(_, buffer)
-            if vim.api.nvim_buf_is_valid(buffer) and vim.bo[buffer].buftype == "" then
+            if
+              vim.api.nvim_buf_is_valid(buffer)
+              and vim.bo[buffer].buftype == ""
+              and not vim.tbl_contains(opts.inlay_hints.exclude, vim.bo[buffer].filetype)
+            then
               require("util.toggle").inlay_hints(buffer, true)
             end
           end)
