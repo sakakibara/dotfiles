@@ -1,5 +1,6 @@
-return {
+local LazyUtil = require("lazy.core.util")
 
+return {
   {
     "hrsh7th/nvim-cmp",
     dependencies = {
@@ -58,7 +59,9 @@ return {
             cargo = {
               allFeatures = true,
               loadOutDirsFromCheck = true,
-              runBuildScripts = true,
+              buildScripts = {
+                enable = true,
+              },
             },
             checkOnSave = {
               allFeatures = true,
@@ -79,6 +82,12 @@ return {
     },
     config = function(_, opts)
       vim.g.rustaceanvim = vim.tbl_deep_extend("keep", vim.g.rustaceanvim or {}, opts or {})
+      if vim.fn.executable("rust-analyzer") == 0 then
+        LazyUtil.error(
+          "**rust-analyzer** not found in PATH, please install it.\nhttps://rust-analyzer.github.io/",
+          { title = "rustaceanvim" }
+        )
+      end
     end,
   },
 
@@ -87,7 +96,6 @@ return {
     optional = true,
     opts = {
       servers = {
-        rust_analyzer = {},
         taplo = {
           keys = {
             {
@@ -103,11 +111,6 @@ return {
             },
           },
         },
-      },
-      setup = {
-        rust_analyzer = function()
-          return true
-        end,
       },
     },
   },
