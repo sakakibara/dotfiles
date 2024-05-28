@@ -32,7 +32,7 @@ return {
         },
         inlay_hints = {
           enabled = true,
-          exclude = {},
+          exclude = { "vue" },
         },
         codelens = {
           enabled = false,
