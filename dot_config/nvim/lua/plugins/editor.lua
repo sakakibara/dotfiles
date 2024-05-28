@@ -296,6 +296,7 @@ return {
 
   {
     "RRethy/vim-illuminate",
+    enabled = false,
     event = "LazyFile",
     opts = {
       delay = 200,
