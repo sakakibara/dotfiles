@@ -177,6 +177,7 @@ return {
 
   {
     "stevearc/aerial.nvim",
+    enabled = false,
     event = "LazyFile",
     keys = {
       { "<Leader>ua", "<Cmd>AerialToggle<CR>", desc = "Toggle aerial" },
