@@ -493,13 +493,19 @@ return {
 
   {
     "folke/trouble.nvim",
-    cmd = { "TroubleToggle", "Trouble" },
-    opts = { use_diagnostic_signs = true },
+    branch = "dev",
+    cmd = { "Trouble" },
     keys = {
-      { "<Leader>ed", "<Cmd>TroubleToggle document_diagnostics<CR>", desc = "Document diagnostics (trouble)" },
-      { "<Leader>eD", "<Cmd>TroubleToggle workspace_diagnostics<CR>", desc = "Workspace diagnostics (trouble)" },
-      { "<Leader>eL", "<Cmd>TroubleToggle loclist<CR>", desc = "Location list (trouble)" },
-      { "<Leader>eQ", "<Cmd>TroubleToggle quickfix<CR>", desc = "Quickfix list (trouble)" },
+      { "<Leader>ed", "<Cmd>Trouble diagnostics toggle<CR>", desc = "Diagnostics (trouble)" },
+      { "<Leader>eD", "<Cmd>Trouble diagnostics toggle filter.buf=0<CR>", desc = "Buffer diagnostics (trouble)" },
+      { "<Leader>cs", "<Cmd>Trouble symbols toggle focus=false<CR>", desc = "Symbols (trouble)" },
+      {
+        "<Leader>cS",
+        "<Cmd>Trouble lsp toggle focus=false win.position=right<CR>",
+        desc = "LSP references/definitions/... (trouble)",
+      },
+      { "<Leader>eL", "<Cmd>Trouble loclist toggle<CR>", desc = "Location list (trouble)" },
+      { "<Leader>eQ", "<Cmd>Trouble qflist toggle<CR>", desc = "Quickfix list (trouble)" },
       {
         "[q",
         function()
@@ -533,6 +539,7 @@ return {
         desc = "Next trouble/quickfix item",
       },
     },
+    opts = {},
   },
 
   {
