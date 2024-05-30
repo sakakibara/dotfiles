@@ -493,7 +493,6 @@ return {
 
   {
     "folke/trouble.nvim",
-    branch = "dev",
     cmd = { "Trouble" },
     keys = {
       { "<Leader>ed", "<Cmd>Trouble diagnostics toggle<CR>", desc = "Diagnostics (trouble)" },
