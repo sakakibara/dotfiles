@@ -17,13 +17,17 @@ return {
 
       opts.servers = vim.tbl_deep_extend("force", opts.servers, {
         volar = {},
-        tsserver = {
-          init_options = {
-            plugins = {
-              {
-                name = "@vue/typescript-plugin",
-                location = vue_typescript_plugin,
-                languages = { "javascript", "typescript", "vue" },
+        vtsls = {
+          settings = {
+            vtsls = {
+              tsserver = {
+                globalPlugins = {
+                  vue = {
+                    name = "@vue/typescript-plugin",
+                    location = vue_typescript_plugin,
+                    languages = { "vue" },
+                  },
+                },
               },
             },
           },

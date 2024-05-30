@@ -32,7 +32,7 @@ return {
         },
         inlay_hints = {
           enabled = true,
-          exclude = { "vue" },
+          exclude = {},
         },
         codelens = {
           enabled = false,
@@ -40,7 +40,14 @@ return {
         document_highlight = {
           enabled = true,
         },
-        capabilities = {},
+        capabilities = {
+          workspace = {
+            fileOperations = {
+              didRename = true,
+              willRename = true,
+            },
+          },
+        },
         format = {
           formatting_options = nil,
           timeout_ms = nil,
@@ -178,10 +185,12 @@ return {
       for server, server_opts in pairs(servers) do
         if server_opts then
           server_opts = server_opts == true and {} or server_opts
-          if server_opts.mason == false or not vim.tbl_contains(all_mslp_servers, server) then
-            setup(server)
-          elseif server_opts.enabled ~= false then
-            ensure_installed[#ensure_installed + 1] = server
+          if server_opts.enabled ~= false then
+            if server_opts.mason == false or not vim.tbl_contains(all_mslp_servers, server) then
+              setup(server)
+            else
+              ensure_installed[#ensure_installed + 1] = server
+            end
           end
         end
       end
@@ -197,9 +206,9 @@ return {
         })
       end
 
-      if ulsp.get_config("denols") and ulsp.get_config("tsserver") then
+      if ulsp.is_enabled("denols") and ulsp.is_enabled("vtsls") then
         local is_deno = require("lspconfig.util").root_pattern("deno.json", "deno.jsonc")
-        ulsp.disable("tsserver", is_deno)
+        ulsp.disable("vtsls", is_deno)
         ulsp.disable("denols", function(root_dir)
           return not is_deno(root_dir)
         end)

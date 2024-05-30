@@ -97,6 +97,14 @@ function M.get()
 end
 
 function M.has(buffer, method)
+  if type(method) == "table" then
+    for _, m in ipairs(method) do
+      if M.has(buffer, m) then
+        return true
+      end
+    end
+    return false
+  end
   method = method:find("/") and method or "textDocument/" .. method
   local clients = ulsp.get_clients({ bufnr = buffer })
   for _, client in ipairs(clients) do
