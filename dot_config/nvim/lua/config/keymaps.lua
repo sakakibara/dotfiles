@@ -8,6 +8,10 @@ map({ "n", "x" }, "k", "v:count == 0 ? 'gk' : 'k'", { expr = true, silent = true
 map({ "n", "x", "o" }, "n", "'Nn'[v:searchforward]", { expr = true, desc = "Next search result" })
 map({ "n", "x", "o" }, "N", "'nN'[v:searchforward]", { expr = true, desc = "Previous search result" })
 
+map("i", ",", ",<C-g>u")
+map("i", ".", ".<C-g>u")
+map("i", ";", ";<C-g>u")
+
 map("n", "<Leader>bn", "<Cmd>bnext<CR>", { desc = "Next buffer" })
 map("n", "<Leader>bp", "<Cmd>bNext<CR>", { desc = "Previous buffer" })
 map("n", "<Leader>bN", "<Cmd>enew<CR>", { desc = "New empty buffer" })
