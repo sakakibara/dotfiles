@@ -34,6 +34,9 @@ map(
   { desc = "Redraw / clear hlsearch / diff update" }
 )
 
+map("n", "gco", "o<Esc>Vcx<Esc><Cmd>normal gcc<CR>fxa<BS>", { desc = "Add comment below" })
+map("n", "gcO", "O<Esc>Vcx<Esc><Cmd>normal gcc<CR>fxa<BS>", { desc = "Add comment above" })
+
 map("n", "<Leader>ul", "<Cmd>Lazy<CR>", { desc = "Lazy" })
 
 map("n", "<Leader>qq", "<Cmd>qa<CR>", { desc = "Quit all" })
