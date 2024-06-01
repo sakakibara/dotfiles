@@ -1,3 +1,5 @@
+local uplugin = require("util.plugin")
+
 return {
   {
     "nvim-treesitter/nvim-treesitter",
@@ -18,19 +20,6 @@ return {
       opts.servers = vim.tbl_deep_extend("force", opts.servers, {
         volar = {},
         vtsls = {
-          settings = {
-            vtsls = {
-              tsserver = {
-                globalPlugins = {
-                  vue = {
-                    name = "@vue/typescript-plugin",
-                    location = vue_typescript_plugin,
-                    languages = { "vue" },
-                  },
-                },
-              },
-            },
-          },
           filetypes = {
             "javascript",
             "javascriptreact",
@@ -41,6 +30,12 @@ return {
             "vue",
           },
         },
+      })
+      uplugin.extend(opts.servers.vtsls, "settings.vtsls.tsserver.globalPlugins", {
+        name = "@vue/typescript-plugin",
+        location = vue_typescript_plugin,
+        languages = { "vue" },
+        configNamespace = "typescript",
       })
     end,
   },

@@ -135,6 +135,19 @@ function M.on_very_lazy(fn)
   })
 end
 
+function M.extend(t, key, value)
+  local keys = vim.split(key, ".", { plain = true })
+  for i = 1, #keys do
+    local k = keys[i]
+    t[k] = t[k] or {}
+    if type(t) ~= "table" then
+      return
+    end
+    t = t[k]
+  end
+  t[#t + 1] = value
+end
+
 function M.delay_notify()
   local notifs = {}
   local function temp(...)
