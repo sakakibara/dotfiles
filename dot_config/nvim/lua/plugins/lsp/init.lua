@@ -1,5 +1,3 @@
-local cicons = require("config.icons")
-
 return {
   {
     "neovim/nvim-lspconfig",
@@ -23,10 +21,10 @@ return {
           severity_sort = true,
           signs = {
             text = {
-              [vim.diagnostic.severity.ERROR] = cicons.diagnostics.Error,
-              [vim.diagnostic.severity.HINT] = cicons.diagnostics.Hint,
-              [vim.diagnostic.severity.INFO] = cicons.diagnostics.Info,
-              [vim.diagnostic.severity.WARN] = cicons.diagnostics.Warn,
+              [vim.diagnostic.severity.ERROR] = Util.config.icons.diagnostics.Error,
+              [vim.diagnostic.severity.HINT] = Util.config.icons.diagnostics.Hint,
+              [vim.diagnostic.severity.INFO] = Util.config.icons.diagnostics.Info,
+              [vim.diagnostic.severity.WARN] = Util.config.icons.diagnostics.Warn,
             },
           },
         },
@@ -84,22 +82,20 @@ return {
       }
     end,
     config = function(_, opts)
-      local uplugin = require("util.plugin")
-      local ulsp = require("util.lsp")
-      if uplugin.has("neoconf.nvim") then
-        require("neoconf").setup(uplugin.opts("neoconf.nvim"))
+      if Util.plugin.has("neoconf.nvim") then
+        require("neoconf").setup(Util.plugin.opts("neoconf.nvim"))
       end
 
-      require("util.format").register(ulsp.formatter())
+      Util.format.register(Util.lsp.formatter())
 
-      ulsp.on_attach(function(client, buffer)
+      Util.lsp.on_attach(function(client, buffer)
         require("plugins.lsp.keymaps").on_attach(client, buffer)
       end)
 
-      ulsp.setup()
-      ulsp.on_dynamic_capability(require("plugins.lsp.keymaps").on_attach)
+      Util.lsp.setup()
+      Util.lsp.on_dynamic_capability(require("plugins.lsp.keymaps").on_attach)
 
-      ulsp.words.setup(opts.document_highlight)
+      Util.lsp.words.setup(opts.document_highlight)
 
       if vim.fn.has("nvim-0.10.0") == 0 then
         if type(opts.diagnostics.signs) ~= "boolean" then
@@ -113,19 +109,19 @@ return {
 
       if vim.fn.has("nvim-0.10") == 1 then
         if opts.inlay_hints.enabled then
-          ulsp.on_supports_method("textDocument/inlayHint", function(_, buffer)
+          Util.lsp.on_supports_method("textDocument/inlayHint", function(_, buffer)
             if
               vim.api.nvim_buf_is_valid(buffer)
               and vim.bo[buffer].buftype == ""
               and not vim.tbl_contains(opts.inlay_hints.exclude, vim.bo[buffer].filetype)
             then
-              require("util.toggle").inlay_hints(buffer, true)
+              Util.toggle.inlay_hints(buffer, true)
             end
           end)
         end
 
         if opts.codelens.enabled and vim.lsp.codelens then
-          ulsp.on_supports_method("textDocument/codeLens", function(_, buffer)
+          Util.lsp.on_supports_method("textDocument/codeLens", function(_, buffer)
             vim.lsp.codelens.refresh()
             vim.api.nvim_create_autocmd({ "BufEnter", "CursorHold", "InsertLeave" }, {
               buffer = buffer,
@@ -138,8 +134,7 @@ return {
       if type(opts.diagnostics.virtual_text) == "table" and opts.diagnostics.virtual_text.prefix == "icons" then
         opts.diagnostics.virtual_text.prefix = vim.fn.has("nvim-0.10.0") == 0 and "●"
           or function(diagnostic)
-            local icons = require("lazyvim.config").icons.diagnostics
-            for d, icon in pairs(icons) do
+            for d, icon in pairs(Util.config.icons.diagnostics) do
               if diagnostic.severity == vim.diagnostic.severity[d:upper()] then
                 return icon
               end
@@ -200,16 +195,16 @@ return {
           ensure_installed = vim.tbl_deep_extend(
             "force",
             ensure_installed,
-            uplugin.opts("mason-lspconfig.nvim").ensure_installed or {}
+            Util.plugin.opts("mason-lspconfig.nvim").ensure_installed or {}
           ),
           handlers = { setup },
         })
       end
 
-      if ulsp.is_enabled("denols") and ulsp.is_enabled("vtsls") then
+      if Util.lsp.is_enabled("denols") and Util.lsp.is_enabled("vtsls") then
         local is_deno = require("lspconfig.util").root_pattern("deno.json", "deno.jsonc")
-        ulsp.disable("vtsls", is_deno)
-        ulsp.disable("denols", function(root_dir)
+        Util.lsp.disable("vtsls", is_deno)
+        Util.lsp.disable("denols", function(root_dir)
           return not is_deno(root_dir)
         end)
       end

@@ -1,6 +1,4 @@
-local LazyUtil = require("lazy.core.util")
-local upath = require("util.path")
-
+---@class util.root
 local M = {}
 
 M.spec = { "lsp", { ".git", "lua", ".svn", ".vs" }, "cwd", "rel" }
@@ -8,12 +6,12 @@ M.spec = { "lsp", { ".git", "lua", ".svn", ".vs" }, "cwd", "rel" }
 M.detectors = {}
 
 function M.detectors.rel()
-  return upath.get_parent_path()
+  return Util.path.get_parent_path()
 end
 
 function M.detectors.cwd()
-  local cwd = assert(vim.loop.cwd())
-  local parent = upath.get_parent_path()
+  local cwd = assert(vim.uv.cwd())
+  local parent = Util.path.get_parent_path()
   if parent:find(cwd, 1, true) then
     return cwd
   end
@@ -26,35 +24,35 @@ function M.detectors.lsp(buf)
     return {}
   end
   local roots = {}
-  for _, client in pairs(require("util.lsp").get_clients({ bufnr = buf })) do
+  for _, client in pairs(Util.lsp.get_clients({ bufnr = buf })) do
     local workspace = client.config.workspace_folders
     for _, ws in pairs(workspace or {}) do
       roots[#roots + 1] = vim.uri_to_fname(ws.uri)
     end
   end
   return vim.tbl_filter(function(path)
-    path = LazyUtil.norm(path)
+    path = Util.norm(path)
     return path and bufpath:find(path, 1, true) == 1
   end, roots)
 end
 
 function M.detectors.pattern(buf, patterns)
   patterns = type(patterns) == "string" and { patterns } or patterns
-  local path = M.bufpath(buf) or vim.loop.cwd()
+  local path = M.bufpath(buf) or vim.uv.cwd()
   local pattern = vim.fs.find(patterns, { path = path, upward = true })[1]
   return pattern and { vim.fs.dirname(pattern) } or {}
 end
 
 function M.bufpath(buf)
-  return M.realpath(upath.buf_get_name(assert(buf)))
+  return M.realpath(Util.path.buf_get_name(assert(buf)))
 end
 
 function M.realpath(path)
   if path == "" or path == nil then
     return nil
   end
-  path = vim.loop.fs_realpath(path) or path
-  return LazyUtil.norm(path)
+  path = vim.uv.fs_realpath(path) or path
+  return Util.norm(path)
 end
 
 function M.resolve(spec)
@@ -116,8 +114,8 @@ function M.info()
   lines[#lines + 1] = "```lua"
   lines[#lines + 1] = "vim.g.root_spec = " .. vim.inspect(spec)
   lines[#lines + 1] = "```"
-  LazyUtil.info(lines, { title = "Roots" })
-  return roots[1] and roots[1].paths[1] or vim.loop.cwd()
+  Util.info(lines, { title = "Roots" })
+  return roots[1] and roots[1].paths[1] or vim.uv.cwd()
 end
 
 M.cache = {}
@@ -140,7 +138,7 @@ function M.get(opts)
   local ret = M.cache[buf]
   if not ret then
     local roots = M.detect({ all = false })
-    ret = roots[1] and roots[1].paths[1] or vim.loop.cwd()
+    ret = roots[1] and roots[1].paths[1] or vim.uv.cwd()
     M.cache[buf] = ret
   end
   if opts and opts.normalize then

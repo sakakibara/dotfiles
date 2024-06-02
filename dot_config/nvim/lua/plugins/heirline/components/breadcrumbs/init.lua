@@ -1,9 +1,7 @@
-local upath = require("util.path")
-
 return {
   init = function(self)
-    self.fpath = upath.get_current_file_path()
-    _, self.reldirpath, self.basename = upath.get_path_segments(self.fpath)
+    self.fpath = Util.path.get_current_file_path()
+    _, self.reldirpath, self.basename = Util.path.get_path_segments(self.fpath)
   end,
   require("plugins.heirline.components.breadcrumbs.dir_segments"),
   require("plugins.heirline.components.file.icon"),

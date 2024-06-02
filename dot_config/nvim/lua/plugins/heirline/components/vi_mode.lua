@@ -1,5 +1,3 @@
-local icons = require("config.icons")
-
 return {
   init = function(self)
     self.mode = vim.api.nvim_get_mode().mode
@@ -50,7 +48,7 @@ return {
     },
   },
   provider = function(self)
-    return icons.status.Mode .. "%-2(" .. self.mode_names[self.mode] .. "%)"
+    return Util.config.icons.status.Mode .. "%-2(" .. self.mode_names[self.mode] .. "%)"
   end,
   hl = function(self)
     local color = self:mode_color()

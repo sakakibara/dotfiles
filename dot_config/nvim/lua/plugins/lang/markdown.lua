@@ -1,7 +1,3 @@
-local unotes = require("util.notes")
-local upath = require("util.path")
-local utelescope = require("util.telescope")
-
 return {
   {
     "stevearc/conform.nvim",
@@ -107,15 +103,18 @@ return {
           vim.ui.input({ prompt = "Title:" }, function(input)
             if input then
               vim.schedule(function()
-                vim.api.nvim_cmd({ cmd = "edit", args = { unotes.notes_root .. upath.sep .. input .. ".md" } }, {})
+                vim.api.nvim_cmd(
+                  { cmd = "edit", args = { Util.notes.notes_root .. Util.path.sep .. input .. ".md" } },
+                  {}
+                )
               end)
             end
           end)
         end,
         desc = "Edit markdown file",
       },
-      { "<Leader>nf", utelescope.func("files", { cwd = unotes.notes_root }), desc = "Files (notes)" },
-      { "<Leader>ng", utelescope.func("live_grep", { cwd = unotes.notes_root }), desc = "Grep (notes)" },
+      { "<Leader>nf", Util.telescope.run("files", { cwd = Util.notes.notes_root }), desc = "Files (notes)" },
+      { "<Leader>ng", Util.telescope.run("live_grep", { cwd = Util.notes.notes_root }), desc = "Grep (notes)" },
       {
         "<Leader>nj",
         function()
@@ -130,7 +129,7 @@ return {
                 time = time + 24 * 60 * 60
               end
               vim.schedule(function()
-                unotes.open_journal(time)
+                Util.notes.open_journal(time)
               end)
             end
           end)
@@ -145,7 +144,7 @@ return {
     keys = {
       {
         "<Leader>na",
-        utelescope.func("live_grep_args", { cwd = unotes.notes_root }),
+        Util.telescope.run("live_grep_args", { cwd = Util.notes.notes_root }),
         desc = "Grep with args (notes)",
       },
     },

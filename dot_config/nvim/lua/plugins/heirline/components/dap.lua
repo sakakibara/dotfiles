@@ -1,18 +1,15 @@
-local icons = require("config.icons")
-local uplugin = require("util.plugin")
-
 return {
   condition = function()
     local session
 
-    if uplugin.has("dap") then
+    if Util.plugin.has("dap") then
       session = require("dap").session()
     end
 
     return session ~= nil
   end,
   provider = function()
-    return icons.status.Debug .. require("dap").status() .. " "
+    return Util.config.icons.status.Debug .. require("dap").status() .. " "
   end,
   hl = "Debug",
   {

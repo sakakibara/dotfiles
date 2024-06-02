@@ -1,6 +1,4 @@
 local SegmentSeparator = require("plugins.heirline.components.segment_separator")
-local icons = require("config.icons")
-local upath = require("util.path")
 
 local M = {}
 
@@ -10,7 +8,7 @@ function M.dir_segments(opts)
     local children = {}
     local reldirpath = self.reldirpath or nil
     local shorten = opts.max_char and opts.max_char > 0
-    local is_root = reldirpath and reldirpath:sub(1, 1) == upath.sep
+    local is_root = reldirpath and reldirpath:sub(1, 1) == Util.path.sep
     if reldirpath then
       if shorten then
         reldirpath = vim.fn.pathshorten(reldirpath, opts.max_char)
@@ -24,7 +22,7 @@ function M.dir_segments(opts)
         }
         reldirpath = reldirpath:sub(protocol_start_index + 3)
       end
-      local data = upath.split(reldirpath)
+      local data = Util.path.split(reldirpath)
       local is_empty = vim.tbl_isempty(data)
       if opts.prefix and not is_empty then
         children[#children + 1] = SegmentSeparator
@@ -34,19 +32,19 @@ function M.dir_segments(opts)
         start_index = #data - opts.max_depth
         if start_index > 0 then
           children[#children + 1] = {
-            provider = icons.status.Ellipsis,
+            provider = Util.config.icons.status.Ellipsis,
             hl = { fg = "gray" },
           }
           children[#children + 1] = SegmentSeparator
         end
       elseif is_root then
-        table.insert(data, 1, upath.sep)
+        table.insert(data, 1, Util.path.sep)
       end
       for i, d in ipairs(data) do
         if i > start_index then
           local child = {
             {
-              provider = shorten and d .. icons.status.Ellipsis or d,
+              provider = shorten and d .. Util.config.icons.status.Ellipsis or d,
               hl = { fg = "gray" },
             },
           }

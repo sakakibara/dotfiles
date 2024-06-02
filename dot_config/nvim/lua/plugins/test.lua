@@ -7,7 +7,7 @@ return {
       output = { open_on_run = true },
       quickfix = {
         open = function()
-          if require("util.plugin").has("trouble.nvim") then
+          if Util.plugin.has("trouble.nvim") then
             require("trouble").open({ mode = "quickfix", focus = false })
           else
             vim.cmd("copen")
@@ -26,7 +26,7 @@ return {
         },
       }, neotest_ns)
 
-      if require("util.plugin").has("trouble.nvim") then
+      if Util.plugin.has("trouble.nvim") then
         opts.consumers = opts.consumers or {}
         opts.consumers.trouble = function(client)
           client.listeners.results = function(adapter_id, results, partial)
@@ -94,7 +94,7 @@ return {
       {
         "<Leader>tT",
         function()
-          require("neotest").run.run(vim.loop.cwd())
+          require("neotest").run.run(vim.uv.cwd())
         end,
         desc = "Run All Test Files",
       },

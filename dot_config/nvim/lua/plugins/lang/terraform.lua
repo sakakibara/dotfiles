@@ -1,5 +1,3 @@
-local uplugin = require("util.plugin")
-
 return {
   {
     "nvim-treesitter/nvim-treesitter",
@@ -61,7 +59,7 @@ return {
       {
         "ANGkeith/telescope-terraform-doc.nvim",
         config = function()
-          uplugin.on_load("telescope.nvim", function()
+          Util.plugin.on_load("telescope.nvim", function()
             require("telescope").load_extension("terraform_doc")
           end)
         end,
@@ -69,7 +67,7 @@ return {
       {
         "cappyzawa/telescope-terraform.nvim",
         config = function()
-          uplugin.on_load("telescope.nvim", function()
+          Util.plugin.on_load("telescope.nvim", function()
             require("telescope").load_extension("terraform")
           end)
         end,

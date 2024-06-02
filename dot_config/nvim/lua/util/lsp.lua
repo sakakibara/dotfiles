@@ -1,7 +1,4 @@
-local LazyUtil = require("lazy.core.util")
-local uplugin = require("util.plugin")
-local uroot = require("util.root")
-
+---@class util.lsp
 local M = {}
 
 function M.get_clients(opts)
@@ -109,8 +106,8 @@ end
 
 function M.rename_file()
   local buf = vim.api.nvim_get_current_buf()
-  local old = assert(uroot.realpath(vim.api.nvim_buf_get_name(buf)))
-  local root = assert(uroot.realpath(uroot.get({ normalize = true })))
+  local old = assert(Util.root.realpath(vim.api.nvim_buf_get_name(buf)))
+  local root = assert(Util.root.realpath(Util.root.get({ normalize = true })))
   assert(old:find(root, 1, true) == 1, "File not in project root")
 
   local extra = old:sub(#root + 2)
@@ -122,7 +119,7 @@ function M.rename_file()
     if not new or new == "" or new == extra then
       return
     end
-    new = LazyUtil.norm(root .. "/" .. new)
+    new = Util.norm(root .. "/" .. new)
     vim.fn.mkdir(vim.fs.dirname(new), "p")
     M.on_rename(old, new, function()
       vim.fn.rename(old, new)
@@ -190,10 +187,10 @@ function M.formatter(opts)
     primary = true,
     priority = 1,
     format = function(buf)
-      M.format(LazyUtil.merge(filter, { bufnr = buf }))
+      M.format(Util.merge(filter, { bufnr = buf }))
     end,
     sources = function(buf)
-      local clients = M.get_clients(LazyUtil.merge(filter, { bufnr = buf }))
+      local clients = M.get_clients(Util.merge(filter, { bufnr = buf }))
       local ret = vim.tbl_filter(function(client)
         return client.supports_method("textDocument/formatting")
           or client.supports_method("textDocument/rangeFormatting")
@@ -203,7 +200,7 @@ function M.formatter(opts)
       end, ret)
     end,
   }
-  return LazyUtil.merge(ret, opts)
+  return Util.merge(ret, opts)
 end
 
 function M.format(opts)
@@ -211,8 +208,8 @@ function M.format(opts)
     "force",
     {},
     opts or {},
-    uplugin.opts("nvim-lspconfig").format or {},
-    uplugin.opts("conform.nvim").format or {}
+    Util.plugin.opts("nvim-lspconfig").format or {},
+    Util.plugin.opts("conform.nvim").format or {}
   )
   local ok, conform = pcall(require, "conform")
   if ok then

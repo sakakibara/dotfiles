@@ -1,5 +1,3 @@
-local icons = require("config.icons")
-
 return {
   condition = function()
     return package.loaded["overseer"]
@@ -11,10 +9,10 @@ return {
   end,
   static = {
     symbols = {
-      ["FAILURE"] = icons.status.Failure,
-      ["CANCELED"] = icons.status.Canceled,
-      ["SUCCESS"] = icons.status.Success,
-      ["RUNNING"] = icons.status.Running,
+      ["FAILURE"] = Util.config.icons.status.Failure,
+      ["CANCELED"] = Util.config.icons.status.Canceled,
+      ["SUCCESS"] = Util.config.icons.status.Success,
+      ["RUNNING"] = Util.config.icons.status.Running,
     },
     colors = {
       ["FAILURE"] = "red",

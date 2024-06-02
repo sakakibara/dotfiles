@@ -1,3 +1,4 @@
+---@class util.cmp
 local M = {}
 
 function M.confirm(opts)
@@ -8,7 +9,7 @@ function M.confirm(opts)
   }, opts or {})
   return function(fallback)
     if cmp.core.view:visible() or vim.fn.pumvisible() == 1 then
-      require("util.keymaps").create_undo()
+      Util.keymaps.create_undo()
       if cmp.confirm(opts) then
         return
       end

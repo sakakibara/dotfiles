@@ -1,3 +1,4 @@
+---@class util.terminal
 local M = {}
 
 function M.lazygit_toggle()

@@ -1,3 +1,4 @@
+---@class util.path
 local M = {}
 
 M.remote_patterns = { "/mnt/" }
@@ -11,7 +12,7 @@ function M.is_remote_file(path)
   end
 end
 
-M.home = vim.loop.os_homedir()
+M.home = vim.uv.os_homedir()
 
 local function get_sep()
   if jit then
@@ -34,7 +35,7 @@ end
 
 function M.is_dir(path)
   local current_path = path or ""
-  local stat = vim.loop.fs_stat(current_path)
+  local stat = vim.uv.fs_stat(current_path)
   return stat and stat.type == "directory"
 end
 
@@ -43,7 +44,7 @@ function M.get_current_file_path()
 end
 
 function M.buf_get_name(buf)
-  local ft = vim.api.nvim_buf_get_option(buf, "filetype")
+  local ft = vim.api.nvim_get_option_value("filetype", { buf = buf })
   if ft == "oil" then
     return require("oil").get_current_dir()
   end
@@ -53,7 +54,7 @@ end
 function M.get_path_segments(path)
   local fnmod = vim.fn.fnamemodify
   local cpath = path and path or M.get_current_file_path() or ""
-  local cwd = vim.loop.cwd() or ""
+  local cwd = vim.uv.cwd() or ""
   local pwd, reldirpath, basename
 
   if cpath == "" then

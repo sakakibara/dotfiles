@@ -1,5 +1,3 @@
-local ucmp = require("util.cmp")
-
 return {
   {
     "echasnovski/mini.surround",
@@ -151,8 +149,8 @@ return {
           ["<C-f>"] = cmp.mapping.scroll_docs(4),
           ["<C-Space>"] = cmp.mapping.complete(),
           ["<C-e>"] = cmp.mapping.abort(),
-          ["<CR>"] = ucmp.confirm(),
-          ["<S-CR>"] = ucmp.confirm({ behavior = cmp.ConfirmBehavior.Replace }),
+          ["<CR>"] = Util.cmp.confirm(),
+          ["<S-CR>"] = Util.cmp.confirm({ behavior = cmp.ConfirmBehavior.Replace }),
           ["<C-CR>"] = function(fallback)
             cmp.abort()
             fallback()
@@ -164,7 +162,7 @@ return {
         ),
         formatting = {
           format = function(_, item)
-            local icons = require("config.icons").kinds
+            local icons = Util.config.icons.kinds
             if icons[item.kind] then
               item.kind = icons[item.kind] .. item.kind
             end
@@ -263,7 +261,7 @@ return {
     config = function(_, opts)
       require("mini.ai").setup(opts)
 
-      require("util.plugin").on_load("which-key.nvim", function()
+      Util.plugin.on_load("which-key.nvim", function()
         local i = {
           [" "] = "Whitespace",
           ['"'] = 'Balanced "',
@@ -368,7 +366,7 @@ return {
       { "<Leader>utf", "<Cmd>ToggleTerm direction=float<CR>", desc = "Toggle terminal (float)" },
       { "<Leader>uth", "<Cmd>ToggleTerm size=10 direction=horizontal<CR>", desc = "Toggle terminal (horizontal)" },
       { "<Leader>utv", "<Cmd>ToggleTerm size=80 direction=vertical<CR>", desc = "Toggle terminal (vertical)" },
-      { "<Leader>gl", require("util.terminal").lazygit_toggle, desc = "Lazygit" },
+      { "<Leader>gl", Util.terminal.lazygit_toggle, desc = "Lazygit" },
     },
   },
 

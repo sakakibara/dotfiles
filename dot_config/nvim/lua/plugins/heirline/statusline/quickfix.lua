@@ -1,5 +1,4 @@
 local conditions = require("heirline.conditions")
-local icons = require("config.icons")
 
 return {
   condition = function()
@@ -7,7 +6,7 @@ return {
       buftype = { "quickfix" },
     })
   end,
-  require("heirline.utils").surround({ icons.powerline.block, icons.powerline.block }, "gray", {
+  require("heirline.utils").surround({ Util.config.icons.powerline.block, Util.config.icons.powerline.block }, "gray", {
     hl = {
       fg = false,
       force = true,

@@ -1,5 +1,3 @@
-local uplugin = require("util.plugin")
-
 local java_filetypes = { "java" }
 
 local function extend_or_override(config, custom, ...)
@@ -104,7 +102,7 @@ return {
     config = function(_, opts)
       local mason_registry = require("mason-registry")
       local bundles = {}
-      if opts.dap and uplugin.has("nvim-dap") and mason_registry.is_installed("java-debug-adapter") then
+      if opts.dap and Util.plugin.has("nvim-dap") and mason_registry.is_installed("java-debug-adapter") then
         local java_dbg_pkg = mason_registry.get_package("java-debug-adapter")
         local java_dbg_path = java_dbg_pkg:get_install_path()
         local jar_patterns = {
@@ -134,7 +132,7 @@ return {
             bundles = bundles,
           },
           settings = opts.settings,
-          capabilities = uplugin.has("cmp-nvim-lsp") and require("cmp_nvim_lsp").default_capabilities() or nil,
+          capabilities = Util.plugin.has("cmp-nvim-lsp") and require("cmp_nvim_lsp").default_capabilities() or nil,
         }, opts.jdtls)
 
         require("jdtls").start_or_attach(config)
@@ -175,7 +173,7 @@ return {
               },
             }, { mode = "v", buffer = args.buf })
 
-            if opts.dap and uplugin.has("nvim-dap") and mason_registry.is_installed("java-debug-adapter") then
+            if opts.dap and Util.plugin.has("nvim-dap") and mason_registry.is_installed("java-debug-adapter") then
               require("jdtls").setup_dap(opts.dap)
               require("jdtls.dap").setup_dap_main_class_configs()
 

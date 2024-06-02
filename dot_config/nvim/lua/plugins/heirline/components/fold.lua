@@ -1,17 +1,15 @@
-local icons = require("config.icons")
-
 return {
   static = {
     fillchars = vim.opt.fillchars:get(),
-    ffi = require("util.ffi"),
+    ffi = require("plugins.heirline.ffi"),
   },
   condition = function()
     return vim.opt.foldcolumn:get() ~= "0"
   end,
   provider = function(self)
-    local foldopen = self.fillchars.foldopen or icons.status.FoldOpen
-    local foldclosed = self.fillchars.foldclose or icons.status.FoldClose
-    local foldsep = self.fillchars.foldsep or icons.status.FoldSeparator
+    local foldopen = self.fillchars.foldopen or Util.config.icons.status.FoldOpen
+    local foldclosed = self.fillchars.foldclose or Util.config.icons.status.FoldClose
+    local foldsep = self.fillchars.foldsep or Util.config.icons.status.FoldSeparator
     local wp = self.ffi.C.find_window_by_handle(0, self.ffi.new("Error"))
     local width = self.ffi.C.compute_foldcolumn(wp, 0)
     local foldinfo = width > 0 and self.ffi.C.fold_info(wp, vim.v.lnum)
@@ -51,9 +49,9 @@ return {
       local args = require("plugins.heirline.components.util.statuscolumn").clickargs(...)
       local char = args.char
       local fillchars = vim.opt_local.fillchars:get()
-      if char == (fillchars.foldopen or icons.status.FoldOpen) then
+      if char == (fillchars.foldopen or Util.config.icons.status.FoldOpen) then
         vim.cmd("norm! zc")
-      elseif char == (fillchars.foldclose or icons.status.FoldClose) then
+      elseif char == (fillchars.foldclose or Util.config.icons.status.FoldClose) then
         vim.cmd("norm! zo")
       end
     end,

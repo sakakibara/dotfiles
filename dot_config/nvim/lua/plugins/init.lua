@@ -1,4 +1,4 @@
-require("util.plugin").init()
+require("config").init()
 
 return {
   { "folke/lazy.nvim", version = "*" },

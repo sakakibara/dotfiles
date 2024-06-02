@@ -34,7 +34,7 @@ return {
       },
       setup = {
         ruff_lsp = function()
-          require("util.lsp").on_attach(function(client, _)
+          Util.lsp.on_attach(function(client, _)
             if client.name == "ruff_lsp" then
               client.server_capabilities.hoverProvider = false
             end
@@ -101,7 +101,7 @@ return {
     "linux-cultist/venv-selector.nvim",
     cmd = "VenvSelect",
     opts = function(_, opts)
-      if require("util.plugin").has("nvim-dap-python") then
+      if Util.plugin.has("nvim-dap-python") then
         opts.dap_enabled = true
       end
       return vim.tbl_deep_extend("force", opts, {

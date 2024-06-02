@@ -117,10 +117,10 @@ return {
         end,
         eslint = function()
           local function get_client(buf)
-            return require("util.lsp").get_clients({ name = "eslint", bufnr = buf })[1]
+            return Util.lsp.get_clients({ name = "eslint", bufnr = buf })[1]
           end
 
-          local formatter = require("util.lsp").formatter({
+          local formatter = Util.lsp.formatter({
             name = "eslint: lsp",
             primary = false,
             priority = 200,
@@ -144,7 +144,7 @@ return {
             end
           end
 
-          require("util.format").register(formatter)
+          Util.format.register(formatter)
         end,
       },
     },

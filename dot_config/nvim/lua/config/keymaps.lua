@@ -1,6 +1,4 @@
 local map = vim.keymap.set
-local ufile, ukeymaps, utoggle = require("util.file"), require("util.keymaps"), require("util.toggle")
-ukeymaps.setup()
 
 map({ "n", "x" }, "j", "v:count == 0 ? 'gj' : 'j'", { expr = true, silent = true })
 map({ "n", "x" }, "k", "v:count == 0 ? 'gk' : 'k'", { expr = true, silent = true })
@@ -21,16 +19,16 @@ map("n", "<Leader>bs", "<Cmd>w<CR>", { desc = "Save buffer" })
 
 map("n", "[Q", "<Cmd>cfirst<CR>", { desc = "First quickfix" })
 map("n", "]Q", "<Cmd>clast<CR>", { desc = "Last quickfix" })
-map("n", "[f", ufile.prev_file, { desc = "Previous file" })
-map("n", "]f", ufile.next_file, { desc = "Next file" })
-map("n", "[F", ufile.first_file, { desc = "First file" })
-map("n", "]F", ufile.last_file, { desc = "Last file" })
+map("n", "[f", Util.file.prev_file, { desc = "Previous file" })
+map("n", "]f", Util.file.next_file, { desc = "Next file" })
+map("n", "[F", Util.file.first_file, { desc = "First file" })
+map("n", "]F", Util.file.last_file, { desc = "Last file" })
 
-map("n", "[ ", "v:lua.KeymapsUtil.put_empty_line(v:true)", { expr = true, desc = "Add empty line above" })
-map("n", "] ", "v:lua.KeymapsUtil.put_empty_line(v:false)", { expr = true, desc = "Add empty line below" })
+map("n", "[ ", "v:lua.Util.keymaps.put_empty_line(v:true)", { expr = true, desc = "Add empty line above" })
+map("n", "] ", "v:lua.Util.keymaps.put_empty_line(v:false)", { expr = true, desc = "Add empty line below" })
 
-map("n", "<Leader>fy", ukeymaps.yank_relative_path, { desc = "Yank relative path" })
-map("n", "<Leader>fY", ukeymaps.yank_full_path, { desc = "Yank full path" })
+map("n", "<Leader>fy", Util.keymaps.yank_relative_path, { desc = "Yank relative path" })
+map("n", "<Leader>fY", Util.keymaps.yank_full_path, { desc = "Yank full path" })
 
 map({ "i", "n" }, "<Esc>", "<Cmd>nohlsearch<CR><Esc>", { desc = "Escape and clear hlsearch" })
 map(
@@ -49,12 +47,12 @@ map("n", "<Leader>qq", "<Cmd>qa<CR>", { desc = "Quit all" })
 
 local conceallevel = vim.o.conceallevel > 0 and vim.o.conceallevel or 3
 map("n", "<Leader>oo", function()
-  utoggle("conceallevel", false, { 0, conceallevel })
+  Util.toggle("conceallevel", false, { 0, conceallevel })
 end, { desc = "Toggle conceal" })
 
 if vim.lsp.buf.inlay_hint or vim.lsp.inlay_hint then
   map("n", "<Leader>oh", function()
-    utoggle.inlay_hints()
+    Util.toggle.inlay_hints()
   end, { desc = "Toggle inlay hints" })
 end
 
@@ -67,55 +65,55 @@ map("n", "<Leader>oT", function()
 end, { desc = "Toggle treesitter highlight" })
 
 map("n", "<Leader>od", function()
-  utoggle.diagnostics()
+  Util.toggle.diagnostics()
 end, { desc = "Toggle diagnostic" })
 
 map("n", "<Leader>on", function()
-  utoggle.number()
+  Util.toggle.number()
 end, { desc = "Toggle line numbers" })
 
 map("n", "<Leader>or", function()
-  utoggle("relativenumber")
+  Util.toggle("relativenumber")
 end, { desc = "Toggle 'relativenumber'" })
 
 map("n", "<Leader>os", function()
-  utoggle("spell")
+  Util.toggle("spell")
 end, { desc = "Toggle 'spell'" })
 
 map("n", "<Leader>ow", function()
-  utoggle("wrap")
+  Util.toggle("wrap")
 end, { desc = "Toggle 'wrap'" })
 
 map("n", "<Leader>oc", function()
-  utoggle("cursorline")
+  Util.toggle("cursorline")
 end, { desc = "Toggle 'cursorline'" })
 
 map("n", "<Leader>oC", function()
-  utoggle("cursorcolumn")
+  Util.toggle("cursorcolumn")
 end, { desc = "Toggle 'cursorcolumn'" })
 
 map("n", "<Leader>oi", function()
-  utoggle("ignorecase")
+  Util.toggle("ignorecase")
 end, { desc = "Toggle 'ignorecase'" })
 
 map("n", "<Leader>ol", function()
-  utoggle("list")
+  Util.toggle("list")
 end, { desc = "Toggle 'list'" })
 
 map("n", "<Leader>ob", function()
-  utoggle("background", false, { "dark", "light" })
+  Util.toggle("background", false, { "dark", "light" })
 end, { desc = "Toggle 'background'" })
 
 map("n", "<Leader>of", function()
-  require("util.format").toggle()
+  Util.format.toggle()
 end, { desc = "Toggle auto format (global)" })
 
 map("n", "<Leader>oF", function()
-  require("util.format").toggle(true)
+  Util.format.toggle(true)
 end, { desc = "Toggle auto format (buffer)" })
 
 map({ "n", "v" }, "<Leader>cf", function()
-  require("util.format").format({ force = true })
+  Util.format.run({ force = true })
 end, { desc = "Format" })
 
 local function diagnostic_goto(next, severity)

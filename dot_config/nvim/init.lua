@@ -1,5 +1,7 @@
+vim.uv = vim.uv or vim.loop
+
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
-if not (vim.uv or vim.loop).fs_stat(lazypath) then
+if not vim.uv.fs_stat(lazypath) then
   vim.fn.system({
     "git",
     "clone",
@@ -11,4 +13,4 @@ if not (vim.uv or vim.loop).fs_stat(lazypath) then
 end
 vim.opt.rtp:prepend(lazypath)
 
-require("util.plugin").setup(require("config.lazy"))
+require("config").setup(require("config.lazy"))

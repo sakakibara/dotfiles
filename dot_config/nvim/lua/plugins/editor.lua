@@ -1,6 +1,3 @@
-local utelescope = require("util.telescope")
-local root_path = require("util.root").get
-local parent_path = require("util.path").get_parent_path
 return {
   {
     "folke/which-key.nvim",
@@ -510,7 +507,7 @@ return {
         function()
           if require("trouble").is_open() then
             require("trouble").previous({ skip_groups = true, jump = true })
-          elseif require("util.plugin").has("qf_helper.nvim") then
+          elseif Util.plugin.has("qf_helper.nvim") then
             vim.cmd("QPrev")
           else
             local ok, err = pcall(vim.cmd.cprev)
@@ -526,7 +523,7 @@ return {
         function()
           if require("trouble").is_open() then
             require("trouble").next({ skip_groups = true, jump = true })
-          elseif require("util.plugin").has("qf_helper.nvim") then
+          elseif Util.plugin.has("qf_helper.nvim") then
             vim.cmd("QNext")
           else
             local ok, err = pcall(vim.cmd.cnext)
@@ -550,7 +547,7 @@ return {
         build = "make",
         enabled = vim.fn.executable("make") == 1,
         config = function()
-          require("util.plugin").on_load("telescope.nvim", function()
+          Util.plugin.on_load("telescope.nvim", function()
             require("telescope").load_extension("fzf")
           end)
         end,
@@ -559,14 +556,18 @@ return {
     cmd = "Telescope",
     version = false,
     keys = {
-      { "<Leader><Space>", utelescope.func("files", { cwd = root_path }), desc = "Files" },
+      { "<Leader><Space>", Util.telescope.run("files", { cwd = Util.root.get }), desc = "Files" },
       { "<Leader>bb", "<Cmd>Telescope buffers<CR>", desc = "Buffers" },
-      { "<Leader>ff", utelescope.func("files", { cwd = root_path }), desc = "Files" },
-      { "<Leader>fF", utelescope.func("files", { cwd = vim.loop.cwd }), desc = "Files (cwd)" },
-      { "<Leader>fpf", utelescope.func("find_files", { cwd = parent_path }), desc = "Find files (parent)" },
-      { "<Leader>fg", utelescope.func("live_grep", { cwd = root_path }), desc = "Grep" },
-      { "<Leader>fG", utelescope.func("live_grep", { cwd = vim.loop.cwd }), desc = "Grep (cwd)" },
-      { "<Leader>fpg", utelescope.func("live_grep", { cwd = parent_path }), desc = "Grep (parent)" },
+      { "<Leader>ff", Util.telescope.run("files", { cwd = Util.root.get }), desc = "Files" },
+      { "<Leader>fF", Util.telescope.run("files", { cwd = vim.uv.cwd }), desc = "Files (cwd)" },
+      {
+        "<Leader>fpf",
+        Util.telescope.run("find_files", { cwd = Util.path.get_parent_path }),
+        desc = "Find files (parent)",
+      },
+      { "<Leader>fg", Util.telescope.run("live_grep", { cwd = Util.root.get }), desc = "Grep" },
+      { "<Leader>fG", Util.telescope.run("live_grep", { cwd = vim.uv.cwd }), desc = "Grep (cwd)" },
+      { "<Leader>fpg", Util.telescope.run("live_grep", { cwd = Util.path.get_parent_path }), desc = "Grep (parent)" },
       {
         "<Leader>ft",
         function()
@@ -574,18 +575,22 @@ return {
         end,
         desc = "Filetypes",
       },
-      { "<Leader>fw", utelescope.func("grep_string", { cwd = root_path, word_match = "-w" }), desc = "Word" },
-      { "<Leader>fW", utelescope.func("grep_string", { cwd = vim.loop.cwd, word_match = "-w" }), desc = "Word (cwd)" },
+      { "<Leader>fw", Util.telescope.run("grep_string", { cwd = Util.root.get, word_match = "-w" }), desc = "Word" },
+      {
+        "<Leader>fW",
+        Util.telescope.run("grep_string", { cwd = vim.uv.cwd, word_match = "-w" }),
+        desc = "Word (cwd)",
+      },
       {
         "<Leader>fpw",
-        utelescope.func("grep_string", { cwd = parent_path, word_match = "-w" }),
+        Util.telescope.run("grep_string", { cwd = Util.path.get_parent_path, word_match = "-w" }),
         desc = "Word (parent)",
       },
-      { "<Leader>fw", utelescope.func("grep_string", { cwd = root_path }), mode = "v", desc = "Selection" },
-      { "<Leader>fW", utelescope.func("grep_string", { cwd = vim.loop.cwd }), mode = "v", desc = "Selection (cwd)" },
+      { "<Leader>fw", Util.telescope.run("grep_string", { cwd = Util.root.get }), mode = "v", desc = "Selection" },
+      { "<Leader>fW", Util.telescope.run("grep_string", { cwd = vim.uv.cwd }), mode = "v", desc = "Selection (cwd)" },
       {
         "<Leader>fpw",
-        utelescope.func("grep_string", { cwd = parent_path }),
+        Util.telescope.run("grep_string", { cwd = Util.path.get_parent_path }),
         mode = "v",
         desc = "Selection (parent)",
       },
@@ -593,7 +598,7 @@ return {
         "<Leader>fs",
         function()
           require("telescope.builtin").lsp_document_symbols({
-            symbols = require("util.filter").get_kind_filter(),
+            symbols = Util.telescope.get_kind_filter(),
           })
         end,
         desc = "Goto symbol",
@@ -602,21 +607,21 @@ return {
         "<Leader>fS",
         function()
           require("telescope.builtin").lsp_dynamic_workspace_symbols({
-            symbols = require("util.filter").get_kind_filter(),
+            symbols = Util.telescope.get_kind_filter(),
           })
         end,
         desc = "Goto symbol (workspace)",
       },
-      { "<Leader>fcf", utelescope.func("files", { cwd = vim.fn.stdpath("config") }), desc = "Files (config)" },
-      { "<Leader>fcg", utelescope.func("live_grep", { cwd = vim.fn.stdpath("config") }), desc = "Grep (config)" },
+      { "<Leader>fcf", Util.telescope.run("files", { cwd = vim.fn.stdpath("config") }), desc = "Files (config)" },
+      { "<Leader>fcg", Util.telescope.run("live_grep", { cwd = vim.fn.stdpath("config") }), desc = "Grep (config)" },
       {
         "<Leader>fcw",
-        utelescope.func("grep_string", { cwd = vim.fn.stdpath("config"), word_match = "-w" }),
+        Util.telescope.run("grep_string", { cwd = vim.fn.stdpath("config"), word_match = "-w" }),
         desc = "Word (config)",
       },
       {
         "<Leader>fcw",
-        utelescope.func("grep_string", { cwd = vim.fn.stdpath("config") }),
+        Util.telescope.run("grep_string", { cwd = vim.fn.stdpath("config") }),
         mode = "v",
         desc = "Selection (config)",
       },
@@ -633,7 +638,7 @@ return {
       { "<Leader>sl", "<Cmd>Telescope loclist<CR>", desc = "Location list" },
       { "<Leader>sq", "<Cmd>Telescope quickfix<CR>", desc = "Quickfix list" },
       { "<Leader>sQ", "<Cmd>Telescope quickfixhistory<CR>", desc = "Quickfix history" },
-      { "<Leader>uC", utelescope.func("colorscheme", { enable_preview = true }), desc = "Colorschemes" },
+      { "<Leader>uC", Util.telescope.run("colorscheme", { enable_preview = true }), desc = "Colorschemes" },
       { "<Leader>;", "<Cmd>Telescope commands<CR>", desc = "Commands" },
       { "<Leader>'", "<Cmd>Telescope resume<CR>", desc = "Resume" },
     },
@@ -650,12 +655,12 @@ return {
             ["<M-i>"] = function()
               local action_state = require("telescope.actions.state")
               local line = action_state.get_current_line()
-              utelescope.func("find_files", { no_ignore = true, default_text = line })()
+              Util.telescope.run("find_files", { no_ignore = true, default_text = line })()
             end,
             ["<M-.>"] = function()
               local action_state = require("telescope.actions.state")
               local line = action_state.get_current_line()
-              utelescope.func("find_files", { hidden = true, default_text = line })()
+              Util.telescope.run("find_files", { hidden = true, default_text = line })()
             end,
             ["<C-Down>"] = function(...)
               return require("telescope.actions").cycle_history_next(...)
@@ -798,12 +803,16 @@ return {
   {
     "nvim-telescope/telescope-live-grep-args.nvim",
     keys = {
-      { "<Leader>fa", utelescope.func("live_grep_args", { cwd = root_path }), desc = "Grep with args" },
-      { "<Leader>fA", utelescope.func("live_grep_args", { cwd = vim.loop.cwd }), desc = "Grep with args (cwd)" },
-      { "<Leader>fpa", utelescope.func("live_grep_args", { cwd = parent_path }), desc = "Grep with args (parent)" },
+      { "<Leader>fa", Util.telescope.run("live_grep_args", { cwd = Util.root.get }), desc = "Grep with args" },
+      { "<Leader>fA", Util.telescope.run("live_grep_args", { cwd = vim.uv.cwd }), desc = "Grep with args (cwd)" },
+      {
+        "<Leader>fpa",
+        Util.telescope.run("live_grep_args", { cwd = Util.path.get_parent_path }),
+        desc = "Grep with args (parent)",
+      },
       {
         "<Leader>fca",
-        utelescope.func("live_grep_args", { cwd = vim.fn.stdpath("config") }),
+        Util.telescope.run("live_grep_args", { cwd = vim.fn.stdpath("config") }),
         desc = "Grep with args (config)",
       },
     },
@@ -816,17 +825,17 @@ return {
     keys = {
       {
         "<Leader>fb",
-        utelescope.func("file_browser", { cwd = root_path }),
+        Util.telescope.run("file_browser", { cwd = Util.root.get }),
         desc = "File browser",
       },
       {
         "<Leader>fB",
-        utelescope.func("file_browser", { cwd = vim.loop.cwd }),
+        Util.telescope.run("file_browser", { cwd = vim.uv.cwd }),
         desc = "File browser (cwd)",
       },
       {
         "<Leader>fpb",
-        utelescope.func("file_browser", { cwd = parent_path }),
+        Util.telescope.run("file_browser", { cwd = Util.path.get_parent_path }),
         desc = "File browser (parent)",
       },
     },
@@ -1172,7 +1181,7 @@ return {
 
   {
     "folke/todo-comments.nvim",
-    cmd = { "TodoTrouble", "TodoTelescope" },
+    cmd = { "TodoTelescope" },
     event = "LazyFile",
     config = true,
     keys = {
@@ -1190,8 +1199,12 @@ return {
         end,
         desc = "Previous todo comment",
       },
-      { "<Leader>et", "<Cmd>TodoTrouble<CR>", desc = "Todo (trouble)" },
-      { "<Leader>eT", "<Cmd>TodoTrouble keywords=TODO,FIX,FIXME<CR>", desc = "Todo/Fix/Fixme (trouble)" },
+      { "<Leader>et", "<Cmd>Trouble todo toggle<CR>", desc = "Todo (trouble)" },
+      {
+        "<Leader>eT",
+        "<Cmd>Trouble todo toggle filter = {tag = {TODO,FIX,FIXME}}<CR>",
+        desc = "Todo/Fix/Fixme (trouble)",
+      },
       { "<Leader>st", "<Cmd>TodoTelescope<CR>", desc = "Todo" },
       { "<Leader>sT", "<Cmd>TodoTelescope keywords=TODO,FIX,FIXME<CR>", desc = "Todo/Fix/Fixme" },
     },

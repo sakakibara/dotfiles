@@ -1,6 +1,5 @@
+---@class util.file
 local M = {}
-
-local upath = require("util.path")
 
 local function fs_normalize_path(path)
   local res = path:gsub("\\", "/"):gsub("/+", "/"):gsub("(.)/$", "%1")
@@ -8,7 +7,7 @@ local function fs_normalize_path(path)
 end
 
 local function fs_is_present_path(path)
-  return vim.loop.fs_stat(path) ~= nil
+  return vim.uv.fs_stat(path) ~= nil
 end
 
 local function fs_child_path(dir, name)
@@ -23,13 +22,13 @@ local function fs_get_type(path)
 end
 
 local function get_files(path)
-  local fs = vim.loop.fs_scandir(path)
+  local fs = vim.uv.fs_scandir(path)
   local res = {}
   if not fs then
     return res
   end
 
-  local name, fs_type = vim.loop.fs_scandir_next(fs)
+  local name, fs_type = vim.uv.fs_scandir_next(fs)
   while name do
     if not (fs_type == "file" or fs_type == "directory") then
       fs_type = fs_get_type(fs_child_path(path, name))
@@ -37,7 +36,7 @@ local function get_files(path)
     if fs_type == "file" then
       table.insert(res, name)
     end
-    name, fs_type = vim.loop.fs_scandir_next(fs)
+    name, fs_type = vim.uv.fs_scandir_next(fs)
   end
 
   table.sort(res, function(x, y)
@@ -62,7 +61,7 @@ local function current_file_index(files)
 end
 
 function M.next_file()
-  local dir = upath.get_parent_path()
+  local dir = Util.path.get_parent_path()
   local files = get_files(dir)
   if files == nil then
     return
@@ -76,7 +75,7 @@ function M.next_file()
 end
 
 function M.prev_file()
-  local dir = upath.get_parent_path()
+  local dir = Util.path.get_parent_path()
   local files = get_files(dir)
   if files == nil then
     return
@@ -90,7 +89,7 @@ function M.prev_file()
 end
 
 function M.first_file()
-  local dir = upath.get_parent_path()
+  local dir = Util.path.get_parent_path()
   local files = get_files(dir)
   if files == nil then
     return
@@ -101,7 +100,7 @@ function M.first_file()
 end
 
 function M.last_file()
-  local dir = upath.get_parent_path()
+  local dir = Util.path.get_parent_path()
   local files = get_files(dir)
   if files == nil then
     return

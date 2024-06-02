@@ -1,5 +1,4 @@
 local SegmentSeparator = require("plugins.heirline.components.segment_separator")
-local icons = require("config.icons")
 
 local M = {}
 
@@ -17,7 +16,7 @@ function M.symbol_segments(opts)
       start_index = #data - opts.max_depth
       if start_index > 0 then
         children[#children + 1] = {
-          provider = icons.status.Ellipsis,
+          provider = Util.config.icons.status.Ellipsis,
           hl = { fg = "gray" },
         }
         children[#children + 1] = SegmentSeparator
@@ -35,7 +34,7 @@ function M.symbol_segments(opts)
             provider = function()
               local symbol = string.gsub(d.name, "%%", "%%%%"):gsub("%s*->%s*", "")
               if opts.max_char and opts.max_char > 0 then
-                symbol = symbol:sub(-opts.max_char) .. icons.status.Ellipsis
+                symbol = symbol:sub(-opts.max_char) .. Util.config.icons.status.Ellipsis
               end
               return symbol
             end,

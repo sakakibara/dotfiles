@@ -1,10 +1,5 @@
-local LazyUtil = require("lazy.core.util")
-
-local M = setmetatable({}, {
-  __call = function(m, ...)
-    return m.format(...)
-  end,
-})
+---@class util.format
+local M = {}
 
 M.formatters = {}
 function M.register(formatter)
@@ -54,9 +49,9 @@ function M.info(buf)
   if not have then
     lines = { "\nNo formatters available for this buffer" }
   end
-  LazyUtil[enabled and "info" or "warn"](
+  Util[enabled and "info" or "warn"](
     table.concat(lines, "\n"),
-    { title = "LazyFormat (" .. (enabled and "enabled" or "disabled") .. ")" }
+    { title = "Format (" .. (enabled and "enabled" or "disabled") .. ")" }
   )
 end
 
@@ -82,7 +77,7 @@ function M.toggle(buf)
   M.info()
 end
 
-function M.format(opts)
+function M.run(opts)
   opts = opts or {}
   local buf = opts.buf or vim.api.nvim_get_current_buf()
   if not ((opts and opts.force) or M.enabled(buf)) then
@@ -93,27 +88,27 @@ function M.format(opts)
   for _, formatter in ipairs(M.resolve(buf)) do
     if formatter.active then
       done = true
-      LazyUtil.try(function()
+      Util.try(function()
         return formatter.format(buf)
       end, { msg = "Formatter `" .. formatter.name .. "` failed" })
     end
   end
 
   if not done and opts and opts.force then
-    LazyUtil.warn("No formatter available", { title = "Formatter" })
+    Util.warn("No formatter available", { title = "Formatter" })
   end
 end
 
 function M.setup()
   vim.api.nvim_create_autocmd("BufWritePre", {
-    group = vim.api.nvim_create_augroup("LazyFormat", {}),
+    group = vim.api.nvim_create_augroup("Format", {}),
     callback = function(event)
-      M.format({ buf = event.buf })
+      M.run({ buf = event.buf })
     end,
   })
 
   vim.api.nvim_create_user_command("Format", function()
-    M.format({ force = true })
+    M.run({ force = true })
   end, { desc = "Format selection or buffer" })
 
   vim.api.nvim_create_user_command("FormatInfo", function()

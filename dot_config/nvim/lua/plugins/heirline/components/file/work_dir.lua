@@ -1,8 +1,6 @@
-local icons = require("config.icons")
-
 return {
   init = function(self)
-    self.icon = (vim.fn.haslocaldir(0) == 1 and icons.status.DirectoryAlt or icons.status.Directory)
+    self.icon = (vim.fn.haslocaldir(0) == 1 and Util.config.icons.status.DirectoryAlt or Util.config.icons.status.Directory)
   end,
   hl = { fg = "gray", bold = true },
   on_click = {

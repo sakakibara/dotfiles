@@ -1,5 +1,3 @@
-local uplugin = require("util.plugin")
-
 return {
   {
     "nvim-treesitter/nvim-treesitter",
@@ -31,7 +29,7 @@ return {
           },
         },
       })
-      uplugin.extend(opts.servers.vtsls, "settings.vtsls.tsserver.globalPlugins", {
+      Util.plugin.extend(opts.servers.vtsls, "settings.vtsls.tsserver.globalPlugins", {
         name = "@vue/typescript-plugin",
         location = vue_typescript_plugin,
         languages = { "vue" },

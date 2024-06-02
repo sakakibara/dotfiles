@@ -1,11 +1,9 @@
-local LazyUtil = require("lazy.core.util")
-
 local M = {}
 
 function M.setup(_, opts)
   for _, key in ipairs({ "format_on_save", "format_after_save" }) do
     if opts[key] then
-      LazyUtil.warn(("Setting `opts.%s` for `conform.nvim` is not supported."):format(key))
+      Util.warn(("Setting `opts.%s` for `conform.nvim` is not supported."):format(key))
       opts[key] = nil
     end
   end
@@ -29,14 +27,14 @@ return {
       },
     },
     init = function()
-      require("util.plugin").on_very_lazy(function()
-        require("util.format").register({
+      Util.plugin.on_very_lazy(function()
+        Util.format.register({
           name = "conform.nvim",
           priority = 100,
           primary = true,
           format = function(buf)
-            local opts = require("util.plugin").opts("conform.nvim")
-            require("conform").format(LazyUtil.merge({}, opts.format, { bufnr = buf }))
+            local opts = Util.plugin.opts("conform.nvim")
+            require("conform").format(Util.merge({}, opts.format, { bufnr = buf }))
           end,
           sources = function(buf)
             local ret = require("conform").list_formatters(buf)
@@ -50,7 +48,7 @@ return {
     opts = function()
       local plugin = require("lazy.core.config").plugins["conform.nvim"]
       if plugin.config ~= M.setup then
-        LazyUtil.error({
+        Util.error({
           "Don't set `plugin.config` for `conform.nvim`.",
         }, { title = "Core" })
       end

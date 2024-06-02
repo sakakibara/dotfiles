@@ -60,7 +60,7 @@ return {
       },
       setup = {
         gopls = function()
-          require("util.lsp").on_attach(function(client, _)
+          Util.lsp.on_attach(function(client, _)
             if client.name == "gopls" then
               if not client.server_capabilities.semanticTokensProvider then
                 local semantic = client.config.capabilities.textDocument.semanticTokens

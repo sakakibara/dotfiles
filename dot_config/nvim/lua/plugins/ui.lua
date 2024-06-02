@@ -1,6 +1,3 @@
-local root_path = require("util.root").get
-local parent_path = require("util.path").get_parent_path
-
 return {
   {
     "kevinhwang91/nvim-ufo",
@@ -183,13 +180,11 @@ return {
       { "<Leader>ua", "<Cmd>AerialToggle<CR>", desc = "Toggle aerial" },
     },
     opts = function()
-      local kinds_filter = require("config.kinds")
-      local icons = vim.deepcopy(require("config.icons").kinds)
+      local icons = vim.deepcopy(Util.config.icons.kinds)
 
       local filter_kind = false
-      if kinds_filter then
-        ---@diagnostic disable-next-line: cast-local-type
-        filter_kind = assert(vim.deepcopy(kinds_filter))
+      if Util.config.kind_filter then
+        filter_kind = assert(vim.deepcopy(Util.config.kind_filter))
         filter_kind._ = filter_kind.default
         filter_kind.default = nil
       end
@@ -294,7 +289,7 @@ return {
     },
     init = function()
       if vim.fn.argc(-1) == 1 then
-        if require("util.path").is_dir(tostring(vim.fn.argv(0))) then
+        if Util.path.is_dir(tostring(vim.fn.argv(0))) then
           require("oil")
         end
       end
@@ -425,21 +420,21 @@ return {
       {
         "<Leader>uf",
         function()
-          require("nvim-tree.api").tree.toggle({ path = root_path() })
+          require("nvim-tree.api").tree.toggle({ path = Util.root.get() })
         end,
         desc = "Toggle nvim-tree explorer",
       },
       {
         "<Leader>uF",
         function()
-          require("nvim-tree.api").tree.toggle({ path = vim.loop.cwd() })
+          require("nvim-tree.api").tree.toggle({ path = vim.uv.cwd() })
         end,
         desc = "Toggle nvim-tree explorer (cwd)",
       },
       {
         "<Leader>upf",
         function()
-          require("nvim-tree.api").tree.toggle({ path = parent_path() })
+          require("nvim-tree.api").tree.toggle({ path = Util.path.get_parent_path() })
         end,
         desc = "Toggle nvim-tree explorer (parent)",
       },
@@ -474,14 +469,14 @@ return {
       {
         "<Leader>fm",
         function()
-          require("mini.files").open(require("util.path").get_current_file_path(), true)
+          require("mini.files").open(Util.path.get_current_file_path(), true)
         end,
         desc = "Open mini files",
       },
       {
         "<Leader>fM",
         function()
-          require("mini.files").open(vim.loop.cwd(), true)
+          require("mini.files").open(vim.uv.cwd(), true)
         end,
         desc = "Open mini files (cwd)",
       },
@@ -514,7 +509,7 @@ return {
       vim.api.nvim_create_autocmd("User", {
         pattern = "MiniFilesActionRename",
         callback = function(event)
-          require("util.lsp").on_rename(event.data.from, event.data.to)
+          Util.lsp.on_rename(event.data.from, event.data.to)
         end,
       })
 

@@ -1,5 +1,4 @@
 local conditions = require("heirline.conditions")
-local uplugin = require("util.plugin")
 
 return {
   condition = conditions.is_git_repo,
@@ -10,7 +9,7 @@ return {
   end,
   on_click = {
     callback = function()
-      if uplugin.has("telescope.nvim") then
+      if Util.plugin.has("telescope.nvim") then
         vim.defer_fn(function()
           require("telescope.builtin").git_branches({ use_file_path = true })
         end, 100)

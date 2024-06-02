@@ -1,5 +1,3 @@
-local uplugin = require("util.plugin")
-
 return {
   {
     "nvim-treesitter/nvim-treesitter",
@@ -83,7 +81,7 @@ return {
       },
       setup = {
         clangd = function(_, opts)
-          local clangd_ext_opts = uplugin.opts("clangd_extensions.nvim") or {}
+          local clangd_ext_opts = Util.plugin.opts("clangd_extensions.nvim") or {}
           require("clangd_extensions").setup(vim.tbl_deep_extend("force", clangd_ext_opts, { server = opts }))
           return false
         end,
