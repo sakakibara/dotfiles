@@ -74,7 +74,7 @@ function M.on_very_lazy(fn)
   })
 end
 
-function M.extend(t, key, value)
+function M.extend(t, key, values)
   local keys = vim.split(key, ".", { plain = true })
   for i = 1, #keys do
     local k = keys[i]
@@ -84,7 +84,20 @@ function M.extend(t, key, value)
     end
     t = t[k]
   end
-  t[#t + 1] = value
+  return vim.list_extend(t, values)
+end
+
+function M.get_pkg_path(pkg, path, opts)
+  pcall(require, "mason")
+  local root = vim.env.MASON or (vim.fn.stdpath("data") .. "/mason")
+  opts = opts or {}
+  opts.warn = opts.warn == nil and true or opts.warn
+  path = path or ""
+  local ret = root .. "/packages/" .. pkg .. "/" .. path
+  if opts.warn and not vim.loop.fs_stat(ret) then
+    Util.warn(("Mason package path not found for **%s**:\n- `%s`"):format(pkg, path))
+  end
+  return ret
 end
 
 return M

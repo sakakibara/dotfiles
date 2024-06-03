@@ -23,10 +23,19 @@ return {
     opts = {
       servers = {
         vtsls = {
+          filetypes = {
+            "javascript",
+            "javascriptreact",
+            "javascript.jsx",
+            "typescript",
+            "typescriptreact",
+            "typescript.tsx",
+          },
           settings = {
             complete_function_calls = true,
             vtsls = {
               enableMoveToFileCodeAction = true,
+              autoUseWorkspaceTsdk = true,
               experimental = {
                 completion = {
                   enableServerSideFuzzyMatch = true,
@@ -110,10 +119,6 @@ return {
         vtsls = function(_, opts)
           opts.settings.javascript =
             vim.tbl_deep_extend("force", {}, opts.settings.typescript, opts.settings.javascript or {})
-          local plugins = vim.tbl_get(opts.settings, "vtsls", "tsserver", "globalPlugins")
-          if plugins then
-            opts.settings.vtsls.tsserver.globalPlugins = vim.tbl_values(plugins)
-          end
         end,
         eslint = function()
           local function get_client(buf)
@@ -173,8 +178,7 @@ return {
           executable = {
             command = "node",
             args = {
-              require("mason-registry").get_package("js-debug-adapter"):get_install_path()
-                .. "/js-debug/src/dapDebugServer.js",
+              Util.plugin.get_pkg_path("js-debug-adapter", "/js-debug/src/dapDebugServer.js"),
               "${port}",
             },
           },
