@@ -38,12 +38,6 @@ return {
   },
 
   {
-    "windwp/nvim-ts-autotag",
-    event = "LazyFile",
-    opts = {},
-  },
-
-  {
     "andymass/vim-matchup",
     event = "LazyFile",
     init = function()
