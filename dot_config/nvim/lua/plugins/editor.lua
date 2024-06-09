@@ -15,7 +15,6 @@ return {
         ["<Leader>fc"] = { name = "+Config" },
         ["<Leader>fp"] = { name = "+Parent" },
         ["<Leader>g"] = { name = "+Git" },
-        ["<Leader>gh"] = { name = "+Hunks" },
         ["<Leader>n"] = { name = "+Notes" },
         ["<Leader>o"] = { name = "+Option" },
         ["<Leader>q"] = { name = "+Quit" },
@@ -340,6 +339,7 @@ return {
           vim.keymap.set(mode, l, r, { buffer = buffer, desc = desc })
         end
 
+        map({ "n", "v" }, "<Leader>gh", "", "Hunks")
         map("n", "]h", gs.next_hunk, "Next Hunk")
         map("n", "[h", gs.prev_hunk, "Prev Hunk")
         map({ "n", "v" }, "<Leader>ghs", ":Gitsigns stage_hunk<CR>", "Stage Hunk")

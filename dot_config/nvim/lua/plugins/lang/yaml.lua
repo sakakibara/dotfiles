@@ -1,14 +1,5 @@
 return {
   {
-    "nvim-treesitter/nvim-treesitter",
-    opts = function(_, opts)
-      if type(opts.ensure_installed) == "table" then
-        vim.list_extend(opts.ensure_installed, { "yaml" })
-      end
-    end,
-  },
-
-  {
     "b0o/SchemaStore.nvim",
     lazy = true,
     version = false,
@@ -16,7 +7,6 @@ return {
 
   {
     "neovim/nvim-lspconfig",
-    optional = true,
     opts = {
       servers = {
         yamlls = {
@@ -55,10 +45,8 @@ return {
         yamlls = function()
           if vim.fn.has("nvim-0.10") == 0 then
             Util.lsp.on_attach(function(client, _)
-              if client.name == "yamlls" then
-                client.server_capabilities.documentFormattingProvider = true
-              end
-            end)
+              client.server_capabilities.documentFormattingProvider = true
+            end, "yamlls")
           end
         end,
       },

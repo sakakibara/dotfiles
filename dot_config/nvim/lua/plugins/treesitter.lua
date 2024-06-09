@@ -5,60 +5,45 @@ return {
     build = ":TSUpdate",
     event = { "LazyFile", "VeryLazy" },
     lazy = vim.fn.argc(-1) == 0,
-    dependencies = {
-      {
-        "nvim-treesitter/nvim-treesitter-textobjects",
-        config = function()
-          local move = require("nvim-treesitter.textobjects.move")
-          local configs = require("nvim-treesitter.configs")
-          for name, fn in pairs(move) do
-            if name:find("goto") == 1 then
-              move[name] = function(q, ...)
-                if vim.wo.diff then
-                  local config = configs.get_module("textobjects.move")[name]
-                  for key, query in pairs(config or {}) do
-                    if q == query and key:find("[%]%[][cC]") then
-                      vim.cmd("normal! " .. key)
-                      return
-                    end
-                  end
-                end
-                return fn(q, ...)
-              end
-            end
-          end
-        end,
-      },
-    },
     init = function(plugin)
       require("lazy.core.loader").add_to_rtp(plugin)
       require("nvim-treesitter.query_predicates")
     end,
     cmd = { "TSUpdateSync", "TSUpdate", "TSInstall" },
     keys = {
-      { "<C-space>", desc = "Increment selection" },
-      { "<BS>", desc = "Schrink selection", mode = "x" },
+      { "<C-Space>", desc = "Increment selection" },
+      { "<BS>", desc = "Decrement selection", mode = "x" },
     },
+    opts_extend = { "ensure_installed" },
     opts = {
       highlight = { enable = true },
-      indent = {
-        enable = true,
-        disable = { "html" },
-      },
+      indent = { enable = true },
       ensure_installed = {
         "bash",
+        "c",
         "css",
         "csv",
         "diff",
         "fish",
         "html",
         "javascript",
+        "jsdoc",
+        "json",
+        "jsonc",
         "lua",
+        "luadoc",
+        "luap",
         "mermaid",
+        "markdown",
+        "markdown_inline",
+        "printf",
+        "python",
         "query",
         "regex",
         "scss",
         "toml",
+        "tsx",
+        "typescript",
         "vim",
         "vimdoc",
         "xml",
@@ -67,8 +52,8 @@ return {
       incremental_selection = {
         enable = true,
         keymaps = {
-          init_selection = "<C-space>",
-          node_incremental = "<C-space>",
+          init_selection = "<C-Space>",
+          node_incremental = "<C-Space>",
           scope_incremental = false,
           node_decremental = "<BS>",
         },
@@ -91,17 +76,40 @@ return {
     },
     config = function(_, opts)
       if type(opts.ensure_installed) == "table" then
-        ---@type table<string, boolean>
-        local added = {}
-        opts.ensure_installed = vim.tbl_filter(function(lang)
-          if added[lang] then
-            return false
-          end
-          added[lang] = true
-          return true
-        end, opts.ensure_installed)
+        opts.ensure_installed = Util.plugin.dedup(opts.ensure_installed)
       end
       require("nvim-treesitter.configs").setup(opts)
+    end,
+  },
+
+  {
+    "nvim-treesitter/nvim-treesitter-textobjects",
+    event = "VeryLazy",
+    enabled = true,
+    config = function()
+      if Util.plugin.is_loaded("nvim-treesitter") then
+        local opts = Util.plugin.opts("nvim-treesitter")
+        require("nvim-treesitter.configs").setup({ textobjects = opts.textobjects })
+      end
+
+      local move = require("nvim-treesitter.textobjects.move")
+      local configs = require("nvim-treesitter.configs")
+      for name, fn in pairs(move) do
+        if name:find("goto") == 1 then
+          move[name] = function(q, ...)
+            if vim.wo.diff then
+              local config = configs.get_module("textobjects.move")[name]
+              for key, query in pairs(config or {}) do
+                if q == query and key:find("[%]%[][cC]") then
+                  vim.cmd("normal! " .. key)
+                  return
+                end
+              end
+            end
+            return fn(q, ...)
+          end
+        end
+      end
     end,
   },
 

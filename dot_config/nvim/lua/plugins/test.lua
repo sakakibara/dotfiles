@@ -1,6 +1,7 @@
 return {
   {
     "nvim-neotest/neotest",
+    dependencies = { "nvim-neotest/nvim-nio" },
     opts = {
       adapters = {},
       status = { virtual_text = true },

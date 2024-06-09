@@ -1,20 +1,12 @@
 return {
   {
     "nvim-treesitter/nvim-treesitter",
-    opts = function(_, opts)
-      if type(opts.ensure_installed) == "table" then
-        vim.list_extend(opts.ensure_installed, { "dockerfile" })
-      end
-    end,
+    opts = { ensure_installed = { "dockerfile" } },
   },
 
   {
     "mason.nvim",
-    opts = function(_, opts)
-      if type(opts.ensure_installed) == "table" then
-        vim.list_extend(opts.ensure_installed, { "hadolint" })
-      end
-    end,
+    opts = { ensure_installed = { "hadolint" } },
   },
 
   {
@@ -29,7 +21,6 @@ return {
 
   {
     "neovim/nvim-lspconfig",
-    optional = true,
     opts = {
       servers = {
         dockerls = {},

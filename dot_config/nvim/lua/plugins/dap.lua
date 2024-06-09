@@ -1,3 +1,14 @@
+local function get_args(config)
+  local args = type(config.args) == "function" and (config.args() or {}) or config.args or {}
+  config = vim.deepcopy(config)
+  ---@cast args string[]
+  config.args = function()
+    local new_args = vim.fn.input("Run with args: ", table.concat(args, " "))
+    return vim.split(vim.fn.expand(new_args), " ")
+  end
+  return config
+end
+
 return {
   {
     "mfussenegger/nvim-dap",
@@ -66,6 +77,43 @@ return {
         "theHamsta/nvim-dap-virtual-text",
         opts = {},
       },
+      {
+        "jbyuki/one-small-step-for-vimkind",
+        config = function()
+          local dap = require("dap")
+          dap.adapters.nlua = function(callback, conf)
+            local adapter = {
+              type = "server",
+              host = conf.host or "127.0.0.1",
+              port = conf.port or 8086,
+            }
+            if conf.start_neovim then
+              local dap_run = dap.run
+              dap.run = function(c)
+                adapter.port = c.port
+                adapter.host = c.host
+              end
+              require("osv").run_this()
+              dap.run = dap_run
+            end
+            callback(adapter)
+          end
+          dap.configurations.lua = {
+            {
+              type = "nlua",
+              request = "attach",
+              name = "Run this file",
+              start_neovim = {},
+            },
+            {
+              type = "nlua",
+              request = "attach",
+              name = "Attach to running Neovim instance (port = 8086)",
+              port = 8086,
+            },
+          }
+        end,
+      },
     },
     keys = {
       {
@@ -88,6 +136,13 @@ return {
           require("dap").continue()
         end,
         desc = "Continue",
+      },
+      {
+        "<Leader>da",
+        function()
+          require("dap").continue({ before = get_args })
+        end,
+        desc = "Run with args",
       },
       {
         "<Leader>dC",
@@ -191,6 +246,17 @@ return {
           { text = sign[1], texthl = sign[2] or "DiagnosticInfo", linehl = sign[3], numhl = sign[3] }
         )
       end
+      local vscode = require("dap.ext.vscode")
+      local _filetypes = require("mason-nvim-dap.mappings.filetypes")
+      local filetypes = vim.tbl_deep_extend("force", _filetypes, {
+        ["node"] = { "javascriptreact", "typescriptreact", "typescript", "javascript" },
+        ["pwa-node"] = { "javascriptreact", "typescriptreact", "typescript", "javascript" },
+      })
+      local json = require("plenary.json")
+      vscode.json_decode = function(str)
+        return vim.json.decode(json.json_strip_comments(str))
+      end
+      vscode.load_launchjs(nil, filetypes)
     end,
   },
 
@@ -207,33 +273,37 @@ return {
 
   {
     "jbyuki/one-small-step-for-vimkind",
-    keys = {
-      {
-        "<Leader>daL",
-        function()
-          require("osv").launch({ port = 8086 })
-        end,
-        desc = "Adapter lua server",
-      },
-      {
-        "<Leader>dal",
-        function()
-          require("osv").run_this()
-        end,
-        desc = "Adapter lua",
-      },
-    },
     config = function()
       local dap = require("dap")
-      dap.adapters.nlua = function(callback, config)
-        ---@diagnostic disable-next-line: undefined-field
-        callback({ type = "server", host = config.host or "127.0.0.1", port = config.port or 8086 })
+      dap.adapters.nlua = function(callback, conf)
+        local adapter = {
+          type = "server",
+          host = conf.host or "127.0.0.1",
+          port = conf.port or 8086,
+        }
+        if conf.start_neovim then
+          local dap_run = dap.run
+          dap.run = function(c)
+            adapter.port = c.port
+            adapter.host = c.host
+          end
+          require("osv").run_this()
+          dap.run = dap_run
+        end
+        callback(adapter)
       end
       dap.configurations.lua = {
         {
           type = "nlua",
           request = "attach",
-          name = "Attach to running Neovim instance",
+          name = "Run this file",
+          start_neovim = {},
+        },
+        {
+          type = "nlua",
+          request = "attach",
+          name = "Attach to running Neovim instance (port = 8086)",
+          port = 8086,
         },
       }
     end,

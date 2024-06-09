@@ -1,19 +1,11 @@
 return {
   {
     "nvim-treesitter/nvim-treesitter",
-    opts = function(_, opts)
-      vim.list_extend(opts.ensure_installed, {
-        "go",
-        "gomod",
-        "gowork",
-        "gosum",
-      })
-    end,
+    opts = { ensure_installed = { "go", "gomod", "gowork", "gosum" } },
   },
 
   {
     "neovim/nvim-lspconfig",
-    optional = true,
     opts = {
       servers = {
         gopls = {
@@ -59,22 +51,20 @@ return {
         },
       },
       setup = {
-        gopls = function()
+        gopls = function(_, opts)
           Util.lsp.on_attach(function(client, _)
-            if client.name == "gopls" then
-              if not client.server_capabilities.semanticTokensProvider then
-                local semantic = client.config.capabilities.textDocument.semanticTokens
-                client.server_capabilities.semanticTokensProvider = {
-                  full = true,
-                  legend = {
-                    tokenTypes = semantic.tokenTypes,
-                    tokenModifiers = semantic.tokenModifiers,
-                  },
-                  range = true,
-                }
-              end
+            if not client.server_capabilities.semanticTokensProvider then
+              local semantic = client.config.capabilities.textDocument.semanticTokens
+              client.server_capabilities.semanticTokensProvider = {
+                full = true,
+                legend = {
+                  tokenTypes = semantic.tokenTypes,
+                  tokenModifiers = semantic.tokenModifiers,
+                },
+                range = true,
+              }
             end
-          end)
+          end, "gopls")
         end,
       },
     },
@@ -82,11 +72,7 @@ return {
 
   {
     "williamboman/mason.nvim",
-    opts = function(_, opts)
-      if type(opts.ensure_installed) == "table" then
-        vim.list_extend(opts.ensure_installed, { "goimports", "gofumpt" })
-      end
-    end,
+    opts = { ensure_installed = { "goimports", "gofumpt" } },
   },
 
   {
@@ -105,11 +91,7 @@ return {
     dependencies = {
       {
         "williamboman/mason.nvim",
-        opts = function(_, opts)
-          if type(opts.ensure_installed) == "table" then
-            vim.list_extend(opts.ensure_installed, { "delve" })
-          end
-        end,
+        opts = { ensure_installed = { "delve" } },
       },
       {
         "leoluz/nvim-dap-go",
@@ -126,7 +108,9 @@ return {
     },
     opts = {
       adapters = {
-        ["neotest-go"] = {},
+        ["neotest-go"] = {
+          recursive_run = true,
+        },
       },
     },
   },

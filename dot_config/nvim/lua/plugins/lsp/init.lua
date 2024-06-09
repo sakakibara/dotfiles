@@ -218,6 +218,7 @@ return {
     cmd = "Mason",
     keys = { { "<Leader>cm", "<Cmd>Mason<CR>", desc = "Mason" } },
     build = ":MasonUpdate",
+    opts_extend = { "ensure_installed" },
     opts = {
       ensure_installed = {
         "stylua",
@@ -236,19 +237,15 @@ return {
           })
         end, 100)
       end)
-      local function ensure_installed()
+
+      mr.refresh(function()
         for _, tool in ipairs(opts.ensure_installed) do
           local p = mr.get_package(tool)
           if not p:is_installed() then
             p:install()
           end
         end
-      end
-      if mr.refresh then
-        mr.refresh(ensure_installed)
-      else
-        ensure_installed()
-      end
+      end)
     end,
   },
 

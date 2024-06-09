@@ -21,21 +21,13 @@ return {
 
   {
     "nvim-treesitter/nvim-treesitter",
-    opts = function(_, opts)
-      if type(opts.ensure_installed) == "table" then
-        vim.list_extend(opts.ensure_installed, { "ron", "rust", "toml" })
-      end
-    end,
+    opts = { ensure_installed = { "rust", "ron" } },
   },
 
   {
     "williamboman/mason.nvim",
     optional = true,
-    opts = function(_, opts)
-      if type(opts.ensure_installed) == "table" then
-        vim.list_extend(opts.ensure_installed, { "codelldb" })
-      end
-    end,
+    opts = { ensure_installed = { "codelldb" } },
   },
 
   {
@@ -91,7 +83,6 @@ return {
 
   {
     "neovim/nvim-lspconfig",
-    optional = true,
     opts = {
       servers = {
         taplo = {
@@ -116,12 +107,10 @@ return {
   {
     "nvim-neotest/neotest",
     optional = true,
-    opts = function(_, opts)
-      if type(opts.adapters) == "table" then
-        vim.list_extend(opts.adapters, {
-          require("rustaceanvim.neotest"),
-        })
-      end
-    end,
+    opts = {
+      adapters = {
+        ["rustaceanvim.neotest"] = {},
+      },
+    },
   },
 }

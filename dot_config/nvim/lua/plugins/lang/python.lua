@@ -1,32 +1,22 @@
 return {
   {
     "nvim-treesitter/nvim-treesitter",
-    opts = function(_, opts)
-      if type(opts.ensure_installed) == "table" then
-        vim.list_extend(opts.ensure_installed, { "ninja", "python", "rst", "toml" })
-      end
-    end,
+    opts = { ensure_installed = { "ninja", "rst" } },
   },
 
   {
     "neovim/nvim-lspconfig",
-    optional = true,
     opts = {
       servers = {
-        pyright = {},
+        pyright = {
+          enabled = true,
+        },
         ruff_lsp = {
+          enabled = true,
           keys = {
             {
               "<Leader>co",
-              function()
-                vim.lsp.buf.code_action({
-                  apply = true,
-                  context = {
-                    only = { "source.organizeImports" },
-                    diagnostics = {},
-                  },
-                })
-              end,
+              Util.lsp.action["source.organizeImports"],
               desc = "Organize Imports",
             },
           },
@@ -35,10 +25,8 @@ return {
       setup = {
         ruff_lsp = function()
           Util.lsp.on_attach(function(client, _)
-            if client.name == "ruff_lsp" then
-              client.server_capabilities.hoverProvider = false
-            end
-          end)
+            client.server_capabilities.hoverprovider = false
+          end, "ruff_lsp")
         end,
       },
     },
@@ -61,60 +49,43 @@ return {
     "mfussenegger/nvim-dap",
     optional = true,
     dependencies = {
-      {
-        "williamboman/mason.nvim",
-        opts = function(_, opts)
-          if type(opts.ensure_installed) == "table" then
-            vim.list_extend(opts.ensure_installed, { "debugpy" })
-          end
-        end,
-      },
-      {
-        "mfussenegger/nvim-dap-python",
-        keys = {
-          {
-            "<Leader>dPt",
-            function()
-              require("dap-python").test_method()
-            end,
-            desc = "Debug Method",
-            ft = "python",
-          },
-          {
-            "<Leader>dPc",
-            function()
-              require("dap-python").test_class()
-            end,
-            desc = "Debug Class",
-            ft = "python",
-          },
+      "mfussenegger/nvim-dap-python",
+      keys = {
+        {
+          "<leader>dPt",
+          function()
+            require("dap-python").test_method()
+          end,
+          desc = "Debug method",
+          ft = "python",
         },
-        config = function()
-          local path = require("mason-registry").get_package("debugpy"):get_install_path()
-          require("dap-python").setup(path .. "/venv/bin/python")
-        end,
+        {
+          "<leader>dPc",
+          function()
+            require("dap-python").test_class()
+          end,
+          desc = "Debug class",
+          ft = "python",
+        },
       },
+      config = function()
+        require("dap-python").setup(Util.plugin.get_pkg_path("debugpy", "/venv/bin/python"))
+      end,
     },
   },
 
   {
     "linux-cultist/venv-selector.nvim",
+    branch = "regexp",
     cmd = "VenvSelect",
-    opts = function(_, opts)
-      if Util.plugin.has("nvim-dap-python") then
-        opts.dap_enabled = true
-      end
-      return vim.tbl_deep_extend("force", opts, {
-        name = {
-          "venv",
-          ".venv",
-          "env",
-          ".env",
+    opts = {
+      settings = {
+        options = {
+          notify_user_on_venv_activation = true,
         },
-      })
-    end,
-    keys = {
-      { "<Leader>cv", "<Cmd>VenvSelect<CR>", ft = "python", desc = "Select virtualenv" },
+      },
     },
+    ft = "python",
+    keys = { { "<Leader>cv", "<Cmd>:VenvSelect<cr>", desc = "Select virtualenv", ft = "python" } },
   },
 }

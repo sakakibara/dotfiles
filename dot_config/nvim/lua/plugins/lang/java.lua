@@ -12,11 +12,7 @@ end
 return {
   {
     "nvim-treesitter/nvim-treesitter",
-    opts = function(_, opts)
-      if type(opts.ensure_installed) == "table" then
-        vim.list_extend(opts.ensure_installed, { "java" })
-      end
-    end,
+    opts = { ensure_installed = { "java" } },
   },
 
   {
@@ -25,18 +21,13 @@ return {
     dependencies = {
       {
         "williamboman/mason.nvim",
-        opts = function(_, opts)
-          if type(opts.ensure_installed) == "table" then
-            vim.list_extend(opts.ensure_installed, { "java-test", "java-debug-adapter" })
-          end
-        end,
+        opts = { ensure_installed = { "java-debug-adapter", "java-test" } },
       },
     },
   },
 
   {
     "neovim/nvim-lspconfig",
-    optional = true,
     opts = {
       servers = {
         jdtls = {},
@@ -175,7 +166,7 @@ return {
 
             if opts.dap and Util.plugin.has("nvim-dap") and mason_registry.is_installed("java-debug-adapter") then
               require("jdtls").setup_dap(opts.dap)
-              require("jdtls.dap").setup_dap_main_class_configs()
+              require("jdtls.dap").setup_dap_main_class_configs(opts.dap_main)
 
               if opts.test and mason_registry.is_installed("java-test") then
                 wk.register({

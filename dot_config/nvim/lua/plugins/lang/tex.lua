@@ -1,19 +1,10 @@
 return {
-  {
-    "folke/which-key.nvim",
-    optional = true,
-    opts = {
-      defaults = {
-        ["<localLeader>l"] = { name = "+vimtex" },
-      },
-    },
-  },
 
   {
     "nvim-treesitter/nvim-treesitter",
     opts = function(_, opts)
       if type(opts.ensure_installed) == "table" then
-        vim.list_extend(opts.ensure_installed, { "bibtex", "latex" })
+        vim.list_extend(opts.ensure_installed, { "bibtex" })
       end
       if type(opts.highlight.disable) == "table" then
         vim.list_extend(opts.highlight.disable, { "latex" })
@@ -27,17 +18,12 @@ return {
     "lervag/vimtex",
     lazy = false,
     config = function()
-      vim.api.nvim_create_autocmd({ "FileType" }, {
-        group = vim.api.nvim_create_augroup("userconf_vimtex_conceal", { clear = true }),
-        pattern = { "bib", "tex" },
-        callback = function()
-          vim.wo.conceallevel = 2
-        end,
-      })
-
       vim.g.vimtex_mappings_disable = { ["n"] = { "K" } }
       vim.g.vimtex_quickfix_method = vim.fn.executable("pplatex") == 1 and "pplatex" or "latexlog"
     end,
+    keys = {
+      { "<LocalLeader>l", "", desc = "+vimtex" },
+    },
   },
 
   {

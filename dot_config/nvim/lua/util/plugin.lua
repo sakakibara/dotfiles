@@ -46,12 +46,14 @@ function M.opts(name)
   return LazyPlugin.values(plugin, "opts", false)
 end
 
-function M.on_load(name, fn)
+function M.is_loaded(name)
   local LazyConfig = require("lazy.core.config")
-  if LazyConfig.plugins[name] and LazyConfig.plugins[name]._.loaded then
-    vim.schedule(function()
-      fn(name)
-    end)
+  return LazyConfig.plugins[name] and LazyConfig.plugins[name]._.loaded
+end
+
+function M.on_load(name, fn)
+  if M.is_loaded(name) then
+    fn(name)
   else
     vim.api.nvim_create_autocmd("User", {
       pattern = "LazyLoad",
@@ -94,8 +96,22 @@ function M.get_pkg_path(pkg, path, opts)
   opts.warn = opts.warn == nil and true or opts.warn
   path = path or ""
   local ret = root .. "/packages/" .. pkg .. "/" .. path
-  if opts.warn and not vim.loop.fs_stat(ret) then
-    Util.warn(("Mason package path not found for **%s**:\n- `%s`"):format(pkg, path))
+  if opts.warn and not vim.loop.fs_stat(ret) and not require("lazy.core.config").headless() then
+    Util.warn(
+      ("Mason package path not found for **%s**:\n- `%s`\nYou may need to force update the package."):format(pkg, path)
+    )
+  end
+  return ret
+end
+
+function M.dedup(list)
+  local ret = {}
+  local seen = {}
+  for _, v in ipairs(list) do
+    if not seen[v] then
+      table.insert(ret, v)
+      seen[v] = true
+    end
   end
   return ret
 end

@@ -28,4 +28,16 @@ setmetatable(M, {
   end,
 })
 
+local cache = {}
+
+function M.memoize(fn)
+  return function(...)
+    local key = vim.inspect({ ... })
+    if cache[key] == nil then
+      cache[key] = fn(...)
+    end
+    return cache[key]
+  end
+end
+
 return M
