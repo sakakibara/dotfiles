@@ -79,29 +79,23 @@ return {
             },
             {
               "<leader>cM",
-              function()
-                require("vtsls").commands.add_missing_imports(0)
-              end,
+              Util.lsp.action["source.addMissingImports.ts"],
               desc = "Add missing imports",
             },
             {
               "<leader>cu",
-              function()
-                require("vtsls").commands.remove_unused_imports(0)
-              end,
+              Util.lsp.action["source.removeUnused.ts"],
               desc = "Remove unused imports",
             },
             {
               "<leader>cD",
-              function()
-                require("vtsls").commands.fix_all(0)
-              end,
+              Util.lsp.action["source.fixAll.ts"],
               desc = "Fix all diagnostics",
             },
             {
               "<leader>cV",
               function()
-                require("vtsls").commands.select_ts_version(0)
+                Util.lsp.execute({ command = "typescript.selectTypeScriptVersion" })
               end,
               desc = "Select TS workspace version",
             },
@@ -246,7 +240,13 @@ return {
         end
       end
 
-      for _, language in ipairs({ "typescript", "javascript", "typescriptreact", "javascriptreact" }) do
+      local js_filetypes = { "typescript", "javascript", "typescriptreact", "javascriptreact" }
+
+      local vscode = require("dap.ext.vscode")
+      vscode.type_to_filetypes["node"] = js_filetypes
+      vscode.type_to_filetypes["pwa-node"] = js_filetypes
+
+      for _, language in ipairs(js_filetypes) do
         if not dap.configurations[language] then
           dap.configurations[language] = {
             {
