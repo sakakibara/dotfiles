@@ -419,7 +419,7 @@ return {
         "[q",
         function()
           if require("trouble").is_open() then
-            require("trouble").previous({ skip_groups = true, jump = true })
+            require("trouble").prev({ skip_groups = true, jump = true })
           elseif Util.plugin.has("qf_helper.nvim") then
             vim.cmd("QPrev")
           else
