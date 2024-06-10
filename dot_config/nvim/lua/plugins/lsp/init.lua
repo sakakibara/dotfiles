@@ -223,7 +223,7 @@ return {
       ensure_installed = {
         "stylua",
         "shfmt",
-        "prettierd",
+        "prettier",
       },
     },
     config = function(_, opts)
