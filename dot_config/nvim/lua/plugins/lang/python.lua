@@ -49,28 +49,37 @@ return {
     "mfussenegger/nvim-dap",
     optional = true,
     dependencies = {
-      "mfussenegger/nvim-dap-python",
-      keys = {
-        {
-          "<leader>dPt",
-          function()
-            require("dap-python").test_method()
-          end,
-          desc = "Debug method",
-          ft = "python",
-        },
-        {
-          "<leader>dPc",
-          function()
-            require("dap-python").test_class()
-          end,
-          desc = "Debug class",
-          ft = "python",
-        },
+      {
+        "williamboman/mason.nvim",
+        opts = function(_, opts)
+          opts.ensure_installed = opts.ensure_installed or {}
+          table.insert(opts.ensure_installed, "debugpy")
+        end,
       },
-      config = function()
-        require("dap-python").setup(Util.plugin.get_pkg_path("debugpy", "/venv/bin/python"))
-      end,
+      {
+        "mfussenegger/nvim-dap-python",
+        keys = {
+          {
+            "<leader>dPt",
+            function()
+              require("dap-python").test_method()
+            end,
+            desc = "Debug method",
+            ft = "python",
+          },
+          {
+            "<leader>dPc",
+            function()
+              require("dap-python").test_class()
+            end,
+            desc = "Debug class",
+            ft = "python",
+          },
+        },
+        config = function()
+          require("dap-python").setup(Util.plugin.get_pkg_path("debugpy", "/venv/bin/python"))
+        end,
+      },
     },
   },
 
