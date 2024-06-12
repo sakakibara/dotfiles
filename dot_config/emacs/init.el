@@ -435,7 +435,8 @@ COMMAND. This macro is meant to be used as a target for keybinds (e.g. with
         system-time-locale "C"
         tab-stop-list (number-sequence 2 120 2)
         tab-width 2
-        truncate-lines t)
+        truncate-lines t
+        auto-save-include-big-deletions t)
 
   ;;; Coding system setup
 
@@ -1741,7 +1742,13 @@ replacing its contents."
         kept-old-versions 5
         kept-new-versions 5
         auto-save-default t
-        auto-save-include-big-deletions t)
+        auto-save-list-file-prefix (concat +cache-dir "autosave/")
+        tramp-auto-save-directory  (concat +cache-dir "tramp-autosave/")
+        auto-save-file-name-transforms
+        (list (list "\\`/[^/]*:\\([^/]*/\\)*\\([^/]*\\)\\'"
+                    ;; Prefix tramp autosaves to prevent conflicts with local ones
+                    (concat auto-save-list-file-prefix "tramp-\\2") t)
+              (list ".*" auto-save-list-file-prefix t)))
 
   ;; Fix encoding when using external ls from uutils-coreutils
   (when IS-WINDOWS
