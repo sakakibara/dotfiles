@@ -144,7 +144,7 @@ COMMAND. This macro is meant to be used as a target for keybinds (e.g. with
     :states '(insert normal hybrid motion visual operator emacs)
     :prefix-map '+global-leader-prefix-map
     :prefix "SPC"
-    :global-prefix "S-SPC")
+    :global-prefix "M-SPC")
 
   (general-create-definer global-leader-def!
     :wk-full-keys nil
