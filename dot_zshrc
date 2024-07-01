@@ -633,6 +633,8 @@ fi
 # (( ${+aliases[zi]} )) && unalias zi
 _evalcache zoxide init zsh
 
+_evalcache direnv hook zsh
+
 #
 # LS_COLORS settings
 #

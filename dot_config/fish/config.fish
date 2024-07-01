@@ -149,6 +149,10 @@ if status --is-interactive
         set -gx _ZO_DATA_DIR "$XDG_DATA_HOME/zoxide"
     end
 
+    if test (command -v direnv)
+        _evalcache direnv hook fish
+    end
+
     if test (command -v chezmoi)
         _evalcache chezmoi completion fish
     end
