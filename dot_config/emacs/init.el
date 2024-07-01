@@ -2028,6 +2028,12 @@ If FORCE-P, overwrite the destination file if it exists, without confirmation."
 
 (use-package migemo
   :after (consult orderless)
+  :preface
+  (defun +orderless-migemo (component)
+    (let ((pattern (migemo-get-pattern component)))
+      (condition-case nil
+          (progn (string-match-p pattern "") pattern)
+        (invalid-regexp nil))))
   :init
   (setq search-default-regexp-mode nil
         ;; migemo-options '("-q" "--emacs" "-i" "\a")
@@ -2041,11 +2047,6 @@ If FORCE-P, overwrite the destination file if it exists, without confirmation."
     (setq migemo-dictionary "/usr/local/share/migemo/utf-8/migemo-dict"))
   :config
   (setq consult-async-min-input 1)
-  (defun +orderless-migemo (component)
-    (let ((pattern (migemo-get-pattern component)))
-      (condition-case nil
-          (progn (string-match-p pattern "") pattern)
-        (invalid-regexp nil))))
 
   (migemo-init)
 
