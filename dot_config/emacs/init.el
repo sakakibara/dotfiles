@@ -3785,6 +3785,21 @@ in some cases."
   :config
   (setq xref-search-program 'ripgrep))
 
+;;;;; yasnippet
+
+(use-package yasnippet
+  :commands (yas-minor-mode-on
+             yas-expand
+             yas-expand-snippet
+             yas-lookup-snippet
+             yas-insert-snippet
+             yas-new-snippet
+             yas-visit-snippet-file
+             yas-activate-extra-mode
+             yas-deactivate-extra-mode
+             yas-maybe-expand-abbrev-key-filter)
+  :hook (elpaca-after-init . yas-global-mode))
+
 ;;;; Language specific packages
 
 (use-package eglot
