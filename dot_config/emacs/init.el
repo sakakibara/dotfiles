@@ -3299,6 +3299,7 @@ Uses `evil-visual-end' if available."
 ;;;;; tempel
 
 (use-package tempel
+  :disabled
   :bind (("M-+" . tempel-complete) ;; Alternative tempel-expand
          ("M-*" . tempel-insert))
   :init
