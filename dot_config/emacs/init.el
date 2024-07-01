@@ -3750,6 +3750,7 @@ in some cases."
   :mode "\\.eco\\'"
   :mode "wp-content/themes/.+/.+\\.php\\'"
   :mode "templates/.+\\.php\\'"
+  :hook (web-mode . lsp)
   :config
   (setq web-mode-enable-html-entities-fontification t
         web-mode-auto-close-style 1))
@@ -3907,6 +3908,13 @@ in some cases."
 
 (use-package rustic
   :mode ("\\.rs$" . rustic-mode))
+
+;;;;; Typescript
+
+(use-package typescript-ts-mode
+  :ensure nil
+  :mode "\\.ts\\'"
+  :hook (typescript-ts-mode . lsp))
 
 ;;;;; Markdown
 
