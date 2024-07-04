@@ -6,11 +6,4 @@ return {
     end,
     hl = { fg = "blue", bold = true },
   },
-  { provider = " - " },
-  {
-    provider = function()
-      ---@diagnostic disable-next-line: undefined-field
-      return vim.b.term_title
-    end,
-  },
 }
