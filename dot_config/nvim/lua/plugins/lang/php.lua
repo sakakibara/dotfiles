@@ -28,9 +28,11 @@ return {
     optional = true,
     dependencies = {
       "williamboman/mason.nvim",
-      opts = { ensure_installed = {
-        "php-debug-adapter",
-      } },
+      opts = {
+        ensure_installed = {
+          "php-debug-adapter",
+        },
+      },
     },
     opts = function()
       local dap = require("dap")
