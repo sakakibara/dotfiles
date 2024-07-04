@@ -5,7 +5,7 @@ return {
     dependencies = {
       { "folke/neoconf.nvim", cmd = "Neoconf", opts = {} },
       "williamboman/mason.nvim",
-      "williamboman/mason-lspconfig.nvim",
+      { "williamboman/mason-lspconfig.nvim", config = function() end },
     },
     opts = function()
       return {

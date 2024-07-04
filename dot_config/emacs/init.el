@@ -926,6 +926,19 @@ input and search the whole buffer for it."
 (use-package consult-yasnippet
   :after consult)
 
+;;;;; diff-hl
+
+(use-package diff-hl
+  :hook (find-file . diff-hl-mode)
+  :hook (vc-dir-mode . diff-hl-dir-mode)
+  :hook (dired-mode . diff-hl-dired-mode)
+  :hook (diff-hl-mode . diff-hl-flydiff-mode)
+  :commands diff-hl-stage-current-hunk diff-hl-revert-hunk diff-hl-next-hunk diff-hl-previous-hunk
+  :config
+  (setq vc-git-diff-switches '("--histogram"))
+  (setq diff-hl-flydiff-delay 0.5)
+  (setq diff-hl-show-staged-changes nil))
+
 ;;;;; dired
 
 (use-package dired
@@ -3721,6 +3734,14 @@ in some cases."
   ;; cleans ~/foo/bar/// to /, and ~/foo/bar/~/ to ~/.
   (add-hook 'rfn-eshadow-update-overlay-hook #'vertico-directory-tidy)
   (add-hook 'minibuffer-setup-hook #'vertico-repeat-save))
+
+;;;;; vterm
+
+(use-package vterm
+  :commands vterm-mode
+  :config
+  (setq vterm-kill-buffer-on-exit t
+        vterm-max-scrollback 5000))
 
 ;;;;; vundo
 
