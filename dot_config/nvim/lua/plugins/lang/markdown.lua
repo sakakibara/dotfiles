@@ -4,8 +4,8 @@ return {
     optional = true,
     opts = {
       formatters_by_ft = {
-        ["markdown"] = { { "prettierd", "prettier" }, "markdownlint", "markdown-toc" },
-        ["markdown.mdx"] = { { "prettierd", "prettier" }, "markdownlint", "markdown-toc" },
+        ["markdown"] = { { "prettierd", "prettier" }, "markdownlint-cli2", "markdown-toc" },
+        ["markdown.mdx"] = { { "prettierd", "prettier" }, "markdownlint-cli2", "markdown-toc" },
       },
     },
   },
@@ -17,7 +17,7 @@ return {
 
   {
     "williamboman/mason.nvim",
-    opts = { ensure_installed = { "markdownlint", "markdown-toc" } },
+    opts = { ensure_installed = { "markdownlint-cli2", "markdown-toc" } },
   },
 
   {
@@ -25,7 +25,7 @@ return {
     optional = true,
     opts = {
       linters_by_ft = {
-        markdown = { "markdownlint" },
+        markdown = { "markdownlint-cli2" },
       },
     },
   },
