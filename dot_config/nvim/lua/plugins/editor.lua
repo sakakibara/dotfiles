@@ -1124,6 +1124,49 @@ return {
   },
 
   {
+    "alker0/chezmoi.vim",
+    init = function()
+      vim.g["chezmoi#use_tmp_buffer"] = 1
+      vim.g["chezmoi#source_dir_path"] = os.getenv("HOME") .. "/.local/share/chezmoi"
+    end,
+  },
+
+  {
+    "xvzc/chezmoi.nvim",
+    keys = {
+      {
+        "<leader>sc",
+        function()
+          require("telescope").extensions.chezmoi.find_files()
+        end,
+        desc = "Chezmoi",
+      },
+    },
+    opts = {
+      edit = {
+        watch = false,
+        force = false,
+      },
+      notification = {
+        on_open = true,
+        on_apply = true,
+        on_watch = false,
+      },
+      telescope = {
+        select = { "<CR>" },
+      },
+    },
+    init = function()
+      vim.api.nvim_create_autocmd({ "BufRead", "BufNewFile" }, {
+        pattern = { os.getenv("HOME") .. "/.local/share/chezmoi/*" },
+        callback = function()
+          vim.schedule(require("chezmoi.commands.__edit").watch)
+        end,
+      })
+    end,
+  },
+
+  {
     "tpope/vim-rsi",
     event = {
       "InsertEnter",
