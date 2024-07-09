@@ -105,62 +105,6 @@ return {
   },
 
   {
-    "nvim-telescope/telescope.nvim",
-    keys = {
-      {
-        "<Leader>nn",
-        function()
-          vim.ui.input({ prompt = "Title:" }, function(input)
-            if input then
-              vim.schedule(function()
-                vim.api.nvim_cmd(
-                  { cmd = "edit", args = { Util.notes.notes_root .. Util.path.sep .. input .. ".md" } },
-                  {}
-                )
-              end)
-            end
-          end)
-        end,
-        desc = "Edit markdown file",
-      },
-      { "<Leader>nf", Util.telescope.run("files", { cwd = Util.notes.notes_root }), desc = "Files (notes)" },
-      { "<Leader>ng", Util.telescope.run("live_grep", { cwd = Util.notes.notes_root }), desc = "Grep (notes)" },
-      {
-        "<Leader>nj",
-        function()
-          vim.ui.select({ "today", "yesterday", "tomorrow" }, {
-            prompt = "Open journal:",
-          }, function(choice)
-            if choice then
-              local time = os.time()
-              if choice == "yesterday" then
-                time = time - 24 * 60 * 60
-              elseif choice == "tomorrow" then
-                time = time + 24 * 60 * 60
-              end
-              vim.schedule(function()
-                Util.notes.open_journal(time)
-              end)
-            end
-          end)
-        end,
-        desc = "Create journal note",
-      },
-    },
-  },
-
-  {
-    "nvim-telescope/telescope-live-grep-args.nvim",
-    keys = {
-      {
-        "<Leader>na",
-        Util.telescope.run("live_grep_args", { cwd = Util.notes.notes_root }),
-        desc = "Grep with args (notes)",
-      },
-    },
-  },
-
-  {
     "nfrid/due.nvim",
     opts = {},
   },
