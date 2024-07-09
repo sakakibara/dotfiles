@@ -1,7 +1,7 @@
 return {
   condition = function()
     ---@diagnostic disable-next-line: undefined-field
-    return vim.v.hlsearch ~= 0 and vim.o.cmdheight == 0
+    return vim.v.hlsearch ~= 0 and vim.o.cmdheight == 0 and not Util.plugin.has("noice.nvim")
   end,
   init = function(self)
     local ok, search = pcall(vim.fn.searchcount)
