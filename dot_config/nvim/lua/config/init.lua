@@ -206,6 +206,22 @@ function M.setup(opts)
   Util.track()
 end
 
+function M.get_kind_filter(buf)
+  buf = (buf == nil or buf == 0) and vim.api.nvim_get_current_buf() or buf
+  local ft = vim.bo[buf].filetype
+  if M.kind_filter == false then
+    return
+  end
+  if M.kind_filter[ft] == false then
+    return
+  end
+  if type(M.kind_filter[ft]) == "table" then
+    return M.kind_filter[ft]
+  end
+  ---@diagnostic disable-next-line: return-type-mismatch
+  return type(M.kind_filter) == "table" and type(M.kind_filter.default) == "table" and M.kind_filter.default or nil
+end
+
 function M.load(name)
   local function _load(mod)
     if require("lazy.core.cache").find(mod)[1] then

@@ -42,10 +42,6 @@ function M.lazy_file()
   LazyEvent.mappings["User LazyFile"] = LazyEvent.mappings.LazyFile
 end
 
-function M.has(name)
-  return require("lazy.core.config").spec.plugins[name] ~= nil
-end
-
 function M.opts(name)
   local plugin = require("lazy.core.config").spec.plugins[name]
   if not plugin then
@@ -74,6 +70,27 @@ function M.on_load(name, fn)
       end,
     })
   end
+end
+
+function M.get_plugin(name)
+  return require("lazy.core.config").spec.plugins[name]
+end
+
+function M.get_plugin_path(name, path)
+  local plugin = M.get_plugin(name)
+  path = path and "/" .. path or ""
+  return plugin and (plugin.dir .. path)
+end
+
+function M.has(plugin)
+  return M.get_plugin(plugin) ~= nil
+end
+
+function M.has_extra(extra)
+  local Config = require("config")
+  local modname = "plugins.extras." .. extra
+  return vim.tbl_contains(require("lazy.core.config").spec.modules, modname)
+    or vim.tbl_contains(Config.json.data.extras, modname)
 end
 
 function M.on_very_lazy(fn)

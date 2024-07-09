@@ -8,30 +8,11 @@ function M.get()
   end
   M._keys = {
     { "<Leader>cl", "<Cmd>LspInfo<CR>", desc = "Lsp info" },
-    {
-      "gd",
-      function()
-        require("telescope.builtin").lsp_definitions({ reuse_win = true })
-      end,
-      desc = "Goto definition",
-      has = "definition",
-    },
-    { "gr", "<Cmd>Telescope lsp_references<CR>", desc = "References" },
+    { "gd", vim.lsp.buf.definition(), desc = "Goto definition", has = "definition" },
+    { "gr", vim.lsp.buf.references(), desc = "References", nowait = true },
+    { "gI", vim.lsp.buf.implementation(), desc = "Goto implementation" },
+    { "gy", vim.lsp.buf.type_definition(), desc = "Goto t[y]pe definition" },
     { "gD", vim.lsp.buf.declaration, desc = "Goto declaration" },
-    {
-      "gI",
-      function()
-        require("telescope.builtin").lsp_implementations({ reuse_win = true })
-      end,
-      desc = "Goto implementation",
-    },
-    {
-      "gy",
-      function()
-        require("telescope.builtin").lsp_type_definitions({ reuse_win = true })
-      end,
-      desc = "Goto t[y]pe Definition",
-    },
     { "K", vim.lsp.buf.hover, desc = "Hover" },
     { "gK", vim.lsp.buf.signature_help, desc = "Signature help", has = "signatureHelp" },
     { "<C-k>", vim.lsp.buf.signature_help, mode = "i", desc = "Signature help", has = "signatureHelp" },

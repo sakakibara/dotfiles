@@ -315,17 +315,16 @@ return {
     opts = {
       highlight = { timer = 200 },
       ring = { storage = jit.os:find("Windows") and "shada" or "sqlite" },
-      picker = {
-        telescope = {
-          mappings = nil,
-        },
-      },
     },
     keys = {
       {
         "<Leader>sy",
         function()
-          require("telescope").extensions.yank_history.yank_history({})
+          if Util.pick.picker.name == "telescope" then
+            require("telescope").extensions.yank_history.yank_history({})
+          else
+            vim.cmd([[YankyRingHistory]])
+          end
         end,
         desc = "Open yank history",
       },

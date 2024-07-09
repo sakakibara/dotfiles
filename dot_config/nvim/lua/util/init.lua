@@ -12,9 +12,9 @@ local LazyUtil = require("lazy.core.util")
 ---@field lsp util.lsp
 ---@field notes util.notes
 ---@field path util.path
+---@field pick util.pick
 ---@field plugin util.plugin
 ---@field root util.root
----@field telescope util.telescope
 ---@field terminal util.terminal
 ---@field toggle util.toggle
 local M = {}
