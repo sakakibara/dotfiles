@@ -219,7 +219,6 @@ return {
       { "<Leader>sl", "<Cmd>FzfLua loclist<CR>", desc = "Location list" },
       { "<Leader>sM", "<Cmd>FzfLua man_pages<CR>", desc = "Man pages" },
       { "<Leader>sm", "<Cmd>FzfLua marks<CR>", desc = "Jump to mark" },
-      { "<Leader>sn", "<Cmd>FzfLua autocmds<CR>", desc = "Auto commands" },
       { "<Leader>sR", "<Cmd>FzfLua resume<CR>", desc = "Resume" },
       { "<Leader>sq", "<Cmd>FzfLua quickfix<CR>", desc = "Quickfix list" },
       { "<Leader>sw", Util.pick("grep_cword"), desc = "Word (root)" },

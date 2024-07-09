@@ -104,7 +104,6 @@ return {
       { "<Leader>sl", "<Cmd>Telescope loclist<CR>", desc = "Location list" },
       { "<Leader>sM", "<Cmd>Telescope man_pages<CR>", desc = "Man pages" },
       { "<Leader>sm", "<Cmd>Telescope marks<CR>", desc = "Jump to mark" },
-      { "<Leader>sn", "<Cmd>Telescope autocommands<CR>", desc = "Auto commands" },
       { "<Leader>so", "<Cmd>Telescope vim_options<CR>", desc = "Options" },
       { "<Leader>sR", "<Cmd>Telescope resume<CR>", desc = "Resume" },
       { "<Leader>sq", "<Cmd>Telescope quickfix<CR>", desc = "Quickfix list" },
