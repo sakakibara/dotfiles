@@ -29,6 +29,7 @@
     "plugins.extras.lang.toml",
     "plugins.extras.lang.typescript",
     "plugins.extras.lang.vue",
-    "plugins.extras.lang.yaml"
+    "plugins.extras.lang.yaml",
+    "plugins.extras.util.chezmoi"
   ]
 }
