@@ -1,5 +1,6 @@
 {
   "extras": [
+    "plugins.extras.coding.codeium",
     "plugins.extras.lang.c",
     "plugins.extras.lang.clojure",
     "plugins.extras.lang.csharp",
