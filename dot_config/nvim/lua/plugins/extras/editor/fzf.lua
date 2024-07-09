@@ -197,7 +197,7 @@ return {
       { "<Leader>fc", Util.pick.config_files(), desc = "Find config file" },
       { "<Leader>ff", Util.pick("auto"), desc = "Find files (root)" },
       { "<Leader>fF", Util.pick("auto", { root = false }), desc = "Find files (cwd)" },
-      { "<Leader>fg", "<Cmd>FzfLua git_files<CR>", desc = "Find files (git-files)" },
+      { "<Leader>fg", "<Cmd>FzfLua git_files<CR>", desc = "Find files (git files)" },
       { "<Leader>fr", "<Cmd>FzfLua oldfiles<CR>", desc = "Recent" },
       { "<Leader>fR", Util.pick("oldfiles", { cwd = vim.uv.cwd() }), desc = "Recent (cwd)" },
       { "<Leader>gc", "<Cmd>FzfLua git_commits<CR>", desc = "Commits" },
