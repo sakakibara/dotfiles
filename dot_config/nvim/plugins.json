@@ -1,0 +1,32 @@
+{
+  "extras": [
+    "plugins.extras.lang.c",
+    "plugins.extras.lang.clojure",
+    "plugins.extras.lang.csharp",
+    "plugins.extras.lang.dart",
+    "plugins.extras.lang.docker",
+    "plugins.extras.lang.elixir",
+    "plugins.extras.lang.git",
+    "plugins.extras.lang.go",
+    "plugins.extras.lang.haskell",
+    "plugins.extras.lang.java",
+    "plugins.extras.lang.json",
+    "plugins.extras.lang.markdown",
+    "plugins.extras.lang.php",
+    "plugins.extras.lang.plantuml",
+    "plugins.extras.lang.powershell",
+    "plugins.extras.lang.prisma",
+    "plugins.extras.lang.python",
+    "plugins.extras.lang.ruby",
+    "plugins.extras.lang.rust",
+    "plugins.extras.lang.scala",
+    "plugins.extras.lang.sql",
+    "plugins.extras.lang.tailwind",
+    "plugins.extras.lang.terraform",
+    "plugins.extras.lang.tex",
+    "plugins.extras.lang.toml",
+    "plugins.extras.lang.typescript",
+    "plugins.extras.lang.vue",
+    "plugins.extras.lang.yaml"
+  ]
+}

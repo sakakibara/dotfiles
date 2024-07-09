@@ -4,8 +4,10 @@ local LazyUtil = require("lazy.core.util")
 ---@field config ConfigOptions
 ---@field buffer util.buffer
 ---@field cmp util.cmp
+---@field extras util.extras
 ---@field file util.file
 ---@field format util.format
+---@field json util.json
 ---@field keymaps util.keymaps
 ---@field lsp util.lsp
 ---@field notes util.notes
