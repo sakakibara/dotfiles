@@ -218,32 +218,6 @@ return {
             show_unindexed = false,
             use_sqlite = false,
           },
-          zoxide = {
-            list_command = "zoxide query -ls --all",
-            mappings = {
-              default = {
-                action = function(selection)
-                  vim.cmd.cd(selection.path)
-                  require("oil").open(selection.path)
-                end,
-              },
-              ["<C-s>"] = {
-                before_action = function()
-                  require("oil")
-                end,
-              },
-              ["<C-v>"] = {
-                before_action = function()
-                  require("oil")
-                end,
-              },
-              ["<C-e>"] = {
-                before_action = function()
-                  require("oil")
-                end,
-              },
-            },
-          },
         },
       }
     end,
@@ -298,16 +272,6 @@ return {
     },
     config = function()
       require("telescope").load_extension("undo")
-    end,
-  },
-
-  {
-    "jvgrootveld/telescope-zoxide",
-    keys = {
-      { "<Leader>sz", "<Cmd>Telescope zoxide list<CR>", desc = "Zoxide" },
-    },
-    config = function()
-      require("telescope").load_extension("zoxide")
     end,
   },
 
