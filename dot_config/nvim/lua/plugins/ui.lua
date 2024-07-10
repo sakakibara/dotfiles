@@ -549,13 +549,6 @@ return {
         end,
         desc = "Toggle nvim-tree explorer (cwd)",
       },
-      {
-        "<Leader>upf",
-        function()
-          require("nvim-tree.api").tree.toggle({ path = Util.path.get_parent_path() })
-        end,
-        desc = "Toggle nvim-tree explorer (parent)",
-      },
     },
     opts = {},
   },

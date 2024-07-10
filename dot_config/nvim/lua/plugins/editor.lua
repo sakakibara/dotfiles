@@ -22,7 +22,6 @@ return {
         ["<Leader>s"] = { name = "+Search" },
         ["<Leader>t"] = { name = "+Test" },
         ["<Leader>u"] = { name = "+UI" },
-        ["<Leader>up"] = { name = "+Parent" },
         ["<Leader>ut"] = { name = "+Terminal" },
         ["["] = { name = "+Prev" },
         ["]"] = { name = "+Next" },
