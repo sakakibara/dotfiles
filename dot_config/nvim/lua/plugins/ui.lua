@@ -229,6 +229,7 @@ return {
       local banned_messages = { "No information available" }
       if not Util.plugin.has("noice.nvim") then
         Util.plugin.on_very_lazy(function()
+          ---@diagnostic disable-next-line: duplicate-set-field
           vim.notify = function(msg, ...)
             for _, banned in ipairs(banned_messages) do
               if msg == banned then
