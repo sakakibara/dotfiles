@@ -220,7 +220,7 @@ return {
           executable = {
             command = "node",
             args = {
-              Util.plugin.get_pkg_path("js-debug-adapter", "/js-debug/src/dapDebugServer.js"),
+              Util.lsp.get_pkg_path("js-debug-adapter", "/js-debug/src/dapDebugServer.js"),
               "${port}",
             },
           },

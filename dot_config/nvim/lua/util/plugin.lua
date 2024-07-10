@@ -115,21 +115,6 @@ function M.extend(t, key, values)
   return vim.list_extend(t, values)
 end
 
-function M.get_pkg_path(pkg, path, opts)
-  pcall(require, "mason")
-  local root = vim.env.MASON or (vim.fn.stdpath("data") .. "/mason")
-  opts = opts or {}
-  opts.warn = opts.warn == nil and true or opts.warn
-  path = path or ""
-  local ret = root .. "/packages/" .. pkg .. "/" .. path
-  if opts.warn and not vim.loop.fs_stat(ret) and not require("lazy.core.config").headless() then
-    Util.warn(
-      ("Mason package path not found for **%s**:\n- `%s`\nYou may need to force update the package."):format(pkg, path)
-    )
-  end
-  return ret
-end
-
 function M.dedup(list)
   local ret = {}
   local seen = {}

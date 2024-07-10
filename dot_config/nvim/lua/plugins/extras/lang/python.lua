@@ -77,7 +77,7 @@ return {
           },
         },
         config = function()
-          require("dap-python").setup(Util.plugin.get_pkg_path("debugpy", "/venv/bin/python"))
+          require("dap-python").setup(Util.lsp.get_pkg_path("debugpy", "/venv/bin/python"))
         end,
       },
     },
