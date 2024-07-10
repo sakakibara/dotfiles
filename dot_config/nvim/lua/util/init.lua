@@ -4,7 +4,6 @@ local LazyUtil = require("lazy.core.util")
 ---@field config ConfigOptions
 ---@field cmp util.cmp
 ---@field extras util.extras
----@field file util.file
 ---@field format util.format
 ---@field json util.json
 ---@field keymaps util.keymaps
@@ -14,7 +13,6 @@ local LazyUtil = require("lazy.core.util")
 ---@field plugin util.plugin
 ---@field root util.root
 ---@field terminal util.terminal
----@field toggle util.toggle
 ---@field ui util.ui
 local M = {}
 
