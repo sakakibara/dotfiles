@@ -15,6 +15,7 @@ local LazyUtil = require("lazy.core.util")
 ---@field root util.root
 ---@field terminal util.terminal
 ---@field toggle util.toggle
+---@field ui util.ui
 local M = {}
 
 setmetatable(M, {

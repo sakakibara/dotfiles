@@ -24,7 +24,7 @@ return {
   on_click = {
     name = "number_click",
     callback = function(...)
-      local args = require("plugins.heirline.components.util.statuscolumn").clickargs(...)
+      local args = Util.ui.click_args(...)
       if args.mods:find("c") then
         local dap_available, dap = pcall(require, "dap")
         if dap_available then
