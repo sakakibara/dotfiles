@@ -65,7 +65,6 @@ function M.open(command, opts)
     end
   end
   command = M.picker.commands[command] or command
-  print(command)
   M.picker.open(command, opts)
 end
 
