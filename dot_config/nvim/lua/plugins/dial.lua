@@ -1,12 +1,10 @@
 local M = {}
 
-M.dials_by_ft = {}
-
 function M.dial(increment, g)
   local mode = vim.fn.mode(true)
   local is_visual = mode == "v" or mode == "V" or mode == "\22"
   local func = (increment and "inc" or "dec") .. (g and "_g" or "_") .. (is_visual and "visual" or "normal")
-  local group = M.dials_by_ft[vim.bo.filetype] or "default"
+  local group = vim.g.dials_by_ft[vim.bo.filetype] or "default"
   return require("dial.map")[func](group)
 end
 
@@ -131,6 +129,7 @@ return {
         scss = "css",
         typescript = "typescript",
         typescriptreact = "typescript",
+        yaml = "yaml",
       },
       groups = {
         default = {
@@ -154,6 +153,10 @@ return {
           ordinal_numbers,
           weekdays,
           months,
+        },
+        yaml = {
+          augend.integer.alias.decimal,
+          augend.constant.alias.bool,
         },
         css = {
           augend.integer.alias.decimal,
