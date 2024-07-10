@@ -46,7 +46,7 @@ return {
   on_click = {
     name = "fold_click",
     callback = function(...)
-      local args = require("plugins.heirline.components.util.statuscolumn").clickargs(...)
+      local args = Util.ui.click_args(...)
       local char = args.char
       local fillchars = vim.opt_local.fillchars:get()
       if char == (fillchars.foldopen or Util.config.icons.status.FoldOpen) then
