@@ -26,6 +26,7 @@ return {
         ["]"] = { name = "+Next" },
         ["[o"] = { name = "+Enable option" },
         ["]o"] = { name = "+Disable option" },
+        ["yo"] = { name = "+Toggle" },
         ["gs"] = { name = "+Surround" },
       },
     },
