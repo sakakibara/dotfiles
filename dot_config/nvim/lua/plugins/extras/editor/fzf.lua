@@ -143,13 +143,13 @@ return {
           cwd_prompt = false,
           actions = {
             ["alt-i"] = { actions.toggle_ignore },
-            ["alt-h"] = { actions.toggle_hidden },
+            ["alt-."] = { actions.toggle_hidden },
           },
         },
         grep = {
           actions = {
             ["alt-i"] = { actions.toggle_ignore },
-            ["alt-h"] = { actions.toggle_hidden },
+            ["alt-."] = { actions.toggle_hidden },
           },
         },
         lsp = {

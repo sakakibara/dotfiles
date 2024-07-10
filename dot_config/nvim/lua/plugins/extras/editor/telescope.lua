@@ -169,7 +169,7 @@ return {
               ["<C-t>"] = open_with_trouble,
               ["<M-t>"] = open_with_trouble,
               ["<M-i>"] = find_files_no_ignore,
-              ["<M-h>"] = find_files_with_hidden,
+              ["<M-.>"] = find_files_with_hidden,
               ["<M-p>"] = actions_layout.toggle_preview,
               ["<C-Down>"] = actions.cycle_history_next,
               ["<C-Up>"] = actions.cycle_history_prev,
