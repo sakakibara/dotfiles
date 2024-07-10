@@ -2,6 +2,7 @@ local conditions = require("heirline.conditions")
 
 return {
   require("plugins.heirline.components.vi_mode"),
+  require("plugins.heirline.components.macro_rec"),
   require("plugins.heirline.components.space"),
   require("plugins.heirline.components.git"),
   {
