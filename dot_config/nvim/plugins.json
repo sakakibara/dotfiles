@@ -2,6 +2,8 @@
   "extras": [
     "plugins.extras.coding.codeium",
     "plugins.extras.editor.fzf",
+    "plugins.extras.formatter.black",
+    "plugins.extras.formatter.prettier",
     "plugins.extras.lang.docker",
     "plugins.extras.lang.git",
     "plugins.extras.lang.go",
@@ -18,6 +20,7 @@
     "plugins.extras.lang.typescript",
     "plugins.extras.lang.vue",
     "plugins.extras.lang.yaml",
+    "plugins.extras.linter.eslint",
     "plugins.extras.util.chezmoi"
   ]
 }
