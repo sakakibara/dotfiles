@@ -40,7 +40,7 @@ function M.is_dir(path)
 end
 
 function M.get_current_file_path()
-  return M.buf_get_name(vim.api.nvim_get_current_buf())
+  return M.buf_get_name(vim.api.nvim_get_current_buf()) or ""
 end
 
 function M.buf_get_name(buf)
