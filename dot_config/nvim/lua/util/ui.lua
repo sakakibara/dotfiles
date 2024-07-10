@@ -63,7 +63,7 @@ function M.icon(sign, len)
   return sign.texthl and ("%#" .. sign.texthl .. "#" .. text .. "%*") or text
 end
 
-function M.click_args(self, minwid, clicks, button, mods)
+function M.click_args(component, minwid, clicks, button, mods)
   local args = {
     minwid = minwid,
     clicks = clicks,
@@ -71,21 +71,21 @@ function M.click_args(self, minwid, clicks, button, mods)
     mods = mods,
     mousepos = vim.fn.getmousepos(),
   }
-  if not self.signs then
-    self.signs = {}
+  if not component.signs then
+    component.signs = {}
   end
   args.char = vim.fn.screenstring(args.mousepos.screenrow, args.mousepos.screencol)
   if args.char == " " then
     args.char = vim.fn.screenstring(args.mousepos.screenrow, args.mousepos.screencol - 1)
   end
-  args.sign = self.signs[args.char]
+  args.sign = component.signs[args.char]
   if not args.sign then
     for _, sign_def in ipairs(vim.fn.sign_getdefined()) do
       if sign_def.text then
-        self.signs[sign_def.text:gsub("%s", "")] = sign_def
+        component.signs[sign_def.text:gsub("%s", "")] = sign_def
       end
     end
-    args.sign = self.signs[args.char]
+    args.sign = component.signs[args.char]
   end
   vim.api.nvim_set_current_win(args.mousepos.winid)
   vim.api.nvim_win_set_cursor(0, { args.mousepos.line, 0 })
