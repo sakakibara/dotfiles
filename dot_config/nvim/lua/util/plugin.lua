@@ -102,29 +102,4 @@ function M.on_very_lazy(fn)
   })
 end
 
-function M.extend(t, key, values)
-  local keys = vim.split(key, ".", { plain = true })
-  for i = 1, #keys do
-    local k = keys[i]
-    t[k] = t[k] or {}
-    if type(t) ~= "table" then
-      return
-    end
-    t = t[k]
-  end
-  return vim.list_extend(t, values)
-end
-
-function M.dedup(list)
-  local ret = {}
-  local seen = {}
-  for _, v in ipairs(list) do
-    if not seen[v] then
-      table.insert(ret, v)
-      seen[v] = true
-    end
-  end
-  return ret
-end
-
 return M

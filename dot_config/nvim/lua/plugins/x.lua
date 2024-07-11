@@ -2,7 +2,7 @@ local prios = {
   ["plugins.extras.lang.typescript"] = 5,
 }
 
-local extras = Util.plugin.dedup(Util.config.json.data.extras)
+local extras = Util.dedup(Util.config.json.data.extras)
 
 Util.plugin.save_core()
 

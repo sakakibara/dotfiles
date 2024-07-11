@@ -20,7 +20,7 @@ return {
     "neovim/nvim-lspconfig",
     opts = function(_, opts)
       table.insert(opts.servers.vtsls.filetypes, "vue")
-      Util.plugin.extend(opts.servers.vtsls, "settings.vtsls.tsserver.globalPlugins", {
+      Util.extend(opts.servers.vtsls, "settings.vtsls.tsserver.globalPlugins", {
         {
           name = "@vue/typescript-plugin",
           location = Util.lsp.get_pkg_path("vue-language-server", "/node_modules/@vue/language-server"),

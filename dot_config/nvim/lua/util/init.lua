@@ -40,6 +40,18 @@ function M.extend(t, key, values)
   return vim.list_extend(t, values)
 end
 
+function M.dedup(list)
+  local ret = {}
+  local seen = {}
+  for _, v in ipairs(list) do
+    if not seen[v] then
+      table.insert(ret, v)
+      seen[v] = true
+    end
+  end
+  return ret
+end
+
 local cache = {}
 
 function M.memoize(fn)
