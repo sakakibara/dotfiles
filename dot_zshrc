@@ -627,7 +627,8 @@ fi
 #
 
 [[ -r "${HOME}/.asdf/asdf.sh" ]] && source "${HOME}/.asdf/asdf.sh"
-[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+
+_evalcache fzf --zsh
 
 # Uncomment the line below when zi alias collides
 # (( ${+aliases[zi]} )) && unalias zi

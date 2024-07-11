@@ -14,7 +14,6 @@ main() {
   # Brewfile hash: {{ include "etc/darwin/Brewfile" | sha256sum }}
   ask_to_run brew::setup
 
-  ask_to_run fzf::setup
   ask_to_run asdf::setup
 }
 
