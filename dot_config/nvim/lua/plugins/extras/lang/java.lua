@@ -45,6 +45,8 @@ return {
     dependencies = { "folke/which-key.nvim" },
     ft = java_filetypes,
     opts = function()
+      local mason_registry = require("mason-registry")
+      local lombok_jar = mason_registry.get_package("jdtls"):get_install_path() .. "/lombok.jar"
       return {
         root_dir = require("lspconfig.server_configurations.jdtls").default_config.root_dir,
 
@@ -59,7 +61,10 @@ return {
           return vim.fn.stdpath("cache") .. "/jdtls/" .. project_name .. "/workspace"
         end,
 
-        cmd = { vim.fn.exepath("jdtls") },
+        cmd = {
+          vim.fn.exepath("jdtls"),
+          string.format("--jvm-arg=-javaagent:%s", lombok_jar),
+        },
         full_cmd = function(opts)
           local fname = vim.api.nvim_buf_get_name(0)
           local root_dir = opts.root_dir(fname)
@@ -171,9 +176,23 @@ return {
               if opts.test and mason_registry.is_installed("java-test") then
                 wk.register({
                   ["<Leader>t"] = { name = "+test" },
-                  ["<Leader>tt"] = { require("jdtls.dap").test_class, "Run All Test" },
-                  ["<Leader>tr"] = { require("jdtls.dap").test_nearest_method, "Run Nearest Test" },
-                  ["<Leader>tT"] = { require("jdtls.dap").pick_test, "Run Test" },
+                  ["<leader>tt"] = {
+                    function()
+                      require("jdtls.dap").test_class({
+                        config_overrides = type(opts.test) ~= "boolean" and opts.test.config_overrides or nil,
+                      })
+                    end,
+                    "Run all test",
+                  },
+                  ["<leader>tr"] = {
+                    function()
+                      require("jdtls.dap").test_nearest_method({
+                        config_overrides = type(opts.test) ~= "boolean" and opts.test.config_overrides or nil,
+                      })
+                    end,
+                    "Run nearest test",
+                  },
+                  ["<leader>tT"] = { require("jdtls.dap").pick_test, "Run Test" },
                 }, { mode = "n", buffer = args.buf })
               end
             end
