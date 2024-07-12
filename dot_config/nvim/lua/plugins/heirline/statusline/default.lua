@@ -8,7 +8,7 @@ return {
   {
     condition = function()
       return not conditions.buffer_matches({
-        buftype = { "acwrite", "nofile", "prompt", "help" },
+        buftype = { "nofile", "prompt", "help" },
       })
     end,
     require("plugins.heirline.components.file.path"),
