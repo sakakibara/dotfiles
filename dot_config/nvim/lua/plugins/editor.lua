@@ -162,7 +162,10 @@ return {
 
   {
     "max397574/better-escape.nvim",
-    event = "InsertEnter",
+    event = {
+      "InsertEnter",
+      "CmdlineEnter",
+    },
     opts = {
       default_mappings = false,
       mappings = {
