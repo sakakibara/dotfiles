@@ -79,11 +79,11 @@ return {
       },
       { "<Leader>/", Util.pick("live_grep"), desc = "Grep (root)" },
       { "<Leader>:", "<Cmd>Telescope command_history<CR>", desc = "Command history" },
-      { "<Leader><Space>", Util.pick("auto"), desc = "Find files (root)" },
+      { "<Leader><Space>", Util.pick("files"), desc = "Find files (root)" },
       { "<Leader>fb", "<Cmd>Telescope buffers sort_mru=true sort_lastused=true<CR>", desc = "Buffers" },
       { "<Leader>fc", Util.pick.config_files(), desc = "Find config file" },
-      { "<Leader>ff", Util.pick("auto"), desc = "Find files (root)" },
-      { "<Leader>fF", Util.pick("auto", { root = false }), desc = "Find files (cwd)" },
+      { "<Leader>ff", Util.pick("files"), desc = "Find files (root)" },
+      { "<Leader>fF", Util.pick("files", { root = false }), desc = "Find files (cwd)" },
       { "<Leader>fg", "<Cmd>Telescope git_files<CR>", desc = "Find files (git files)" },
       { "<Leader>fr", "<Cmd>Telescope oldfiles<CR>", desc = "Recent" },
       { "<Leader>fR", Util.pick("oldfiles", { cwd = vim.uv.cwd() }), desc = "Recent (cwd)" },
@@ -149,6 +149,20 @@ return {
         Util.pick("find_files", { hidden = true, default_text = line })()
       end
 
+      local function find_command()
+        if 1 == vim.fn.executable("rg") then
+          return { "rg", "--files", "--color", "never", "-g", "!.git" }
+        elseif 1 == vim.fn.executable("fd") then
+          return { "fd", "--type", "f", "--color", "never", "-E", ".git" }
+        elseif 1 == vim.fn.executable("fdfind") then
+          return { "fdfind", "--type", "f", "--color", "never", "-E", ".git" }
+        elseif 1 == vim.fn.executable("find") and vim.fn.has("win32") == 0 then
+          return { "find", ".", "-type", "f" }
+        elseif 1 == vim.fn.executable("where") then
+          return { "where", "/r", ".", "*" }
+        end
+      end
+
       return {
         defaults = {
           prompt_prefix = " ",
@@ -184,6 +198,12 @@ return {
             n = {
               ["q"] = actions.close,
             },
+          },
+        },
+        pickers = {
+          find_files = {
+            find_command = find_command,
+            hidden = true,
           },
         },
         extensions = {

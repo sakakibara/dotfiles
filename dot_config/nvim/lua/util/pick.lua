@@ -35,7 +35,6 @@ function M.open(command, opts)
     return Util.error("Util.pick: picker not set")
   end
 
-  command = command or "auto"
   opts = opts or {}
 
   opts = vim.deepcopy(opts)
@@ -47,22 +46,6 @@ function M.open(command, opts)
 
   if not opts.cwd and opts.root ~= false then
     opts.cwd = Util.root.get({ buf = opts.buf })
-  end
-
-  local cwd = opts.cwd or vim.uv.cwd()
-  if command == "auto" then
-    command = "files"
-    if
-      vim.uv.fs_stat(cwd .. "/.git")
-      and not vim.uv.fs_stat(cwd .. "/.ignore")
-      and not vim.uv.fs_stat(cwd .. "/.rgignore")
-    then
-      command = "git_files"
-      if opts.show_untracked == nil then
-        opts.show_untracked = true
-        opts.recurse_submodules = false
-      end
-    end
   end
   command = M.picker.commands[command] or command
   M.picker.open(command, opts)
