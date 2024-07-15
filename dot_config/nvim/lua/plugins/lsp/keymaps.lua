@@ -8,10 +8,10 @@ function M.get()
   end
   M._keys = {
     { "<Leader>cl", "<Cmd>LspInfo<CR>", desc = "Lsp info" },
-    { "gd", vim.lsp.buf.definition(), desc = "Goto definition", has = "definition" },
-    { "gr", vim.lsp.buf.references(), desc = "References", nowait = true },
-    { "gI", vim.lsp.buf.implementation(), desc = "Goto implementation" },
-    { "gy", vim.lsp.buf.type_definition(), desc = "Goto t[y]pe definition" },
+    { "gd", vim.lsp.buf.definition, desc = "Goto definition", has = "definition" },
+    { "gr", vim.lsp.buf.references, desc = "References", nowait = true },
+    { "gI", vim.lsp.buf.implementation, desc = "Goto implementation" },
+    { "gy", vim.lsp.buf.type_definition, desc = "Goto t[y]pe definition" },
     { "gD", vim.lsp.buf.declaration, desc = "Goto declaration" },
     { "K", vim.lsp.buf.hover, desc = "Hover" },
     { "gK", vim.lsp.buf.signature_help, desc = "Signature help", has = "signatureHelp" },
