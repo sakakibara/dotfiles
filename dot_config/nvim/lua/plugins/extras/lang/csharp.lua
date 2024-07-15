@@ -96,9 +96,7 @@ return {
     },
     opts = {
       adapters = {
-        ["neotest-dotnet"] = {
-          -- Here we can set options for neotest-dotnet
-        },
+        ["neotest-dotnet"] = {},
       },
     },
   },

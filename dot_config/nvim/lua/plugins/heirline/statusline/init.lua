@@ -14,11 +14,11 @@ return {
       i = "green",
       v = "cyan",
       V = "cyan",
-      ["\22"] = "cyan", -- this is an actual ^V, type <C-v><C-v> in insert mode
+      ["\22"] = "cyan",
       c = "orange",
       s = "purple",
       S = "purple",
-      ["\19"] = "purple", -- this is an actual ^S, type <C-v><C-s> in insert mode
+      ["\19"] = "purple",
       R = "orange",
       r = "orange",
       ["!"] = "red",

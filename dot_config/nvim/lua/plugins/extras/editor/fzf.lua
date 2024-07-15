@@ -55,7 +55,6 @@ return {
       config.defaults.actions.files["alt-c"] = config.defaults.actions.files["ctrl-r"]
       config.set_action_helpstr(config.defaults.actions.files["ctrl-r"], "toggle-root-dir")
 
-      -- use the same prompt for all
       local defaults = require("fzf-lua.profiles.default-title")
       local function fix(t)
         t.prompt = t.prompt ~= nil and " " or nil
@@ -67,7 +66,7 @@ return {
       end
       fix(defaults)
 
-      local img_previewer ---@type string[]?
+      local img_previewer
       for _, v in ipairs({
         { cmd = "ueberzug", args = {} },
         { cmd = "chafa", args = { "{file}", "--format=symbols" } },
@@ -85,7 +84,6 @@ return {
           ["--no-scrollbar"] = true,
         },
         defaults = {
-          -- formatter = "path.filename_first",
           formatter = "path.dirname_first",
         },
         previewers = {
@@ -110,7 +108,6 @@ return {
           }, fzf_opts.kind == "codeaction" and {
             winopts = {
               layout = "vertical",
-              -- height is number of items minus 15 lines for the preview, with a max of 80% screen height
               height = math.floor(math.min(vim.o.lines * 0.8 - 16, #items + 2) + 0.5) + 16,
               width = 0.5,
               preview = not vim.tbl_isempty(Util.lsp.get_clients({ bufnr = 0, name = "vtsls" })) and {
@@ -125,7 +122,6 @@ return {
           } or {
             winopts = {
               width = 0.5,
-              -- height is number of items, with a max of 80% screen height
               height = math.floor(math.min(vim.o.lines * 0.8, #items + 2) + 0.5),
             },
           })

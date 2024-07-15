@@ -128,7 +128,6 @@ return {
                   },
                 },
               }, function(_, result)
-                ---@type string[]
                 local files = result.body.files
                 table.insert(files, 1, "Enter new path...")
                 vim.ui.select(files, {

@@ -64,7 +64,6 @@ return {
     "mfussenegger/nvim-dap",
     optional = true,
     opts = function()
-      -- Debug settings
       local dap = require("dap")
       dap.configurations.scala = {
         {
@@ -73,7 +72,6 @@ return {
           name = "RunOrTest",
           metals = {
             runType = "runOrTestFile",
-            --args = { "firstArg", "secondArg", "thirdArg" }, -- here just as an example
           },
         },
         {

@@ -25,7 +25,7 @@ function M.has_config(ctx)
 end
 
 function M.has_parser(ctx)
-  local ft = vim.bo[ctx.buf].filetype --[[@as string]]
+  local ft = vim.bo[ctx.buf].filetype
   if vim.tbl_contains(supported, ft) then
     return true
   end
