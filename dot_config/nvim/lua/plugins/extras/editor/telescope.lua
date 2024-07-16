@@ -109,7 +109,7 @@ return {
       { "<Leader>sq", "<Cmd>Telescope quickfix<CR>", desc = "Quickfix list" },
       { "<Leader>sw", Util.pick("grep_string", { word_match = "-w" }), desc = "Word (root)" },
       { "<Leader>sW", Util.pick("grep_string", { root = false, word_match = "-w" }), desc = "Word (cwd)" },
-      { "<Leader>sw", Util.pick("grep_string"), mode = "v", desc = "Selection (Root Dir)" },
+      { "<Leader>sw", Util.pick("grep_string"), mode = "v", desc = "Selection (root Dir)" },
       { "<Leader>sW", Util.pick("grep_string", { root = false }), mode = "v", desc = "Selection (cwd)" },
       { "<Leader>uC", Util.pick("colorscheme", { enable_preview = true }), desc = "Colorscheme with preview" },
       {
