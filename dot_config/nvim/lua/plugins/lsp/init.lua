@@ -114,12 +114,7 @@ return {
               and vim.bo[buffer].buftype == ""
               and not vim.tbl_contains(opts.inlay_hints.exclude, vim.bo[buffer].filetype)
             then
-              local ih = vim.lsp.buf.inlay_hint or vim.lsp.inlay_hint
-              if type(ih) == "function" then
-                ih(buffer, true)
-              elseif type(ih) == "table" and ih.enable then
-                ih.enable(true, { bufnr = buffer })
-              end
+              vim.lsp.inlay_hint.enable(true, { bufnr = buffer })
             end
           end)
         end
