@@ -142,7 +142,7 @@ return {
         opts = {
           disable_winbar_cb = function(args)
             return require("heirline.conditions").buffer_matches({
-              filetype = { "fzf", "lazy" },
+              filetype = { "fzf", "lazy", "mason", "notify" },
             }, args.buf)
           end,
           disable_statuscolumn_cb = function(args)
