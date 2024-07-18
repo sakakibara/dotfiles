@@ -41,6 +41,8 @@ end, { desc = "Format" })
 
 map("n", "<Leader>cd", vim.diagnostic.open_float, { desc = "Line diagnostics" })
 
+map("n", "<Leader>wc", "<C-w>c", { desc = "Close a window" })
+
 map("n", "<Leader><Tab><Tab>", "<Cmd>tabnew<CR>", { desc = "New tab" })
 map("n", "<Leader><Tab>[", "<Cmd>tabprevious<CR>", { desc = "Previous tab" })
 map("n", "<Leader><Tab>]", "<Cmd>tabnext<CR>", { desc = "Next tab" })
