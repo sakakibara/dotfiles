@@ -141,7 +141,9 @@ return {
         statuscolumn = require("plugins.heirline.statuscolumn"),
         opts = {
           disable_winbar_cb = function(args)
-            return require("heirline.conditions").buffer_matches(special_buffers, args.buf)
+            return require("heirline.conditions").buffer_matches({
+              filetype = { "fzf" },
+            }, args.buf)
           end,
           disable_statuscolumn_cb = function(args)
             return require("heirline.conditions").buffer_matches(special_buffers, args.buf)
