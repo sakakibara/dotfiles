@@ -121,6 +121,7 @@ return {
     "rebelot/heirline.nvim",
     event = "VeryLazy",
     init = function()
+      vim.o.winbar = " "
       vim.g.heirline_laststatus = vim.o.laststatus
       if vim.fn.argc(-1) > 0 then
         vim.o.statusline = " "
