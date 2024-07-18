@@ -9,7 +9,13 @@ return {
       spec = {
         {
           mode = { "n", "v" },
-          { "<Leader>b", group = "buffer" },
+          {
+            "<Leader>b",
+            group = "buffer",
+            expand = function()
+              return require("which-key.extras").expand.buf()
+            end,
+          },
           { "<Leader>c", group = "code" },
           { "<Leader>d", group = "debug" },
           { "<Leader>da", group = "adapters" },
@@ -24,6 +30,14 @@ return {
           { "<Leader>s", group = "search" },
           { "<Leader>t", group = "test" },
           { "<Leader>u", group = "ui" },
+          {
+            "<Leader>w",
+            group = "windows",
+            proxy = "<C-w>",
+            expand = function()
+              return require("which-key.extras").expand.win()
+            end,
+          },
           { "<Leader>ut", group = "terminal" },
           { "[", group = "prev" },
           { "[o", group = "enable option" },
