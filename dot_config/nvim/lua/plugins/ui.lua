@@ -262,35 +262,6 @@ return {
   },
 
   {
-    "mrjones2014/smart-splits.nvim",
-    keys = {
-      { "<M-S-h>", mode = { "n", "t" }, require("smart-splits").resize_left, desc = "Resize window left" },
-      { "<M-S-j>", mode = { "n", "t" }, require("smart-splits").resize_down, desc = "Resize window down" },
-      { "<M-S-k>", mode = { "n", "t" }, require("smart-splits").resize_up, desc = "Resize window up" },
-      { "<M-S-l>", mode = { "n", "t" }, require("smart-splits").resize_right, desc = "Resize window right" },
-      { "<M-h>", mode = { "n", "t" }, require("smart-splits").move_cursor_left, desc = "Move to left window" },
-      { "<M-j>", mode = { "n", "t" }, require("smart-splits").move_cursor_down, desc = "Move to window below" },
-      { "<M-k>", mode = { "n", "t" }, require("smart-splits").move_cursor_up, desc = "Move to window above" },
-      { "<M-l>", mode = { "n", "t" }, require("smart-splits").move_cursor_right, desc = "Move to right window" },
-      { "<Leader>bh", require("smart-splits").swap_buf_left, desc = "Swap with left buffer" },
-      { "<Leader>bj", require("smart-splits").swap_buf_down, desc = "Swap with buffer below" },
-      { "<Leader>bk", require("smart-splits").swap_buf_up, desc = "Swap with buffer above" },
-      { "<Leader>bl", require("smart-splits").swap_buf_right, desc = "Swap with right buffer" },
-    },
-    opts = {
-      ignored_filetypes = {
-        "nofile",
-        "quickfix",
-        "prompt",
-        "NvimTree",
-      },
-      default_amount = 1,
-      at_edge = "stop",
-      multiplexer_integration = nil,
-    },
-  },
-
-  {
     "stevearc/aerial.nvim",
     enabled = false,
     event = "LazyFile",
