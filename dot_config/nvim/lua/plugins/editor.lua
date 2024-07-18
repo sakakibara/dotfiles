@@ -9,6 +9,7 @@ return {
       spec = {
         {
           mode = { "n", "v" },
+          { "<Leader><Tab>", group = "tabs" },
           {
             "<Leader>b",
             group = "buffer",
