@@ -1,7 +1,6 @@
 {
   "extras": [
     "plugins.extras.coding.codeium",
-    "plugins.extras.editor.fzf",
     "plugins.extras.formatter.black",
     "plugins.extras.formatter.prettier",
     "plugins.extras.lang.docker",
