@@ -121,7 +121,6 @@ return {
     "rebelot/heirline.nvim",
     event = "VeryLazy",
     init = function()
-      vim.o.winbar = " "
       vim.g.heirline_laststatus = vim.o.laststatus
       if vim.fn.argc(-1) > 0 then
         vim.o.statusline = " "
@@ -137,7 +136,7 @@ return {
       }
       return {
         statusline = require("plugins.heirline.statusline"),
-        winbar = require("plugins.heirline.winbar"),
+        -- winbar = require("plugins.heirline.winbar"),
         statuscolumn = require("plugins.heirline.statuscolumn"),
         opts = {
           disable_winbar_cb = function(args)
