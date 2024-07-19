@@ -647,4 +647,40 @@ return {
       })
     end,
   },
+
+  {
+    "b0o/incline.nvim",
+    event = "VeryLazy",
+    opts = {
+      window = {
+        padding = 0,
+        margin = { horizontal = 0 },
+      },
+      ignore = {
+        buftypes = { "help", "nofile", "nowrite", "quickfix", "terminal", "prompt" },
+      },
+      render = function(props)
+        local fpath = Util.path.buf_get_name(props.buf)
+        local format
+        if Util.path.is_dir(fpath) then
+          format = ":~:.:h"
+        else
+          format = ":t"
+        end
+        local filename = vim.fn.fnamemodify(fpath, format)
+        if filename == "" then
+          filename = "[No Name]"
+        end
+        local ft_icon, ft_color = require("nvim-web-devicons").get_icon_color(filename)
+        local modified = vim.bo[props.buf].modified
+        return {
+          ft_icon and { " ", ft_icon, " ", guifg = ft_color } or "",
+          " ",
+          { filename, gui = modified and "bold,italic" or "bold" },
+          " ",
+          guibg = "#44406e",
+        }
+      end,
+    },
+  },
 }
