@@ -46,9 +46,9 @@ end
 function M.buf_get_name(buf)
   local ft = vim.api.nvim_get_option_value("filetype", { buf = buf })
   if ft == "oil" then
-    return require("oil").get_current_dir()
+    return require("oil").get_current_dir(buf) or ""
   end
-  return vim.api.nvim_buf_get_name(0)
+  return vim.api.nvim_buf_get_name(buf)
 end
 
 function M.get_path_segments(path)
