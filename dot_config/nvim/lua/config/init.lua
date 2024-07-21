@@ -163,6 +163,8 @@ function M.json.load()
   end
 end
 
+local clipboard
+
 function M.setup(opts)
   require("lazy").setup(opts)
 
@@ -179,6 +181,11 @@ function M.setup(opts)
         M.load("autocmds")
       end
       M.load("keymaps")
+
+      if clipboard ~= nil then
+        vim.opt.clipboard = clipboard
+      end
+
       Util.format.setup()
       Util.root.setup()
 
@@ -273,6 +280,10 @@ function M.init()
   M.inited = true
   M.delay_notify()
   M.load("options")
+
+  clipboard = vim.opt.clipboard
+  vim.opt.clipboard = ""
+
   Util.plugin.setup()
   M.json.load()
 end
