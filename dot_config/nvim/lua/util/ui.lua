@@ -1,6 +1,19 @@
 ---@class util.ui
 local M = {}
 
+function M.color(name, bg)
+  local hl = vim.api.nvim_get_hl(0, { name = name, link = false })
+  local color = nil
+  if hl then
+    if bg then
+      color = hl.bg
+    else
+      color = hl.fg
+    end
+  end
+  return color and string.format("#%06x", color) or nil
+end
+
 function M.blend(color1, color2, alpha)
   color1 = type(color1) == "number" and string.format("#%06x", color1) or color1
   color2 = type(color2) == "number" and string.format("#%06x", color2) or color2

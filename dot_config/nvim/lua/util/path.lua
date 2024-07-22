@@ -1,3 +1,5 @@
+local Path = require("plenary.path")
+
 ---@class util.path
 local M = {}
 
@@ -98,6 +100,52 @@ end
 
 function M.get_parent_path()
   return vim.fn.fnamemodify(M.get_current_file_path(), ":h")
+end
+
+function M.to_relative_path(path, base)
+  local abs_base = Path:new(base):absolute()
+  local abs_path = Path:new(path):absolute()
+  if string.sub(abs_path, 1, #abs_base) ~= abs_base then
+    return path
+  end
+  return string.sub(abs_path, #abs_base + 2)
+end
+
+function M.shorten_path(path, opts)
+  opts = opts or {}
+  local short_len = opts.short_len or 1
+  local tail_count = opts.tail_count or 2
+  local head_max = opts.head_max or 0
+  local relative = opts.relative == nil or opts.relative
+  local return_table = opts.return_table or false
+  if relative then
+    path = M.to_relative_path(path, vim.uv.cwd())
+  end
+  local components = vim.split(path, Path.path.sep)
+  if #components == 1 then
+    if return_table then
+      return { nil, path }
+    end
+    return path
+  end
+  local tail = { unpack(components, #components - tail_count + 1) }
+  local head = { unpack(components, 1, #components - tail_count) }
+  if head_max > 0 and #head > head_max then
+    head = { unpack(head, #head - head_max + 1) }
+  end
+  ---@diagnostic disable-next-line: param-type-mismatch
+  local head_short = #head > 0 and Path.new(unpack(head)):shorten(short_len, {}) or nil
+  if head_short == "/" then
+    head_short = ""
+  end
+  local result = {
+    head_short,
+    table.concat(tail, Path.path.sep),
+  }
+  if return_table then
+    return result
+  end
+  return table.concat(result, Path.path.sep)
 end
 
 return M

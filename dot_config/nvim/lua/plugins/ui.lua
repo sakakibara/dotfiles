@@ -663,25 +663,84 @@ return {
         cursorline = "focused_win",
       },
       render = function(props)
-        local fpath = Util.path.buf_get_name(props.buf)
-        local format
-        if Util.path.is_dir(fpath) then
-          format = ":~:.:h"
-        else
-          format = ":t"
+        local devicons = require("nvim-web-devicons")
+
+        local function shorten_path_styled(path, opts)
+          opts = opts or {}
+          local head_style = opts.head_style or {}
+          local tail_style = opts.tail_style or {}
+          local result = Util.path.shorten_path(
+            path,
+            vim.tbl_extend("force", opts, {
+              return_table = true,
+            })
+          )
+          return {
+            result[1] and vim.list_extend(head_style, { result[1], "/" }) or "",
+            vim.list_extend(tail_style, { result[2] }),
+          }
         end
-        local filename = vim.fn.fnamemodify(fpath, format)
-        if filename == "" then
-          filename = "[No Name]"
+
+        local colors = {
+          fg = Util.ui.color("Normal"),
+          fg_nc = Util.ui.dim(Util.ui.color("Normal"), 0.75),
+          bg = Util.ui.color("Normal", true),
+          red = Util.ui.color("Error"),
+        }
+
+        local function get_icon(buf)
+          local bufname = vim.api.nvim_buf_get_name(buf)
+          local extension = vim.fn.fnamemodify(bufname, ":e")
+          local icon, icon_color
+          icon, icon_color = devicons.get_icon_color(bufname, extension, { default = true })
+          return {
+            icon = icon,
+            fg = icon_color,
+          }
         end
-        local ft_icon, ft_color = require("nvim-web-devicons").get_icon_color(filename)
+
+        local function get_file_path(buf, focused, fg, fg_nc)
+          local bufname = vim.api.nvim_buf_get_name(buf)
+          if bufname == "" then
+            return { fname = "[No Name]" }
+          end
+          local fname = shorten_path_styled(bufname, {
+            short_len = 1,
+            tail_count = 2,
+            head_max = 4,
+            head_style = { guifg = fg_nc },
+            tail_style = { guifg = focused and fg or fg_nc },
+          })
+          return fname
+        end
+
+        local file_path = get_file_path(props.buf, props.focused, colors.fg, colors.fg_nc)
+        local icon = get_icon(props.buf)
         local modified = vim.bo[props.buf].modified
+
         return {
-          ft_icon and { " ", ft_icon, " ", guifg = ft_color } or "",
-          " ",
-          { filename, gui = modified and "bold,italic" or "bold" },
-          " ",
-          guibg = "#44406e",
+          {
+            {
+              " ",
+            },
+            {
+              icon.icon,
+              " ",
+              guifg = props.focused and icon.fg or colors.fg_nc,
+            },
+            {
+              " ",
+            },
+            {
+              file_path,
+              gui = modified and "bold,italic" or nil,
+            },
+            { modified and " [+]" or "", guifg = colors.red },
+            {
+              " ",
+            },
+            guibg = colors.bg,
+          },
         }
       end,
     },
