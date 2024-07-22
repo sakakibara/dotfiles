@@ -123,7 +123,9 @@ return {
     init = function()
       vim.g.heirline_laststatus = vim.o.laststatus
       if vim.fn.argc(-1) > 0 then
+        vim.o.cmdheight = 0
         vim.o.statusline = " "
+        require("heirline")
       else
         vim.o.laststatus = 0
       end
