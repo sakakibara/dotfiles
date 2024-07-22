@@ -652,6 +652,15 @@ return {
     "b0o/incline.nvim",
     dependencies = { "nvim-tree/nvim-web-devicons" },
     event = "VeryLazy",
+    keys = {
+      {
+        "<Leader>ui",
+        function()
+          require("incline").toggle()
+        end,
+        desc = "Toggle incline",
+      },
+    },
     opts = {
       window = {
         padding = 0,
