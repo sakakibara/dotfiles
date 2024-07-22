@@ -659,6 +659,9 @@ return {
       ignore = {
         buftypes = { "help", "nofile", "nowrite", "quickfix", "terminal", "prompt" },
       },
+      hide = {
+        cursorline = "focused_win",
+      },
       render = function(props)
         local fpath = Util.path.buf_get_name(props.buf)
         local format
