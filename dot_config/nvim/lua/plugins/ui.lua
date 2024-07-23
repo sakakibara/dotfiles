@@ -699,7 +699,7 @@ return {
         }
 
         local function get_icon(buf)
-          local bufname = vim.api.nvim_buf_get_name(buf)
+          local bufname = Util.path.buf_get_name(buf)
           local extension = vim.fn.fnamemodify(bufname, ":e")
           local icon, icon_color
           icon, icon_color = devicons.get_icon_color(bufname, extension, { default = true })
@@ -710,7 +710,7 @@ return {
         end
 
         local function get_file_path(buf, focused, fg, fg_nc)
-          local bufname = vim.api.nvim_buf_get_name(buf)
+          local bufname = Util.path.buf_get_name(buf)
           if bufname == "" then
             return { fname = "[No Name]" }
           end
