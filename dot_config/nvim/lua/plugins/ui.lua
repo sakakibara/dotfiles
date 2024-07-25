@@ -669,9 +669,6 @@ return {
       ignore = {
         buftypes = { "help", "nofile", "nowrite", "quickfix", "terminal", "prompt" },
       },
-      hide = {
-        cursorline = "focused_win",
-      },
       render = function(props)
         local devicons = require("nvim-web-devicons")
 
