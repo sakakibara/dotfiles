@@ -5,7 +5,7 @@ return {
   hl = { fg = "gray", bold = true },
   on_click = {
     callback = function()
-      vim.cmd("NvimTreeToggle")
+      require("oil").open()
     end,
     name = "heirline_workdir",
   },

@@ -502,29 +502,6 @@ return {
   },
 
   {
-    "nvim-tree/nvim-tree.lua",
-    lazy = false,
-    dependencies = { "nvim-tree/nvim-web-devicons" },
-    keys = {
-      {
-        "<Leader>uf",
-        function()
-          require("nvim-tree.api").tree.toggle({ path = Util.root.get() })
-        end,
-        desc = "Toggle nvim-tree explorer",
-      },
-      {
-        "<Leader>uF",
-        function()
-          require("nvim-tree.api").tree.toggle({ path = vim.uv.cwd() })
-        end,
-        desc = "Toggle nvim-tree explorer (cwd)",
-      },
-    },
-    opts = {},
-  },
-
-  {
     "antosha417/nvim-lsp-file-operations",
     dependencies = {
       "nvim-lua/plenary.nvim",

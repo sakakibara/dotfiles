@@ -31,7 +31,6 @@ return {
       mini = true,
       neotest = true,
       notify = true,
-      nvimtree = true,
       overseer = true,
       telescope = { enabled = true },
       lsp_trouble = true,

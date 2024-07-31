@@ -134,7 +134,7 @@ return {
       vim.o.laststatus = vim.g.heirline_laststatus
       local special_buffers = {
         buftype = { "nofile", "prompt", "help", "quickfix" },
-        filetype = { "Trouble", "NvimTree", "dashboard", "fzf" },
+        filetype = { "Trouble", "dashboard", "fzf" },
       }
       return {
         statusline = require("plugins.heirline.statusline"),
