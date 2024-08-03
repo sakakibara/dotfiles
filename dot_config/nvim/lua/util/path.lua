@@ -95,90 +95,90 @@ function M.format_path(path, opts)
   if replace_home then
     cwd = M.replace_home_dir(cwd)
   end
-  local cwd_components = M.split(cwd)
-  local path_components = M.split(path)
+  local cwd_segments = M.split(cwd)
+  local path_segments = M.split(path)
 
   -- Check if the path contains the CWD
   local contains_cwd = true
-  for i = 1, #cwd_components do
-    if cwd_components[i] ~= path_components[i] then
+  for i = 1, #cwd_segments do
+    if cwd_segments[i] ~= path_segments[i] then
       contains_cwd = false
       break
     end
   end
 
   -- Split into CWD, head, and tail
-  local head_start = contains_cwd and #cwd_components + 1 or 1
-  local head_end = math.max(#path_components - tail_count, head_start)
-  local cwd_part = contains_cwd and table.concat(cwd_components, M.sep) or nil
-  local head_components = { unpack(path_components, head_start, head_end) }
-  local tail_components = { unpack(path_components, head_end + 1) }
+  local head_start = contains_cwd and #cwd_segments + 1 or 1
+  local head_end = math.max(#path_segments - tail_count, head_start)
+  local cwd_part = contains_cwd and table.concat(cwd_segments, M.sep) or nil
+  local head_segments = { unpack(path_segments, head_start, head_end) }
+  local tail_segments = { unpack(path_segments, head_end + 1) }
 
-  -- Function to shorten each component with special handling for '.'
-  local function shorten_component(c, len, append_ellipsis)
+  -- Function to shorten each segment with special handling for '.'
+  local function shorten_segment(segment, len, append_ellipsis)
     if len > 0 then
-      if c == "." then
+      if segment == "." then
         return "."
       end
-      local short = string.sub(c, 1, len)
-      if append_ellipsis and #c > len then
+      local short = string.sub(segment, 1, len)
+      if append_ellipsis and #segment > len then
         return short .. Util.config.icons.status.Ellipsis
       end
       return short
     else
-      return c
+      return segment
     end
   end
 
-  -- Shorten head components
+  -- Shorten head segments
   local head_short = {}
-  for _, component in ipairs(head_components) do
-    table.insert(head_short, shorten_component(component, short_len, ellipsis))
+  for _, segment in ipairs(head_segments) do
+    table.insert(head_short, shorten_segment(segment, short_len, ellipsis))
   end
 
-  -- Shorten CWD components
+  -- Shorten CWD segments
   local cwd_short = {}
   if cwd_part then
-    for _, component in ipairs(M.split(cwd_part)) do
-      table.insert(cwd_short, shorten_component(component, short_len, ellipsis))
+    for _, segment in ipairs(M.split(cwd_part)) do
+      table.insert(cwd_short, shorten_segment(segment, short_len, ellipsis))
     end
   end
 
-  -- Combine head and cwd components
-  local combined_components = {}
+  -- Combine head and cwd segments
+  local combined_segments = {}
   if cwd_short then
-    for _, component in ipairs(cwd_short) do
-      table.insert(combined_components, component)
+    for _, segment in ipairs(cwd_short) do
+      table.insert(combined_segments, segment)
     end
   end
-  for _, component in ipairs(head_short) do
-    table.insert(combined_components, component)
+  for _, segment in ipairs(head_short) do
+    table.insert(combined_segments, segment)
   end
 
   -- Apply max_segments
-  if max_segments > 0 and #combined_components > max_segments then
-    local excess_count = #combined_components - max_segments
-    -- Remove excess components from the beginning
+  if max_segments > 0 and #combined_segments > max_segments then
+    local excess_count = #combined_segments - max_segments
+    -- Remove excess segments from the beginning
     for _ = 1, excess_count do
-      table.remove(combined_components, 1)
+      table.remove(combined_segments, 1)
     end
   end
 
   -- Split back into head and cwd parts
-  local final_head_components = {}
-  local final_cwd_components = {}
+  local final_head_segments = {}
+  local final_cwd_segments = {}
 
-  if cwd_short and #combined_components > #cwd_short then
-    final_cwd_components = { unpack(combined_components, 1, #cwd_short) }
-    final_head_components = { unpack(combined_components, #cwd_short + 1) }
+  if cwd_short and #combined_segments > #cwd_short then
+    final_cwd_segments = { unpack(combined_segments, 1, #cwd_short) }
+    final_head_segments = { unpack(combined_segments, #cwd_short + 1) }
   else
-    final_head_components = combined_components
+    final_head_segments = combined_segments
   end
 
   -- Create the final output
-  local head_str = table.concat(final_head_components, join_separator)
-  local tail_str = table.concat(tail_components, join_separator)
-  local cwd_str = cwd_part and table.concat(final_cwd_components, join_separator) or nil
+  local head_str = table.concat(final_head_segments, join_separator)
+  local tail_str = table.concat(tail_segments, join_separator)
+  local cwd_str = cwd_part and table.concat(final_cwd_segments, join_separator) or nil
 
   -- Append separator if last_separator is true and return_segments is false
   if return_segments and last_separator then
@@ -206,7 +206,7 @@ function M.format_path(path, opts)
       table.insert(result, tail_str)
     end
 
-    -- Join the result components
+    -- Join the result segments
     local result_str = table.concat(result, join_separator)
 
     return result_str
