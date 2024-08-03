@@ -46,51 +46,6 @@ function M.buf_get_name(buf)
   return vim.api.nvim_buf_get_name(buf)
 end
 
-function M.get_path_segments(path)
-  local fnmod = vim.fn.fnamemodify
-  local cpath = path and path or M.get_current_file_path() or ""
-  local cwd = vim.uv.cwd() or ""
-  local pwd, reldirpath, basename
-
-  if cpath == "" then
-    pwd = fnmod(cwd, ":~")
-    if cwd ~= M.sep then
-      pwd = pwd .. M.sep
-    end
-    reldirpath = nil
-    basename = "[No Name]"
-  else
-    if M.is_dir(cpath) then
-      basename = ""
-    else
-      basename = fnmod(cpath, ":t")
-    end
-    if cwd == M.sep then
-      pwd = cwd
-      reldirpath = fnmod(cpath, ":h"):sub(2)
-    elseif cpath:find(cwd, 1, true) then
-      if cwd:find(M.home, 1, true) then
-        pwd = fnmod(cwd, ":~") .. M.sep
-        reldirpath = fnmod(cpath, ":~:.:h")
-      else
-        pwd = cwd .. M.sep
-        reldirpath = fnmod(cpath, ":.:h")
-      end
-    else
-      pwd = ""
-      reldirpath = fnmod(cpath, ":~:h")
-    end
-    if reldirpath and reldirpath ~= "" then
-      if reldirpath == "." then
-        reldirpath = ""
-      elseif reldirpath ~= M.sep then
-        reldirpath = reldirpath .. M.sep
-      end
-    end
-  end
-  return pwd, reldirpath, basename
-end
-
 function M.get_parent_path()
   return vim.fn.fnamemodify(M.get_current_file_path(), ":h")
 end

@@ -9,7 +9,7 @@ return {
   {
     init = function(self)
       self.fpath = Util.path.get_current_file_path()
-      self.pwd = Util.path.get_path_segments(self.fpath)
+      self.pwd = vim.uv.cwd()
     end,
     require("plugins.heirline.components.file.work_dir"),
   },

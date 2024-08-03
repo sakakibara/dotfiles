@@ -1,7 +1,11 @@
 return {
   init = function(self)
     self.fpath = Util.path.get_current_file_path()
-    _, self.reldirpath, self.basename = Util.path.get_path_segments(self.fpath)
+    _, self.reldirpath, self.basename = Util.path.format_path(self.fpath, {
+      replace_home = true,
+      return_segments = true,
+      last_separator = true,
+    })
   end,
   require("plugins.heirline.components.breadcrumbs.dir_segments"),
   require("plugins.heirline.components.file.icon"),
