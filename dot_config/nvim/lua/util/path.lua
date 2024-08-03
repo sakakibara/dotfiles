@@ -81,7 +81,7 @@ function M.format_path(path, opts)
   local ellipsis = opts.ellipsis or false
 
   -- Convert absolute path to relative if needed
-  if relative and is_absolute(path) then
+  if relative and M.is_absolute(path) then
     path = M.make_relative(path)
   end
 
