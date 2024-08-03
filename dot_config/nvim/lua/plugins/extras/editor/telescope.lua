@@ -57,9 +57,7 @@ return {
           Util.plugin.on_load("telescope.nvim", function()
             local ok, err = pcall(require("telescope").load_extension, "fzf")
             if not ok then
-              local lib = plugin.dir
-                .. "/build/libfzf."
-                .. (vim.uv.os_uname().sysname:find("Windows") ~= nil and "dll" or "so")
+              local lib = plugin.dir .. "/build/libfzf." .. (Util.is_win and "dll" or "so")
               if not vim.uv.fs_stat(lib) then
                 Util.warn("`telescope-fzf-native.nvim` not built. Rebuilding...")
                 require("lazy").build({ plugins = { plugin }, show = false }):wait(function()

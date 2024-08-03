@@ -155,7 +155,7 @@ function M.get(opts)
   if opts and opts.normalize then
     return ret
   end
-  return jit.os:find("Windows") ~= nil and ret:gsub("/", "\\") or ret
+  return Util.is_win and ret:gsub("/", "\\") or ret
 end
 
 return M

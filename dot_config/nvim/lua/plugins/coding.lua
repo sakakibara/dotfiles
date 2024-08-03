@@ -262,11 +262,11 @@ return {
 
   {
     "gbprod/yanky.nvim",
-    dependencies = { { "kkharji/sqlite.lua", enabled = not jit.os:find("Windows") } },
+    dependencies = { { "kkharji/sqlite.lua", enabled = not Util.is_win } },
     event = "LazyFile",
     opts = {
       highlight = { timer = 200 },
-      ring = { storage = jit.os:find("Windows") and "shada" or "sqlite" },
+      ring = { storage = Util.is_win and "shada" or "sqlite" },
     },
     keys = {
       {
