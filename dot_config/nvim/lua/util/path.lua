@@ -30,7 +30,7 @@ function M.is_dir(path)
   return stat and stat.type == "directory"
 end
 
-local function is_absolute(path)
+function M.is_absolute(path)
   return path:sub(1, 1) == M.sep or (Util.is_win and path:match("^[a-zA-Z]:"))
 end
 
