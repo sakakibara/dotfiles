@@ -16,20 +16,7 @@ end
 
 M.home = vim.uv.os_homedir()
 
-local function get_sep()
-  if jit then
-    local os = string.lower(jit.os)
-    if os ~= "windows" then
-      return "/"
-    else
-      return "\\"
-    end
-  else
-    return package.config:sub(1, 1)
-  end
-end
-
-M.sep = get_sep()
+M.sep = package.config:sub(1, 1)
 
 function M.split(path)
   return vim.split(path, M.sep, { trimempty = true })
