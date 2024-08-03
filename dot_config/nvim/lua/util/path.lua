@@ -95,17 +95,15 @@ function M.format_path(path, opts)
   if replace_home then
     cwd = M.replace_home_dir(cwd)
   end
+  --
+  -- Check if the path contains the CWD
+  local contains_cwd = false
+  if path:sub(1, #cwd) == cwd then
+    contains_cwd = true
+  end
+
   local cwd_segments = M.split(cwd)
   local path_segments = M.split(path)
-
-  -- Check if the path contains the CWD
-  local contains_cwd = true
-  for i = 1, #cwd_segments do
-    if cwd_segments[i] ~= path_segments[i] then
-      contains_cwd = false
-      break
-    end
-  end
 
   -- Split into CWD, head, and tail
   local head_start = contains_cwd and #cwd_segments + 1 or 1
