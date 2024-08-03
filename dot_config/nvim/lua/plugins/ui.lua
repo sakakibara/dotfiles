@@ -653,15 +653,16 @@ return {
           opts = opts or {}
           local head_style = opts.head_style or {}
           local tail_style = opts.tail_style or {}
-          local result = Util.path.shorten_path(
+          local _, head, tail = Util.path.format_path(
             path,
             vim.tbl_extend("force", opts, {
-              return_table = true,
+              return_segments = true,
+              last_separator = true,
             })
           )
           return {
-            result[1] and vim.list_extend(head_style, { result[1], "/" }) or "",
-            vim.list_extend(tail_style, { result[2] }),
+            head and vim.list_extend(head_style, { head }) or "",
+            vim.list_extend(tail_style, { tail }),
           }
         end
 
@@ -689,9 +690,11 @@ return {
             return { fname = "[No Name]" }
           end
           local fname = shorten_path_styled(bufname, {
-            short_len = 1,
+            short_len = 3,
             tail_count = 2,
-            head_max = 4,
+            max_segments = 3,
+            replace_home = true,
+            ellipsis = true,
             head_style = { guifg = fg_nc },
             tail_style = { guifg = focused and fg or fg_nc },
           })
