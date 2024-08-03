@@ -693,6 +693,7 @@ return {
             short_len = 3,
             tail_count = 2,
             max_segments = 3,
+            relative = true,
             replace_home = true,
             ellipsis = true,
             head_style = { guifg = fg_nc },
