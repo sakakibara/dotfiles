@@ -64,4 +64,6 @@ function M.memoize(fn)
   end
 end
 
+M.is_win = package.config:sub(1, 1) == "\\"
+
 return M
