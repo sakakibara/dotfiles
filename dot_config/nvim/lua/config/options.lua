@@ -6,7 +6,7 @@ g.maplocalleader = "\\"
 g.markdown_recommended_style = 0
 
 opt.autowrite = true
-opt.clipboard:prepend("unnamedplus")
+opt.clipboard = vim.env.SSH_TTY and "" or "unnamedplus"
 opt.colorcolumn = "120"
 opt.conceallevel = 3
 opt.confirm = true
