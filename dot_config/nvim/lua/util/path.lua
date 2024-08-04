@@ -117,8 +117,8 @@ function M.format_path(path, opts)
   -- Function to shorten each segment with special handling for '.'
   local function shorten_segment(segment, len, append_ellipsis)
     if len > 0 then
-      if segment == "." then
-        return "."
+      if segment:sub(1, 1) == "." then
+        len = len + 1
       end
       local short = string.sub(segment, 1, len)
       if append_ellipsis and #segment > len then
