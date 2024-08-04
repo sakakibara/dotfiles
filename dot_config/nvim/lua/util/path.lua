@@ -85,21 +85,21 @@ function M.format_path(path, opts)
     path = M.make_relative(path)
   end
 
+  -- Check if the path contains the CWD
+  local cwd = vim.uv.cwd()
+  local contains_cwd = false
+  if path:sub(1, #cwd) == cwd then
+    contains_cwd = true
+  end
+
   -- Replace home directory with '~' if needed
   if replace_home then
     path = M.replace_home_dir(path)
   end
 
   -- Get the current working directory and replace home if needed
-  local cwd = vim.uv.cwd()
   if replace_home then
     cwd = M.replace_home_dir(cwd)
-  end
-  --
-  -- Check if the path contains the CWD
-  local contains_cwd = false
-  if path:sub(1, #cwd) == cwd then
-    contains_cwd = true
   end
 
   local cwd_segments = M.split(cwd)
