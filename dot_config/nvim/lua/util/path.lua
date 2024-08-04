@@ -1,27 +1,22 @@
 ---@class util.path
 local M = {}
 
-M.remote_patterns = { "/mnt/" }
-
-function M.is_remote_file(path)
-  local current_path = path or ""
-  for _, pattern in ipairs(M.remote_patterns) do
-    if current_path:sub(1, #pattern) == pattern then
-      return true
-    end
-  end
-end
-
 M.home = vim.uv.os_homedir()
 
 M.sep = package.config:sub(1, 1)
 
-function M.split(path)
-  local components = {}
-  for component in string.gmatch(path, "[^" .. M.sep .. "]+") do
-    table.insert(components, component)
+M.remote_patterns = { "/mnt/" }
+
+function M.is_remote_file(path)
+  if not path then
+    return false
   end
-  return components
+  for _, pattern in ipairs(M.remote_patterns) do
+    if path:sub(1, #pattern) == pattern then
+      return true
+    end
+  end
+  return false
 end
 
 function M.is_dir(path)
@@ -31,6 +26,14 @@ end
 
 function M.is_absolute(path)
   return path:sub(1, 1) == M.sep or (Util.is_win and path:match("^[a-zA-Z]:"))
+end
+
+function M.split(path)
+  local components = {}
+  for component in string.gmatch(path, "[^" .. M.sep .. "]+") do
+    table.insert(components, component)
+  end
+  return components
 end
 
 function M.get_current_file_path()
