@@ -24,6 +24,7 @@ opt.foldcolumn = "1"
 opt.foldenable = true
 opt.foldlevel = 99
 opt.foldlevelstart = 99
+opt.formatexpr = "v:lua.require'util'.format.formatexpr()"
 opt.formatoptions = "jcqlnt"
 opt.grepformat = "%f:%l:%c:%m"
 opt.grepprg = "rg --vimgrep"

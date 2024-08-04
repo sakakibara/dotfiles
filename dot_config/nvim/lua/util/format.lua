@@ -9,6 +9,13 @@ function M.register(formatter)
   end)
 end
 
+function M.formatexpr()
+  if Util.plugin.has("conform.nvim") then
+    return require("conform").formatexpr()
+  end
+  return vim.lsp.formatexpr({ timeout_ms = 3000 })
+end
+
 function M.resolve(buf)
   buf = buf or vim.api.nvim_get_current_buf()
   local have_primary = false
