@@ -25,8 +25,7 @@ function M.split(path)
 end
 
 function M.is_dir(path)
-  local current_path = path or ""
-  local stat = vim.uv.fs_stat(current_path)
+  local stat = vim.uv.fs_stat(path)
   return stat and stat.type == "directory"
 end
 
