@@ -29,11 +29,11 @@ function M.is_absolute(path)
 end
 
 function M.split(path)
-  local components = {}
-  for component in string.gmatch(path, "[^" .. M.sep .. "]+") do
-    table.insert(components, component)
+  local segments = {}
+  for segment in string.gmatch(path, "[^" .. M.sep .. "]+") do
+    table.insert(segments, segment)
   end
-  return components
+  return segments
 end
 
 function M.get_current_file_path()
