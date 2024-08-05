@@ -120,7 +120,7 @@ function M.format_path(path, opts)
       if len == 1 and segment:sub(1, 1) == "." then
         len = len + 1
       end
-      local short = string.sub(segment, 1, len)
+      local short = segment:sub(1, len)
       if append_ellipsis and #segment > len then
         return short .. Util.config.icons.status.Ellipsis
       end
