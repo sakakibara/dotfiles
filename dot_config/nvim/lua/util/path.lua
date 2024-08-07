@@ -53,9 +53,8 @@ function M.get_parent_path()
 end
 
 function M.replace_home_dir(path)
-  local home_dir = vim.uv.os_homedir()
-  if home_dir ~= "" and path:sub(1, #home_dir) == home_dir then
-    return "~" .. path:sub(#home_dir + 1)
+  if M.home ~= "" and path:sub(1, #M.home) == M.home then
+    return "~" .. path:sub(#M.home + 1)
   else
     return path
   end
