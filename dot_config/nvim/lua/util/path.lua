@@ -69,6 +69,11 @@ function M.make_relative(path)
 end
 
 function M.format_path(path, opts)
+  -- Handle nil or empty path
+  if not path or path == "" then
+    return "", "", ""
+  end
+
   -- Default options
   opts = opts or {}
   local short_len = opts.short_len or 0
