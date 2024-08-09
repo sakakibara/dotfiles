@@ -86,6 +86,9 @@ function M.format_path(path, opts)
   local last_separator = opts.last_separator or false
   local ellipsis = opts.ellipsis or false
 
+  -- Check if the path is a directory
+  local is_directory = M.is_dir(path)
+
   -- Convert absolute path to relative if needed
   if relative and M.is_absolute(path) then
     path = M.make_relative(path)
@@ -93,9 +96,6 @@ function M.format_path(path, opts)
 
   -- Get the current working directory
   local cwd = vim.uv.cwd()
-
-  -- Check if the path contains the CWD
-  local contains_cwd = path:sub(1, #cwd) == cwd
 
   -- Replace home directory with '~' if needed
   if replace_home then
@@ -106,16 +106,20 @@ function M.format_path(path, opts)
   local cwd_segments = M.split(cwd)
   local path_segments = M.split(path)
 
-  -- Adjust start and end for head and tail
+  -- Check if the path contains the CWD
+  local contains_cwd = path:sub(1, #cwd) == cwd
+
+  -- Adjust the start and end indices for head and tail
   local head_start = contains_cwd and #cwd_segments + 1 or 1
   local tail_start = math.max(#path_segments - tail_count + 1, head_start)
   local head_end = tail_start - 1
 
-  local cwd_part = contains_cwd and table.concat(cwd_segments, M.sep) or nil
+  -- Extract segments
+  local cwd_part = contains_cwd and table.concat(cwd_segments, M.sep) or ""
   local head_segments = { unpack(path_segments, head_start, head_end) }
   local tail_segments = { unpack(path_segments, tail_start) }
 
-  -- Function to shorten each segment with special handling for '.'
+  -- Shorten each segment with special handling for '.'
   local function shorten_segment(segment, len, append_ellipsis)
     if len > 0 then
       if len == 1 and segment:sub(1, 1) == "." then
@@ -131,26 +135,23 @@ function M.format_path(path, opts)
     end
   end
 
-  -- Shorten head segments
-  local head_short = {}
-  for _, segment in ipairs(head_segments) do
-    table.insert(head_short, shorten_segment(segment, short_len, ellipsis))
+  -- Shorten segments
+  local function shorten_segments(segments)
+    local shortened = {}
+    for _, segment in ipairs(segments) do
+      table.insert(shortened, shorten_segment(segment, short_len, ellipsis))
+    end
+    return shortened
   end
 
-  -- Shorten CWD segments
-  local cwd_short = {}
-  if cwd_part then
-    for _, segment in ipairs(M.split(cwd_part)) do
-      table.insert(cwd_short, shorten_segment(segment, short_len, ellipsis))
-    end
-  end
+  -- Shorten head and cwd segments
+  local head_short = shorten_segments(head_segments)
+  local cwd_short = shorten_segments(M.split(cwd_part))
 
   -- Combine head and cwd segments
   local combined_segments = {}
-  if cwd_short then
-    for _, segment in ipairs(cwd_short) do
-      table.insert(combined_segments, segment)
-    end
+  for _, segment in ipairs(cwd_short) do
+    table.insert(combined_segments, segment)
   end
   for _, segment in ipairs(head_short) do
     table.insert(combined_segments, segment)
@@ -166,51 +167,54 @@ function M.format_path(path, opts)
   end
 
   -- Split back into head and cwd parts
-  local final_head_segments = {}
-  local final_cwd_segments = {}
-
-  if cwd_short and #combined_segments > #cwd_short then
+  local final_cwd_segments, final_head_segments
+  if #combined_segments > #cwd_short then
     final_cwd_segments = { unpack(combined_segments, 1, #cwd_short) }
     final_head_segments = { unpack(combined_segments, #cwd_short + 1) }
   else
-    final_head_segments = combined_segments
+    final_cwd_segments = combined_segments
+    final_head_segments = {}
   end
 
   -- Create the final output
-  local head_str = table.concat(final_head_segments, join_separator)
-  local tail_str = table.concat(tail_segments, join_separator)
-  local cwd_str = cwd_part and table.concat(final_cwd_segments, join_separator) or nil
+  local function concat_segments(segments)
+    return table.concat(segments, join_separator)
+  end
+
+  local cwd_str = cwd_part ~= "" and concat_segments(final_cwd_segments) or ""
+  local head_str = concat_segments(final_head_segments)
+  local tail_str = concat_segments(tail_segments)
+
+  -- Append separator to tail if the path is a directory
+  if is_directory and tail_str ~= "" and not tail_str:match(join_separator .. "$") then
+    tail_str = tail_str .. join_separator
+  end
 
   -- Append separator if last_separator is true and return_segments is false
   if return_segments and last_separator then
-    if cwd_str and cwd_str ~= "" then
+    if cwd_str ~= "" then
       cwd_str = cwd_str .. join_separator
     end
-    if head_str and head_str ~= "" then
+    if head_str ~= "" then
       head_str = head_str .. join_separator
     end
   end
 
   -- Construct the result
   if return_segments then
-    return cwd_str or "", head_str or "", tail_str or ""
+    return cwd_str, head_str, tail_str
   else
-    -- Concatenate with join_separator
     local result = {}
-    if cwd_str and cwd_str ~= "" then
+    if cwd_str ~= "" then
       table.insert(result, cwd_str)
     end
-    if head_str and head_str ~= "" then
+    if head_str ~= "" then
       table.insert(result, head_str)
     end
-    if tail_str and tail_str ~= "" then
+    if tail_str ~= "" then
       table.insert(result, tail_str)
     end
-
-    -- Join the result segments
-    local result_str = table.concat(result, join_separator)
-
-    return result_str
+    return table.concat(result, join_separator)
   end
 end
 
