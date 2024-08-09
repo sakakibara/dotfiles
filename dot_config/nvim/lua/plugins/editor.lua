@@ -388,44 +388,25 @@ return {
   },
 
   {
-    "stefandtw/quickfix-reflector.vim",
-    ft = "qf",
-    init = function()
-      vim.g.qf_join_changes = 1
-    end,
-  },
-
-  {
-    "stevearc/qf_helper.nvim",
-    ft = "qf",
-    cmd = {
-      "QNext",
-      "QPrev",
-      "QFNext",
-      "QFPrev",
-      "LLNext",
-      "LLPrev",
-      "QFOpen",
-      "LLOpen",
-      "QFToggle",
-      "LLToggle",
-      "Cclear",
-      "Lclear",
-      "Keep",
-      "Reject",
-    },
+    "stevearc/quicker.nvim",
+    event = "VeryLazy",
     keys = {
-      { "<Leader>el", "<Cmd>LLToggle<CR>", desc = "Location list" },
-      { "<Leader>eq", "<Cmd>QFToggle<CR>", desc = "Quickfix list" },
-    },
-    opts = {
-      quickfix = {
-        track_location = false,
+      {
+        "<Leader>el",
+        function()
+          require("quicker").toggle({ loclist = true })
+        end,
+        desc = "Toggle location list",
       },
-      loclist = {
-        track_location = false,
+      {
+        "<Leader>eq",
+        function()
+          require("quicker").toggle()
+        end,
+        desc = "Toggle quickfix list",
       },
     },
+    opts = {},
   },
 
   {
