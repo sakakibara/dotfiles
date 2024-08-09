@@ -14,7 +14,6 @@ return {
       return_segments = true,
       last_separator = true,
     })
-    self.pwd = self.pwd or ""
   end,
   require("plugins.heirline.components.file.work_dir"),
   require("plugins.heirline.components.file.dir_path"),
