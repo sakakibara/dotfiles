@@ -86,32 +86,29 @@ function M.format_path(path, opts)
     path = M.make_relative(path)
   end
 
-  -- Check if the path contains the CWD
+  -- Get the current working directory
   local cwd = vim.uv.cwd()
-  local contains_cwd = false
-  if path:sub(1, #cwd) == cwd then
-    contains_cwd = true
-  end
+
+  -- Check if the path contains the CWD
+  local contains_cwd = path:sub(1, #cwd) == cwd
 
   -- Replace home directory with '~' if needed
   if replace_home then
     path = M.replace_home_dir(path)
-  end
-
-  -- Get the current working directory and replace home if needed
-  if replace_home then
     cwd = M.replace_home_dir(cwd)
   end
 
   local cwd_segments = M.split(cwd)
   local path_segments = M.split(path)
 
-  -- Split into CWD, head, and tail
+  -- Adjust start and end for head and tail
   local head_start = contains_cwd and #cwd_segments + 1 or 1
-  local head_end = math.max(#path_segments - tail_count, head_start)
+  local tail_start = math.max(#path_segments - tail_count + 1, head_start)
+  local head_end = tail_start - 1
+
   local cwd_part = contains_cwd and table.concat(cwd_segments, M.sep) or nil
   local head_segments = { unpack(path_segments, head_start, head_end) }
-  local tail_segments = { unpack(path_segments, head_end + 1) }
+  local tail_segments = { unpack(path_segments, tail_start) }
 
   -- Function to shorten each segment with special handling for '.'
   local function shorten_segment(segment, len, append_ellipsis)
@@ -191,7 +188,7 @@ function M.format_path(path, opts)
 
   -- Construct the result
   if return_segments then
-    return cwd_str, head_str, tail_str
+    return cwd_str or "", head_str or "", tail_str or ""
   else
     -- Concatenate with join_separator
     local result = {}
