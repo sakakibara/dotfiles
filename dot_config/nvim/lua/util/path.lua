@@ -190,7 +190,7 @@ function M.format_path(path, opts)
     tail_str = tail_str .. join_separator
   end
 
-  -- Append separator if last_separator is true and return_segments is false
+  -- Append separator if return_segments and last_separator are true
   if return_segments and last_separator then
     if cwd_str ~= "" then
       cwd_str = cwd_str .. join_separator
