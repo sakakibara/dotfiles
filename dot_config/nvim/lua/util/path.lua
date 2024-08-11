@@ -86,6 +86,11 @@ function M.format_path(path, opts)
   local last_separator = opts.last_separator or false
   local ellipsis = opts.ellipsis or false
 
+  -- Remove trailing slash
+  if path:len() > 1 and path:sub(-1) == M.sep then
+    path = path:sub(1, -2)
+  end
+
   -- Check if the path is a directory
   local is_directory = M.is_dir(path)
 
@@ -198,6 +203,11 @@ function M.format_path(path, opts)
     if head_str ~= "" then
       head_str = head_str .. join_separator
     end
+  end
+
+  -- Prepend separator to head if it's the root path
+  if head_start == 1 and join_separator == M.sep and path:sub(1, 1) == M.sep then
+    head_str = join_separator .. head_str
   end
 
   -- Construct the result
