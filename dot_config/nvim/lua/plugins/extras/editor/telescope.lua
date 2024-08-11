@@ -79,13 +79,7 @@ return {
       },
       { "<Leader>/", Util.pick("live_grep"), desc = "Grep (root)" },
       { "<Leader>:", "<Cmd>Telescope command_history<CR>", desc = "Command history" },
-      {
-        "<Leader><Space>",
-        function()
-          require("telescope").extensions.smart_open.smart_open()
-        end,
-        desc = "Smart open",
-      },
+      { "<Leader><Space>", Util.pick("files"), desc = "Find files (root)" },
       { "<Leader>fb", "<Cmd>Telescope buffers sort_mru=true sort_lastused=true<CR>", desc = "Buffers" },
       { "<Leader>fc", Util.pick.config_files(), desc = "Find config file" },
       { "<Leader>ff", Util.pick("files"), desc = "Find files (root)" },
@@ -217,9 +211,6 @@ return {
           },
         },
         extensions = {
-          smart_open = {
-            match_algorithm = "fzf",
-          },
           live_grep_args = {
             auto_quoting = true,
             mappings = {
@@ -284,17 +275,6 @@ return {
         mappings = { n = { s = flash }, i = { ["<C-s>"] = flash } },
       })
     end,
-  },
-
-  {
-    "danielfalk/smart-open.nvim",
-    branch = "0.2.x",
-    config = function()
-      require("telescope").load_extension("smart_open")
-    end,
-    dependencies = {
-      "kkharji/sqlite.lua",
-    },
   },
 
   {
