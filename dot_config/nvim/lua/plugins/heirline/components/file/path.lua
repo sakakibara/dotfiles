@@ -13,6 +13,7 @@ return {
       replace_home = true,
       return_segments = true,
       last_separator = true,
+      no_name = true,
     })
   end,
   require("plugins.heirline.components.file.work_dir"),

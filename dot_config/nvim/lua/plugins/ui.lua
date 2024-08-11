@@ -685,15 +685,13 @@ return {
 
         local function get_file_path(buf, focused, fg, fg_nc)
           local bufname = Util.path.buf_get_name(buf)
-          if bufname == "" then
-            return { fname = "[No Name]" }
-          end
           local fname = shorten_path_styled(bufname, {
             short_len = 3,
             tail_count = 2,
             max_segments = 3,
             replace_home = true,
             ellipsis = true,
+            no_name = true,
             head_style = { guifg = fg_nc },
             tail_style = { guifg = focused and fg or fg_nc },
           })

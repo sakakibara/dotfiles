@@ -69,11 +69,6 @@ function M.make_relative(path)
 end
 
 function M.format_path(path, opts)
-  -- Handle nil or empty path
-  if not path or path == "" then
-    return "", "", ""
-  end
-
   -- Default options
   opts = opts or {}
   local short_len = opts.short_len or 0
@@ -85,6 +80,16 @@ function M.format_path(path, opts)
   local return_segments = opts.return_segments or false
   local last_separator = opts.last_separator or false
   local ellipsis = opts.ellipsis or false
+  local no_name = opts.no_name or false
+
+  -- Handle nil or empty path
+  if not path or path == "" then
+    if opts.no_name then
+      return "", "", "[No Name]"
+    else
+      return "", "", ""
+    end
+  end
 
   -- Remove trailing slash
   if path:len() > 1 and path:sub(-1) == M.sep then
