@@ -84,7 +84,7 @@ function M.format_path(path, opts)
 
   -- Handle nil or empty path
   if not path or path == "" then
-    if opts.no_name then
+    if no_name then
       return "", "", "[No Name]"
     else
       return "", "", ""
