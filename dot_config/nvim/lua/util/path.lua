@@ -84,11 +84,7 @@ function M.format_path(path, opts)
 
   -- Handle nil or empty path
   if not path or path == "" then
-    if no_name then
-      return "", "", "[No Name]"
-    else
-      return "", "", ""
-    end
+    return "", "", no_name and "[No Name]" or ""
   end
 
   -- Remove trailing slash
