@@ -95,11 +95,6 @@ function M.format_path(path, opts)
   -- Check if the path is a directory
   local is_directory = M.is_dir(path)
 
-  -- Convert absolute path to relative if needed
-  if relative and M.is_absolute(path) then
-    path = M.make_relative(path)
-  end
-
   -- Get the current working directory
   local cwd = vim.uv.cwd()
 
@@ -121,7 +116,6 @@ function M.format_path(path, opts)
   local head_end = tail_start - 1
 
   -- Extract segments
-  local cwd_part = contains_cwd and table.concat(cwd_segments, M.sep) or ""
   local head_segments = { unpack(path_segments, head_start, head_end) }
   local tail_segments = { unpack(path_segments, tail_start) }
 
@@ -152,12 +146,14 @@ function M.format_path(path, opts)
 
   -- Shorten head and cwd segments
   local head_short = shorten_segments(head_segments)
-  local cwd_short = shorten_segments(M.split(cwd_part))
+  local cwd_short = shorten_segments(cwd_segments)
 
   -- Combine head and cwd segments
   local combined_segments = {}
-  for _, segment in ipairs(cwd_short) do
-    table.insert(combined_segments, segment)
+  if contains_cwd then
+    for _, segment in ipairs(cwd_short) do
+      table.insert(combined_segments, segment)
+    end
   end
   for _, segment in ipairs(head_short) do
     table.insert(combined_segments, segment)
@@ -166,20 +162,25 @@ function M.format_path(path, opts)
   -- Apply max_segments
   if max_segments > 0 and #combined_segments > max_segments then
     local excess_count = #combined_segments - max_segments
+
+    -- Adjust head_start index before removing excess segments
+    head_start = math.max(head_start - excess_count, 1)
+
     -- Remove excess segments from the beginning
     for _ = 1, excess_count do
       table.remove(combined_segments, 1)
     end
   end
 
-  -- Split back into head and cwd parts
-  local final_cwd_segments, final_head_segments
-  if #combined_segments > #cwd_short then
-    final_cwd_segments = { unpack(combined_segments, 1, #cwd_short) }
-    final_head_segments = { unpack(combined_segments, #cwd_short + 1) }
-  else
-    final_cwd_segments = combined_segments
-    final_head_segments = {}
+  -- Split back into head and cwd parts based on the adjusted head_start index
+  local final_cwd_segments = {}
+  local final_head_segments = {}
+  for i, segment in ipairs(combined_segments) do
+    if i < head_start then
+      table.insert(final_cwd_segments, segment)
+    else
+      table.insert(final_head_segments, segment)
+    end
   end
 
   -- Create the final output
@@ -187,7 +188,7 @@ function M.format_path(path, opts)
     return table.concat(segments, join_separator)
   end
 
-  local cwd_str = cwd_part ~= "" and concat_segments(final_cwd_segments) or ""
+  local cwd_str = concat_segments(final_cwd_segments)
   local head_str = concat_segments(final_head_segments)
   local tail_str = concat_segments(tail_segments)
 
@@ -213,10 +214,10 @@ function M.format_path(path, opts)
 
   -- Construct the result
   if return_segments then
-    return cwd_str, head_str, tail_str
+    return not relative and cwd_str or "", head_str, tail_str
   else
     local result = {}
-    if cwd_str ~= "" then
+    if not relative and cwd_str ~= "" then
       table.insert(result, cwd_str)
     end
     if head_str ~= "" then
