@@ -2180,6 +2180,8 @@
 	<true/>
 	<key>SeparateWindowTitlePerTab</key>
 	<true/>
+	<key>ShowFullScreenTabBar</key>
+	<false/>
 	<key>ShowPaneTitles</key>
 	<false/>
 	<key>SoundForEsc</key>
