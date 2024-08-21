@@ -1,6 +1,5 @@
 {
   "extras": [
-    "plugins.extras.coding.codeium",
     "plugins.extras.editor.telekasten",
     "plugins.extras.formatter.black",
     "plugins.extras.formatter.prettier",
