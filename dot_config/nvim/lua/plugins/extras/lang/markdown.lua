@@ -79,8 +79,7 @@ return {
   },
 
   {
-    "MeanderingProgrammer/markdown.nvim",
-    name = "render-markdown",
+    "MeanderingProgrammer/render-markdown.nvim",
     dependencies = { "nvim-treesitter/nvim-treesitter", "nvim-tree/nvim-web-devicons" },
     opts = {},
   },
