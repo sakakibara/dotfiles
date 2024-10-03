@@ -390,25 +390,6 @@ COMMAND. This macro is meant to be used as a target for keybinds (e.g. with
 
 ;;;; Builtin
 
-;;;;; seq
-
-(defun +elpaca-unload-seq (e)
-  (and (featurep 'seq) (unload-feature 'seq t))
-  (elpaca--continue-build e))
-
-(defun +elpaca-seq-build-steps ()
-  (append (butlast (if (file-exists-p (expand-file-name "seq" elpaca-builds-directory))
-                       elpaca--pre-built-steps elpaca-build-steps))
-          (list '+elpaca-unload-seq 'elpaca--activate-package)))
-
-(use-package seq
-  :ensure `(seq
-            ;; :type git
-            ;; :host nil
-            ;; :repo "https://git.savannah.gnu.org/git/emacs/elpa.git"
-            ;; :branch "externals/seq"
-            :build ,(+elpaca-seq-build-steps)))
-
 ;;;;; emacs
 
 (use-package emacs
