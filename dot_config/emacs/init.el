@@ -3619,6 +3619,15 @@ in some cases."
           (yang . ("https://github.com/Hubro/tree-sitter-yang"))
           (zig . ("https://github.com/maxxnino/tree-sitter-zig")))))
 
+;;;;; treesit-auto
+
+(use-package treesit-auto
+  :init
+  (setq treesit-auto-install 'prompt)
+  :config
+  (treesit-auto-add-to-auto-mode-alist 'all)
+  (global-treesit-auto-mode))
+
 ;;;;; undo-fu
 
 (use-package undo-fu
