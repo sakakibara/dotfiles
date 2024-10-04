@@ -48,7 +48,7 @@ return {
       local mason_registry = require("mason-registry")
       local lombok_jar = mason_registry.get_package("jdtls"):get_install_path() .. "/lombok.jar"
       return {
-        root_dir = require("lspconfig.server_configurations.jdtls").default_config.root_dir,
+        root_dir = require("lspconfig.configs.jdtls").default_config.root_dir,
 
         project_name = function(root_dir)
           return root_dir and vim.fs.basename(root_dir)
