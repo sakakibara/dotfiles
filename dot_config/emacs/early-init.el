@@ -7,6 +7,13 @@
 (defconst IS-WINDOWS (memq system-type '(cygwin windows-nt ms-dos)))
 (defconst IS-BSD (memq system-type '(darwin berkeley-unix gnu/kfreebsd)))
 
+;;;;; Mac architecture constants
+
+(defconst IS-APPLE-SILICON
+  (and IS-MAC (string-match "aarch64-apple-darwin" system-configuration)))
+(defconst IS-INTEL-MAC
+  (and IS-MAC (string-match "x86_64-apple-darwin" system-configuration)))
+
 ;;;; Performance Settings
 
 ;; Disable package.el

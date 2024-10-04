@@ -837,7 +837,8 @@ major mode regardless of size.")
                      consult--source-recent-file consult--source-project-recent-file
                      :preview-key '(:debounce 0.4 any))
 
-  (setq consult-narrow-key "<")
+  (setq consult-narrow-key "<"
+        consult-async-min-input 1)
 
   (defun +consult--windows-regexp-compiler-fn (input type ignore-case)
     "Compile the INPUT string to a list of regular expressions.
@@ -2021,7 +2022,6 @@ If FORCE-P, overwrite the destination file if it exists, without confirmation."
 ;;;;; migemo
 
 (use-package migemo
-  :after (consult orderless)
   :preface
   (defun +orderless-migemo (component)
     (let ((pattern (migemo-get-pattern component)))
@@ -2038,40 +2038,11 @@ If FORCE-P, overwrite the destination file if it exists, without confirmation."
         migemo-accept-process-output-timeout-msec 80)
   (if IS-WINDOWS
       (setq migemo-dictionary (expand-file-name "~/.local/share/migemo/utf-8/migemo-dict"))
-    (setq migemo-dictionary "/usr/local/share/migemo/utf-8/migemo-dict"))
+    (if IS-APPLE-SILICON
+        (setq migemo-dictionary "/opt/homebrew/share/migemo/utf-8/migemo-dict")
+      (setq migemo-dictionary "/usr/local/share/migemo/utf-8/migemo-dict")))
   :config
-  (setq consult-async-min-input 1)
-
-  (migemo-init)
-
-  (with-eval-after-load 'orderless
-    (orderless-define-completion-style +orderless-default
-      (orderless-matching-styles '(orderless-literal
-                                   orderless-regexp)))
-
-    (orderless-define-completion-style +orderless-migemo
-      (orderless-matching-styles '(orderless-literal
-                                   orderless-regexp
-                                   +orderless-migemo)))
-
-    (orderless-define-completion-style +orderless-initialism
-      (orderless-matching-styles '(orderless-initialism
-                                   orderless-literal)))
-
-    (add-to-list 'completion-styles '+orderless-migemo t)
-
-    (setq completion-category-overrides
-          '((command (styles +orderless-initialism))
-            (file (styles orderless partial-completion
-                          +orderless-migemo))
-            (buffer (styles +orderless-migemo))
-            (symbol (styles +orderless-default))
-            (consult-location (styles +orderless-migemo))
-            (consult-multi (styles +orderless-migemo))
-            (org-roam-node (styles +orderless-migemo))
-            (unicode-name (styles +orderless-migemo))
-            (variable (styles +orderless-default))
-            (project-file (styles +orderless-migemo))))))
+  (migemo-init))
 
 ;;;;; avy-migemo
 
@@ -2193,7 +2164,36 @@ If FORCE-P, overwrite the destination file if it exists, without confirmation."
         orderless-style-dispatchers '(+vertico-orderless-dispatch)
         orderless-component-separator "[ &]")
 
-  (set-face-attribute 'completions-first-difference nil :inherit nil))
+  (set-face-attribute 'completions-first-difference nil :inherit nil)
+
+  (with-eval-after-load 'orderless
+    (orderless-define-completion-style +orderless-default
+      (orderless-matching-styles '(orderless-literal
+                                   orderless-regexp)))
+
+    (orderless-define-completion-style +orderless-migemo
+      (orderless-matching-styles '(orderless-literal
+                                   orderless-regexp
+                                   +orderless-migemo)))
+
+    (orderless-define-completion-style +orderless-initialism
+      (orderless-matching-styles '(orderless-initialism
+                                   orderless-literal)))
+
+    (add-to-list 'completion-styles '+orderless-migemo t)
+
+    (setq completion-category-overrides
+          '((command (styles +orderless-initialism))
+            (file (styles orderless partial-completion
+                          +orderless-migemo))
+            (buffer (styles +orderless-migemo))
+            (symbol (styles +orderless-default))
+            (consult-location (styles +orderless-migemo))
+            (consult-multi (styles +orderless-migemo))
+            (org-roam-node (styles +orderless-migemo))
+            (unicode-name (styles +orderless-migemo))
+            (variable (styles +orderless-default))
+            (project-file (styles +orderless-migemo))))))
 
 ;;;;; org
 
