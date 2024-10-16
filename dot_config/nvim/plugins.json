@@ -20,6 +20,7 @@
     "plugins.extras.lang.vue",
     "plugins.extras.lang.yaml",
     "plugins.extras.linter.eslint",
+    "plugins.extras.linter.typos",
     "plugins.extras.util.chezmoi"
   ]
 }
