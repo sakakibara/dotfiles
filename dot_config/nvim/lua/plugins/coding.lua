@@ -63,9 +63,8 @@ return {
       {
         "<Tab>",
         function()
-          local copilot_suggestion = require("copilot.suggestion")
-          if copilot_suggestion.is_visible() then
-            copilot_suggestion.accept()
+          if Util.plugin.has("copilot.lua") and require("copilot.suggestion").is_visible() then
+            require("copilot.suggestion").accept()
           elseif require("luasnip").jumpable(1) then
             return "<Plug>luasnip-jump-next"
           else
