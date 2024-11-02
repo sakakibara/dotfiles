@@ -35,8 +35,6 @@ return {
       "CopilotChatModels",
       "CopilotChatModel",
     },
-    opts = {
-      debug = true,
-    },
+    opts = {},
   },
 }
