@@ -63,7 +63,14 @@ return {
       {
         "<Tab>",
         function()
-          return require("luasnip").jumpable(1) and "<Plug>luasnip-jump-next" or "<Tab>"
+          local copilot_suggestion = require("copilot.suggestion")
+          if copilot_suggestion.is_visible() then
+            copilot_suggestion.accept()
+          elseif require("luasnip").jumpable(1) then
+            return "<Plug>luasnip-jump-next"
+          else
+            return "<Tab>"
+          end
         end,
         expr = true,
         silent = true,
@@ -130,6 +137,7 @@ return {
       local auto_select = true
       return {
         completion = {
+          autocomplete = false,
           completeopt = "menu,menuone,noinsert",
         },
         snippet = {
