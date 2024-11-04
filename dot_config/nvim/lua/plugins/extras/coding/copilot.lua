@@ -35,6 +35,9 @@ return {
       "CopilotChatModels",
       "CopilotChatModel",
     },
+    keys = {
+      { "<Leader>c;", ":CopilotChatToggle<CR>", desc = "Copilot chat" },
+    },
     opts = {},
   },
 }
