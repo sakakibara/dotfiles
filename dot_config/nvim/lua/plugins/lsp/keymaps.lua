@@ -36,7 +36,7 @@ function M.get()
     { "<Leader>cC", vim.lsp.codelens.refresh, desc = "Refresh & display codelens", mode = { "n" }, has = "codeLens" },
     {
       "<leader>cR",
-      Util.lsp.rename_file,
+      Snacks.rename.rename_file,
       desc = "Rename file",
       mode = { "n" },
       has = { "workspace/didRenameFiles", "workspace/willRenameFiles" },

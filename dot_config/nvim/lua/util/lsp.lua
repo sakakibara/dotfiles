@@ -104,59 +104,6 @@ function M.on_supports_method(method, fn)
   })
 end
 
-function M.rename_file()
-  local buf = vim.api.nvim_get_current_buf()
-  local old = assert(Util.root.realpath(vim.api.nvim_buf_get_name(buf)))
-  local root = assert(Util.root.realpath(Util.root.get({ normalize = true })))
-  assert(old:find(root, 1, true) == 1, "File not in project root")
-
-  local extra = old:sub(#root + 2)
-
-  vim.ui.input({
-    prompt = "New File Name: ",
-    default = extra,
-  }, function(new)
-    if not new or new == "" or new == extra then
-      return
-    end
-    new = Util.norm(root .. "/" .. new)
-    vim.fn.mkdir(vim.fs.dirname(new), "p")
-    M.on_rename(old, new, function()
-      vim.fn.rename(old, new)
-      vim.cmd.edit(new)
-      vim.api.nvim_buf_delete(buf, { force = true })
-      vim.fn.delete(old)
-    end)
-  end)
-end
-
-function M.on_rename(from, to, rename)
-  local changes = { files = { {
-    oldUri = vim.uri_from_fname(from),
-    newUri = vim.uri_from_fname(to),
-  } } }
-
-  local clients = M.get_clients()
-  for _, client in ipairs(clients) do
-    if client.supports_method("workspace/willRenameFiles") then
-      local resp = client.request_sync("workspace/willRenameFiles", changes, 1000, 0)
-      if resp and resp.result ~= nil then
-        vim.lsp.util.apply_workspace_edit(resp.result, client.offset_encoding)
-      end
-    end
-  end
-
-  if rename then
-    rename()
-  end
-
-  for _, client in ipairs(clients) do
-    if client.supports_method("workspace/didRenameFiles") then
-      client.notify("workspace/didRenameFiles", changes)
-    end
-  end
-end
-
 function M.get_config(server)
   local configs = require("lspconfig.configs")
   return rawget(configs, server)
