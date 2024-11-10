@@ -9,6 +9,7 @@ return {
     opts = function()
       return {
         notifier = { enabled = not Util.plugin.has("noice.nvim") },
+        statuscolumn = { enabled = true, folds = { open = true } },
       }
     end,
     keys = {

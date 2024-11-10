@@ -139,7 +139,7 @@ return {
       return {
         statusline = require("plugins.heirline.statusline"),
         -- winbar = require("plugins.heirline.winbar"),
-        statuscolumn = require("plugins.heirline.statuscolumn"),
+        -- statuscolumn = require("plugins.heirline.statuscolumn"),
         opts = {
           disable_winbar_cb = function(args)
             return require("heirline.conditions").buffer_matches({
