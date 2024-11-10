@@ -8,14 +8,17 @@ return {
     "neovim/nvim-lspconfig",
     opts = {
       servers = {
-        pyright = {
+        ruff = {
           enabled = true,
-        },
-        ruff_lsp = {
-          enabled = true,
+          cmd_env = { RUFF_TRACE = "messages" },
+          init_options = {
+            settings = {
+              logLevel = "error",
+            },
+          },
           keys = {
             {
-              "<Leader>co",
+              "<leader>co",
               Util.lsp.action["source.organizeImports"],
               desc = "Organize Imports",
             },
@@ -23,7 +26,7 @@ return {
         },
       },
       setup = {
-        ruff_lsp = function()
+        ruff = function()
           Util.lsp.on_attach(function(client, _)
             client.server_capabilities.hoverprovider = false
           end, "ruff_lsp")
@@ -77,7 +80,11 @@ return {
           },
         },
         config = function()
-          require("dap-python").setup(Util.lsp.get_pkg_path("debugpy", "/venv/bin/python"))
+          if Util.is_win then
+            require("dap-python").setup(Util.lsp.get_pkg_path("debugpy", "/venv/Scripts/pythonw.exe"))
+          else
+            require("dap-python").setup(Util.lsp.get_pkg_path("debugpy", "/venv/bin/python"))
+          end
         end,
       },
     },
@@ -96,5 +103,15 @@ return {
     },
     ft = "python",
     keys = { { "<Leader>cv", "<Cmd>:VenvSelect<cr>", desc = "Select virtualenv", ft = "python" } },
+  },
+
+  {
+    "jay-babu/mason-nvim-dap.nvim",
+    optional = true,
+    opts = {
+      handlers = {
+        python = function() end,
+      },
+    },
   },
 }
