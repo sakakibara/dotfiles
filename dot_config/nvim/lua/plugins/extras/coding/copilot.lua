@@ -38,6 +38,13 @@ return {
     keys = {
       { "<Leader>c;", ":CopilotChatToggle<CR>", desc = "Copilot chat" },
     },
-    opts = {},
+    opts = {
+      mappings = {
+        accept_diff = {
+          normal = "g<C-y>",
+          insert = "g<C-y>",
+        },
+      },
+    },
   },
 }
