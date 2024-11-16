@@ -8,7 +8,10 @@ return {
     lazy = false,
     opts = function()
       return {
-        notifier = { enabled = not Util.plugin.has("noice.nvim") },
+        notifier = { enabled = true },
+        quickfile = { enabled = true },
+        bigfile = { enabled = true },
+        words = { enabled = true },
         statuscolumn = { enabled = true, folds = { open = true } },
       }
     end,
