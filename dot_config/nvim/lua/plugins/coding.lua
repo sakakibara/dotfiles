@@ -48,78 +48,6 @@ return {
   },
 
   {
-    "L3MON4D3/LuaSnip",
-    dependencies = {
-      "rafamadriz/friendly-snippets",
-      config = function()
-        require("luasnip.loaders.from_vscode").lazy_load()
-      end,
-    },
-    opts = {
-      history = true,
-      delete_check_events = "TextChanged",
-    },
-    keys = {
-      {
-        "<Tab>",
-        function()
-          if Util.plugin.has("copilot.lua") and require("copilot.suggestion").is_visible() then
-            require("copilot.suggestion").accept()
-          elseif require("luasnip").jumpable(1) then
-            return "<Plug>luasnip-jump-next"
-          else
-            return "<Tab>"
-          end
-        end,
-        expr = true,
-        silent = true,
-        mode = "i",
-      },
-      {
-        "<Tab>",
-        function()
-          require("luasnip").jump(1)
-        end,
-        mode = "s",
-      },
-      {
-        "<S-Tab>",
-        function()
-          require("luasnip").jump(-1)
-        end,
-        mode = { "i", "s" },
-      },
-    },
-    config = function(_, opts)
-      local ls = require("luasnip")
-      vim.api.nvim_create_autocmd("CursorMovedI", {
-        group = vim.api.nvim_create_augroup("userconf_unlink_luasnip", { clear = true }),
-        pattern = "*",
-        callback = function(ev)
-          if not ls.session or not ls.session.current_nodes[ev.buf] or ls.session.jump_active then
-            return
-          end
-
-          local current_node = ls.session.current_nodes[ev.buf]
-          local current_start, current_end = current_node:get_buf_position()
-          current_start[1] = current_start[1] + 1
-          current_end[1] = current_end[1] + 1
-          local cursor = vim.api.nvim_win_get_cursor(0)
-
-          if
-            cursor[1] < current_start[1]
-            or cursor[1] > current_end[1]
-            or cursor[2] < current_start[2]
-            or cursor[2] > current_end[2]
-          then
-            ls.unlink_current()
-          end
-        end,
-      })
-    end,
-  },
-
-  {
     "hrsh7th/nvim-cmp",
     version = false,
     event = "InsertEnter",
@@ -127,7 +55,6 @@ return {
       "hrsh7th/cmp-nvim-lsp",
       "hrsh7th/cmp-buffer",
       "hrsh7th/cmp-path",
-      "saadparwaiz1/cmp_luasnip",
     },
     opts = function()
       vim.api.nvim_set_hl(0, "CmpGhostText", { link = "Comment", default = true })
@@ -136,13 +63,7 @@ return {
       local auto_select = true
       return {
         completion = {
-          autocomplete = false,
           completeopt = "menu,menuone,noinsert",
-        },
-        snippet = {
-          expand = function(args)
-            require("luasnip").lsp_expand(args.body)
-          end,
         },
         preselect = auto_select and cmp.PreselectMode.Item or cmp.PreselectMode.None,
         mapping = cmp.mapping.preset.insert({
@@ -159,11 +80,11 @@ return {
             cmp.abort()
             fallback()
           end,
+          ["<Tab>"] = function(fallback)
+            return Util.cmp.map({ "snippet_forward", "ai_accept" }, fallback)()
+          end,
         }),
-        sources = cmp.config.sources(
-          { { name = "nvim_lsp" }, { name = "luasnip" }, { name = "path" } },
-          { { name = "buffer" } }
-        ),
+        sources = cmp.config.sources({ { name = "nvim_lsp" }, { name = "path" } }, { { name = "buffer" } }),
         formatting = {
           format = function(_, item)
             local icons = Util.config.icons.kinds
@@ -198,6 +119,30 @@ return {
         source.group_index = source.group_index or 1
       end
       require("cmp").setup(opts)
+    end,
+  },
+
+  {
+    "nvim-cmp",
+    optional = true,
+    dependencies = {
+      {
+        "garymjr/nvim-snippets",
+        opts = {
+          friendly_snippets = true,
+        },
+        dependencies = { "rafamadriz/friendly-snippets" },
+      },
+    },
+    opts = function(_, opts)
+      opts.snippet = {
+        expand = function(item)
+          return Util.cmp.expand(item.body)
+        end,
+      }
+      if Util.plugin.has("nvim-snippets") then
+        table.insert(opts.sources, { name = "snippets" })
+      end
     end,
   },
 

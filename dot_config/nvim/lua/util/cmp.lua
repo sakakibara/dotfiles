@@ -1,6 +1,85 @@
 ---@class util.cmp
 local M = {}
 
+M.actions = {
+  snippet_forward = function()
+    if vim.snippet.active({ direction = 1 }) then
+      vim.schedule(function()
+        vim.snippet.jump(1)
+      end)
+      return true
+    end
+  end,
+}
+
+function M.map(actions, fallback)
+  return function()
+    for _, name in ipairs(actions) do
+      if M.actions[name] then
+        local ret = M.actions[name]()
+        if ret then
+          return true
+        end
+      end
+    end
+    return type(fallback) == "function" and fallback() or fallback
+  end
+end
+
+function M.snippet_replace(snippet, fn)
+  return snippet:gsub("%$%b{}", function(m)
+    local n, name = m:match("^%${(%d+):(.+)}$")
+    return n and fn({ n = n, text = name }) or m
+  end) or snippet
+end
+
+function M.snippet_preview(snippet)
+  local ok, parsed = pcall(function()
+    return vim.lsp._snippet_grammar.parse(snippet)
+  end)
+  return ok and tostring(parsed)
+    or M.snippet_replace(snippet, function(placeholder)
+      return M.snippet_preview(placeholder.text)
+    end):gsub("%$0", "")
+end
+
+function M.snippet_fix(snippet)
+  local texts = {} ---@type table<number, string>
+  return M.snippet_replace(snippet, function(placeholder)
+    texts[placeholder.n] = texts[placeholder.n] or M.snippet_preview(placeholder.text)
+    return "${" .. placeholder.n .. ":" .. texts[placeholder.n] .. "}"
+  end)
+end
+
+function M.add_missing_snippet_docs(window)
+  local cmp = require("cmp")
+  local Kind = cmp.lsp.CompletionItemKind
+  local entries = window:get_entries()
+  for _, entry in ipairs(entries) do
+    if entry:get_kind() == Kind.Snippet then
+      local item = entry:get_completion_item()
+      if not item.documentation and item.insertText then
+        item.documentation = {
+          kind = cmp.lsp.MarkupKind.Markdown,
+          value = string.format("```%s\n%s\n```", vim.bo.filetype, M.snippet_preview(item.insertText)),
+        }
+      end
+    end
+  end
+end
+
+function M.visible()
+  local blink = package.loaded["blink.cmp"]
+  if blink then
+    return blink.windows and blink.windows.autocomplete.win:is_open()
+  end
+  local cmp = package.loaded["cmp"]
+  if cmp then
+    return cmp.core.view:visible()
+  end
+  return false
+end
+
 function M.confirm(opts)
   local cmp = require("cmp")
   opts = vim.tbl_extend("force", {
@@ -15,6 +94,32 @@ function M.confirm(opts)
       end
     end
     return fallback()
+  end
+end
+
+function M.expand(snippet)
+  local session = vim.snippet.active() and vim.snippet._session or nil
+
+  local ok, err = pcall(vim.snippet.expand, snippet)
+  if not ok then
+    local fixed = M.snippet_fix(snippet)
+    ok = pcall(vim.snippet.expand, fixed)
+
+    local msg = ok and "Failed to parse snippet,\nbut was able to fix it automatically."
+      or ("Failed to parse snippet.\n" .. err)
+
+    Util[ok and "warn" or "error"](
+      ([[%s
+```%s
+%s
+```]]):format(msg, vim.bo.filetype, snippet),
+      { title = "vim.snippet" }
+    )
+  end
+
+  -- Restore top-level session when needed
+  if session then
+    vim.snippet._session = session
   end
 end
 

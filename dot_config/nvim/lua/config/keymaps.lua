@@ -58,3 +58,12 @@ map("n", "<Leader><Tab>f", "<Cmd>tabfirst<CR>", { desc = "First tab" })
 map("n", "<Leader><Tab>l", "<Cmd>tablast<CR>", { desc = "Last tab" })
 map("n", "<Leader><Tab>o", "<Cmd>tabonly<CR>", { desc = "Close other tabs" })
 map("n", "<Leader><Tab>q", "<Cmd>tabclose<CR>", { desc = "Close tab" })
+
+if vim.fn.has("nvim-0.11") == 0 then
+  map("s", "<Tab>", function()
+    return vim.snippet.active({ direction = 1 }) and "<Cmd>lua vim.snippet.jump(1)<CR>" or "<Tab>"
+  end, { expr = true, desc = "Jump next" })
+  map({ "i", "s" }, "<S-Tab>", function()
+    return vim.snippet.active({ direction = -1 }) and "<Cmd>lua vim.snippet.jump(-1)<CR>" or "<S-Tab>"
+  end, { expr = true, desc = "Jump previous" })
+end
