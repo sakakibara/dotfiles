@@ -22,6 +22,7 @@ return {
       nerd_font_variant = "mono",
       windows = {
         autocomplete = {
+          draw = "minimal",
           winblend = vim.o.pumblend,
         },
         documentation = {
@@ -62,13 +63,6 @@ return {
         end
       end
       require("blink.cmp").setup(opts)
-    end,
-  },
-
-  {
-    "saghen/blink.cmp",
-    opts = function(_, opts)
-      opts.kind_icons = Util.config.icons.kinds
     end,
   },
 
