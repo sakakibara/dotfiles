@@ -15,6 +15,7 @@ return {
     },
     integrations = {
       aerial = true,
+      blink_cmp = true,
       cmp = true,
       dap = {
         enabled = true,
