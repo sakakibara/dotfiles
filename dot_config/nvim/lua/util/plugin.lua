@@ -17,25 +17,6 @@ end
 M.lazy_file_events = { "BufReadPost", "BufNewFile", "BufWritePre" }
 
 function M.lazy_file()
-  vim.api.nvim_create_autocmd("BufReadPost", {
-    once = true,
-    callback = function(event)
-      if vim.v.vim_did_enter == 1 then
-        return
-      end
-
-      local ft = vim.filetype.match({ buf = event.buf })
-      if ft then
-        local lang = vim.treesitter.language.get_lang(ft)
-        if not (lang and pcall(vim.treesitter.start, event.buf, lang)) then
-          vim.bo[event.buf].syntax = ft
-        end
-
-        vim.cmd([[redraw]])
-      end
-    end,
-  })
-
   local LazyEvent = require("lazy.core.handler.event")
 
   LazyEvent.mappings.LazyFile = { id = "LazyFile", event = M.lazy_file_events }
