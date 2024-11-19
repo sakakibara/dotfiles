@@ -6,15 +6,6 @@ return {
     "folke/snacks.nvim",
     priority = 1000,
     lazy = false,
-    opts = function()
-      return {
-        notifier = { enabled = true },
-        quickfile = { enabled = true },
-        bigfile = { enabled = true },
-        words = { enabled = true },
-        statuscolumn = { enabled = true, folds = { open = true } },
-      }
-    end,
     keys = {
       {
         "<Leader>un",
@@ -24,5 +15,14 @@ return {
         desc = "Dismiss all notifications",
       },
     },
+    opts = function()
+      return {
+        notifier = { enabled = true },
+        quickfile = { enabled = true },
+        bigfile = { enabled = true },
+        words = { enabled = true },
+        statuscolumn = { enabled = true, folds = { open = true } },
+      }
+    end,
   },
 }
