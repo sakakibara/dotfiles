@@ -24,5 +24,12 @@ return {
         statuscolumn = { enabled = true, folds = { open = true } },
       }
     end,
+    config = function(_, opts)
+      local notify = vim.notify
+      require("snacks").setup(opts)
+      if Util.plugin.has("noice.nvim") then
+        vim.notify = notify
+      end
+    end,
   },
 }
