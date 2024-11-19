@@ -44,7 +44,7 @@ return {
   {
     "conform.nvim",
     opts = function(_, opts)
-      if Util.plugin.has_extra("formatting.prettier") then
+      if Util.plugin.has_extra("formatter.prettier") then
         opts.formatters_by_ft = opts.formatters_by_ft or {}
         opts.formatters_by_ft.svelte = { "prettier" }
       end
