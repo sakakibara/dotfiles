@@ -34,6 +34,7 @@ function M.get()
     },
     { "<Leader>cc", vim.lsp.codelens.run, desc = "Run codelens", mode = { "n", "v" }, has = "codeLens" },
     { "<Leader>cC", vim.lsp.codelens.refresh, desc = "Refresh & display codelens", mode = { "n" }, has = "codeLens" },
+    { "<Leader>cr", vim.lsp.buf.rename, desc = "Rename", has = "rename" },
     {
       "<leader>cR",
       Snacks.rename.rename_file,
