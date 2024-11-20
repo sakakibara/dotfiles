@@ -12,7 +12,6 @@ local LazyUtil = require("lazy.core.util")
 ---@field pick util.pick
 ---@field plugin util.plugin
 ---@field root util.root
----@field terminal util.terminal
 ---@field ui util.ui
 local M = {}
 

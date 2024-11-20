@@ -270,19 +270,6 @@ return {
   },
 
   {
-    "akinsho/toggleterm.nvim",
-    version = "*",
-    opts = {},
-    keys = {
-      { "<F7>", mode = { "n", "x", "o", "t" }, "<Cmd>ToggleTerm<CR>", desc = "Toggle terminal" },
-      { "<Leader>utf", "<Cmd>ToggleTerm direction=float<CR>", desc = "Toggle terminal (float)" },
-      { "<Leader>uth", "<Cmd>ToggleTerm size=10 direction=horizontal<CR>", desc = "Toggle terminal (horizontal)" },
-      { "<Leader>utv", "<Cmd>ToggleTerm size=80 direction=vertical<CR>", desc = "Toggle terminal (vertical)" },
-      { "<Leader>gl", Util.terminal.lazygit_toggle, desc = "Lazygit" },
-    },
-  },
-
-  {
     "brenoprata10/nvim-highlight-colors",
     event = "LazyFile",
     opts = {
