@@ -21,7 +21,7 @@ return {
         quickfile = { enabled = true },
         bigfile = { enabled = true },
         words = { enabled = true },
-        statuscolumn = { enabled = true, folds = { open = true } },
+        statuscolumn = { enabled = false },
       }
     end,
     config = function(_, opts)
