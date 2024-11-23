@@ -130,7 +130,6 @@ return {
         typescript = "typescript",
         typescriptreact = "typescript",
         vue = "vue",
-        yaml = "yaml",
       },
       groups = {
         default = {
@@ -149,25 +148,14 @@ return {
           augend.constant.alias.bool,
         },
         vue = {
-          augend.integer.alias.decimal_int,
-          augend.constant.alias.bool,
-          logical_alias,
           augend.constant.new({ elements = { "let", "const" } }),
           augend.hexcolor.new({ case = "lower" }),
           augend.hexcolor.new({ case = "upper" }),
         },
         typescript = {
-          augend.integer.alias.decimal,
-          augend.constant.alias.bool,
-          logical_alias,
           augend.constant.new({ elements = { "let", "const" } }),
         },
-        yaml = {
-          augend.integer.alias.decimal,
-          augend.constant.alias.bool,
-        },
         css = {
-          augend.integer.alias.decimal,
           augend.hexcolor.new({
             case = "lower",
           }),
@@ -180,11 +168,8 @@ return {
         },
         json = {
           augend.integer.alias.decimal,
-          augend.semver.alias.semver,
         },
         lua = {
-          augend.integer.alias.decimal,
-          augend.constant.alias.bool,
           augend.constant.new({
             elements = { "and", "or" },
             word = true,
@@ -192,14 +177,19 @@ return {
           }),
         },
         python = {
-          augend.integer.alias.decimal,
-          capitalized_boolean,
-          logical_alias,
+          augend.constant.new({
+            elements = { "and", "or" },
+          }),
         },
       },
     }
   end,
   config = function(_, opts)
+    for name, group in pairs(opts.groups) do
+      if name ~= "default" then
+        vim.list_extend(group, opts.groups.default)
+      end
+    end
     require("dial.config").augends:register_group(opts.groups)
     vim.g.dials_by_ft = opts.dials_by_ft
   end,
