@@ -43,6 +43,7 @@ return {
       noice = true,
       notify = true,
       overseer = true,
+      snacks = true,
       telescope = { enabled = true },
       lsp_trouble = true,
       treesitter = true,
