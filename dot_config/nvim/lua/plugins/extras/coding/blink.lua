@@ -22,7 +22,6 @@ return {
       nerd_font_variant = "mono",
       windows = {
         autocomplete = {
-          draw = "minimal",
           winblend = vim.o.pumblend,
         },
         documentation = {
