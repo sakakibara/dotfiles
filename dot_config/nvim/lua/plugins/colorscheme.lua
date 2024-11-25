@@ -43,6 +43,7 @@ return {
       noice = true,
       notify = true,
       overseer = true,
+      semantic_tokens = true,
       snacks = true,
       telescope = { enabled = true },
       lsp_trouble = true,
