@@ -304,14 +304,12 @@ return {
     ft = "lua",
     opts = {
       library = {
-        { path = "luvit-meta/library", words = { "vim%.uv" } },
+        { path = "${3rd}/luv/library", words = { "vim%.uv" } },
         { path = "snacks.nvim", words = { "Snacks" } },
         { path = "lazy.nvim", words = { "Util" } },
       },
     },
   },
-
-  { "Bilal2453/luvit-meta", lazy = true },
 
   {
     "hrsh7th/nvim-cmp",
