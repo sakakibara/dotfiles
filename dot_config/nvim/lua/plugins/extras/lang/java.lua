@@ -151,8 +151,8 @@ return {
                 { "<Leader>cx", group = "extract" },
                 { "<Leader>cxv", require("jdtls").extract_variable_all, desc = "Extract variable" },
                 { "<Leader>cxc", require("jdtls").extract_constant, desc = "Extract constant" },
-                { "gs", require("jdtls").super_implementation, desc = "Goto super" },
-                { "gS", require("jdtls.tests").goto_subjects, desc = "Goto subjects" },
+                { "<Leader>cgs", require("jdtls").super_implementation, desc = "Goto super" },
+                { "<Leader>cgS", require("jdtls.tests").goto_subjects, desc = "Goto subjects" },
                 { "<Leader>co", require("jdtls").organize_imports, desc = "Organize imports" },
               },
             })
