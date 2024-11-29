@@ -20,12 +20,13 @@ return {
         use_nvim_cmp_as_default = false,
       },
       nerd_font_variant = "mono",
-      windows = {
-        autocomplete = {
+      completion = {
+        menu = {
           winblend = vim.o.pumblend,
         },
         documentation = {
           auto_show = true,
+          auto_show_delay_ms = 200,
         },
         ghost_text = {
           enabled = true,
@@ -62,6 +63,14 @@ return {
         end
       end
       require("blink.cmp").setup(opts)
+    end,
+  },
+
+  {
+    "saghen/blink.cmp",
+    opts = function(_, opts)
+      opts.appearance = opts.appearance or {}
+      opts.appearance.kind_icons = Util.config.icons.kinds
     end,
   },
 
