@@ -8,6 +8,27 @@ return {
     lazy = false,
     keys = {
       {
+        "<Leader>.",
+        function()
+          Snacks.scratch()
+        end,
+        desc = "Toggle scratch buffer",
+      },
+      {
+        "<Leader>S",
+        function()
+          Snacks.scratch.select()
+        end,
+        desc = "Select scratch buffer",
+      },
+      {
+        "<Leader>n",
+        function()
+          Snacks.notifier.show_history()
+        end,
+        desc = "Notification history",
+      },
+      {
         "<Leader>un",
         function()
           Snacks.notifier.hide()
