@@ -28,7 +28,7 @@ return {
           },
         },
         inlay_hints = {
-          enabled = false,
+          enabled = true,
           exclude = { "vue" },
         },
         codelens = {
