@@ -81,12 +81,6 @@ if vim.fn.executable("lazygit") == 1 then
   map("n", "<Leader>gG", function()
     Snacks.lazygit()
   end, { desc = "Lazygit (cwd)" })
-  map("n", "<Leader>gb", function()
-    Snacks.git.blame_line()
-  end, { desc = "Git blame line" })
-  map({ "n", "x" }, "<leader>gB", function()
-    Snacks.gitbrowse()
-  end, { desc = "Git browse" })
   map("n", "<Leader>gf", function()
     Snacks.lazygit.log_file()
   end, { desc = "Lazygit current file history" })
@@ -97,6 +91,20 @@ if vim.fn.executable("lazygit") == 1 then
     Snacks.lazygit.log()
   end, { desc = "Lazygit log (cwd)" })
 end
+
+map("n", "<Leader>gb", function()
+  Snacks.git.blame_line()
+end, { desc = "Git blame line" })
+map({ "n", "x" }, "<Leader>gB", function()
+  Snacks.gitbrowse()
+end, { desc = "Git browse (open)" })
+map({ "n", "x" }, "<Leader>gY", function()
+  Snacks.gitbrowse({
+    open = function(url)
+      vim.fn.setreg("+", url)
+    end,
+  })
+end, { desc = "Git browse (copy)" })
 
 if vim.fn.has("nvim-0.11") == 0 then
   map("s", "<Tab>", function()
