@@ -22,7 +22,6 @@ return {
       nerd_font_variant = "mono",
       completion = {
         menu = {
-          winblend = vim.o.pumblend,
         },
         documentation = {
           auto_show = true,
