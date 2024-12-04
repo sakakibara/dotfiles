@@ -22,6 +22,9 @@ return {
       nerd_font_variant = "mono",
       completion = {
         menu = {
+          draw = {
+            treesitter = true,
+          },
         },
         documentation = {
           auto_show = true,
