@@ -25,7 +25,6 @@ return {
           { "<Leader>fc", group = "config" },
           { "<Leader>fp", group = "parent" },
           { "<Leader>g", group = "git" },
-          { "<Leader>n", group = "notes" },
           { "<Leader>q", group = "quit" },
           { "<Leader>r", group = "rest" },
           { "<Leader>s", group = "search" },
