@@ -16,11 +16,16 @@ return {
     event = "InsertEnter",
 
     opts = {
-      highlight = {
+      appearance = {
         use_nvim_cmp_as_default = false,
+        nerd_font_variant = "mono",
       },
-      nerd_font_variant = "mono",
       completion = {
+        accept = {
+          auto_brackets = {
+            enabled = true,
+          },
+        },
         menu = {
           draw = {
             treesitter = true,
@@ -34,8 +39,6 @@ return {
           enabled = true,
         },
       },
-
-      accept = { auto_brackets = { enabled = true } },
 
       sources = {
         compat = {},
