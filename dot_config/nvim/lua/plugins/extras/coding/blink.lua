@@ -9,9 +9,16 @@ return {
     opts_extend = {
       "sources.completion.enabled_providers",
       "sources.compat",
+      "sources.default",
     },
     dependencies = {
       "rafamadriz/friendly-snippets",
+      {
+        "saghen/blink.compat",
+        optional = true, -- make optional so it's only enabled if any extras need it
+        opts = {},
+        version = "*",
+      },
     },
     event = "InsertEnter",
 
@@ -42,9 +49,7 @@ return {
 
       sources = {
         compat = {},
-        completion = {
-          enabled_providers = { "lsp", "path", "snippets", "buffer" },
-        },
+        default = { "lsp", "path", "snippets", "buffer" },
       },
 
       keymap = {
@@ -56,7 +61,7 @@ return {
       },
     },
     config = function(_, opts)
-      local enabled = opts.sources.completion.enabled_providers
+      local enabled = opts.sources.default
       for _, source in ipairs(opts.sources.compat or {}) do
         opts.sources.providers[source] = vim.tbl_deep_extend(
           "force",
@@ -83,13 +88,8 @@ return {
     "saghen/blink.cmp",
     opts = {
       sources = {
-        completion = {
-          enabled_providers = { "lazydev" },
-        },
+        default = { "lazydev" },
         providers = {
-          lsp = {
-            fallback_for = { "lazydev" },
-          },
           lazydev = {
             name = "LazyDev",
             module = "lazydev.integrations.blink",

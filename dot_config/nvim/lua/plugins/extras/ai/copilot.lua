@@ -78,11 +78,13 @@ return {
             optional = true,
             opts = {
               sources = {
+                default = { "copilot" },
                 providers = {
-                  copilot = { name = "copilot", module = "blink-cmp-copilot" },
-                },
-                completion = {
-                  enabled_providers = { "copilot" },
+                  copilot = {
+                    name = "copilot",
+                    module = "blink-cmp-copilot",
+                    kind = "Copilot",
+                  },
                 },
               },
             },
