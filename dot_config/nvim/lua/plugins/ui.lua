@@ -270,34 +270,6 @@ return {
   { "MunifTanjim/nui.nvim", lazy = true },
 
   {
-    "lukas-reineke/indent-blankline.nvim",
-    main = "ibl",
-    event = "LazyFile",
-    opts = {
-      indent = {
-        char = "│",
-        tab_char = "│",
-      },
-      exclude = {
-        filetypes = {
-          "Trouble",
-          "csv",
-          "dashboard",
-          "help",
-          "lazy",
-          "mason",
-          "notify",
-          "oil",
-          "qf",
-          "text",
-          "tsv",
-        },
-      },
-      whitespace = { remove_blankline_trail = false },
-    },
-  },
-
-  {
     "Bekaboo/deadcolumn.nvim",
     event = "UIEnter",
     init = function()
@@ -692,6 +664,35 @@ return {
           },
         }
       end,
+    },
+  },
+
+  {
+    "snacks.nvim",
+    opts = {
+      indent = { enabled = true },
+      input = { enabled = true },
+      notifier = { enabled = true },
+      scope = { enabled = true },
+      scroll = { enabled = true },
+      statuscolumn = { enabled = false },
+      words = { enabled = true },
+    },
+    keys = {
+      {
+        "<Leader>n",
+        function()
+          Snacks.notifier.show_history()
+        end,
+        desc = "Notification history",
+      },
+      {
+        "<Leader>un",
+        function()
+          Snacks.notifier.hide()
+        end,
+        desc = "Dismiss all notifications",
+      },
     },
   },
 }
