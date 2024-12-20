@@ -36,15 +36,7 @@ return {
         desc = "Dismiss all notifications",
       },
     },
-    opts = function()
-      return {
-        notifier = { enabled = true },
-        quickfile = { enabled = true },
-        bigfile = { enabled = true },
-        words = { enabled = true },
-        statuscolumn = { enabled = false },
-      }
-    end,
+    opts = {},
     config = function(_, opts)
       local notify = vim.notify
       require("snacks").setup(opts)
