@@ -5,6 +5,8 @@ g.mapleader = " "
 g.maplocalleader = "\\"
 g.markdown_recommended_style = 0
 
+g.root_spec = { "lsp", { ".git", "lua", ".svn" }, "cwd" }
+
 opt.autowrite = true
 opt.clipboard = vim.env.SSH_TTY and "" or "unnamedplus"
 opt.colorcolumn = "120"

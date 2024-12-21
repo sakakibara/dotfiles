@@ -5,7 +5,7 @@ local M = setmetatable({}, {
   end,
 })
 
-M.spec = { "lsp", { ".git", "lua", ".svn", ".vs" }, "cwd", "rel" }
+M.spec = { "lsp", { ".git", "lua" }, "cwd" }
 
 M.detectors = {}
 
