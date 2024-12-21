@@ -5,6 +5,8 @@ g.mapleader = " "
 g.maplocalleader = "\\"
 g.markdown_recommended_style = 0
 
+g.autoformat = true
+
 g.root_spec = { "lsp", { ".git", "lua", ".svn" }, "cwd" }
 g.root_lsp_ignore = { "copilot" }
 
