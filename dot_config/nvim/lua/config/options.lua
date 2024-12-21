@@ -6,6 +6,7 @@ g.maplocalleader = "\\"
 g.markdown_recommended_style = 0
 
 g.root_spec = { "lsp", { ".git", "lua", ".svn" }, "cwd" }
+g.root_lsp_ignore = { "copilot" }
 
 opt.autowrite = true
 opt.clipboard = vim.env.SSH_TTY and "" or "unnamedplus"
