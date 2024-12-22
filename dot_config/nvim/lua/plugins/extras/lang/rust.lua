@@ -1,22 +1,20 @@
 return {
   {
-    "hrsh7th/nvim-cmp",
-    dependencies = {
-      {
-        "Saecki/crates.nvim",
-        event = { "BufRead Cargo.toml" },
-        opts = {
-          completion = {
-            cmp = { enabled = true },
-          },
+    "Saecki/crates.nvim",
+    event = { "BufRead Cargo.toml" },
+    opts = {
+      completion = {
+        crates = {
+          enabled = true,
         },
       },
+      lsp = {
+        enabled = true,
+        actions = true,
+        completion = true,
+        hover = true,
+      },
     },
-    opts = function(_, opts)
-      if type(opts.sources) == "table" then
-        table.insert(opts.sources, { name = "crates" })
-      end
-    end,
   },
 
   {
