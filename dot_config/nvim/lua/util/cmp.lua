@@ -10,6 +10,11 @@ M.actions = {
       return true
     end
   end,
+  snippet_stop = function()
+    if vim.snippet then
+      vim.snippet.stop()
+    end
+  end,
 }
 
 function M.map(actions, fallback)
@@ -51,6 +56,20 @@ function M.snippet_fix(snippet)
   end)
 end
 
+function M.auto_brackets(entry)
+  local cmp = require("cmp")
+  local Kind = cmp.lsp.CompletionItemKind
+  local item = entry:get_completion_item()
+  if vim.tbl_contains({ Kind.Function, Kind.Method }, item.kind) then
+    local cursor = vim.api.nvim_win_get_cursor(0)
+    local prev_char = vim.api.nvim_buf_get_text(0, cursor[1] - 1, cursor[2], cursor[1] - 1, cursor[2] + 1, {})[1]
+    if prev_char ~= "(" and prev_char ~= ")" then
+      local keys = vim.api.nvim_replace_termcodes("()<left>", false, false, true)
+      vim.api.nvim_feedkeys(keys, "i", true)
+    end
+  end
+end
+
 function M.add_missing_snippet_docs(window)
   local cmp = require("cmp")
   local Kind = cmp.lsp.CompletionItemKind
@@ -66,18 +85,6 @@ function M.add_missing_snippet_docs(window)
       end
     end
   end
-end
-
-function M.visible()
-  local blink = package.loaded["blink.cmp"]
-  if blink then
-    return blink.windows and blink.windows.autocomplete.win:is_open()
-  end
-  local cmp = package.loaded["cmp"]
-  if cmp then
-    return cmp.core.view:visible()
-  end
-  return false
 end
 
 function M.confirm(opts)
@@ -121,6 +128,36 @@ function M.expand(snippet)
   if session then
     vim.snippet._session = session
   end
+end
+
+function M.want()
+  return Util.plugin.has_extra("coding.nvim-cmp") and "nvim-cmp" or "blink.cmp"
+end
+
+function M.setup(opts)
+  for _, source in ipairs(opts.sources) do
+    source.group_index = source.group_index or 1
+  end
+
+  local parse = require("cmp.utils.snippet").parse
+  require("cmp.utils.snippet").parse = function(input)
+    local ok, ret = pcall(parse, input)
+    if ok then
+      return ret
+    end
+    return Util.cmp.snippet_preview(input)
+  end
+
+  local cmp = require("cmp")
+  cmp.setup(opts)
+  cmp.event:on("confirm_done", function(event)
+    if vim.tbl_contains(opts.auto_brackets or {}, vim.bo.filetype) then
+      Util.cmp.auto_brackets(event.entry)
+    end
+  end)
+  cmp.event:on("menu_opened", function(event)
+    Util.cmp.add_missing_snippet_docs(event.window)
+  end)
 end
 
 return M

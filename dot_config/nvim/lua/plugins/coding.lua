@@ -48,105 +48,6 @@ return {
   },
 
   {
-    "hrsh7th/nvim-cmp",
-    version = false,
-    event = "InsertEnter",
-    dependencies = {
-      "hrsh7th/cmp-nvim-lsp",
-      "hrsh7th/cmp-buffer",
-      "hrsh7th/cmp-path",
-    },
-    opts = function()
-      vim.api.nvim_set_hl(0, "CmpGhostText", { link = "Comment", default = true })
-      local cmp = require("cmp")
-      local defaults = require("cmp.config.default")()
-      local auto_select = true
-      return {
-        completion = {
-          completeopt = "menu,menuone,noinsert",
-        },
-        preselect = auto_select and cmp.PreselectMode.Item or cmp.PreselectMode.None,
-        mapping = cmp.mapping.preset.insert({
-          ["<C-b>"] = cmp.mapping.scroll_docs(-4),
-          ["<C-f>"] = cmp.mapping.scroll_docs(4),
-          ["<C-n>"] = cmp.mapping.select_next_item({ behavior = cmp.SelectBehavior.Insert }),
-          ["<C-p>"] = cmp.mapping.select_prev_item({ behavior = cmp.SelectBehavior.Insert }),
-          ["<C-Space>"] = cmp.mapping.complete(),
-          ["<C-e>"] = cmp.mapping.abort(),
-          ["<CR>"] = Util.cmp.confirm({ select = auto_select }),
-          ["<C-y>"] = Util.cmp.confirm({ select = true }),
-          ["<S-CR>"] = Util.cmp.confirm({ behavior = cmp.ConfirmBehavior.Replace }),
-          ["<C-CR>"] = function(fallback)
-            cmp.abort()
-            fallback()
-          end,
-          ["<Tab>"] = function(fallback)
-            return Util.cmp.map({ "snippet_forward", "ai_accept" }, fallback)()
-          end,
-        }),
-        sources = cmp.config.sources({ { name = "nvim_lsp" }, { name = "path" } }, { { name = "buffer" } }),
-        formatting = {
-          format = function(_, item)
-            local icons = Util.config.icons.kinds
-            if icons[item.kind] then
-              item.kind = icons[item.kind] .. item.kind
-            end
-
-            local widths = {
-              abbr = 40,
-              menu = 30,
-            }
-
-            for key, width in pairs(widths) do
-              if item[key] and vim.fn.strdisplaywidth(item[key]) > width then
-                item[key] = vim.fn.strcharpart(item[key], 0, width - 1) .. "…"
-              end
-            end
-
-            return item
-          end,
-        },
-        experimental = {
-          ghost_text = {
-            hl_group = "CmpGhostText",
-          },
-        },
-        sorting = defaults.sorting,
-      }
-    end,
-    config = function(_, opts)
-      for _, source in ipairs(opts.sources) do
-        source.group_index = source.group_index or 1
-      end
-      require("cmp").setup(opts)
-    end,
-  },
-
-  {
-    "nvim-cmp",
-    optional = true,
-    dependencies = {
-      {
-        "garymjr/nvim-snippets",
-        opts = {
-          friendly_snippets = true,
-        },
-        dependencies = { "rafamadriz/friendly-snippets" },
-      },
-    },
-    opts = function(_, opts)
-      opts.snippet = {
-        expand = function(item)
-          return Util.cmp.expand(item.body)
-        end,
-      }
-      if Util.plugin.has("nvim-snippets") then
-        table.insert(opts.sources, { name = "snippets" })
-      end
-    end,
-  },
-
-  {
     "echasnovski/mini.ai",
     event = "VeryLazy",
     dependencies = { "nvim-treesitter-textobjects" },
@@ -315,6 +216,20 @@ return {
     "hrsh7th/nvim-cmp",
     opts = function(_, opts)
       table.insert(opts.sources, { name = "lazydev", group_index = 0 })
+    end,
+  },
+
+  {
+    import = "plugins.extras.coding.blink",
+    enabled = function()
+      return Util.cmp.want() == "blink.cmp"
+    end,
+  },
+
+  {
+    import = "plugins.extras.coding.nvim-cmp",
+    enabled = function()
+      return Util.cmp.want() == "nvim-cmp"
     end,
   },
 }

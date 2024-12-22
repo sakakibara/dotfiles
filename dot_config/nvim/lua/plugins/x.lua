@@ -1,5 +1,8 @@
 local prios = {
+  ["plugins.extras.coding.nvim-cmp"] = 2,
+  ["plugins.extras.coding.blink"] = 5,
   ["plugins.extras.lang.typescript"] = 5,
+  ["plugins.extras.formatter.prettier"] = 10,
 }
 
 local extras = Util.dedup(Util.config.json.data.extras)
