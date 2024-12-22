@@ -27,7 +27,7 @@ function M.register(picker)
 end
 
 function M.want()
-  return Util.plugin.has_extra("editor.fzf") and "fzf" or "telescope"
+  return Util.plugin.has_extra("editor.telescope") and "telescope" or "fzf"
 end
 
 function M.open(command, opts)
