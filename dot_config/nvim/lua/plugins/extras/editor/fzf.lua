@@ -55,17 +55,6 @@ return {
       config.defaults.actions.files["alt-c"] = config.defaults.actions.files["ctrl-r"]
       config.set_action_helpstr(config.defaults.actions.files["ctrl-r"], "toggle-root-dir")
 
-      local defaults = require("fzf-lua.profiles.default-title")
-      local function fix(t)
-        t.prompt = t.prompt ~= nil and " " or nil
-        for _, v in pairs(t) do
-          if type(v) == "table" then
-            fix(v)
-          end
-        end
-      end
-      fix(defaults)
-
       local img_previewer
       for _, v in ipairs({
         { cmd = "ueberzug", args = {} },
@@ -78,7 +67,8 @@ return {
         end
       end
 
-      return vim.tbl_deep_extend("force", defaults, {
+      return {
+        "default-title",
         fzf_colors = true,
         fzf_opts = {
           ["--no-scrollbar"] = true,
@@ -162,9 +152,22 @@ return {
             previewer = vim.fn.executable("delta") == 1 and "codeaction_native" or nil,
           },
         },
-      })
+      }
     end,
     config = function(_, opts)
+      if opts[1] == "default-title" then
+        local function fix(t)
+          t.prompt = t.prompt ~= nil and " " or nil
+          for _, v in pairs(t) do
+            if type(v) == "table" then
+              fix(v)
+            end
+          end
+          return t
+        end
+        opts = vim.tbl_deep_extend("force", fix(require("fzf-lua.profiles.default-title")), opts)
+        opts[1] = nil
+      end
       require("fzf-lua").setup(opts)
     end,
     init = function()
