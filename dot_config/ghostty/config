@@ -1,0 +1,7 @@
+font-family = "Operator Mono SSm"
+font-family = "BIZ UDGothic"
+font-style = "Book"
+font-style-bold = "Medium"
+font-style-italic = "Book Italic"
+font-style-bold-italic = "Medium Italic"
+theme = "catppuccin-mocha"
