@@ -149,6 +149,10 @@ if status --is-interactive
         set -gx _ZO_DATA_DIR "$XDG_DATA_HOME/zoxide"
     end
 
+    if test (command -v zk)
+        set -gx ZK_NOTEBOOK_DIR "$HOME/Notes"
+    end
+
     if test (command -v direnv)
         _evalcache direnv hook fish
     end
@@ -194,6 +198,11 @@ if status --is-interactive
     end
     if test (command -v taskwarrior-tui)
         abbr -a ti taskwarrior-tui
+    end
+    if test (command -v zk)
+        abbr -a n zk
+        abbr -a ne zk edit --interactive
+        abbr -a nj zk journal
     end
 
     # LS_COLORS settings

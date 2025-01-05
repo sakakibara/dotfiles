@@ -149,6 +149,10 @@ if (( ${+commands[zoxide]} )); then
   export _ZO_DATA_DIR="${XDG_DATA_HOME:-${HOME}/.local/share}/zoxide"
 fi
 
+if (( ${+commands[zk]} )); then
+  export ZK_NOTEBOOK_DIR="${HOME}/Notes"
+fi
+
 #
 # Global variables
 #

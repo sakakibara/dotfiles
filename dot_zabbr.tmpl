@@ -20,6 +20,11 @@ abbr "lad"="lazydocker"
 {{ if lookPath "lazygit" -}}
 abbr "lag"="lazygit"
 {{ end -}}
+{{ if lookPath "zk" -}}
+abbr "n"="zk"
+abbr "ne"="zk edit --interactive"
+abbr "nj"="zk journal"
+{{ end -}}
 {{ if lookPath "task" -}}
 abbr "t"="task"
 {{ end -}}
