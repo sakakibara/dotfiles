@@ -63,7 +63,7 @@ return {
       require("zk").setup(opts)
 
       local function fzf_grep_notes()
-        require("fzf-lua").live_grep({ prompt = "Grep Zk Notes> ", cwd = vim.env.ZK_NOTEBOOK_DIR })
+        require("fzf-lua").live_grep({ prompt = "Grep Zk Notes ❯ ", cwd = vim.env.ZK_NOTEBOOK_DIR })
       end
 
       local function telescope_grep_notes()
