@@ -6,3 +6,4 @@ font-style-italic = "Book Italic"
 font-style-bold-italic = "Medium Italic"
 font-feature = -dlig
 theme = "catppuccin-mocha"
+macos-option-as-alt = "left"
