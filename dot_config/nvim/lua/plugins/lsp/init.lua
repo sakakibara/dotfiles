@@ -3,7 +3,6 @@ return {
     "neovim/nvim-lspconfig",
     event = "LazyFile",
     dependencies = {
-      { "folke/neoconf.nvim", cmd = "Neoconf", opts = {} },
       "williamboman/mason.nvim",
       { "williamboman/mason-lspconfig.nvim", config = function() end },
     },
@@ -81,10 +80,6 @@ return {
       }
     end,
     config = function(_, opts)
-      if Util.plugin.has("neoconf.nvim") then
-        require("neoconf").setup(Util.plugin.opts("neoconf.nvim"))
-      end
-
       Util.format.register(Util.lsp.formatter())
 
       Util.lsp.on_attach(function(client, buffer)
