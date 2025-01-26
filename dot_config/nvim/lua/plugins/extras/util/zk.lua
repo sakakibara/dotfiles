@@ -1,6 +1,7 @@
 return {
   {
-    "zk-org/zk-nvim",
+    "pkazmier/zk-nvim",
+    branch = "snacks-picker",
     keys = {
       { "<Leader>zi", "<Cmd>ZkIndex<CR>", desc = "Index notes" },
       {
@@ -45,7 +46,7 @@ return {
       { "<Leader>z/", "<Cmd>ZkGrep<CR>", desc = "Grep notes" },
     },
     opts = {
-      picker = Util.pick.want() == "fzf" and "fzf_lua" or "telescope",
+      picker = Util.pick.picker.name == "snacks" and "snacks_picker" or "fzf" and "fzf_lua" or "telescope",
 
       lsp = {
         config = {
@@ -61,6 +62,16 @@ return {
     },
     config = function(_, opts)
       require("zk").setup(opts)
+
+      local function snacks_grep_notes()
+        Snacks.picker.grep({
+          finder = "grep",
+          format = "file",
+          live = true,
+          supports_live = true,
+          dirs = { vim.env.ZK_NOTEBOOK_DIR },
+        })
+      end
 
       local function fzf_grep_notes()
         require("fzf-lua").live_grep({ prompt = "Grep Zk Notes ❯ ", cwd = vim.env.ZK_NOTEBOOK_DIR })
@@ -86,7 +97,9 @@ return {
       end
 
       local grep_notes
-      if Util.pick.want() == "fzf" then
+      if Util.pick.picker.name == "snacks" then
+        grep_notes = snacks_grep_notes
+      elseif Util.pick.picker.name == "fzf" then
         grep_notes = fzf_grep_notes
       else
         grep_notes = telescope_grep_notes
