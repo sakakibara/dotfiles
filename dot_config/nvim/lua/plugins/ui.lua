@@ -348,7 +348,6 @@ return {
       restore_win_options = true,
       skip_confirm_for_simple_edits = false,
       delete_to_trash = false,
-      trash_command = "trash-put",
       prompt_save_on_select_new_entry = true,
       keymaps = {
         ["g?"] = "actions.show_help",
