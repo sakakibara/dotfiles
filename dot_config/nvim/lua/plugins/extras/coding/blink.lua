@@ -17,7 +17,7 @@ return {
       "rafamadriz/friendly-snippets",
       {
         "saghen/blink.compat",
-        optional = true, -- make optional so it's only enabled if any extras need it
+        optional = true,
         opts = {},
         version = "*",
       },
@@ -124,10 +124,7 @@ return {
     "saghen/blink.cmp",
     opts = function(_, opts)
       opts.appearance = opts.appearance or {}
-      opts.appearance.kind_icons = Util.config.icons.kinds
-      opts.appearance.kind_icons = vim.tbl_extend("keep", {
-        Color = "██",
-      }, Util.config.icons.kinds)
+      opts.appearance.kind_icons = vim.tbl_extend("force", opts.appearance.kind_icons or {}, Util.config.icons.kinds)
     end,
   },
 
@@ -140,6 +137,7 @@ return {
           lazydev = {
             name = "LazyDev",
             module = "lazydev.integrations.blink",
+            score_offset = 100,
           },
         },
       },
