@@ -8,7 +8,7 @@ return {
   {
     import = "plugins.extras.formatter.prettier",
     enabled = function()
-      return vim.fn.executable("prettier") == 1
+      return vim.fn.executable("node") == 1
     end,
   },
 }
