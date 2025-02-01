@@ -1173,7 +1173,7 @@ return {
       {
         "<Leader>/",
         function()
-          Snacks.picker.grep()
+          Snacks.picker.grep({ cwd = Util.root() })
         end,
         desc = "Grep (root)",
       },
