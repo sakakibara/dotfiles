@@ -124,40 +124,9 @@ function M.expand(snippet)
     )
   end
 
-  -- Restore top-level session when needed
   if session then
     vim.snippet._session = session
   end
-end
-
-function M.want()
-  return Util.plugin.has_extra("coding.nvim-cmp") and "nvim-cmp" or "blink.cmp"
-end
-
-function M.setup(opts)
-  for _, source in ipairs(opts.sources) do
-    source.group_index = source.group_index or 1
-  end
-
-  local parse = require("cmp.utils.snippet").parse
-  require("cmp.utils.snippet").parse = function(input)
-    local ok, ret = pcall(parse, input)
-    if ok then
-      return ret
-    end
-    return Util.cmp.snippet_preview(input)
-  end
-
-  local cmp = require("cmp")
-  cmp.setup(opts)
-  cmp.event:on("confirm_done", function(event)
-    if vim.tbl_contains(opts.auto_brackets or {}, vim.bo.filetype) then
-      Util.cmp.auto_brackets(event.entry)
-    end
-  end)
-  cmp.event:on("menu_opened", function(event)
-    Util.cmp.add_missing_snippet_docs(event.window)
-  end)
 end
 
 return M

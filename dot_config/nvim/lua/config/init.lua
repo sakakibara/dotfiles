@@ -143,26 +143,6 @@ local options = {
   },
 }
 
-M.json = {
-  path = vim.fn.stdpath("config") .. "/plugins.json",
-  data = {
-    version = nil,
-    extras = {},
-  },
-}
-
-function M.json.load()
-  local f = io.open(M.json.path, "r")
-  if f then
-    local data = f:read("*a")
-    f:close()
-    local ok, json = pcall(vim.json.decode, data, { luanil = { object = true, array = true } })
-    if ok then
-      M.json.data = vim.tbl_deep_extend("force", M.json.data, json or {})
-    end
-  end
-end
-
 local clipboard
 
 function M.setup(opts)
@@ -188,10 +168,6 @@ function M.setup(opts)
 
       Util.format.setup()
       Util.root.setup()
-
-      vim.api.nvim_create_user_command("Extras", function()
-        Util.extras.show()
-      end, { desc = "Manage extras" })
 
       vim.api.nvim_create_user_command("CheckHealth", function()
         vim.cmd([[Lazy! load all]])
@@ -285,7 +261,6 @@ function M.init()
   vim.opt.clipboard = ""
 
   Util.plugin.setup()
-  M.json.load()
 end
 
 setmetatable(M, {

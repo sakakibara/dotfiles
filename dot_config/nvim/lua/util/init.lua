@@ -3,15 +3,13 @@ local LazyUtil = require("lazy.core.util")
 ---@class util: LazyUtilCore
 ---@field config ConfigOptions
 ---@field cmp util.cmp
----@field extras util.extras
 ---@field format util.format
----@field json util.json
 ---@field keymaps util.keymaps
 ---@field lsp util.lsp
 ---@field path util.path
----@field pick util.pick
 ---@field plugin util.plugin
 ---@field root util.root
+---@field system util.system
 ---@field ui util.ui
 local M = {}
 

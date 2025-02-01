@@ -1,6 +1,7 @@
 return {
   spec = {
     { import = "plugins" },
+    { import = "plugins.extras" },
   },
   concurrency = vim.uv.available_parallelism() * 14,
   install = { colorscheme = { "catppuccin" } },
