@@ -36,6 +36,26 @@ map("n", "<Leader>bo", function()
 end, { desc = "Delete other buffers" })
 map("n", "<Leader>bD", "<Cmd>bd<CR>", { desc = "Delete buffer and window" })
 
+map("n", "[ ", "v:lua.Util.keymaps.put_empty_line(v:true)", { expr = true, desc = "Add empty line above" })
+map("n", "] ", "v:lua.Util.keymaps.put_empty_line(v:false)", { expr = true, desc = "Add empty line below" })
+
+map("n", "[q", vim.cmd.cprev, { desc = "Previous quickfix" })
+map("n", "]q", vim.cmd.cnext, { desc = "Next quickfix" })
+
+local diagnostic_goto = function(next, severity)
+  local go = next and vim.diagnostic.goto_next or vim.diagnostic.goto_prev
+  severity = severity and vim.diagnostic.severity[severity] or nil
+  return function()
+    go({ severity = severity })
+  end
+end
+map("n", "]d", diagnostic_goto(true), { desc = "Next diagnostic" })
+map("n", "[d", diagnostic_goto(false), { desc = "Prev diagnostic" })
+map("n", "]e", diagnostic_goto(true, "ERROR"), { desc = "Next error" })
+map("n", "[e", diagnostic_goto(false, "ERROR"), { desc = "Prev error" })
+map("n", "]w", diagnostic_goto(true, "WARN"), { desc = "Next warning" })
+map("n", "[w", diagnostic_goto(false, "WARN"), { desc = "Prev warning" })
+
 map("n", "<Leader>fy", Util.keymaps.yank_relative_path, { desc = "Yank relative path" })
 map("n", "<Leader>fY", Util.keymaps.yank_full_path, { desc = "Yank full path" })
 
@@ -50,7 +70,7 @@ map(
 map("n", "gco", "o<Esc>Vcx<Esc><Cmd>normal gcc<CR>fxa<BS>", { desc = "Add comment below" })
 map("n", "gcO", "O<Esc>Vcx<Esc><Cmd>normal gcc<CR>fxa<BS>", { desc = "Add comment above" })
 
-map("n", "<Leader>ul", "<Cmd>Lazy<CR>", { desc = "Lazy" })
+map("n", "<Leader>l", "<Cmd>Lazy<CR>", { desc = "Lazy" })
 
 map("n", "<Leader>qq", "<Cmd>qa<CR>", { desc = "Quit all" })
 
@@ -85,6 +105,32 @@ map("n", "<C-_>", function()
 end, { desc = "which_key_ignore" })
 map("t", "<C-/>", "<Cmd>close<CR>", { desc = "Hide Terminal" })
 map("t", "<C-_>", "<Cmd>close<CR>", { desc = "which_key_ignore" })
+
+Util.format.snacks_toggle():map("<leader>uf")
+Util.format.snacks_toggle(true):map("<leader>uF")
+Snacks.toggle.option("spell", { name = "Spelling" }):map("<Leader>us")
+Snacks.toggle.option("wrap", { name = "Wrap" }):map("<Leader>uw")
+Snacks.toggle.option("relativenumber", { name = "Relative Number" }):map("<Leader>uL")
+Snacks.toggle.diagnostics():map("<Leader>ud")
+Snacks.toggle.line_number():map("<Leader>ul")
+Snacks.toggle
+  .option("conceallevel", { off = 0, on = vim.o.conceallevel > 0 and vim.o.conceallevel or 2, name = "Conceal Level" })
+  :map("<Leader>uc")
+Snacks.toggle
+  .option("showtabline", { off = 0, on = vim.o.showtabline > 0 and vim.o.showtabline or 2, name = "Tabline" })
+  :map("<Leader>uA")
+Snacks.toggle.treesitter():map("<Leader>uT")
+Snacks.toggle.option("background", { off = "light", on = "dark", name = "Dark Background" }):map("<Leader>ub")
+Snacks.toggle.dim():map("<Leader>uD")
+Snacks.toggle.animate():map("<Leader>ua")
+Snacks.toggle.indent():map("<Leader>ug")
+Snacks.toggle.scroll():map("<Leader>uS")
+Snacks.toggle.profiler():map("<Leader>dpp")
+Snacks.toggle.profiler_highlights():map("<Leader>dph")
+
+if vim.lsp.inlay_hint then
+  Snacks.toggle.inlay_hints():map("<Leader>uh")
+end
 
 if vim.fn.executable("lazygit") == 1 then
   map("n", "<Leader>gg", function()

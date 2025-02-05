@@ -1,6 +1,17 @@
 ---@class util.keymaps
 local M = {}
 
+function M.put_empty_line(put_above)
+  if type(put_above) == "boolean" then
+    vim.o.operatorfunc = "v:lua.Util.keymaps.put_empty_line"
+    M.cache_empty_line = { put_above = put_above }
+    return "g@l"
+  end
+
+  local target_line = vim.fn.line(".") - (M.cache_empty_line.put_above and 1 or 0)
+  vim.fn.append(target_line, vim.fn["repeat"]({ "" }, vim.v.count1))
+end
+
 function M.yank_relative_path()
   vim.fn.setreg("*", vim.fn.fnamemodify(Util.path.get_current_file_path(), ":~:."))
 end
