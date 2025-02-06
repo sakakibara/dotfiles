@@ -146,7 +146,6 @@ return {
 
   {
     "stevearc/overseer.nvim",
-    event = "LazyFile",
     cmd = {
       "OverseerOpen",
       "OverseerClose",
