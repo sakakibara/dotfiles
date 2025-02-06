@@ -271,7 +271,7 @@ function M.get_pkg_path(pkg, path, opts)
   pcall(require, "mason")
   local root = vim.env.MASON or (vim.fn.stdpath("data") .. "/mason")
   opts = opts or {}
-  opts.warn = opts.warn == nil and true or opts.warn
+  opts.warn = opts.warn == nil and false or opts.warn
   path = path or ""
   local ret = root .. "/packages/" .. pkg .. "/" .. path
   if opts.warn and not vim.loop.fs_stat(ret) and not require("lazy.core.config").headless() then
