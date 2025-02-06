@@ -5,7 +5,6 @@ return {
       "nvim-lua/plenary.nvim",
       "stevearc/dressing.nvim",
     },
-    event = "LazyFile",
     cmd = {
       "FlutterRun",
       "FlutterDevices",
