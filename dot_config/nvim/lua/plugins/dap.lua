@@ -1,10 +1,13 @@
 local function get_args(config)
   local args = type(config.args) == "function" and (config.args() or {}) or config.args or {}
+  local args_str = type(args) == "table" and table.concat(args, " ") or args
   config = vim.deepcopy(config)
-  ---@cast args string[]
   config.args = function()
-    local new_args = vim.fn.input("Run with args: ", table.concat(args, " "))
-    return vim.split(vim.fn.expand(new_args), " ")
+    local new_args = vim.fn.expand(vim.fn.input("Run with args: ", args_str)) --[[@as string]]
+    if config.type and config.type == "java" then
+      return new_args
+    end
+    return require("dap.utils").splitstr(new_args)
   end
   return config
 end
@@ -237,6 +240,9 @@ return {
       },
     },
     config = function()
+      if Util.plugin.has("mason-nvim-dap.nvim") then
+        require("mason-nvim-dap").setup(Util.plugin.opts("mason-nvim-dap.nvim"))
+      end
       vim.api.nvim_set_hl(0, "DapStoppedLine", { default = true, link = "Visual" })
 
       for name, sign in pairs(Util.config.icons.dap) do
