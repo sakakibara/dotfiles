@@ -86,6 +86,7 @@ return {
 
   {
     "nfrid/due.nvim",
+    ft = { "markdown" },
     opts = {},
   },
 }
