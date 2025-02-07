@@ -564,109 +564,116 @@ return {
     "b0o/incline.nvim",
     dependencies = { "nvim-tree/nvim-web-devicons" },
     event = "VeryLazy",
-    keys = {
-      {
-        "<Leader>ui",
-        function()
-          require("incline").toggle()
+    opts = function()
+      Snacks.toggle({
+        name = "Incline",
+        get = function()
+          return require("incline").is_enabled()
         end,
-        desc = "Toggle incline",
-      },
-    },
-    opts = {
-      window = {
-        padding = 0,
-        margin = { horizontal = 0 },
-      },
-      ignore = {
-        buftypes = { "help", "nofile", "nowrite", "quickfix", "terminal", "prompt" },
-      },
-      hide = {
-        cursorline = "focused_win",
-      },
-      render = function(props)
-        local devicons = require("nvim-web-devicons")
+        set = function(state)
+          if state then
+            require("incline").enable()
+          else
+            require("incline").disable()
+          end
+        end,
+      }):map("<Leader>ui")
 
-        local function shorten_path_styled(path, opts)
-          opts = opts or {}
-          local head_style = opts.head_style or {}
-          local tail_style = opts.tail_style or {}
-          local _, head, tail = Util.path.format_path(
-            path,
-            vim.tbl_extend("force", opts, {
-              return_segments = true,
-              last_separator = true,
+      return {
+        window = {
+          padding = 0,
+          margin = { horizontal = 0 },
+        },
+        ignore = {
+          buftypes = { "help", "nofile", "nowrite", "quickfix", "terminal", "prompt" },
+        },
+        hide = {
+          cursorline = "focused_win",
+        },
+        render = function(props)
+          local devicons = require("nvim-web-devicons")
+
+          local function shorten_path_styled(path, opts)
+            opts = opts or {}
+            local head_style = opts.head_style or {}
+            local tail_style = opts.tail_style or {}
+            local _, head, tail = Util.path.format_path(
+              path,
+              vim.tbl_extend("force", opts, {
+                return_segments = true,
+                last_separator = true,
+              })
+            )
+            return {
+              head and vim.list_extend(head_style, { head }) or "",
+              vim.list_extend(tail_style, { tail }),
+            }
+          end
+
+          local colors = {
+            fg = Util.ui.color("Normal"),
+            fg_nc = Util.ui.dim(Util.ui.color("Normal"), 0.75),
+            bg = Util.ui.color("Normal", true),
+            red = Util.ui.color("Error"),
+          }
+
+          local function get_icon(buf)
+            local bufname = Util.path.buf_get_name(buf)
+            local extension = vim.fn.fnamemodify(bufname, ":e")
+            local icon, icon_color
+            icon, icon_color = devicons.get_icon_color(bufname, extension, { default = true })
+            return {
+              icon = icon,
+              fg = icon_color,
+            }
+          end
+
+          local function get_file_path(buf, focused, fg, fg_nc)
+            local bufname = Util.path.buf_get_name(buf)
+            local fname = shorten_path_styled(bufname, {
+              short_len = 3,
+              tail_count = 2,
+              max_segments = 3,
+              replace_home = true,
+              ellipsis = true,
+              no_name = true,
+              head_style = { guifg = fg_nc },
+              tail_style = { guifg = focused and fg or fg_nc },
             })
-          )
+            return fname
+          end
+
+          local file_path = get_file_path(props.buf, props.focused, colors.fg, colors.fg_nc)
+          local icon = get_icon(props.buf)
+          local modified = vim.bo[props.buf].modified
+
           return {
-            head and vim.list_extend(head_style, { head }) or "",
-            vim.list_extend(tail_style, { tail }),
+            {
+              {
+                " ",
+              },
+              {
+                icon.icon,
+                " ",
+                guifg = props.focused and icon.fg or colors.fg_nc,
+              },
+              {
+                " ",
+              },
+              {
+                file_path,
+                gui = modified and "bold,italic" or nil,
+              },
+              { modified and " [+]" or "", guifg = colors.red },
+              {
+                " ",
+              },
+              guibg = colors.bg,
+            },
           }
-        end
-
-        local colors = {
-          fg = Util.ui.color("Normal"),
-          fg_nc = Util.ui.dim(Util.ui.color("Normal"), 0.75),
-          bg = Util.ui.color("Normal", true),
-          red = Util.ui.color("Error"),
-        }
-
-        local function get_icon(buf)
-          local bufname = Util.path.buf_get_name(buf)
-          local extension = vim.fn.fnamemodify(bufname, ":e")
-          local icon, icon_color
-          icon, icon_color = devicons.get_icon_color(bufname, extension, { default = true })
-          return {
-            icon = icon,
-            fg = icon_color,
-          }
-        end
-
-        local function get_file_path(buf, focused, fg, fg_nc)
-          local bufname = Util.path.buf_get_name(buf)
-          local fname = shorten_path_styled(bufname, {
-            short_len = 3,
-            tail_count = 2,
-            max_segments = 3,
-            replace_home = true,
-            ellipsis = true,
-            no_name = true,
-            head_style = { guifg = fg_nc },
-            tail_style = { guifg = focused and fg or fg_nc },
-          })
-          return fname
-        end
-
-        local file_path = get_file_path(props.buf, props.focused, colors.fg, colors.fg_nc)
-        local icon = get_icon(props.buf)
-        local modified = vim.bo[props.buf].modified
-
-        return {
-          {
-            {
-              " ",
-            },
-            {
-              icon.icon,
-              " ",
-              guifg = props.focused and icon.fg or colors.fg_nc,
-            },
-            {
-              " ",
-            },
-            {
-              file_path,
-              gui = modified and "bold,italic" or nil,
-            },
-            { modified and " [+]" or "", guifg = colors.red },
-            {
-              " ",
-            },
-            guibg = colors.bg,
-          },
-        }
-      end,
-    },
+        end,
+      }
+    end,
   },
 
   {
