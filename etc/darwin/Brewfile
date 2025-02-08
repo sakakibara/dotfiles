@@ -1,4 +1,3 @@
-tap "d12frosted/emacs-plus"
 tap "homebrew/bundle"
 tap "homebrew/services"
 tap "microsoft/git"
@@ -41,7 +40,6 @@ brew "yt-dlp"
 brew "zk"
 brew "zoxide"
 brew "zsh"
-brew "d12frosted/emacs-plus/emacs-plus@29", args: ["with-elrumo2-icon", "with-native-comp", "with-no-frame-refocus"]
 cask "1password"
 cask "aerospace"
 cask "adobe-creative-cloud"
