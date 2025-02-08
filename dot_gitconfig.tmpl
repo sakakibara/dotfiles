@@ -62,7 +62,9 @@
 	cmd = nvim -d $BASE $LOCAL $REMOTE $MERGED -c '$wincmd w' -c 'wincmd J'
 [user]
 	name = Sho Sakakibara
+{{- if (index . "email") }}
 	email = {{ .email }}
+{{- end }}
 [credential "https://github.com"]
 	helper =
 	helper = !gh auth git-credential
