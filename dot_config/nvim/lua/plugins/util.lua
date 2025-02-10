@@ -121,8 +121,7 @@ return {
   },
 
   {
-    "pkazmier/zk-nvim",
-    branch = "snacks-picker",
+    "zk-org/zk-nvim",
     keys = {
       { "<Leader>zi", "<Cmd>ZkIndex<CR>", desc = "Index notes" },
       {
