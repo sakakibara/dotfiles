@@ -22,6 +22,11 @@ return {
           },
         },
       },
+      styles = {
+        scratch = {
+          zindex = 60,
+        },
+      },
     },
     keys = {
       {
