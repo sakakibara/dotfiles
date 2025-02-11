@@ -8,8 +8,7 @@ function M.pick(kind)
       Util.warn("No " .. kind .. " found on the current line")
       return
     end
-    local ok = pcall(require, "fzf-lua")
-    require("CopilotChat.integrations." .. (ok and "fzflua" or "telescope")).pick(items)
+    require("CopilotChat.integrations.snacks").pick(items)
   end
 end
 
@@ -65,7 +64,6 @@ return {
         desc = "Quick Chat (CopilotChat)",
         mode = { "n", "v" },
       },
-      { "<Leader>ad", M.pick("help"), desc = "Diagnostic Help (CopilotChat)", mode = { "n", "v" } },
       { "<Leader>ap", M.pick("prompt"), desc = "Prompt Actions (CopilotChat)", mode = { "n", "v" } },
     },
     config = function(_, opts)
