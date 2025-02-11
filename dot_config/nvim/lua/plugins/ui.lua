@@ -242,51 +242,6 @@ return {
     opts = {},
   },
 
-  {
-    "stevearc/aerial.nvim",
-    enabled = false,
-    event = "LazyFile",
-    keys = {
-      { "<Leader>ua", "<Cmd>AerialToggle<CR>", desc = "Toggle aerial" },
-    },
-    opts = function()
-      local icons = vim.deepcopy(Util.config.icons.kinds)
-
-      local filter_kind = false
-      if Util.config.kind_filter then
-        filter_kind = assert(vim.deepcopy(Util.config.kind_filter))
-        filter_kind._ = filter_kind.default
-        filter_kind.default = nil
-      end
-
-      local opts = {
-        attach_mode = "global",
-        backends = { "lsp", "treesitter", "markdown", "man" },
-        show_guides = true,
-        layout = {
-          resize_to_content = false,
-          win_opts = {
-            winhl = "Normal:NormalFloat,FloatBorder:NormalFloat,SignColumn:SignColumnSB",
-            signcolumn = "yes",
-            statuscolumn = " ",
-          },
-        },
-        icons = icons,
-        filter_kind = filter_kind,
-        guides = {
-          mid_item = "├╴",
-          last_item = "└╴",
-          nested_top = "│ ",
-          whitespace = "  ",
-        },
-        ignore = {
-          filetypes = { "html" },
-        },
-      }
-      return opts
-    end,
-  },
-
   { "MunifTanjim/nui.nvim", lazy = true },
 
   {
