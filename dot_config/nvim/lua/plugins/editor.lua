@@ -340,14 +340,14 @@ return {
         function()
           require("quicker").toggle({ loclist = true })
         end,
-        desc = "Toggle location list",
+        desc = "Location list",
       },
       {
         "<Leader>eq",
         function()
           require("quicker").toggle()
         end,
-        desc = "Toggle quickfix list",
+        desc = "Quickfix list",
       },
     },
     opts = {},
