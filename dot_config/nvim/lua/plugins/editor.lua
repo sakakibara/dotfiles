@@ -52,6 +52,7 @@ return {
               return require("which-key.extras").expand.win()
             end,
           },
+          { "<Leader>z", group = "notes", icon = { icon = "󰂾 ", color = "cyan" } },
           { "[", group = "prev" },
           { "]", group = "next" },
           { "g", group = "goto" },
