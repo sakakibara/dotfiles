@@ -32,6 +32,8 @@ umask 022
 
 # export ZDOTDIR=${ZDOTDIR:-$HOME/.config/zsh}
 
+export ASDF_DATA_DIR="${HOME}/.asdf"
+
 # Set directory for cache of eval commands
 export ZSH_EVALCACHE_DIR=${ZSH_EVALCACHE_DIR:-"${HOME}/.zsh-evalcache"}
 
@@ -88,6 +90,7 @@ fi
 export GOPATH="${HOME}/.go"
 
 path=(
+  "${ASDF_DATA_DIR}/shims"
   "${HOME}/.local/bin"
   "${HOME}/.cargo/bin"
   "${HOME}/.nimble/bin"
@@ -629,8 +632,6 @@ fi
 #
 # External plugins
 #
-
-[[ -r "${HOME}/.asdf/asdf.sh" ]] && source "${HOME}/.asdf/asdf.sh"
 
 _evalcache fzf --zsh
 
