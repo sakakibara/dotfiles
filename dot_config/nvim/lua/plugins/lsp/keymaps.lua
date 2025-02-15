@@ -7,7 +7,13 @@ function M.get()
     return M._keys
   end
   M._keys = {
-    { "<Leader>cl", "<Cmd>LspInfo<CR>", desc = "Lsp info" },
+    {
+      "<Leader>cl",
+      function()
+        Snacks.picker.lsp_config()
+      end,
+      desc = "Lsp info",
+    },
     { "gd", vim.lsp.buf.definition, desc = "Goto definition", has = "definition" },
     { "gr", vim.lsp.buf.references, desc = "References", nowait = true },
     { "gI", vim.lsp.buf.implementation, desc = "Goto implementation" },
