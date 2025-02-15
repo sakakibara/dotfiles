@@ -12,17 +12,17 @@ function M.get()
       function()
         Snacks.picker.lsp_config()
       end,
-      desc = "Lsp info",
+      desc = "Lsp Info",
     },
-    { "gd", vim.lsp.buf.definition, desc = "Goto definition", has = "definition" },
+    { "gd", vim.lsp.buf.definition, desc = "Goto Definition", has = "definition" },
     { "gr", vim.lsp.buf.references, desc = "References", nowait = true },
-    { "gI", vim.lsp.buf.implementation, desc = "Goto implementation" },
-    { "gy", vim.lsp.buf.type_definition, desc = "Goto t[y]pe definition" },
-    { "gD", vim.lsp.buf.declaration, desc = "Goto declaration" },
+    { "gI", vim.lsp.buf.implementation, desc = "Goto Implementation" },
+    { "gy", vim.lsp.buf.type_definition, desc = "Goto T[y]pe Definition" },
+    { "gD", vim.lsp.buf.declaration, desc = "Goto Declaration" },
     { "K", vim.lsp.buf.hover, desc = "Hover" },
-    { "gK", vim.lsp.buf.signature_help, desc = "Signature help", has = "signatureHelp" },
-    { "<C-k>", vim.lsp.buf.signature_help, mode = "i", desc = "Signature help", has = "signatureHelp" },
-    { "<Leader>ca", vim.lsp.buf.code_action, desc = "Code action", mode = { "n", "v" }, has = "codeAction" },
+    { "gK", vim.lsp.buf.signature_help, desc = "Signature Help", has = "signatureHelp" },
+    { "<C-k>", vim.lsp.buf.signature_help, mode = "i", desc = "Signature Help", has = "signatureHelp" },
+    { "<Leader>ca", vim.lsp.buf.code_action, desc = "Code Action", mode = { "n", "v" }, has = "codeAction" },
     {
       "<Leader>cA",
       function()
@@ -35,16 +35,16 @@ function M.get()
           },
         })
       end,
-      desc = "Source action",
+      desc = "Source Action",
       has = "codeAction",
     },
-    { "<Leader>cc", vim.lsp.codelens.run, desc = "Run codelens", mode = { "n", "v" }, has = "codeLens" },
-    { "<Leader>cC", vim.lsp.codelens.refresh, desc = "Refresh & display codelens", mode = { "n" }, has = "codeLens" },
+    { "<Leader>cc", vim.lsp.codelens.run, desc = "Run Codelens", mode = { "n", "v" }, has = "codeLens" },
+    { "<Leader>cC", vim.lsp.codelens.refresh, desc = "Refresh & Display Codelens", mode = { "n" }, has = "codeLens" },
     { "<Leader>cr", vim.lsp.buf.rename, desc = "Rename", has = "rename" },
     {
       "<leader>cR",
       Snacks.rename.rename_file,
-      desc = "Rename file",
+      desc = "Rename File",
       mode = { "n" },
       has = { "workspace/didRenameFiles", "workspace/willRenameFiles" },
     },
@@ -54,7 +54,7 @@ function M.get()
         Util.lsp.words.jump(vim.v.count1)
       end,
       has = "documentHighlight",
-      desc = "Next reference",
+      desc = "Next Reference",
       cond = function()
         return Util.lsp.words.enabled
       end,
@@ -65,7 +65,7 @@ function M.get()
         Util.lsp.words.jump(-vim.v.count1)
       end,
       has = "documentHighlight",
-      desc = "Prev reference",
+      desc = "Previous Reference",
       cond = function()
         return Util.lsp.words.enabled
       end,

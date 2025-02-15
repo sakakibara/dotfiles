@@ -124,14 +124,14 @@ return {
         function()
           require("dap").set_breakpoint(vim.fn.input("Breakpoint condition: "))
         end,
-        desc = "Breakpoint condition",
+        desc = "Breakpoint Condition",
       },
       {
         "<Leader>db",
         function()
           require("dap").toggle_breakpoint()
         end,
-        desc = "Toggle breakpoint",
+        desc = "Toggle Breakpoint",
       },
       {
         "<Leader>dc",
@@ -145,28 +145,28 @@ return {
         function()
           require("dap").continue({ before = get_args })
         end,
-        desc = "Run with args",
+        desc = "Run with Args",
       },
       {
         "<Leader>dC",
         function()
           require("dap").run_to_cursor()
         end,
-        desc = "Run to cursor",
+        desc = "Run to Cursor",
       },
       {
         "<Leader>dg",
         function()
           require("dap").goto_()
         end,
-        desc = "Go to line (no execute)",
+        desc = "Go to Line (No Execute)",
       },
       {
         "<Leader>di",
         function()
           require("dap").step_into()
         end,
-        desc = "Step into",
+        desc = "Step Into",
       },
       {
         "<Leader>dj",
@@ -187,21 +187,21 @@ return {
         function()
           require("dap").run_last()
         end,
-        desc = "Run last",
+        desc = "Run Last",
       },
       {
         "<Leader>do",
         function()
           require("dap").step_over()
         end,
-        desc = "Step over",
+        desc = "Step Over",
       },
       {
         "<Leader>dO",
         function()
           require("dap").step_out()
         end,
-        desc = "Step out",
+        desc = "Step Out",
       },
       {
         "<Leader>dp",

@@ -60,7 +60,7 @@ return {
             function()
               require("dap-python").test_method()
             end,
-            desc = "Debug method",
+            desc = "Debug Method",
             ft = "python",
           },
           {
@@ -68,7 +68,7 @@ return {
             function()
               require("dap-python").test_class()
             end,
-            desc = "Debug class",
+            desc = "Debug Class",
             ft = "python",
           },
         },
@@ -95,7 +95,7 @@ return {
       },
     },
     ft = "python",
-    keys = { { "<Leader>cv", "<Cmd>:VenvSelect<cr>", desc = "Select virtualenv", ft = "python" } },
+    keys = { { "<Leader>cv", "<Cmd>:VenvSelect<cr>", desc = "Select Virtualenv", ft = "python" } },
   },
 
   {

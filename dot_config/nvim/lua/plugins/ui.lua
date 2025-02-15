@@ -11,35 +11,35 @@ return {
         function()
           require("ufo").openAllFolds()
         end,
-        desc = "Open all folds",
+        desc = "Open All Folds",
       },
       {
         "zM",
         function()
           require("ufo").closeAllFolds()
         end,
-        desc = "Close all folds",
+        desc = "Close All Folds",
       },
       {
         "zr",
         function()
           require("ufo").openFoldsExceptKinds()
         end,
-        desc = "Fold less",
+        desc = "Fold Less",
       },
       {
         "zm",
         function()
           require("ufo").closeFoldsWith()
         end,
-        desc = "Fold more",
+        desc = "Fold More",
       },
       {
         "zp",
         function()
           require("ufo").peekFoldedLinesUnderCursor()
         end,
-        desc = "Peek fold",
+        desc = "Peek Fold",
       },
     },
     opts = {
@@ -143,42 +143,42 @@ return {
           require("noice").redirect(vim.fn.getcmdline())
         end,
         mode = "c",
-        desc = "Redirect cmdline",
+        desc = "Redirect Cmdline",
       },
       {
         "<Leader>snl",
         function()
           require("noice").cmd("last")
         end,
-        desc = "Noice last message",
+        desc = "Noice Last Message",
       },
       {
         "<Leader>snh",
         function()
           require("noice").cmd("history")
         end,
-        desc = "Noice history",
+        desc = "Noice History",
       },
       {
         "<Leader>sna",
         function()
           require("noice").cmd("all")
         end,
-        desc = "Noice all",
+        desc = "Noice All",
       },
       {
         "<Leader>snd",
         function()
           require("noice").cmd("dismiss")
         end,
-        desc = "Dismiss all",
+        desc = "Dismiss All",
       },
       {
         "<Leader>snt",
         function()
           require("noice").cmd("pick")
         end,
-        desc = "Noice picker (Telescope/FzfLua)",
+        desc = "Noice Picker (Telescope/FzfLua)",
       },
       {
         "<C-f>",
@@ -189,7 +189,7 @@ return {
         end,
         silent = true,
         expr = true,
-        desc = "Scroll forward",
+        desc = "Scroll Forward",
         mode = { "i", "n", "s" },
       },
       {
@@ -201,7 +201,7 @@ return {
         end,
         silent = true,
         expr = true,
-        desc = "Scroll backward",
+        desc = "Scroll Backward",
         mode = { "i", "n", "s" },
       },
     },

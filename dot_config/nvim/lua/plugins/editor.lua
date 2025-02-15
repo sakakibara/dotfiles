@@ -8,14 +8,14 @@ return {
         function()
           require("which-key").show({ global = false })
         end,
-        desc = "Buffer keymaps (which-key)",
+        desc = "Buffer Keymaps (which-key)",
       },
       {
         "<C-w><Space>",
         function()
           require("which-key").show({ keys = "<C-w>", loop = true })
         end,
-        desc = "Window hydra mode (which-key)",
+        desc = "Window Hydra Mode (which-key)",
       },
     },
     opts_extend = { "spec" },
@@ -110,14 +110,14 @@ return {
         function()
           require("mini.trailspace").trim()
         end,
-        desc = "Trim trailing whitespace",
+        desc = "Trim Trailing Whitespace",
       },
       {
         "<Leader>eW",
         function()
           require("mini.trailspace").trim_last_lines()
         end,
-        desc = "Trim trailing empty lines",
+        desc = "Trim Trailing Empty Lines",
       },
     },
   },
@@ -203,14 +203,14 @@ return {
         function()
           require("illuminate").goto_next_reference(false)
         end,
-        desc = "Next reference",
+        desc = "Next Reference",
       },
       {
         "[[",
         function()
           require("illuminate").goto_prev_reference(false)
         end,
-        desc = "Prev reference",
+        desc = "Prev Reference",
       },
     },
   },
@@ -240,7 +240,7 @@ return {
         function()
           require("flash").treesitter()
         end,
-        desc = "Flash treesitter",
+        desc = "Flash Treesitter",
       },
       {
         "r",
@@ -248,7 +248,7 @@ return {
         function()
           require("flash").remote()
         end,
-        desc = "Remote flash",
+        desc = "Remote Flash",
       },
       {
         "R",
@@ -256,7 +256,7 @@ return {
         function()
           require("flash").treesitter_search()
         end,
-        desc = "Treesitter search",
+        desc = "Treesitter Search",
       },
       {
         "<C-s>",
@@ -264,7 +264,7 @@ return {
         function()
           require("flash").toggle()
         end,
-        desc = "Toggle flash search",
+        desc = "Toggle Flash Search",
       },
     },
   },
@@ -327,7 +327,7 @@ return {
           })
         end,
         mode = { "n", "v" },
-        desc = "Search and replace",
+        desc = "Search and Replace",
       },
     },
   },
@@ -341,14 +341,14 @@ return {
         function()
           require("quicker").toggle({ loclist = true })
         end,
-        desc = "Location list",
+        desc = "Location List",
       },
       {
         "<Leader>eq",
         function()
           require("quicker").toggle()
         end,
-        desc = "Quickfix list",
+        desc = "Quickfix List",
       },
     },
     opts = {},
@@ -359,15 +359,15 @@ return {
     cmd = { "Trouble" },
     keys = {
       { "<Leader>ed", "<Cmd>Trouble diagnostics toggle<CR>", desc = "Diagnostics (trouble)" },
-      { "<Leader>eD", "<Cmd>Trouble diagnostics toggle filter.buf=0<CR>", desc = "Buffer diagnostics (trouble)" },
+      { "<Leader>eD", "<Cmd>Trouble diagnostics toggle filter.buf=0<CR>", desc = "Buffer Diagnostics (trouble)" },
       { "<Leader>cs", "<Cmd>Trouble symbols toggle focus=false<CR>", desc = "Symbols (trouble)" },
       {
         "<Leader>cS",
         "<Cmd>Trouble lsp toggle focus=false win.position=right<CR>",
-        desc = "LSP references/definitions/... (trouble)",
+        desc = "LSP References/Definitions/... (trouble)",
       },
-      { "<Leader>eL", "<Cmd>Trouble loclist toggle<CR>", desc = "Location list (trouble)" },
-      { "<Leader>eQ", "<Cmd>Trouble qflist toggle<CR>", desc = "Quickfix list (trouble)" },
+      { "<Leader>eL", "<Cmd>Trouble loclist toggle<CR>", desc = "Location List (trouble)" },
+      { "<Leader>eQ", "<Cmd>Trouble qflist toggle<CR>", desc = "Quickfix List (trouble)" },
       {
         "[q",
         function()
@@ -382,7 +382,7 @@ return {
             end
           end
         end,
-        desc = "Previous trouble/quickfix item",
+        desc = "Previous Trouble/Quickfix Item",
       },
       {
         "]q",
@@ -398,7 +398,7 @@ return {
             end
           end
         end,
-        desc = "Next trouble/quickfix item",
+        desc = "Next Trouble/Quickfix Item",
       },
     },
     opts = {},
@@ -422,7 +422,7 @@ return {
         function()
           require("textcase").current_word("to_upper_case")
         end,
-        desc = "To upper case",
+        desc = "To Upper Case",
       },
       {
         "gbl",
@@ -430,7 +430,7 @@ return {
         function()
           require("textcase").current_word("to_lower_case")
         end,
-        desc = "To lower case",
+        desc = "To Lower Case",
       },
       {
         "gbs",
@@ -438,7 +438,7 @@ return {
         function()
           require("textcase").current_word("to_snake_case")
         end,
-        desc = "To snake case",
+        desc = "To Snake Case",
       },
       {
         "gbd",
@@ -446,7 +446,7 @@ return {
         function()
           require("textcase").current_word("to_dash_case")
         end,
-        desc = "To dash case",
+        desc = "To Dash Case",
       },
       {
         "gbn",
@@ -454,7 +454,7 @@ return {
         function()
           require("textcase").current_word("to_constant_case")
         end,
-        desc = "To constant case",
+        desc = "To Constant Case",
       },
       {
         "gbd",
@@ -462,7 +462,7 @@ return {
         function()
           require("textcase").current_word("to_dot_case")
         end,
-        desc = "To dot case",
+        desc = "To Dot Case",
       },
       {
         "gba",
@@ -470,7 +470,7 @@ return {
         function()
           require("textcase").current_word("to_phrase_case")
         end,
-        desc = "To phrase case",
+        desc = "To Phrase Case",
       },
       {
         "gbc",
@@ -478,7 +478,7 @@ return {
         function()
           require("textcase").current_word("to_camel_case")
         end,
-        desc = "To camel case",
+        desc = "To Camel Case",
       },
       {
         "gbp",
@@ -486,7 +486,7 @@ return {
         function()
           require("textcase").current_word("to_pascal_case")
         end,
-        desc = "To pascal case",
+        desc = "To Pascal Case",
       },
       {
         "gbt",
@@ -494,7 +494,7 @@ return {
         function()
           require("textcase").current_word("to_title_case")
         end,
-        desc = "To title case",
+        desc = "To Title Case",
       },
       {
         "gbf",
@@ -502,7 +502,7 @@ return {
         function()
           require("textcase").current_word("to_path_case")
         end,
-        desc = "To path case",
+        desc = "To Path Case",
       },
       {
         "gbU",
@@ -510,7 +510,7 @@ return {
         function()
           require("textcase").lsp_rename("to_upper_case")
         end,
-        desc = "LSP rename to upper case",
+        desc = "LSP Rename to Upper Case",
       },
       {
         "gbL",
@@ -518,7 +518,7 @@ return {
         function()
           require("textcase").lsp_rename("to_lower_case")
         end,
-        desc = "LSP rename to lower case",
+        desc = "LSP Rename to Lower Case",
       },
       {
         "gbS",
@@ -526,7 +526,7 @@ return {
         function()
           require("textcase").lsp_rename("to_snake_case")
         end,
-        desc = "LSP rename to snake case",
+        desc = "LSP Rename to Snake Case",
       },
       {
         "gbD",
@@ -534,7 +534,7 @@ return {
         function()
           require("textcase").lsp_rename("to_dash_case")
         end,
-        desc = "LSP rename to dash case",
+        desc = "LSP Rename to Dash Case",
       },
       {
         "gbN",
@@ -542,7 +542,7 @@ return {
         function()
           require("textcase").lsp_rename("to_constant_case")
         end,
-        desc = "LSP rename to constant case",
+        desc = "LSP Rename to Constant Case",
       },
       {
         "gbD",
@@ -550,7 +550,7 @@ return {
         function()
           require("textcase").lsp_rename("to_dot_case")
         end,
-        desc = "LSP rename to dot case",
+        desc = "LSP Rename to Dot Case",
       },
       {
         "gbA",
@@ -558,7 +558,7 @@ return {
         function()
           require("textcase").lsp_rename("to_phrase_case")
         end,
-        desc = "LSP rename to phrase case",
+        desc = "LSP Rename to Phrase Case",
       },
       {
         "gbC",
@@ -566,7 +566,7 @@ return {
         function()
           require("textcase").lsp_rename("to_camel_case")
         end,
-        desc = "LSP rename to camel case",
+        desc = "LSP Rename to Camel Case",
       },
       {
         "gbP",
@@ -574,7 +574,7 @@ return {
         function()
           require("textcase").lsp_rename("to_pascal_case")
         end,
-        desc = "LSP rename to pascal case",
+        desc = "LSP Rename to Pascal Case",
       },
       {
         "gbT",
@@ -582,7 +582,7 @@ return {
         function()
           require("textcase").lsp_rename("to_title_case")
         end,
-        desc = "LSP rename to title case",
+        desc = "LSP Rename to Title Case",
       },
       {
         "gbF",
@@ -590,84 +590,84 @@ return {
         function()
           require("textcase").lsp_rename("to_path_case")
         end,
-        desc = "LSP rename to upper case",
+        desc = "LSP Rename to Upper Case",
       },
       {
         "gBu",
         function()
           require("textcase").operator("to_upper_case")
         end,
-        desc = "To upper case (operator)",
+        desc = "To Upper Case (operator)",
       },
       {
         "gBl",
         function()
           require("textcase").operator("to_lower_case")
         end,
-        desc = "To lower case (operator)",
+        desc = "To Lower Case (operator)",
       },
       {
         "gBs",
         function()
           require("textcase").operator("to_snake_case")
         end,
-        desc = "To snake case (operator)",
+        desc = "To Snake Case (operator)",
       },
       {
         "gBd",
         function()
           require("textcase").operator("to_dash_case")
         end,
-        desc = "To dash case (operator)",
+        desc = "To Dash Case (operator)",
       },
       {
         "gBn",
         function()
           require("textcase").operator("to_constant_case")
         end,
-        desc = "To constant case (operator)",
+        desc = "To Constant Case (operator)",
       },
       {
         "gBd",
         function()
           require("textcase").operator("to_dot_case")
         end,
-        desc = "To dot case (operator)",
+        desc = "To Dot Case (operator)",
       },
       {
         "gBa",
         function()
           require("textcase").operator("to_phrase_case")
         end,
-        desc = "To phrase case (operator)",
+        desc = "To Phrase Case (operator)",
       },
       {
         "gBc",
         function()
           require("textcase").operator("to_camel_case")
         end,
-        desc = "To camel case (operator)",
+        desc = "To Camel Case (operator)",
       },
       {
         "gBp",
         function()
           require("textcase").operator("to_pascal_case")
         end,
-        desc = "To pascal case (operator)",
+        desc = "To Pascal Case (operator)",
       },
       {
         "gBt",
         function()
           require("textcase").operator("to_title_case")
         end,
-        desc = "To title case (operator)",
+        desc = "To Title Case (operator)",
       },
       {
         "gBf",
         function()
           require("textcase").operator("to_path_case")
         end,
-        desc = "To path case (operator)",
+        desc = "To Path Case (operator)",
       },
     },
     cmd = {
@@ -686,7 +686,7 @@ return {
           function()
             require("harpoon"):list():add()
           end,
-          desc = "Add to harpoon",
+          desc = "Add to Harpoon",
         },
         {
           "<Leader>h",
@@ -694,7 +694,7 @@ return {
             local harpoon = require("harpoon")
             harpoon.ui:toggle_quick_menu(harpoon:list())
           end,
-          desc = "Toggle harpoon menu",
+          desc = "Toggle Harpoon Menu",
         },
       }
 
@@ -704,7 +704,7 @@ return {
           function()
             require("harpoon"):list():select(i)
           end,
-          desc = "Select harpoon " .. i,
+          desc = "Select Harpoon " .. i,
         })
       end
       return keys
@@ -723,14 +723,14 @@ return {
         function()
           require("todo-comments").jump_next()
         end,
-        desc = "Next todo comment",
+        desc = "Next Todo Comment",
       },
       {
         "[t",
         function()
           require("todo-comments").jump_prev()
         end,
-        desc = "Previous todo comment",
+        desc = "Previous Todo Comment",
       },
       { "<Leader>et", "<Cmd>Trouble todo toggle<CR>", desc = "Todo (trouble)" },
       {
@@ -840,21 +840,21 @@ return {
         function()
           Snacks.picker.command_history()
         end,
-        desc = "Command history",
+        desc = "Command History",
       },
       {
         "<Leader><Space>",
         function()
           Snacks.picker.files({ cwd = Util.root() })
         end,
-        desc = "Find files (root)",
+        desc = "Find Files (root)",
       },
       {
         "<Leader>n",
         function()
           Snacks.picker.notifications()
         end,
-        desc = "Notification history",
+        desc = "Notification History",
       },
       {
         "<Leader>fb",
@@ -876,28 +876,28 @@ return {
           ---@diagnostic disable-next-line: assign-type-mismatch
           Snacks.picker.files({ cwd = vim.fn.stdpath("config") })
         end,
-        desc = "Find config file",
+        desc = "Find Config File",
       },
       {
         "<Leader>ff",
         function()
           Snacks.picker.files({ cwd = Util.root() })
         end,
-        desc = "Find files (root)",
+        desc = "Find Files (root)",
       },
       {
         "<Leader>fF",
         function()
           Snacks.picker.files()
         end,
-        desc = "Find files (cwd)",
+        desc = "Find Files (cwd)",
       },
       {
         "<Leader>fg",
         function()
           Snacks.picker.git_files()
         end,
-        desc = "Find files (git-files)",
+        desc = "Find Files (git-files)",
       },
       {
         "<Leader>fr",
@@ -925,42 +925,42 @@ return {
         function()
           Snacks.picker.git_log()
         end,
-        desc = "Git log",
+        desc = "Git Log",
       },
       {
         "<Leader>gd",
         function()
           Snacks.picker.git_diff()
         end,
-        desc = "Git diff (hunks)",
+        desc = "Git Diff (hunks)",
       },
       {
         "<Leader>gs",
         function()
           Snacks.picker.git_status()
         end,
-        desc = "Git status",
+        desc = "Git Status",
       },
       {
         "<Leader>gS",
         function()
           Snacks.picker.git_stash()
         end,
-        desc = "Git stash",
+        desc = "Git Stash",
       },
       {
         "<Leader>sb",
         function()
           Snacks.picker.lines()
         end,
-        desc = "Buffer lines",
+        desc = "Buffer Lines",
       },
       {
         "<Leader>sB",
         function()
           Snacks.picker.grep_buffers()
         end,
-        desc = "Grep open buffers",
+        desc = "Grep Open Buffers",
       },
       {
         "<Leader>sg",
@@ -981,14 +981,14 @@ return {
         function()
           Snacks.picker.lazy()
         end,
-        desc = "Search for plugin spec",
+        desc = "Search for Plugin Spec",
       },
       {
         "<Leader>sw",
         function()
           Snacks.picker.grep_word({ cwd = Util.root() })
         end,
-        desc = "Visual selection or word (root)",
+        desc = "Visual Selection or Word (root)",
         mode = { "n", "x" },
       },
       {
@@ -996,7 +996,7 @@ return {
         function()
           Snacks.picker.grep_word()
         end,
-        desc = "Visual selection or word (cwd)",
+        desc = "Visual Selection or Word (cwd)",
         mode = { "n", "x" },
       },
       {
@@ -1011,7 +1011,7 @@ return {
         function()
           Snacks.picker.search_history()
         end,
-        desc = "Search history",
+        desc = "Search History",
       },
       {
         "<Leader>sa",
@@ -1025,7 +1025,7 @@ return {
         function()
           Snacks.picker.command_history()
         end,
-        desc = "Command history",
+        desc = "Command History",
       },
       {
         "<Leader>sC",
@@ -1046,14 +1046,14 @@ return {
         function()
           Snacks.picker.diagnostics_buffer()
         end,
-        desc = "Buffer diagnostics",
+        desc = "Buffer Diagnostics",
       },
       {
         "<Leader>sh",
         function()
           Snacks.picker.help()
         end,
-        desc = "Help pages",
+        desc = "Help Pages",
       },
       {
         "<Leader>sH",
@@ -1088,14 +1088,14 @@ return {
         function()
           Snacks.picker.loclist()
         end,
-        desc = "Location list",
+        desc = "Location List",
       },
       {
         "<Leader>sM",
         function()
           Snacks.picker.man()
         end,
-        desc = "Man pages",
+        desc = "Man Pages",
       },
       {
         "<Leader>sm",
@@ -1116,7 +1116,7 @@ return {
         function()
           Snacks.picker.qflist()
         end,
-        desc = "Quickfix list",
+        desc = "Quickfix List",
       },
       {
         "<Leader>su",
@@ -1167,7 +1167,7 @@ return {
           function()
             Snacks.picker.lsp_definitions()
           end,
-          desc = "Goto definition",
+          desc = "Goto Definition",
           has = "definition",
         },
         {
@@ -1183,7 +1183,7 @@ return {
           function()
             Snacks.picker.lsp_implementations()
           end,
-          desc = "Goto implementation",
+          desc = "Goto Implementation",
         },
         {
           "gy",
@@ -1197,7 +1197,7 @@ return {
           function()
             Snacks.picker.lsp_symbols({ filter = Util.config.kind_filter })
           end,
-          desc = "LSP symbols",
+          desc = "LSP Symbols",
           has = "documentSymbol",
         },
         {
@@ -1205,7 +1205,7 @@ return {
           function()
             Snacks.picker.lsp_workspace_symbols({ filter = Util.config.kind_filter })
           end,
-          desc = "LSP workspace symbols",
+          desc = "LSP Workspace Symbols",
           has = "workspace/symbols",
         },
       })

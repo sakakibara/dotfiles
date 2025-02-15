@@ -22,7 +22,7 @@ return {
         function()
           require("ansible").run()
         end,
-        desc = "Ansible run playbook/role",
+        desc = "Ansible Run Playbook/Role",
         silent = true,
       },
     },

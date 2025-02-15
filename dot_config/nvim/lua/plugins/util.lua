@@ -15,10 +15,10 @@ return {
       terminal = {
         win = {
           keys = {
-            nav_h = { "<C-h>", term_nav("h"), desc = "Go to left window", expr = true, mode = "t" },
-            nav_j = { "<C-j>", term_nav("j"), desc = "Go to lower window", expr = true, mode = "t" },
-            nav_k = { "<C-k>", term_nav("k"), desc = "Go to upper window", expr = true, mode = "t" },
-            nav_l = { "<C-l>", term_nav("l"), desc = "Go to right window", expr = true, mode = "t" },
+            nav_h = { "<C-h>", term_nav("h"), desc = "Go to Left Window", expr = true, mode = "t" },
+            nav_j = { "<C-j>", term_nav("j"), desc = "Go to Lower Window", expr = true, mode = "t" },
+            nav_k = { "<C-k>", term_nav("k"), desc = "Go to Upper Window", expr = true, mode = "t" },
+            nav_l = { "<C-l>", term_nav("l"), desc = "Go to Right Window", expr = true, mode = "t" },
           },
         },
       },
@@ -34,21 +34,21 @@ return {
         function()
           Snacks.scratch()
         end,
-        desc = "Toggle scratch buffer",
+        desc = "Toggle Scratch Buffer",
       },
       {
         "<Leader>S",
         function()
           Snacks.scratch.select()
         end,
-        desc = "Select scratch buffer",
+        desc = "Select Scratch Buffer",
       },
       {
         "<Leader>dps",
         function()
           Snacks.profiler.scratch()
         end,
-        desc = "Profiler scratch buffer",
+        desc = "Profiler Scratch Buffer",
       },
     },
   },
@@ -128,7 +128,7 @@ return {
   {
     "zk-org/zk-nvim",
     keys = {
-      { "<Leader>zi", "<Cmd>ZkIndex<CR>", desc = "Index notes" },
+      { "<Leader>zi", "<Cmd>ZkIndex<CR>", desc = "Index Notes" },
       {
         "<Leader>zn",
         function()
@@ -138,10 +138,10 @@ return {
             end
           end)
         end,
-        desc = "Create zk note",
+        desc = "Create Zk Note",
       },
-      { "<Leader>zn", ":'<,'>ZkNewFromTitleSelection<CR>", mode = { "v" }, desc = "New note from title selection" },
-      { "<Leader>zN", ":'<,'>ZkNewFromContentSelection<CR>", mode = { "v" }, desc = "New note from content selection" },
+      { "<Leader>zn", ":'<,'>ZkNewFromTitleSelection<CR>", mode = { "v" }, desc = "New Note from Title Selection" },
+      { "<Leader>zN", ":'<,'>ZkNewFromContentSelection<CR>", mode = { "v" }, desc = "New Note from Content Selection" },
       {
         "<Leader>zj",
         function()
@@ -157,18 +157,18 @@ return {
             end
           end)
         end,
-        desc = "Create zk journal note",
+        desc = "Create Zk Journal Note",
       },
-      { "<Leader>zc", "<Cmd>ZkCd<CR>", desc = "Cd into notebook root" },
-      { "<Leader>zz", "<Cmd>ZkNotes { sort = { 'modified' } }<CR>", desc = "Find notes" },
-      { "<Leader>zf", "<Cmd>ZkBuffers<CR>", desc = "Find note buffers" },
+      { "<Leader>zc", "<Cmd>ZkCd<CR>", desc = "Cd Into Notebook Root" },
+      { "<Leader>zz", "<Cmd>ZkNotes { sort = { 'modified' } }<CR>", desc = "Find Notes" },
+      { "<Leader>zf", "<Cmd>ZkBuffers<CR>", desc = "Find Note Buffers" },
       { "<Leader>zb", "<Cmd>ZkBacklinks<CR>", desc = "Backlinks" },
-      { "<Leader>zl", "<Cmd>ZkLinks<CR>", desc = "Outbound links" },
-      { "<Leader>zi", "<Cmd>ZkInsertLink<CR>", desc = "Insert link" },
-      { "<Leader>zi", ":'<,'>ZkInsertLinkAtSelection<CR>", mode = { "v" }, desc = "Insert link at selection" },
-      { "<Leader>zm", "<Cmd>ZkMatch<CR>", mode = { "x" }, desc = "Find note from selection" },
-      { "<Leader>zt", "<Cmd>ZkTags<CR>", desc = "Find note by tags" },
-      { "<Leader>z/", "<Cmd>ZkGrep<CR>", desc = "Grep notes" },
+      { "<Leader>zl", "<Cmd>ZkLinks<CR>", desc = "Outbound Links" },
+      { "<Leader>zi", "<Cmd>ZkInsertLink<CR>", desc = "Insert Link" },
+      { "<Leader>zi", ":'<,'>ZkInsertLinkAtSelection<CR>", mode = { "v" }, desc = "Insert Link at Selection" },
+      { "<Leader>zm", "<Cmd>ZkMatch<CR>", mode = { "x" }, desc = "Find Note from Selection" },
+      { "<Leader>zt", "<Cmd>ZkTags<CR>", desc = "Find Note by Tags" },
+      { "<Leader>z/", "<Cmd>ZkGrep<CR>", desc = "Grep Notes" },
     },
     opts = {
       lsp = {

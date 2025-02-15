@@ -10,7 +10,7 @@ return {
       servers = {
         gopls = {
           keys = {
-            { "<Leader>td", "<Cmd>lua require('dap-go').debug_test()<CR>", desc = "Debug nearest" },
+            { "<Leader>td", "<Cmd>lua require('dap-go').debug_test()<CR>", desc = "Debug Nearest" },
           },
           settings = {
             gopls = {

@@ -21,14 +21,14 @@ return {
               function()
                 require("telescope").extensions.metals.commands()
               end,
-              desc = "Metals commands",
+              desc = "Metals Commands",
             },
             {
               "<leader>mc",
               function()
                 require("metals").compile_cascade()
               end,
-              desc = "Metals compile cascade",
+              desc = "Metals Compile Cascade",
             },
           },
           init_options = {

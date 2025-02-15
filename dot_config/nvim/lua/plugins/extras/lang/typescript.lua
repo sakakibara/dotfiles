@@ -59,7 +59,7 @@ return {
                   open = true,
                 })
               end,
-              desc = "Goto source definition",
+              desc = "Goto Source Definition",
             },
             {
               "gR",
@@ -70,34 +70,34 @@ return {
                   open = true,
                 })
               end,
-              desc = "File references",
+              desc = "File References",
             },
             {
               "<leader>co",
               Util.lsp.action["source.organizeImports"],
-              desc = "Organize imports",
+              desc = "Organize Imports",
             },
             {
               "<leader>cM",
               Util.lsp.action["source.addMissingImports.ts"],
-              desc = "Add missing imports",
+              desc = "Add Missing Imports",
             },
             {
               "<leader>cu",
               Util.lsp.action["source.removeUnused.ts"],
-              desc = "Remove unused imports",
+              desc = "Remove Unused Imports",
             },
             {
               "<leader>cD",
               Util.lsp.action["source.fixAll.ts"],
-              desc = "Fix all diagnostics",
+              desc = "Fix All Diagnostics",
             },
             {
               "<leader>cV",
               function()
                 Util.lsp.execute({ command = "typescript.selectTypeScriptVersion" })
               end,
-              desc = "Select TS workspace version",
+              desc = "Select TS Workspace Version",
             },
           },
         },

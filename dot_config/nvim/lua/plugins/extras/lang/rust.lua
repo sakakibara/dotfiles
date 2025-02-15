@@ -40,7 +40,7 @@ return {
           end, { desc = "Code Action", buffer = bufnr })
           vim.keymap.set("n", "<Leader>dr", function()
             vim.cmd.RustLsp("debuggables")
-          end, { desc = "Rust debuggables", buffer = bufnr })
+          end, { desc = "Rust Debuggables", buffer = bufnr })
         end,
         default_settings = {
           ["rust-analyzer"] = {

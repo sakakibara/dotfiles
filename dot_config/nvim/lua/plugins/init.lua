@@ -12,28 +12,28 @@ return {
         function()
           Snacks.scratch()
         end,
-        desc = "Toggle scratch buffer",
+        desc = "Toggle Scratch Buffer",
       },
       {
         "<Leader>S",
         function()
           Snacks.scratch.select()
         end,
-        desc = "Select scratch buffer",
+        desc = "Select Scratch Buffer",
       },
       {
         "<Leader>n",
         function()
           Snacks.notifier.show_history()
         end,
-        desc = "Notification history",
+        desc = "Notification History",
       },
       {
         "<Leader>un",
         function()
           Snacks.notifier.hide()
         end,
-        desc = "Dismiss all notifications",
+        desc = "Dismiss All Notifications",
       },
     },
     opts = {},

@@ -5,42 +5,42 @@ map({ "n", "x" }, "<Down>", "v:count == 0 ? 'gj' : 'j'", { desc = "Down", expr =
 map({ "n", "x" }, "k", "v:count == 0 ? 'gk' : 'k'", { desc = "Up", expr = true, silent = true })
 map({ "n", "x" }, "<Up>", "v:count == 0 ? 'gk' : 'k'", { desc = "Up", expr = true, silent = true })
 
-map("n", "<C-h>", "<C-w>h", { desc = "Go to left window", remap = true })
-map("n", "<C-j>", "<C-w>j", { desc = "Go to lower window", remap = true })
-map("n", "<C-k>", "<C-w>k", { desc = "Go to upper window", remap = true })
-map("n", "<C-l>", "<C-w>l", { desc = "Go to right window", remap = true })
+map("n", "<C-h>", "<C-w>h", { desc = "Go to Left Window", remap = true })
+map("n", "<C-j>", "<C-w>j", { desc = "Go to Lower Window", remap = true })
+map("n", "<C-k>", "<C-w>k", { desc = "Go to Upper Window", remap = true })
+map("n", "<C-l>", "<C-w>l", { desc = "Go to Right Window", remap = true })
 
-map("n", "<C-Up>", "<Cmd>resize +2<CR>", { desc = "Increase window height" })
-map("n", "<C-Down>", "<Cmd>resize -2<CR>", { desc = "Decrease window height" })
-map("n", "<C-Left>", "<Cmd>vertical resize -2<CR>", { desc = "Decrease window width" })
-map("n", "<C-Right>", "<Cmd>vertical resize +2<CR>", { desc = "Increase window width" })
+map("n", "<C-Up>", "<Cmd>resize +2<CR>", { desc = "Increase Window Height" })
+map("n", "<C-Down>", "<Cmd>resize -2<CR>", { desc = "Decrease Window Height" })
+map("n", "<C-Left>", "<Cmd>vertical resize -2<CR>", { desc = "Decrease Window Width" })
+map("n", "<C-Right>", "<Cmd>vertical resize +2<CR>", { desc = "Increase Window Width" })
 
-map("n", "n", "'Nn'[v:searchforward].'zv'", { expr = true, desc = "Next search result" })
-map({ "x", "o" }, "n", "'Nn'[v:searchforward]", { expr = true, desc = "Next search result" })
-map("n", "N", "'nN'[v:searchforward].'zv'", { expr = true, desc = "Previous search result" })
-map({ "x", "o" }, "N", "'nN'[v:searchforward]", { expr = true, desc = "Previous search result" })
+map("n", "n", "'Nn'[v:searchforward].'zv'", { expr = true, desc = "Next Search Result" })
+map({ "x", "o" }, "n", "'Nn'[v:searchforward]", { expr = true, desc = "Next Search Result" })
+map("n", "N", "'nN'[v:searchforward].'zv'", { expr = true, desc = "Previous Search Result" })
+map({ "x", "o" }, "N", "'nN'[v:searchforward]", { expr = true, desc = "Previous Search Result" })
 
 map("i", ",", ",<C-g>u")
 map("i", ".", ".<C-g>u")
 map("i", ";", ";<C-g>u")
 
-map("n", "<Leader>bn", "<Cmd>bnext<CR>", { desc = "Next buffer" })
-map("n", "<Leader>bp", "<Cmd>bNext<CR>", { desc = "Previous buffer" })
-map("n", "<Leader>bN", "<Cmd>enew<CR>", { desc = "New empty buffer" })
-map("n", "<Leader>bs", "<Cmd>w<CR>", { desc = "Save buffer" })
+map("n", "<Leader>bn", "<Cmd>bnext<CR>", { desc = "Next Buffer" })
+map("n", "<Leader>bp", "<Cmd>bNext<CR>", { desc = "Previous Buffer" })
+map("n", "<Leader>bN", "<Cmd>enew<CR>", { desc = "New Empty Buffer" })
+map("n", "<Leader>bs", "<Cmd>w<CR>", { desc = "Save Buffer" })
 map("n", "<Leader>bd", function()
   Snacks.bufdelete()
-end, { desc = "Delete buffer" })
+end, { desc = "Delete Buffer" })
 map("n", "<Leader>bo", function()
   Snacks.bufdelete.other()
-end, { desc = "Delete other buffers" })
-map("n", "<Leader>bD", "<Cmd>bd<CR>", { desc = "Delete buffer and window" })
+end, { desc = "Delete Other Buffers" })
+map("n", "<Leader>bD", "<Cmd>bd<CR>", { desc = "Delete Buffer and Window" })
 
-map("n", "[ ", "v:lua.Util.keymaps.put_empty_line(v:true)", { expr = true, desc = "Add empty line above" })
-map("n", "] ", "v:lua.Util.keymaps.put_empty_line(v:false)", { expr = true, desc = "Add empty line below" })
+map("n", "[ ", "v:lua.Util.keymaps.put_empty_line(v:true)", { expr = true, desc = "Add Empty Line Above" })
+map("n", "] ", "v:lua.Util.keymaps.put_empty_line(v:false)", { expr = true, desc = "Add Empty Line Below" })
 
-map("n", "[q", vim.cmd.cprev, { desc = "Previous quickfix" })
-map("n", "]q", vim.cmd.cnext, { desc = "Next quickfix" })
+map("n", "[q", vim.cmd.cprev, { desc = "Previous Quickfix" })
+map("n", "]q", vim.cmd.cnext, { desc = "Next Quickfix" })
 
 local diagnostic_goto = function(next, severity)
   local go = next and vim.diagnostic.goto_next or vim.diagnostic.goto_prev
@@ -49,47 +49,47 @@ local diagnostic_goto = function(next, severity)
     go({ severity = severity })
   end
 end
-map("n", "]d", diagnostic_goto(true), { desc = "Next diagnostic" })
-map("n", "[d", diagnostic_goto(false), { desc = "Prev diagnostic" })
-map("n", "]e", diagnostic_goto(true, "ERROR"), { desc = "Next error" })
-map("n", "[e", diagnostic_goto(false, "ERROR"), { desc = "Prev error" })
-map("n", "]w", diagnostic_goto(true, "WARN"), { desc = "Next warning" })
-map("n", "[w", diagnostic_goto(false, "WARN"), { desc = "Prev warning" })
+map("n", "]d", diagnostic_goto(true), { desc = "Next Diagnostic" })
+map("n", "[d", diagnostic_goto(false), { desc = "Previoud Diagnostic" })
+map("n", "]e", diagnostic_goto(true, "ERROR"), { desc = "Next Error" })
+map("n", "[e", diagnostic_goto(false, "ERROR"), { desc = "Previous Error" })
+map("n", "]w", diagnostic_goto(true, "WARN"), { desc = "Next Warning" })
+map("n", "[w", diagnostic_goto(false, "WARN"), { desc = "Previous Warning" })
 
-map("n", "<Leader>fy", Util.keymaps.yank_relative_path, { desc = "Yank relative path" })
-map("n", "<Leader>fY", Util.keymaps.yank_full_path, { desc = "Yank full path" })
+map("n", "<Leader>fy", Util.keymaps.yank_relative_path, { desc = "Yank Relative Path" })
+map("n", "<Leader>fY", Util.keymaps.yank_full_path, { desc = "Yank Full Path" })
 
-map({ "i", "n" }, "<Esc>", "<Cmd>nohlsearch<CR><Esc>", { desc = "Escape and clear hlsearch" })
+map({ "i", "n" }, "<Esc>", "<Cmd>nohlsearch<CR><Esc>", { desc = "Escape and Clear Hlsearch" })
 map(
   "n",
   "<Leader>ur",
   "<Cmd>nohlsearch<bar>diffupdate<bar>normal! <C-l><CR>",
-  { desc = "Redraw / clear hlsearch / diff update" }
+  { desc = "Redraw / Clear hlsearch / Diff Update" }
 )
 
-map("n", "gco", "o<Esc>Vcx<Esc><Cmd>normal gcc<CR>fxa<BS>", { desc = "Add comment below" })
-map("n", "gcO", "O<Esc>Vcx<Esc><Cmd>normal gcc<CR>fxa<BS>", { desc = "Add comment above" })
+map("n", "gco", "o<Esc>Vcx<Esc><Cmd>normal gcc<CR>fxa<BS>", { desc = "Add Comment Below" })
+map("n", "gcO", "O<Esc>Vcx<Esc><Cmd>normal gcc<CR>fxa<BS>", { desc = "Add Comment Above" })
 
 map("n", "<Leader>l", "<Cmd>Lazy<CR>", { desc = "Lazy" })
 
-map("n", "<Leader>qq", "<Cmd>qa<CR>", { desc = "Quit all" })
+map("n", "<Leader>qq", "<Cmd>qa<CR>", { desc = "Quit All" })
 
 map({ "n", "v" }, "<Leader>cf", function()
   Util.format.run({ force = true })
 end, { desc = "Format" })
 
-map("n", "<Leader>cd", vim.diagnostic.open_float, { desc = "Line diagnostics" })
+map("n", "<Leader>cd", vim.diagnostic.open_float, { desc = "Line Diagnostics" })
 
-map("n", "<Leader>wc", "<C-w>c", { desc = "Close a window" })
+map("n", "<Leader>wc", "<C-w>c", { desc = "Close a Window" })
 
-map("n", "<Leader><Tab><Tab>", "<Cmd>tabnew<CR>", { desc = "New tab" })
-map("n", "<Leader><Tab>[", "<Cmd>tabprevious<CR>", { desc = "Previous tab" })
-map("n", "<Leader><Tab>]", "<Cmd>tabnext<CR>", { desc = "Next tab" })
-map("n", "<Leader><Tab>c", "<Cmd>tabclose<CR>", { desc = "Close tab" })
-map("n", "<Leader><Tab>f", "<Cmd>tabfirst<CR>", { desc = "First tab" })
-map("n", "<Leader><Tab>l", "<Cmd>tablast<CR>", { desc = "Last tab" })
-map("n", "<Leader><Tab>o", "<Cmd>tabonly<CR>", { desc = "Close other tabs" })
-map("n", "<Leader><Tab>q", "<Cmd>tabclose<CR>", { desc = "Close tab" })
+map("n", "<Leader><Tab><Tab>", "<Cmd>tabnew<CR>", { desc = "New Tab" })
+map("n", "<Leader><Tab>[", "<Cmd>tabprevious<CR>", { desc = "Previous Tab" })
+map("n", "<Leader><Tab>]", "<Cmd>tabnext<CR>", { desc = "Next Tab" })
+map("n", "<Leader><Tab>c", "<Cmd>tabclose<CR>", { desc = "Close Tab" })
+map("n", "<Leader><Tab>f", "<Cmd>tabfirst<CR>", { desc = "First Tab" })
+map("n", "<Leader><Tab>l", "<Cmd>tablast<CR>", { desc = "Last Tab" })
+map("n", "<Leader><Tab>o", "<Cmd>tabonly<CR>", { desc = "Close Other Tabs" })
+map("n", "<Leader><Tab>q", "<Cmd>tabclose<CR>", { desc = "Close Tab" })
 
 map("n", "<Leader>fT", function()
   Snacks.terminal()
@@ -140,34 +140,34 @@ if vim.fn.executable("lazygit") == 1 then
   end, { desc = "Lazygit (cwd)" })
   map("n", "<Leader>gf", function()
     Snacks.lazygit.log_file()
-  end, { desc = "Lazygit current file history" })
+  end, { desc = "Lazygit Current File History" })
   map("n", "<Leader>gl", function()
     Snacks.lazygit.log({ cwd = Util.root.git() })
-  end, { desc = "Lazygit log" })
+  end, { desc = "Lazygit Log" })
   map("n", "<Leader>gL", function()
     Snacks.lazygit.log()
-  end, { desc = "Lazygit log (cwd)" })
+  end, { desc = "Lazygit Log (cwd)" })
 end
 
 map("n", "<Leader>gb", function()
   Snacks.git.blame_line()
-end, { desc = "Git blame line" })
+end, { desc = "Git Blame Line" })
 map({ "n", "x" }, "<Leader>gB", function()
   Snacks.gitbrowse()
-end, { desc = "Git browse (open)" })
+end, { desc = "Git Browse (open)" })
 map({ "n", "x" }, "<Leader>gY", function()
   Snacks.gitbrowse({
     open = function(url)
       vim.fn.setreg("+", url)
     end,
   })
-end, { desc = "Git browse (copy)" })
+end, { desc = "Git Browse (copy)" })
 
 if vim.fn.has("nvim-0.11") == 0 then
   map("s", "<Tab>", function()
     return vim.snippet.active({ direction = 1 }) and "<Cmd>lua vim.snippet.jump(1)<CR>" or "<Tab>"
-  end, { expr = true, desc = "Jump next" })
+  end, { expr = true, desc = "Jump Next" })
   map({ "i", "s" }, "<S-Tab>", function()
     return vim.snippet.active({ direction = -1 }) and "<Cmd>lua vim.snippet.jump(-1)<CR>" or "<S-Tab>"
-  end, { expr = true, desc = "Jump previous" })
+  end, { expr = true, desc = "Jump Previous" })
 end

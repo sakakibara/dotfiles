@@ -149,11 +149,11 @@ return {
                 mode = "n",
                 buffer = args.buf,
                 { "<Leader>cx", group = "extract" },
-                { "<Leader>cxv", require("jdtls").extract_variable_all, desc = "Extract variable" },
-                { "<Leader>cxc", require("jdtls").extract_constant, desc = "Extract constant" },
-                { "<Leader>cgs", require("jdtls").super_implementation, desc = "Goto super" },
-                { "<Leader>cgS", require("jdtls.tests").goto_subjects, desc = "Goto subjects" },
-                { "<Leader>co", require("jdtls").organize_imports, desc = "Organize imports" },
+                { "<Leader>cxv", require("jdtls").extract_variable_all, desc = "Extract Variable" },
+                { "<Leader>cxc", require("jdtls").extract_constant, desc = "Extract Constant" },
+                { "<Leader>cgs", require("jdtls").super_implementation, desc = "Goto Super" },
+                { "<Leader>cgS", require("jdtls.tests").goto_subjects, desc = "Goto Subjects" },
+                { "<Leader>co", require("jdtls").organize_imports, desc = "Organize Imports" },
               },
             })
             wk.add({
@@ -164,17 +164,17 @@ return {
                 {
                   "<Leader>cxm",
                   [[<Esc><Cmd>lua require('jdtls').extract_method(true)<CR>]],
-                  desc = "Extract method",
+                  desc = "Extract Method",
                 },
                 {
                   "<Leader>cxv",
                   [[<Esc><Cmd>lua require('jdtls').extract_variable_all(true)<CR>]],
-                  desc = "Extract variable",
+                  desc = "Extract Variable",
                 },
                 {
                   "<Leader>cxc",
                   [[<Esc><Cmd>lua require('jdtls').extract_constant(true)<CR>]],
-                  desc = "Extract constant",
+                  desc = "Extract Constant",
                 },
               },
             })
@@ -196,7 +196,7 @@ return {
                           config_overrides = type(opts.test) ~= "boolean" and opts.test.config_overrides or nil,
                         })
                       end,
-                      desc = "Run all test",
+                      desc = "Run All Test",
                     },
                     {
                       "<Leader>tr",
@@ -205,9 +205,9 @@ return {
                           config_overrides = type(opts.test) ~= "boolean" and opts.test.config_overrides or nil,
                         })
                       end,
-                      desc = "Run nearest test",
+                      desc = "Run Nearest Test",
                     },
-                    { "<Leader>tT", require("jdtls.dap").pick_test, desc = "Run test" },
+                    { "<Leader>tT", require("jdtls.dap").pick_test, desc = "Run Test" },
                   },
                 })
               end
