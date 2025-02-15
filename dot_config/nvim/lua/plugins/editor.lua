@@ -850,6 +850,13 @@ return {
         desc = "Find files (root)",
       },
       {
+        "<Leader>n",
+        function()
+          Snacks.picker.notifications()
+        end,
+        desc = "Notification history",
+      },
+      {
         "<Leader>fb",
         function()
           Snacks.picker.buffers()
@@ -935,6 +942,13 @@ return {
         desc = "Git status",
       },
       {
+        "<Leader>gS",
+        function()
+          Snacks.picker.git_stash()
+        end,
+        desc = "Git stash",
+      },
+      {
         "<Leader>sb",
         function()
           Snacks.picker.lines()
@@ -993,6 +1007,13 @@ return {
         desc = "Registers",
       },
       {
+        "<Leader>s/",
+        function()
+          Snacks.picker.search_history()
+        end,
+        desc = "Search history",
+      },
+      {
         "<Leader>sa",
         function()
           Snacks.picker.autocmds()
@@ -1019,6 +1040,13 @@ return {
           Snacks.picker.diagnostics()
         end,
         desc = "Diagnostics",
+      },
+      {
+        "<Leader>sD",
+        function()
+          Snacks.picker.diagnostics_buffer()
+        end,
+        desc = "Buffer diagnostics",
       },
       {
         "<Leader>sh",
