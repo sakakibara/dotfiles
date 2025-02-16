@@ -20,6 +20,7 @@ return {
     },
     opts_extend = { "spec" },
     opts = {
+      preset = "helix",
       defaults = {},
       spec = {
         {
