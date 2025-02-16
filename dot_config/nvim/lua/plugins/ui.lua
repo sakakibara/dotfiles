@@ -285,7 +285,7 @@ return {
         function()
           require("oil").open()
         end,
-        desc = "Open parent directory",
+        desc = "Open Parent Directory",
       },
     },
     init = function()
@@ -448,14 +448,14 @@ return {
         function()
           require("mini.files").open(Util.path.get_current_file_path(), true)
         end,
-        desc = "Open mini files",
+        desc = "Open Mini Files",
       },
       {
         "<Leader>fM",
         function()
           require("mini.files").open(vim.uv.cwd(), true)
         end,
-        desc = "Open mini files (cwd)",
+        desc = "Open Mini Files (cwd)",
       },
     },
     config = function(_, opts)
@@ -490,9 +490,9 @@ return {
           end
         end
 
-        local desc = "Open in " .. direction .. " split"
+        local desc = "Open in " .. direction .. " Split"
         if close_on_file then
-          desc = desc .. " and close"
+          desc = desc .. " and Close"
         end
         vim.keymap.set("n", lhs, rhs, { buffer = buf_id, desc = desc })
       end
@@ -514,7 +514,7 @@ return {
             "n",
             opts.mappings.toggle_hidden,
             toggle_dotfiles,
-            { buffer = buf_id, desc = "Toggle hidden files" }
+            { buffer = buf_id, desc = "Toggle Hidden Files" }
           )
 
           vim.keymap.set("n", opts.mappings.change_cwd, files_set_cwd, { buffer = args.data.buf_id, desc = "Set cwd" })
@@ -668,14 +668,14 @@ return {
         function()
           Snacks.notifier.show_history()
         end,
-        desc = "Notification history",
+        desc = "Notification History",
       },
       {
         "<Leader>un",
         function()
           Snacks.notifier.hide()
         end,
-        desc = "Dismiss all notifications",
+        desc = "Dismiss All Notifications",
       },
     },
   },
