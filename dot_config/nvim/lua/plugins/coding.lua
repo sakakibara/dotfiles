@@ -257,10 +257,13 @@ return {
         },
       },
 
+      cmdline = {
+        sources = {},
+      },
+
       sources = {
         compat = {},
         default = { "lsp", "path", "snippets", "buffer" },
-        cmdline = {},
       },
 
       keymap = {
