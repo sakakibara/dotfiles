@@ -758,7 +758,7 @@ return {
     event = "LazyFile",
     opts = function()
       Snacks.toggle({
-        name = "Indention guides",
+        name = "Indention Guides",
         get = function()
           return require("ibl.config").get_config(0).enabled
         end,
