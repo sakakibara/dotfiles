@@ -6,6 +6,7 @@ return {
       events = { "BufWritePost", "BufReadPost", "InsertLeave" },
       linters_by_ft = {
         fish = { "fish" },
+        ["*"] = { "typos" },
       },
       linters = {
         selene = {
