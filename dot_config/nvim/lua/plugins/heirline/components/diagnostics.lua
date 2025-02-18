@@ -1,7 +1,9 @@
 local conditions = require("heirline.conditions")
 
 return {
-  condition = conditions.has_diagnostics,
+  condition = function()
+    return not conditions.buffer_matches({ filetype = { "bigfile" } }) and conditions.has_diagnostics
+  end,
   update = { "DiagnosticChanged", "BufEnter" },
   on_click = {
     callback = function()
