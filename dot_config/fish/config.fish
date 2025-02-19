@@ -71,6 +71,17 @@ if test -d $XDG_CONFIG_HOME/emacs/bin
     fish_add_path $XDG_CONFIG_HOME/emacs/bin
 end
 
+if test -z $ASDF_DATA_DIR
+    set _asdf_shims "$HOME/.asdf/shims"
+else
+    set _asdf_shims "$ASDF_DATA_DIR/shims"
+end
+
+if not contains $_asdf_shims $PATH
+    set -gx --prepend PATH $_asdf_shims
+end
+set --erase _asdf_shims
+
 set -gx GOPATH $HOME/.go
 
 fish_add_path $GOPATH/bin
