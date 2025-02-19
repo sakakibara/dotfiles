@@ -1141,11 +1141,15 @@ return {
       if Util.plugin.has("trouble.nvim") then
         return vim.tbl_deep_extend("force", opts or {}, {
           picker = {
-            actions = require("trouble.sources.snacks").actions,
+            actions = {
+              trouble_open = function(...)
+                return require("trouble.sources.snacks").actions.trouble_open.action(...)
+              end,
+            },
             win = {
               input = {
                 keys = {
-                  ["<C-t>"] = {
+                  ["<A-t>"] = {
                     "trouble_open",
                     mode = { "n", "i" },
                   },
