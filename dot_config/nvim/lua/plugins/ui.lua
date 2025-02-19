@@ -184,7 +184,7 @@ return {
         "<C-f>",
         function()
           if not require("noice.lsp").scroll(4) then
-            return "<c-f>"
+            return "<C-f>"
           end
         end,
         silent = true,
@@ -196,7 +196,7 @@ return {
         "<C-b>",
         function()
           if not require("noice.lsp").scroll(-4) then
-            return "<c-b>"
+            return "<C-b>"
           end
         end,
         silent = true,
