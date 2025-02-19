@@ -277,7 +277,6 @@ return {
 
   {
     "stevearc/oil.nvim",
-    dependencies = { "nvim-tree/nvim-web-devicons" },
     event = "VeryLazy",
     keys = {
       {
@@ -422,7 +421,6 @@ return {
 
   {
     "echasnovski/mini.files",
-    dependencies = { "nvim-tree/nvim-web-devicons" },
     event = "VeryLazy",
     opts = {
       mappings = {
@@ -537,7 +535,6 @@ return {
 
   {
     "b0o/incline.nvim",
-    dependencies = { "nvim-tree/nvim-web-devicons" },
     event = "VeryLazy",
     opts = function()
       Snacks.toggle({
