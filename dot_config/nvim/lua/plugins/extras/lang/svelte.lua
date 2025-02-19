@@ -13,7 +13,7 @@ return {
         svelte = {
           keys = {
             {
-              "<leader>co",
+              "<Leader>co",
               Util.lsp.action["source.organizeImports"],
               desc = "Organize Imports",
             },

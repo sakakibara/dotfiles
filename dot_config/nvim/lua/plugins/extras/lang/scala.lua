@@ -17,14 +17,14 @@ return {
         metals = {
           keys = {
             {
-              "<leader>me",
+              "<Leader>me",
               function()
                 require("telescope").extensions.metals.commands()
               end,
               desc = "Metals Commands",
             },
             {
-              "<leader>mc",
+              "<Leader>mc",
               function()
                 require("metals").compile_cascade()
               end,

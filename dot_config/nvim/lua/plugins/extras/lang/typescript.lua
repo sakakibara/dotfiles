@@ -73,27 +73,27 @@ return {
               desc = "File References",
             },
             {
-              "<leader>co",
+              "<Leader>co",
               Util.lsp.action["source.organizeImports"],
               desc = "Organize Imports",
             },
             {
-              "<leader>cM",
+              "<Leader>cM",
               Util.lsp.action["source.addMissingImports.ts"],
               desc = "Add Missing Imports",
             },
             {
-              "<leader>cu",
+              "<Leader>cu",
               Util.lsp.action["source.removeUnused.ts"],
               desc = "Remove Unused Imports",
             },
             {
-              "<leader>cD",
+              "<Leader>cD",
               Util.lsp.action["source.fixAll.ts"],
               desc = "Fix All Diagnostics",
             },
             {
-              "<leader>cV",
+              "<Leader>cV",
               function()
                 Util.lsp.execute({ command = "typescript.selectTypeScriptVersion" })
               end,

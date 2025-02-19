@@ -18,7 +18,7 @@ return {
     ft = {},
     keys = {
       {
-        "<leader>ta",
+        "<Leader>ta",
         function()
           require("ansible").run()
         end,

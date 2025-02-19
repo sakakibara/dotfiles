@@ -18,7 +18,7 @@ return {
           },
           keys = {
             {
-              "<leader>co",
+              "<Leader>co",
               Util.lsp.action["source.organizeImports"],
               desc = "Organize Imports",
             },
@@ -56,7 +56,7 @@ return {
         "mfussenegger/nvim-dap-python",
         keys = {
           {
-            "<leader>dPt",
+            "<Leader>dPt",
             function()
               require("dap-python").test_method()
             end,
@@ -64,7 +64,7 @@ return {
             ft = "python",
           },
           {
-            "<leader>dPc",
+            "<Leader>dPc",
             function()
               require("dap-python").test_class()
             end,
