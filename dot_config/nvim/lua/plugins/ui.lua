@@ -233,15 +233,6 @@ return {
     end,
   },
 
-  {
-    "j-hui/fidget.nvim",
-    enabled = function()
-      return not Util.plugin.has("noice.nvim")
-    end,
-    event = "LazyFile",
-    opts = {},
-  },
-
   { "MunifTanjim/nui.nvim", lazy = true },
 
   {
