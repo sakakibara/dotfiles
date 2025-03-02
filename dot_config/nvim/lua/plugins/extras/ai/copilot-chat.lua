@@ -1,17 +1,3 @@
-local M = {}
-
-function M.pick(kind)
-  return function()
-    local actions = require("CopilotChat.actions")
-    local items = actions[kind .. "_actions"]()
-    if not items then
-      Util.warn("No " .. kind .. " found on the current line")
-      return
-    end
-    require("CopilotChat.integrations.snacks").pick(items)
-  end
-end
-
 return {
   {
     "CopilotC-Nvim/CopilotChat.nvim",
@@ -22,16 +8,11 @@ return {
       user = user:sub(1, 1):upper() .. user:sub(2)
       return {
         auto_insert_mode = true,
-        show_help = true,
         question_header = "  " .. user .. " ",
         answer_header = "  Copilot ",
         window = {
           width = 0.4,
         },
-        selection = function(source)
-          local select = require("CopilotChat.select")
-          return select.visual(source) or select.buffer(source)
-        end,
       }
     end,
     keys = {
@@ -56,21 +37,28 @@ return {
       {
         "<Leader>aq",
         function()
-          local input = vim.fn.input("Quick Chat: ")
-          if input ~= "" then
-            require("CopilotChat").ask(input)
-          end
+          vim.ui.input({
+            prompt = "Quick Chat: ",
+          }, function(input)
+            if input ~= "" then
+              require("CopilotChat").ask(input)
+            end
+          end)
         end,
         desc = "Quick Chat (CopilotChat)",
         mode = { "n", "v" },
       },
-      { "<Leader>ap", M.pick("prompt"), desc = "Prompt Actions (CopilotChat)", mode = { "n", "v" } },
+      {
+        "<Leader>ap",
+        function()
+          require("CopilotChat").select_prompt()
+        end,
+        desc = "Prompt Actions (CopilotChat)",
+        mode = { "n", "v" },
+      },
     },
     config = function(_, opts)
       local chat = require("CopilotChat")
-      if pcall(require, "cmp") then
-        require("CopilotChat.integrations.cmp").setup()
-      end
 
       vim.api.nvim_create_autocmd("BufEnter", {
         pattern = "copilot-chat",
