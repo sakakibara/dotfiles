@@ -799,6 +799,7 @@ return {
   {
     "folke/snacks.nvim",
     opts = {
+      explorer = {},
       picker = {
         win = {
           input = {
@@ -822,6 +823,22 @@ return {
       },
     },
     keys = {
+      {
+        "<Leader>fe",
+        function()
+          Snacks.explorer({ cwd = Util.root() })
+        end,
+        desc = "Explorer Snacks (root)",
+      },
+      {
+        "<Leader>fE",
+        function()
+          Snacks.explorer()
+        end,
+        desc = "Explorer Snacks (cwd)",
+      },
+      { "<Leader>e", "<leader>fe", desc = "Explorer Snacks (root)", remap = true },
+      { "<Leader>E", "<leader>fE", desc = "Explorer Snacks (cwd)", remap = true },
       {
         "<Leader>,",
         function()
