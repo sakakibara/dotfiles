@@ -1,6 +1,8 @@
 local ftadd = vim.filetype.add
 local g, opt = vim.g, vim.opt
 
+vim.env.PATH = vim.env.HOME .. "/.local/share/mise/shims:" .. vim.env.PATH
+
 g.mapleader = " "
 g.maplocalleader = "\\"
 g.markdown_recommended_style = 0
