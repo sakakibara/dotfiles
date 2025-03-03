@@ -85,12 +85,9 @@ if [[ -d "${XDG_CONFIG_HOME}/emacs/bin" ]]; then
   )
 fi
 
-export ASDF_DATA_DIR="${HOME}/.asdf"
-
 export GOPATH="${HOME}/.go"
 
 path=(
-  "${ASDF_DATA_DIR}/shims"
   "${HOME}/.local/bin"
   "${HOME}/.cargo/bin"
   "${HOME}/.nimble/bin"
@@ -656,11 +653,6 @@ fi
 #
 
 fpath+=(${HOME}/.zcomp)
-
-# asdf completions
-if (( ${+functions[asdf]} )); then
-  fpath+=(${HOME}/.asdf/completions)
-fi
 
 #
 # Compdump
