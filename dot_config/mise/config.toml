@@ -1,0 +1,5 @@
+[tools]
+node = "latest"
+php = "latest"
+python = "latest"
+ruby = "latest"

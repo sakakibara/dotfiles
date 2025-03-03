@@ -641,6 +641,8 @@ _evalcache zoxide init zsh
 
 _evalcache direnv hook zsh
 
+_evalcache mise activate zsh
+
 #
 # LS_COLORS settings
 #
