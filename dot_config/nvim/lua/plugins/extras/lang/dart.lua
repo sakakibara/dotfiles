@@ -1,5 +1,15 @@
 return {
   {
+    "stevearc/conform.nvim",
+    optional = true,
+    opts = {
+      formatters_by_ft = {
+        dart = { "dart_format" },
+      },
+    },
+  },
+
+  {
     "akinsho/flutter-tools.nvim",
     dependencies = {
       "nvim-lua/plenary.nvim",
