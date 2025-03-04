@@ -2,7 +2,7 @@
 #!/usr/bin/env bash
 source {{ joinPath .chezmoi.sourceDir "etc" "bash" "lib" "init.bash" | quote }}
 
-import unix darwin brew asdf
+import unix darwin brew
 
 main() {
   # Try to avoid having to type in the passwords over and over
