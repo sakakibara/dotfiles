@@ -26,4 +26,6 @@ mise::setup() {
   msg::heading "Require mise"
   # Check if mise is installed and try to install it if it isn't
   mise::require || return 1
+  # Install via mise
+  mise install
 }
