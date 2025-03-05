@@ -1,5 +1,6 @@
 README.md
 LICENSE
+mise.toml
 etc/**
 .ssh/**
 {{ if ne .chezmoi.os "darwin" }}
