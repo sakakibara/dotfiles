@@ -182,41 +182,6 @@ return {
   },
 
   {
-    "RRethy/vim-illuminate",
-    enabled = false,
-    event = "LazyFile",
-    opts = {
-      delay = 200,
-      filetypes_denylist = {
-        "csv",
-        "tsv",
-        "text",
-        "oil",
-      },
-      large_file_cutoff = 10000,
-    },
-    config = function(_, opts)
-      require("illuminate").configure(opts)
-    end,
-    keys = {
-      {
-        "]]",
-        function()
-          require("illuminate").goto_next_reference(false)
-        end,
-        desc = "Next Reference",
-      },
-      {
-        "[[",
-        function()
-          require("illuminate").goto_prev_reference(false)
-        end,
-        desc = "Prev Reference",
-      },
-    },
-  },
-
-  {
     "folke/flash.nvim",
     event = "VeryLazy",
     opts = {
