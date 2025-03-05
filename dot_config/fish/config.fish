@@ -153,10 +153,6 @@ if status --is-interactive
         set -gx ZK_NOTEBOOK_DIR "$HOME/Notes"
     end
 
-    if test (command -v direnv)
-        _evalcache direnv hook fish
-    end
-
     if test (command -v mise)
         _evalcache $HOME/.local/bin/mise activate fish
     end

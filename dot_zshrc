@@ -636,8 +636,6 @@ _evalcache fzf --zsh
 # (( ${+aliases[zi]} )) && unalias zi
 _evalcache zoxide init zsh
 
-_evalcache direnv hook zsh
-
 _evalcache "${HOME}/.local/bin/mise" activate zsh
 
 #
