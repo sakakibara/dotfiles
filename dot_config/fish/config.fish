@@ -157,6 +157,10 @@ if status --is-interactive
         _evalcache direnv hook fish
     end
 
+    if test (command -v mise)
+        _evalcache $HOME/.local/bin/mise activate fish
+    end
+
     if test (command -v chezmoi)
         _evalcache chezmoi completion fish
     end
