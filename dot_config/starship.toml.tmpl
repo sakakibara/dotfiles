@@ -1,5 +1,5 @@
+command_timeout = 1000
 add_newline = false
-
 {{ if (and (env "WSL_DISTRO_NAME") (lookPath "starship.exe")) -}}
 [git_status]
 windows_starship = "{{ lookPath "starship.exe" }}"
