@@ -106,6 +106,12 @@ end, { desc = "which_key_ignore" })
 map("t", "<C-/>", "<Cmd>close<CR>", { desc = "Hide Terminal" })
 map("t", "<C-_>", "<Cmd>close<CR>", { desc = "which_key_ignore" })
 
+map("n", "<Leader>-", "<C-w>s", { desc = "Split Window Below", remap = true })
+map("n", "<Leader>|", "<C-w>v", { desc = "Split Window Right", remap = true })
+map("n", "<Leader>wd", "<C-w>c", { desc = "Delete Window", remap = true })
+Snacks.toggle.zoom():map("<Leader>wm"):map("<Leader>uZ")
+Snacks.toggle.zen():map("<Leader>uz")
+
 Util.format.snacks_toggle():map("<Leader>uf")
 Util.format.snacks_toggle(true):map("<Leader>uF")
 Snacks.toggle.option("spell", { name = "Spelling" }):map("<Leader>us")
