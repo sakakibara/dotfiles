@@ -1,5 +1,10 @@
 return {
   {
+    "nvim-treesitter/nvim-treesitter",
+    opts = { ensure_installed = { "dart" } },
+  },
+
+  {
     "stevearc/conform.nvim",
     optional = true,
     opts = {
