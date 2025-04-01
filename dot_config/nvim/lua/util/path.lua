@@ -108,7 +108,7 @@ function M.format_path(path, opts)
   local path_segments = M.split(path)
 
   -- Check if the path contains the CWD
-  local contains_cwd = path:sub(1, #cwd) == cwd
+  local contains_cwd = (path == cwd) or (path:sub(1, #cwd + 1) == cwd .. M.sep)
 
   -- Adjust the start and end indices for head and tail
   local head_start = contains_cwd and #cwd_segments + 1 or 1
