@@ -28,7 +28,7 @@ return {
     optional = true,
     opts = function()
       local dap = require("dap")
-      local path = require("mason-registry").get_package("php-debug-adapter"):get_install_path()
+      local path = Util.lsp.get_pkg_path("php-debug-adapter")
       dap.adapters.php = {
         type = "executable",
         command = "node",

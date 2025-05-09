@@ -45,8 +45,7 @@ return {
     dependencies = { "folke/which-key.nvim" },
     ft = java_filetypes,
     opts = function()
-      local mason_registry = require("mason-registry")
-      local lombok_jar = mason_registry.get_package("jdtls"):get_install_path() .. "/lombok.jar"
+      local lombok_jar = Util.lsp.get_pkg_path("jdtls", "/lombok.jar")
       return {
         root_dir = require("lspconfig.configs.jdtls").default_config.root_dir,
 
@@ -99,14 +98,12 @@ return {
       local mason_registry = require("mason-registry")
       local bundles = {}
       if opts.dap and Util.plugin.has("nvim-dap") and mason_registry.is_installed("java-debug-adapter") then
-        local java_dbg_pkg = mason_registry.get_package("java-debug-adapter")
-        local java_dbg_path = java_dbg_pkg:get_install_path()
+        local java_dbg_path = Util.lsp.get_pkg_path("java-debug-adapter")
         local jar_patterns = {
           java_dbg_path .. "/extension/server/com.microsoft.java.debug.plugin-*.jar",
         }
         if opts.test and mason_registry.is_installed("java-test") then
-          local java_test_pkg = mason_registry.get_package("java-test")
-          local java_test_path = java_test_pkg:get_install_path()
+          local java_test_path = Util.lsp.get_pkg_path("java-test")
           vim.list_extend(jar_patterns, {
             java_test_path .. "/extension/server/*.jar",
           })
