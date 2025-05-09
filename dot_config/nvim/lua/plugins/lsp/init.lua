@@ -3,8 +3,8 @@ return {
     "neovim/nvim-lspconfig",
     event = "LazyFile",
     dependencies = {
-      "williamboman/mason.nvim",
-      { "williamboman/mason-lspconfig.nvim", config = function() end },
+      "mason-org/mason.nvim",
+      { "mason-org/mason-lspconfig.nvim", config = function() end },
     },
     opts = function()
       return {
@@ -209,7 +209,7 @@ return {
   },
 
   {
-    "williamboman/mason.nvim",
+    "mason-org/mason.nvim",
     cmd = "Mason",
     keys = { { "<Leader>cm", "<Cmd>Mason<CR>", desc = "Mason" } },
     opts_extend = { "ensure_installed" },

@@ -41,7 +41,7 @@ M.has_parser = Util.memoize(M.has_parser)
 
 return {
   {
-    "williamboman/mason.nvim",
+    "mason-org/mason.nvim",
     opts = { ensure_installed = { "prettier" } },
   },
 
