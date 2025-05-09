@@ -147,7 +147,16 @@ return {
         opts.capabilities or {}
       )
 
-      local function setup(server)
+      local have_mason, mlsp = pcall(require, "mason-lspconfig")
+      local all_mslp_servers = {}
+
+      if have_mason then
+        all_mslp_servers = vim.tbl_keys(require("mason-lspconfig").get_mappings().lspconfig_to_package)
+      end
+
+      local exclude_automatic_enable = {}
+
+      local function configure(server)
         local server_opts = vim.tbl_deep_extend("force", {
           capabilities = vim.deepcopy(capabilities),
         }, servers[server] or {})
@@ -161,13 +170,12 @@ return {
             return
           end
         end
-        require("lspconfig")[server].setup(server_opts)
-      end
-
-      local have_mason, mlsp = pcall(require, "mason-lspconfig")
-      local all_mslp_servers = {}
-      if have_mason then
-        all_mslp_servers = vim.tbl_keys(require("mason-lspconfig.mappings.server").lspconfig_to_package)
+        vim.lsp.config(server, server_opts)
+        if server_opts.mason == false or not vim.tbl_contains(all_mslp_servers, server) then
+          vim.lsp.enable(server)
+          return true
+        end
+        return false
       end
 
       local ensure_installed = {}
@@ -175,8 +183,8 @@ return {
         if server_opts then
           server_opts = server_opts == true and {} or server_opts
           if server_opts.enabled ~= false then
-            if server_opts.mason == false or not vim.tbl_contains(all_mslp_servers, server) then
-              setup(server)
+            if configure(server) then
+              exclude_automatic_enable[#exclude_automatic_enable + 1] = server
             else
               ensure_installed[#ensure_installed + 1] = server
             end
@@ -185,14 +193,20 @@ return {
       end
 
       if have_mason then
-        mlsp.setup({
+        local setup_config = {
           ensure_installed = vim.tbl_deep_extend(
             "force",
             ensure_installed,
             Util.plugin.opts("mason-lspconfig.nvim").ensure_installed or {}
           ),
           handlers = { setup },
-        })
+        }
+
+        setup_config.automatic_enable = {
+          exclude = exclude_automatic_enable,
+        }
+
+        mlsp.setup(setup_config)
       end
 
       if Util.lsp.is_enabled("denols") and Util.lsp.is_enabled("vtsls") then
