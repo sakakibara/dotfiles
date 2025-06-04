@@ -144,11 +144,12 @@ if status --is-interactive
         # --color=fg:#cdd6f4,header:#f38ba8,info:#cba6f7,pointer:#f5e0dc \
         # --color=marker:#f5e0dc,fg+:#cdd6f4,prompt:#cba6f7,hl+:#f38ba8"
 
-        # Evergarden fall
-        set -gx FZF_DEFAULT_OPTS "\
-        --color=bg+:#313B40,bg:#232a2e,spinner:#f3c0e5,hl:#f57f82 \
-        --color=fg:#f8f9e8,header:#f57f82,info:#d0bbf0,pointer:#f3c0e5 \
-        --color=marker:#f6cee5,fg+:#cdd6f4,prompt:#d0bbf0,hl+:#f57f82"
+        set -gx FZF_DEFAULT_OPTS " \
+        --color=bg+:#232A2E,bg:#232A2E,spinner:#AFDFE6,hl:#AFDFE6 \
+        --color=fg:#F8F9E8,header:#AFDFE6,info:#96B4AA,pointer:#F7A182 \
+        --color=marker:#F5D098,fg+:#F8F9E8,prompt:#F3C0E5,hl+:#AFDFE6  \
+        --color=selected-bg:#3D494D \
+        --color=border:#313B40,label:#F8F9E8"
     end
 
     if test (command -v zoxide)
