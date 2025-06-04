@@ -147,7 +147,7 @@ if status --is-interactive
         # Evergarden fall
         set -gx FZF_DEFAULT_OPTS "\
         --color=bg+:#313B40,bg:#232a2e,spinner:#f3c0e5,hl:#f57f82 \
-        --color=fg:#afdfe6,header:#f57f82,info:#d0bbf0,pointer:#f3c0e5 \
+        --color=fg:#f8f9e8,header:#f57f82,info:#d0bbf0,pointer:#f3c0e5 \
         --color=marker:#f6cee5,fg+:#cdd6f4,prompt:#d0bbf0,hl+:#f57f82"
     end
 
