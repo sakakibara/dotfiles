@@ -1,29 +1,29 @@
 colors:
-  red: "#F57F82"
-  orange: "#F7A182"
-  yellow: "#F5D098"
-  lime: "#DBE6AF"
-  green: "#CAE0A7"
-  aqua: "#ADDEB9"
-  skye: "#ACE0D4"
-  snow: "#AFDFE6"
-  blue: "#B2CFED"
-  purple: "#D0BBF0"
-  pink: "#F3C0E5"
-  cherry: "#F6CEE5"
+  red: "f57f82"
+  orange: "f7a182"
+  yellow: "f5d098"
+  lime: "dbe6af"
+  green: "cae0a7"
+  aqua: "addeb9"
+  skye: "ace0d4"
+  snow: "afdfe6"
+  blue: "b2cfed"
+  purple: "d0bbf0"
+  pink: "f3c0e5"
+  cherry: "f6cee5"
 
-  text: "#F8F9E8"
-  subtext1: "#ADC9BC"
-  subtext0: "#96B4AA"
-  overlay2: "#839E9A"
-  overlay1: "#6F8788"
-  overlay0: "#58686D"
-  surface2: "#4A585C"
-  surface1: "#3D494D"
-  surface0: "#313B40"
-  base: "#232A2E"
-  mantle: "#1C2225"
-  crust: "#171C1F"
+  text: "f8f9e8"
+  subtext1: "adc9bc"
+  subtext0: "96b4aa"
+  overlay2: "839e9a"
+  overlay1: "6f8788"
+  overlay0: "58686d"
+  surface2: "4a585c"
+  surface1: "3d494d"
+  surface0: "313b40"
+  base: "232a2e"
+  mantle: "1c2225"
+  crust: "171c1f"
 
 core:
   normal_text: {}
@@ -51,7 +51,7 @@ core:
     background: pink
 
   block_device:
-    foreground: sapphire
+    foreground: skye
     background: surface0
 
   character_device:
