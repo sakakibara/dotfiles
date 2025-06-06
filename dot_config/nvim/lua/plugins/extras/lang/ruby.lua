@@ -9,9 +9,15 @@ return {
     optional = true,
     opts = {
       servers = {
-        solargraph = {},
+        ruby_lsp = {},
+        rubocop = {},
       },
     },
+  },
+
+  {
+    "mason-org/mason.nvim",
+    opts = { ensure_installed = { "erb-formatter", "erb-lint" } },
   },
 
   {
@@ -22,6 +28,17 @@ return {
       config = function()
         require("dap-ruby").setup()
       end,
+    },
+  },
+
+  {
+    "stevearc/conform.nvim",
+    optional = true,
+    opts = {
+      formatters_by_ft = {
+        ruby = { "rubocop" },
+        eruby = { "erb_format" },
+      },
     },
   },
 
