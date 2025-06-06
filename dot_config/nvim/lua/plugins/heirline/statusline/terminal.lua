@@ -4,7 +4,6 @@ return {
   condition = function()
     return conditions.buffer_matches({ buftype = { "terminal" } })
   end,
-  hl = { bg = "dark_red" },
   {
     condition = conditions.is_active,
     require("plugins.heirline.components.vi_mode"),
