@@ -25,7 +25,13 @@ return {
   {
     "mason-org/mason.nvim",
     optional = true,
-    opts = { ensure_installed = { "codelldb" } },
+    opts = function(_, opts)
+      opts.ensure_installed = opts.ensure_installed or {}
+      vim.list_extend(opts.ensure_installed, { "codelldb", "rust-analyzer" })
+      if diagnostics == "bacon-ls" then
+        vim.list_extend(opts.ensure_installed, { "bacon" })
+      end
+    end,
   },
 
   {
@@ -51,10 +57,9 @@ return {
                 enable = true,
               },
             },
-            checkOnSave = {
-              allFeatures = true,
-              command = "clippy",
-              extraArgs = { "--no-deps" },
+            checkOnSave = diagnostics == "rust-analyzer",
+            diagnostics = {
+              enable = diagnostics == "rust-analyzer",
             },
             procMacro = {
               enable = true,
@@ -64,11 +69,36 @@ return {
                 ["async-recursion"] = { "async_recursion" },
               },
             },
+            files = {
+              excludeDirs = {
+                ".direnv",
+                ".git",
+                ".github",
+                ".gitlab",
+                "bin",
+                "node_modules",
+                "target",
+                "venv",
+                ".venv",
+              },
+            },
           },
         },
       },
     },
     config = function(_, opts)
+      if Util.plugin.has("mason.nvim") then
+        local package_path = Util.lsp.get_pkg_path("codelldb")
+        local codelldb = package_path .. "/extension/adapter/codelldb"
+        local library_path = package_path .. "/extension/lldb/lib/liblldb.dylib"
+        local uname = io.popen("uname"):read("*l")
+        if uname == "Linux" then
+          library_path = package_path .. "/extension/lldb/lib/liblldb.so"
+        end
+        opts.dap = {
+          adapter = require("rustaceanvim.config").get_codelldb_adapter(codelldb, library_path),
+        }
+      end
       vim.g.rustaceanvim = vim.tbl_deep_extend("keep", vim.g.rustaceanvim or {}, opts or {})
       if vim.fn.executable("rust-analyzer") == 0 then
         Util.error(
@@ -83,21 +113,10 @@ return {
     "neovim/nvim-lspconfig",
     opts = {
       servers = {
-        taplo = {
-          keys = {
-            {
-              "K",
-              function()
-                if vim.fn.expand("%:t") == "Cargo.toml" and require("crates").popup_available() then
-                  require("crates").show_popup()
-                else
-                  vim.lsp.buf.hover()
-                end
-              end,
-              desc = "Show Crate Documentation",
-            },
-          },
+        bacon_ls = {
+          enabled = diagnostics == "bacon-ls",
         },
+        rust_analyzer = { enabled = false },
       },
     },
   },
