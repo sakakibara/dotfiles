@@ -7,3 +7,4 @@ font-style-bold-italic = "Medium Italic"
 font-feature = -dlig
 theme = "evergarden-fall-aqua"
 macos-option-as-alt = "left"
+keybind = shift+enter=text:\n
