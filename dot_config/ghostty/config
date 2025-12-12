@@ -5,6 +5,6 @@ font-style-bold = "Medium"
 font-style-italic = "Book Italic"
 font-style-bold-italic = "Medium Italic"
 font-feature = -dlig
-theme = "evergarden-fall-aqua"
+theme = "catppuccin-mocha"
 macos-option-as-alt = "left"
 keybind = shift+enter=text:\n

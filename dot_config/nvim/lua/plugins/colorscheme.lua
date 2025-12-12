@@ -1,12 +1,5 @@
 return {
   {
-    "everviolet/nvim",
-    name = "evergarden",
-    priority = 1000,
-    opts = {},
-  },
-
-  {
     "catppuccin/nvim",
     lazy = true,
     name = "catppuccin",

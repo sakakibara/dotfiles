@@ -139,17 +139,10 @@ if status --is-interactive
         # --color=marker:#f4dbd6,fg+:#cad3f5,prompt:#c6a0f6,hl+:#ed8796"
 
         # Catppuccin mocha
-        # set -gx FZF_DEFAULT_OPTS "\
-        # --color=bg+:#313244,bg:#1e1e2e,spinner:#f5e0dc,hl:#f38ba8 \
-        # --color=fg:#cdd6f4,header:#f38ba8,info:#cba6f7,pointer:#f5e0dc \
-        # --color=marker:#f5e0dc,fg+:#cdd6f4,prompt:#cba6f7,hl+:#f38ba8"
-
-        set -gx FZF_DEFAULT_OPTS " \
-        --color=bg+:#232A2E,bg:#232A2E,spinner:#AFDFE6,hl:#AFDFE6 \
-        --color=fg:#F8F9E8,header:#AFDFE6,info:#96B4AA,pointer:#F7A182 \
-        --color=marker:#F5D098,fg+:#F8F9E8,prompt:#F3C0E5,hl+:#AFDFE6  \
-        --color=selected-bg:#3D494D \
-        --color=border:#313B40,label:#F8F9E8"
+        set -gx FZF_DEFAULT_OPTS "\
+        --color=bg+:#313244,bg:#1e1e2e,spinner:#f5e0dc,hl:#f38ba8 \
+        --color=fg:#cdd6f4,header:#f38ba8,info:#cba6f7,pointer:#f5e0dc \
+        --color=marker:#f5e0dc,fg+:#cdd6f4,prompt:#cba6f7,hl+:#f38ba8"
     end
 
     if test (command -v zoxide)
@@ -214,7 +207,7 @@ if status --is-interactive
 
     # LS_COLORS settings
     if test (command -v vivid)
-        set -gx LS_COLORS (vivid generate evergarden-fall)
+        set -gx LS_COLORS (vivid generate catppuccin-mocha)
     end
 end
 

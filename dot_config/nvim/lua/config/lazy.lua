@@ -4,7 +4,7 @@ return {
     { import = "plugins.extras" },
   },
   concurrency = vim.uv.available_parallelism() * 14,
-  install = { colorscheme = { "evergarden" } },
+  install = { colorscheme = { "catppuccin" } },
   performance = {
     cache = {
       enabled = true,
