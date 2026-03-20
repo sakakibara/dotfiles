@@ -2,7 +2,7 @@
 #!/usr/bin/env bash
 source {{ joinPath .chezmoi.sourceDir "etc" "bash" "lib" "init.bash" | quote }}
 
-import unix darwin brew mise nest
+import unix darwin brew mise hive
 
 main() {
   # Try to avoid having to type in the passwords over and over
@@ -16,7 +16,7 @@ main() {
 
   ask_to_run mise::setup
 
-  ask_to_run nest::setup
+  ask_to_run hive::setup
 }
 
 main "$@" || exit 1
