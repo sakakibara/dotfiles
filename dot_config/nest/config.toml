@@ -1,0 +1,6 @@
+[paths]
+workspace_icloud_root = "~/Library/Mobile Documents/com~apple~CloudDocs/workspace"
+projects_link = "~/Projects"
+life_link = "~/Life"
+archive_link = "~/Archive"
+code_root = "~/Code"
