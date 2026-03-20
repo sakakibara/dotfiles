@@ -1,0 +1,13 @@
+[paths]
+projects = "~/Projects"
+life = "~/Life"
+archive = "~/Archive"
+code = "~/Code"
+
+[storage]
+{{- if eq .profile "personal" }}
+mode = "icloud"
+icloud_root = "~/Library/Mobile Documents/com~apple~CloudDocs/workspace"
+{{- else }}
+mode = "local"
+{{- end }}
