@@ -636,6 +636,8 @@ _evalcache fzf --zsh
 # (( ${+aliases[zi]} )) && unalias zi
 _evalcache zoxide init zsh
 
+_evalcache "${HOME}/.local/bin/hive" init-shell zsh
+
 _evalcache "${HOME}/.local/bin/mise" activate zsh
 
 #
