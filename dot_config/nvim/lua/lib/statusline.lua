@@ -467,7 +467,7 @@ local function build_dap()
 end
 
 local function build_pos()
-  return "%#StslPos# %l:%c %#StslDim#%P "
+  return "%#StslPos# %l:%c "
 end
 
 local function build_scroll()
