@@ -215,15 +215,9 @@ function M.setup(cfg)
   register_build_hooks()
   install_all(ordered)
 
-  -- Pin every installed plugin to the SHA recorded in pack-lock.json so a
-  -- fresh clone of this config produces a byte-identical plugin set. Skip
-  -- entirely when the lockfile hasn't changed since last apply — saves
-  -- ~500ms of `git rev-parse` subprocess churn on warm boots.
-  local lock = require("core.lock")
-  if not lock.is_fresh() then
-    local entries = lock.load()
-    if next(entries) then lock.apply(entries) end
-  end
+  -- Reproducibility is handled by Neovim's built-in vim.pack lockfile at
+  -- $XDG_CONFIG_HOME/nvim/nvim-pack-lock.json — auto-written on every
+  -- vim.pack.add / update, consulted on next boot.
 
   -- Eager load by priority desc
   local eagers = {}
@@ -437,39 +431,9 @@ vim.api.nvim_create_user_command("PackUpdate", function(opts)
   local args = opts.fargs
   local names = #args > 0 and args or nil
   vim.pack.update(names)
-  -- After the update completes, refresh the lockfile so the new SHAs are
-  -- captured. vim.pack.update is async-ish; schedule after a brief delay.
-  vim.defer_fn(function()
-    local lock = require("core.lock")
-    lock.write(lock.snapshot(vim.tbl_keys(M._specs)))
-    vim.notify("pack-lock.json refreshed", vim.log.levels.INFO)
-  end, 2000)
-end, { nargs = "*", desc = "Update plugin(s) and refresh pack-lock.json" })
-
-vim.api.nvim_create_user_command("PackLock", function()
-  local lock = require("core.lock")
-  local entries = lock.snapshot(vim.tbl_keys(M._specs))
-  lock.write(entries)
-  local count = 0; for _ in pairs(entries) do count = count + 1 end
-  vim.notify(("pack-lock.json: %d plugins snapshotted"):format(count), vim.log.levels.INFO)
-end, { desc = "Snapshot current plugin commits to pack-lock.json" })
-
-vim.api.nvim_create_user_command("PackRestore", function()
-  local lock = require("core.lock")
-  local entries = lock.load()
-  if not next(entries) then
-    vim.notify("pack-lock.json not found or empty", vim.log.levels.WARN); return
-  end
-  local r = lock.apply(entries)
-  vim.notify(
-    ("pack-lock restore: %d applied, %d already in sync%s"):format(
-      r.applied, r.skipped,
-      #r.errored > 0 and (", " .. #r.errored .. " errored") or ""
-    ),
-    #r.errored > 0 and vim.log.levels.WARN or vim.log.levels.INFO
-  )
-  for _, e in ipairs(r.errored) do vim.notify("  " .. e, vim.log.levels.WARN) end
-end, { desc = "Re-apply pack-lock.json (checkout each plugin's locked commit)" })
+  -- nvim-pack-lock.json is written by vim.pack.update itself; no extra
+  -- refresh needed here.
+end, { nargs = "*", desc = "Update plugin(s)" })
 
 vim.api.nvim_create_user_command("PackClean", function()
   if not (vim.pack and vim.pack.get and vim.pack.del) then

@@ -81,16 +81,24 @@ function M.animate(target_mode)
   if target_hex == current_hex then return end
   if not vim.g.status_animate then set_hl(target_hex); return end
 
-  if timer then timer:stop(); timer:close(); timer = nil end
+  if timer then timer:stop(); if not timer:is_closing() then timer:close() end; timer = nil end
   local from = current_hex or target_hex
   local frame = 0
-  timer = assert(vim.uv.new_timer())
-  timer:start(FRAME_MS, FRAME_MS, vim.schedule_wrap(function()
+  -- Capture THIS animation's timer in the closure instead of referencing
+  -- the module-local `timer`. Otherwise a rapidly-retriggered ModeChanged
+  -- nils the module-local between the old timer's in-flight scheduled
+  -- callbacks and their execution, and the callback crashes on nil.
+  local my_timer = assert(vim.uv.new_timer())
+  timer = my_timer
+  my_timer:start(FRAME_MS, FRAME_MS, vim.schedule_wrap(function()
     frame = frame + 1
     local t = frame / FRAMES
     if t >= 1 then
       set_hl(target_hex)
-      timer:stop(); timer:close(); timer = nil
+      if not my_timer:is_closing() then
+        my_timer:stop(); my_timer:close()
+      end
+      if timer == my_timer then timer = nil end
     else
       set_hl(M._interpolate(from, target_hex, t))
     end
