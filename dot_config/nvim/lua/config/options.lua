@@ -42,6 +42,8 @@ end
 -- ui niceties (Neovim 0.11+)
 opt.splitkeep = "screen"
 opt.smoothscroll = true
+opt.laststatus = 3
+opt.showtabline = 1  -- only when >1 tab page
 
 -- format
 opt.formatexpr = "v:lua.Lib.format.formatexpr()"

@@ -134,8 +134,7 @@ function M.render()
 end
 
 function M.setup()
-  vim.o.tabline     = "%!v:lua.Lib.tabline.render()"
-  vim.o.showtabline = 1  -- 1 = only when >1 tab page; 2 = always
+  vim.o.tabline = "%!v:lua.Lib.tabline.render()"
 
   -- Re-render on VimResized so per-tab labels reflow immediately when
   -- the terminal is resized.

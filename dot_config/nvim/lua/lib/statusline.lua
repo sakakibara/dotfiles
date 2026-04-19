@@ -521,8 +521,8 @@ local function render_inactive(buf)
 end
 
 function M.render()
-  -- Per-window: each pane renders its own statusline with laststatus=2.
-  -- vim.g.statusline_winid tells us which window we're rendering for.
+  -- vim.g.statusline_winid tells us which window we're rendering for
+  -- (relevant for laststatus=2; for laststatus=3 it's the current win).
   local winid = vim.g.statusline_winid or vim.api.nvim_get_current_win()
   local buf = vim.api.nvim_win_get_buf(winid)
   local is_current = winid == vim.api.nvim_get_current_win()
@@ -657,8 +657,6 @@ function M.setup()
     callback = function() pcall(vim.cmd, "redrawstatus!") end,
   })
 
-  -- Per-window statusline so every pane shows its own file, even unfocused.
-  vim.o.laststatus = 2
   vim.o.statusline = "%!v:lua.Lib.statusline.render()"
 end
 
