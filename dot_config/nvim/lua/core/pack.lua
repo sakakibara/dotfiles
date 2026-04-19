@@ -219,6 +219,22 @@ function M.setup(cfg)
   -- $XDG_CONFIG_HOME/nvim/nvim-pack-lock.json — auto-written on every
   -- vim.pack.add / update, consulted on next boot.
 
+  -- Apply the install-time colorscheme up-front so any subsequent code
+  -- (custom chrome's apply_hl, etc.) samples themed highlights. Matches
+  -- lazy.nvim's `install.colorscheme`. When the colorscheme is a known
+  -- spec we run its full config (so opts like flavour apply), then mark
+  -- it loaded so the eager-load phase skips a redundant re-apply.
+  if cfg.install and cfg.install.colorscheme then
+    local cs = cfg.install.colorscheme
+    local spec = M._specs[cs]
+    if spec then
+      load_spec(spec)
+    else
+      pcall(vim.cmd.packadd,     cs)
+      pcall(vim.cmd.colorscheme, cs)
+    end
+  end
+
   -- Eager load by priority desc
   local eagers = {}
   for _, s in ipairs(ordered) do if not s.lazy then eagers[#eagers + 1] = s end end

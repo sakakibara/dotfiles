@@ -109,7 +109,9 @@ end
 function M.setup()
   if vim.g.status_animate == nil then vim.g.status_animate = true end
   derive()
-  set_hl(P.red)
+  -- Initial color = actual mode's target (not a placeholder red). Prevents
+  -- a brief red flash on startup before the first ModeChanged animates.
+  set_hl(M.target(vim.fn.mode()))
   vim.api.nvim_create_autocmd("ModeChanged", {
     group = vim.api.nvim_create_augroup("Lib.mode_color", { clear = true }),
     callback = function() M.animate(vim.fn.mode()) end,

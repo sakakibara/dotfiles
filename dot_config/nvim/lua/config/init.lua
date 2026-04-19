@@ -10,23 +10,24 @@ function M.setup()
 
   -- Autocmds load unconditionally so our SwapExists handler is in place
   -- before any buffer (argument file, :e, session restore) is ever read.
-  -- The old has_file gate left a race window where a fast :e could beat
-  -- the VeryLazy load.
   require("config.autocmds")
 
-  -- Stage 2: plugin boot. Eager plugins load by priority (catppuccin is
-  -- priority=1000, so its config runs and sets the colorscheme before
-  -- anything else). Doing this BEFORE UI chrome setup means apply_hl()
-  -- resolves against the final palette on first call — no frame-one
-  -- flicker when the themed highlights re-apply.
-  require("core.pack").setup({ specs = require("config.plugins") })
+  -- Plugins. install.colorscheme pre-applies catppuccin synchronously
+  -- after install, before any eager spec's config — so chrome's apply_hl
+  -- (called below) samples themed highlights the first time.
+  require("core.pack").setup({
+    specs   = require("config.plugins"),
+    install = { colorscheme = "catppuccin" },
+  })
 
-  -- UI chrome. Runs synchronously after plugins so the first paint
-  -- (after VimEnter) already has correct winbar / statusline / tabline
-  -- / statuscolumn rendered with the colorscheme's colors.
+  -- Chrome highlights are derived (fg = Function.fg etc.) so they must
+  -- be registered AFTER catppuccin applied — otherwise we'd sample
+  -- default highlights and rely on ColorScheme to re-apply, which leaves
+  -- a one-frame window where the bar renders with un-themed colors.
+  -- Option strings (vim.o.statusline etc.) are set in options.lua so
+  -- the bar layout is reserved from frame 0.
   Lib.statusline.setup()
   Lib.winbar.setup()
-  Lib.statuscolumn.setup()
   Lib.tabline.setup()
 
   -- Stage 3: after UI ready — setups that benefit from deferring.

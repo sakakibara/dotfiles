@@ -47,8 +47,5 @@ function M.render()
   })
 end
 
-function M.setup()
-  vim.o.statuscolumn = "%!v:lua.Lib.statuscolumn.render()"
-end
 
 return M

@@ -656,8 +656,6 @@ function M.setup()
     group = grp,
     callback = function() pcall(vim.cmd, "redrawstatus!") end,
   })
-
-  vim.o.statusline = "%!v:lua.Lib.statusline.render()"
 end
 
 -- Legacy entry (kept for test compatibility)

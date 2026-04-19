@@ -134,8 +134,6 @@ function M.render()
 end
 
 function M.setup()
-  vim.o.tabline = "%!v:lua.Lib.tabline.render()"
-
   -- Re-render on VimResized so per-tab labels reflow immediately when
   -- the terminal is resized.
   vim.api.nvim_create_autocmd({ "VimResized" }, {

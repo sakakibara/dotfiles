@@ -598,8 +598,6 @@ function M.setup()
       pcall(vim.api.nvim__redraw, { winbar = true })
     end,
   })
-
-  vim.o.winbar = "%!v:lua.Lib.winbar.render()"
 end
 
 return M

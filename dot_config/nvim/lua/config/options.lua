@@ -42,8 +42,20 @@ end
 -- ui niceties (Neovim 0.11+)
 opt.splitkeep = "screen"
 opt.smoothscroll = true
-opt.laststatus = 3
-opt.showtabline = 1  -- only when >1 tab page
+-- UI layout: global statusline at the very bottom, no fixed cmdline row
+-- (cmdline pops up via noice when needed), tabline only when >1 tab.
+opt.laststatus  = 3
+opt.cmdheight   = 0
+opt.showtabline = 1
+
+-- Chrome format strings are set here (early) so the first painted frame
+-- already has the bars. Lib.<bar>.setup() runs after plugins load and
+-- only registers highlights + autocmds — it no longer owns the option
+-- string.
+vim.o.statusline    = "%!v:lua.Lib.statusline.render()"
+vim.o.winbar        = "%!v:lua.Lib.winbar.render()"
+vim.o.tabline       = "%!v:lua.Lib.tabline.render()"
+vim.o.statuscolumn  = "%!v:lua.Lib.statuscolumn.render()"
 
 -- format
 opt.formatexpr = "v:lua.Lib.format.formatexpr()"
