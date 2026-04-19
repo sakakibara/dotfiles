@@ -368,12 +368,16 @@ local function segment_path_file(abs_path, label, modified)
       end,
     })
   end)
-  local ok, devicons = pcall(require, "nvim-web-devicons")
   local icon = ""
-  if ok then
-    local ext = vim.fn.fnamemodify(abs_path, ":e")
-    local ic = devicons.get_icon(abs_path, ext, { default = true })
-    if ic then icon = ic .. " " end
+  if vim.fn.isdirectory(abs_path) == 1 then
+    icon = Lib.icons.status.Directory
+  else
+    local ok, devicons = pcall(require, "nvim-web-devicons")
+    if ok then
+      local ext = vim.fn.fnamemodify(abs_path, ":e")
+      local ic = devicons.get_icon(abs_path, ext, { default = true })
+      if ic then icon = ic .. " " end
+    end
   end
   local mod = modified and " [+]" or ""
   local text = icon .. label .. mod

@@ -403,12 +403,16 @@ end
 local function build_filetype(buf)
   local ft = vim.bo[buf].filetype
   if ft == "" then ft = "plain" end
-  local ok, devicons = pcall(require, "nvim-web-devicons")
   local icon = ""
-  if ok then
-    local name = vim.api.nvim_buf_get_name(buf)
-    local ext  = vim.fn.fnamemodify(name, ":e")
-    icon = (devicons.get_icon(name, ext, { default = true }) or "") .. " "
+  if ft == "oil" or ft == "netrw" or ft == "neo-tree" then
+    icon = Lib.icons.status.Directory
+  else
+    local ok, devicons = pcall(require, "nvim-web-devicons")
+    if ok then
+      local name = vim.api.nvim_buf_get_name(buf)
+      local ext  = vim.fn.fnamemodify(name, ":e")
+      icon = (devicons.get_icon(name, ext, { default = true }) or "") .. " "
+    end
   end
   return clickable(6, pick_filetype, "%#StslFT# " .. icon .. ft:upper() .. " ")
 end
