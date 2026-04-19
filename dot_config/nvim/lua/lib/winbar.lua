@@ -560,14 +560,14 @@ function M.setup()
     local file_fg  = hex("Directory", "fg") or hex("Special",  "fg") or scope_fg
     local dim_fg   = hex("Comment",   "fg") or hex("NonText",  "fg")
     local path_fg  = dim_fg
-    vim.api.nvim_set_hl(0, "WinBarScope", { fg = scope_fg, bold = true })
-    vim.api.nvim_set_hl(0, "WinBarFile",  { fg = file_fg,  bold = true })
-    vim.api.nvim_set_hl(0, "WinBarPath",  { fg = path_fg,  italic = true })
-    vim.api.nvim_set_hl(0, "WinBarDim",   { fg = dim_fg,   italic = true })
-    vim.api.nvim_set_hl(0, "WinBarFill",  { fg = dim_fg })
-    -- Keep default WinBar / WinBarNC so unfocused-window pass-throughs still work
-    vim.api.nvim_set_hl(0, "WinBar",      { fg = hex("Normal", "fg"), bg = "NONE" })
-    vim.api.nvim_set_hl(0, "WinBarNC",    { fg = dim_fg, bg = "NONE", italic = true })
+    local bar_bg = hex("StatusLine", "bg") or hex("Pmenu", "bg") or hex("NormalFloat", "bg")
+    vim.api.nvim_set_hl(0, "WinBarScope", { fg = scope_fg, bg = bar_bg, bold = true })
+    vim.api.nvim_set_hl(0, "WinBarFile",  { fg = file_fg,  bg = bar_bg, bold = true })
+    vim.api.nvim_set_hl(0, "WinBarPath",  { fg = path_fg,  bg = bar_bg, italic = true })
+    vim.api.nvim_set_hl(0, "WinBarDim",   { fg = dim_fg,   bg = bar_bg, italic = true })
+    vim.api.nvim_set_hl(0, "WinBarFill",  { fg = dim_fg,   bg = bar_bg })
+    vim.api.nvim_set_hl(0, "WinBar",      { fg = hex("Normal", "fg"), bg = bar_bg })
+    vim.api.nvim_set_hl(0, "WinBarNC",    { fg = dim_fg, bg = bar_bg, italic = true })
   end
   apply_hl()
 
