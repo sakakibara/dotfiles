@@ -1,0 +1,12 @@
+-- tests/run.lua
+-- Usage: nvim --headless -l tests/run.lua
+vim.opt.rtp:prepend(vim.fn.getcwd())
+require("lib").init()
+
+dofile(vim.fn.getcwd() .. "/tests/event_spec.lua")
+dofile(vim.fn.getcwd() .. "/tests/pack_spec.lua")
+dofile(vim.fn.getcwd() .. "/tests/lsp_spec.lua")
+dofile(vim.fn.getcwd() .. "/tests/mode_color_spec.lua")
+dofile(vim.fn.getcwd() .. "/tests/statusline_spec.lua")
+
+require("tests.helpers").report_and_exit()

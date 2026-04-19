@@ -1,0 +1,13 @@
+# Runtime state; do not commit
+lazy-lock.json
+nvim-pack-lock.json
+.luarc.json
+*.log
+
+# OS / editor noise
+.DS_Store
+*.swp
+*.swo
+*~
+tags
+.claude/

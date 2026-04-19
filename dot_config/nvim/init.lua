@@ -1,16 +1,7 @@
-vim.uv = vim.uv or vim.loop
+-- ~/.config/nvim/init.lua
+vim.loader.enable()
 
-local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
-if not vim.uv.fs_stat(lazypath) then
-  vim.fn.system({
-    "git",
-    "clone",
-    "--filter=blob:none",
-    "https://github.com/folke/lazy.nvim.git",
-    "--branch=stable",
-    lazypath,
-  })
-end
-vim.opt.rtp:prepend(lazypath)
+vim.g.mapleader = " "
+vim.g.maplocalleader = "\\"
 
-require("config").setup(require("config.lazy"))
+require("config").setup()

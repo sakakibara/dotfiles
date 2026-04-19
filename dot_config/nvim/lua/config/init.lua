@@ -1,273 +1,53 @@
-_G.Util = require("util")
-
+-- lua/config/init.lua
 local M = {}
 
-Util.config = M
+function M.setup()
+  -- Stage 1: early, synchronous
+  require("lib").init()
+  require("core.profile").start()
 
----@class ConfigOptions
-local options = {
-  icons = {
-    dap = {
-      Breakpoint = " ",
-      BreakpointCondition = " ",
-      BreakpointRejected = { " ", "DiagnosticError" },
-      LogPoint = ".>",
-      Stopped = { "󰁕 ", "DiagnosticWarn", "DapStoppedLine" },
-    },
-    diagnostics = {
-      Error = " ",
-      Hint = " ",
-      Info = " ",
-      Warn = " ",
-    },
-    git = {
-      added = " ",
-      modified = " ",
-      removed = " ",
-    },
-    kinds = {
-      Array = " ",
-      Boolean = " ",
-      Class = " ",
-      Color = " ",
-      Constant = " ",
-      Constructor = " ",
-      Copilot = " ",
-      Enum = " ",
-      EnumMember = " ",
-      Event = " ",
-      Field = " ",
-      File = " ",
-      Folder = " ",
-      Function = " ",
-      Interface = " ",
-      Key = " ",
-      Keyword = " ",
-      Method = " ",
-      Module = " ",
-      Namespace = " ",
-      Null = " ",
-      Number = " ",
-      Object = " ",
-      Operator = " ",
-      Package = " ",
-      Property = " ",
-      Reference = " ",
-      Snippet = " ",
-      String = " ",
-      Struct = " ",
-      Text = " ",
-      TypeParameter = " ",
-      Unit = " ",
-      Value = " ",
-      Variable = " ",
-    },
-    status = {
-      Lsp = " ",
-      Vim = " ",
-      Mode = " ",
-      Lock = " ",
-      Debug = " ",
-      Directory = " ",
-      DirectoryAlt = "󰉖 ",
-      Ellipsis = "…",
-      Separator = {
-        Breadcrumb = "",
-      },
-      Failure = " ",
-      Canceled = "󰜺 ",
-      Success = "󰄴 ",
-      Running = "󰑮 ",
-      FoldClose = "",
-      FoldOpen = "",
-      FoldSeparator = " ",
-    },
-    powerline = {
-      vertical_bar_thin = "│",
-      vertical_bar = "┃",
-      block = "█",
-      left = "",
-      left_filled = "",
-      right = "",
-      right_filled = "",
-      slant_left = "",
-      slant_left_thin = "",
-      slant_right = "",
-      slant_right_thin = "",
-      slant_left_inverse = "",
-      slant_left_inverse_thin = "",
-      slant_right_inverse = "",
-      slant_right_inverse_thin = "",
-      left_rounded = "",
-      left_rounded_thin = "",
-      right_rounded = "",
-      right_rounded_thin = "",
-      trapezoid_left = "",
-      trapezoid_right = "",
-      line_number = "",
-      column_number = "",
-    },
-  },
-  kind_filter = {
-    default = {
-      "Class",
-      "Constructor",
-      "Enum",
-      "Field",
-      "Function",
-      "Interface",
-      "Method",
-      "Module",
-      "Namespace",
-      "Package",
-      "Property",
-      "Struct",
-      "Trait",
-    },
-    markdown = false,
-    help = false,
-    lua = {
-      "Class",
-      "Constructor",
-      "Enum",
-      "Field",
-      "Function",
-      "Interface",
-      "Method",
-      "Module",
-      "Namespace",
-      "Property",
-      "Struct",
-      "Trait",
-    },
-  },
-}
+  require("config.options")
 
-local clipboard
+  -- Autocmds load unconditionally so our SwapExists handler is in place
+  -- before any buffer (argument file, :e, session restore) is ever read.
+  -- The old has_file gate left a race window where a fast :e could beat
+  -- the VeryLazy load.
+  require("config.autocmds")
 
-function M.setup(opts)
-  require("lazy").setup(opts)
+  -- Stage 2: plugin boot. Eager plugins load by priority (catppuccin is
+  -- priority=1000, so its config runs and sets the colorscheme before
+  -- anything else). Doing this BEFORE UI chrome setup means apply_hl()
+  -- resolves against the final palette on first call — no frame-one
+  -- flicker when the themed highlights re-apply.
+  require("core.pack").setup({ specs = require("config.plugins") })
 
-  local no_argc = vim.fn.argc(-1) == 0
-  if not no_argc then
-    M.load("autocmds")
-  end
+  -- UI chrome. Runs synchronously after plugins so the first paint
+  -- (after VimEnter) already has correct winbar / statusline / tabline
+  -- / statuscolumn rendered with the colorscheme's colors.
+  Lib.statusline.setup()
+  Lib.winbar.setup()
+  Lib.statuscolumn.setup()
+  Lib.tabline.setup()
 
+  -- Stage 3: after UI ready — setups that benefit from deferring.
   vim.api.nvim_create_autocmd("User", {
-    group = vim.api.nvim_create_augroup("Core", { clear = true }),
     pattern = "VeryLazy",
+    once = true,
     callback = function()
-      if no_argc then
-        M.load("autocmds")
-      end
-      M.load("keymaps")
-
-      if clipboard ~= nil then
-        vim.opt.clipboard = clipboard
-      end
-
-      Util.format.setup()
-      Util.root.setup()
-
-      vim.api.nvim_create_user_command("CheckHealth", function()
-        vim.cmd([[Lazy! load all]])
-        vim.cmd([[checkhealth]])
-      end, { desc = "Load all plugins and run :checkhealth" })
+      require("config.keymaps")
+      Lib.lsp.setup()
+      Lib.format.setup()
+      Lib.root.setup()
+      require("core.profile").dump()
     end,
   })
 
-  Util.track("colorscheme")
-  Util.try(function()
-    vim.cmd.colorscheme(opts.install.colorscheme[1])
-  end, {
-    msg = "Failed to load the colorscheme",
-    on_error = function(msg)
-      Util.error(msg)
-      vim.cmd.colorscheme("colorscheme")
-    end,
-  })
-  Util.track()
-end
-
-function M.get_kind_filter(buf)
-  buf = (buf == nil or buf == 0) and vim.api.nvim_get_current_buf() or buf
-  local ft = vim.bo[buf].filetype
-  if M.kind_filter == false then
-    return
-  end
-  if M.kind_filter[ft] == false then
-    return
-  end
-  if type(M.kind_filter[ft]) == "table" then
-    return M.kind_filter[ft]
-  end
-  ---@diagnostic disable-next-line: return-type-mismatch
-  return type(M.kind_filter) == "table" and type(M.kind_filter.default) == "table" and M.kind_filter.default or nil
-end
-
-function M.load(name)
-  local function _load(mod)
-    if require("lazy.core.cache").find(mod)[1] then
-      Util.try(function()
-        require(mod)
-      end, { msg = "Failed to load" .. mod })
-    end
-  end
-  _load("config." .. name)
-  if vim.bo.filetype == "lazy" then
-    vim.cmd([[do VimResized]])
-  end
-end
-
-function M.delay_notify()
-  local notifs = {}
-  local function temp(...)
-    table.insert(notifs, vim.F.pack_len(...))
-  end
-  local orig = vim.notify
-  vim.notify = temp
-  local timer = vim.uv.new_timer()
-  local check = assert(vim.uv.new_check())
-  local replay = function()
-    timer:stop()
-    check:stop()
-    if vim.notify == temp then
-      vim.notify = orig
-    end
-    vim.schedule(function()
-      for _, notif in ipairs(notifs) do
-        vim.notify(vim.F.unpack_len(notif))
-      end
-    end)
-  end
-  check:start(function()
-    if vim.notify ~= temp then
-      replay()
-    end
+  -- Schedule VeryLazy dispatch on UIEnter
+  require("core.event").schedule_user_events()
+  -- Bridge our core.event VeryLazy into vim's User autocmd system
+  require("core.event").on("VeryLazy", function()
+    vim.api.nvim_exec_autocmds("User", { pattern = "VeryLazy", modeline = false })
   end)
-  timer:start(500, 0, replay)
 end
-
-M.inited = false
-function M.init()
-  if M.inited then
-    return
-  end
-  M.inited = true
-  M.delay_notify()
-  M.load("options")
-
-  clipboard = vim.opt.clipboard
-  vim.opt.clipboard = ""
-
-  Util.plugin.setup()
-end
-
-setmetatable(M, {
-  __index = function(_, key)
-    ---@cast options ConfigOptions
-    return options[key]
-  end,
-})
 
 return M
