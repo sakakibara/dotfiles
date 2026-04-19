@@ -195,7 +195,6 @@ local function render_frame(frame)
   vim.wo[winid].relativenumber= false
   -- Prevent horizontal scroll when a click lands past the last column.
   vim.wo[winid].sidescrolloff = 0
-  vim.wo[winid].sidescroll    = 1
   -- Mouse clicks or autocmds may leave us in insert mode; force normal.
   vim.cmd.stopinsert()
 
