@@ -5,7 +5,7 @@ Lib.mason.add("vtsls")
 Lib.mason.add("js-debug-adapter")
 
 Lib.plugin.on_load("nvim-treesitter", function()
-  require("nvim-treesitter.install").ensure_installed({ "typescript", "tsx" })
+  require("nvim-treesitter").install({ "typescript", "tsx" })
 end)
 
 Lib.plugin.on_load("nvim-dap", function()

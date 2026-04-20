@@ -5,7 +5,7 @@ Lib.mason.add("kotlin-language-server", "ktlint")
 Lib.mason.add("kotlin-debug-adapter")
 
 Lib.plugin.on_load("nvim-treesitter", function()
-  require("nvim-treesitter.install").ensure_installed({ "kotlin" })
+  require("nvim-treesitter").install({ "kotlin" })
 end)
 
 Lib.plugin.on_load("nvim-dap", function()

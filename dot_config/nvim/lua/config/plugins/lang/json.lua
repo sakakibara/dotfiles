@@ -2,7 +2,9 @@
 Lib.mason.add("json-lsp")
 
 Lib.plugin.on_load("nvim-treesitter", function()
-  require("nvim-treesitter.install").ensure_installed({ "json", "json5", "jsonc" })
+  -- nvim-treesitter main dropped the dedicated jsonc parser; the json
+  -- parser handles jsonc buffers well enough.
+  require("nvim-treesitter").install({ "json", "json5" })
 end)
 
 Lib.plugin.on_load("nvim-lspconfig", function()

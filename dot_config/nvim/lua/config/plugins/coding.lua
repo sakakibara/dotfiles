@@ -5,7 +5,7 @@ return {
     name = "blink.cmp",
     version = "1.*",  -- uses released prebuilt Rust binary
     event = { "InsertEnter", "CmdlineEnter" },
-    dependencies = { "friendly-snippets" },
+    dependencies = { "friendly-snippets", "lazydev.nvim" },
     opts = {
       keymap = { preset = "default" },
       appearance = { nerd_font_variant = "mono" },

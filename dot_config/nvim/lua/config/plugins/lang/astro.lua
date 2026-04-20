@@ -4,7 +4,7 @@ if vim.fn.executable("node") == 0 then return {} end
 Lib.mason.add("astro-language-server")
 
 Lib.plugin.on_load("nvim-treesitter", function()
-  require("nvim-treesitter.install").ensure_installed({ "astro", "css" })
+  require("nvim-treesitter").install({ "astro", "css" })
 end)
 
 Lib.plugin.on_load("nvim-lspconfig", function()

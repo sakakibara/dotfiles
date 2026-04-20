@@ -4,7 +4,7 @@ if vim.fn.executable("ocaml") == 0 then return {} end
 Lib.mason.add("ocamllsp")
 
 Lib.plugin.on_load("nvim-treesitter", function()
-  require("nvim-treesitter.install").ensure_installed({ "ocaml" })
+  require("nvim-treesitter").install({ "ocaml" })
 end)
 
 Lib.plugin.on_load("nvim-lspconfig", function()

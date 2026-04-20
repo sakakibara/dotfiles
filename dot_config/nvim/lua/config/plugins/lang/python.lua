@@ -7,7 +7,7 @@ Lib.mason.add("debugpy")
 Lib.neotest.add("neotest-python", function() return require("neotest-python") end)
 
 Lib.plugin.on_load("nvim-treesitter", function()
-  require("nvim-treesitter.install").ensure_installed({ "python", "ninja", "rst" })
+  require("nvim-treesitter").install({ "python", "ninja", "rst" })
 end)
 
 Lib.plugin.on_load("nvim-lspconfig", function()

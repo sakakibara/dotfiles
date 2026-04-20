@@ -93,6 +93,13 @@ local function run_config(spec)
         local ok2, plugin = pcall(require, mod)
         if ok2 and type(plugin) == "table" and type(plugin.setup) == "function" then
           plugin.setup(spec.opts)
+        elseif not ok2 then
+          -- Clear sentinel left by Lua's require when the module errors
+          -- mid-load, or subsequent explicit requires raise "loop or
+          -- previous error loading module". Deps are auto-required here
+          -- before the parent is packadded, so a missing transitive rtp
+          -- entry (e.g. nvim-dap-virtual-text requiring 'dap') trips this.
+          package.loaded[mod] = nil
         end
       end
     end, debug.traceback)
@@ -195,7 +202,11 @@ function M.setup(cfg)
   M._specs = {}
   M._loaded = {}
   M._opts = {}
-  M._on_load = {}
+  -- NOTE: do NOT reset M._on_load here. Plugin spec files call
+  -- Lib.plugin.on_load(...) as side effects at require-time, and
+  -- require("config.plugins") runs as setup's argument — before setup's
+  -- body. Resetting would wipe hooks that the caller just registered.
+  M._on_load = M._on_load or {}
 
   local ordered = {}
   for _, raw in ipairs(specs) do

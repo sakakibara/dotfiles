@@ -4,7 +4,7 @@ if vim.fn.executable("dart") == 0 then return {} end
 -- Dart LSP is bundled with the Dart SDK (via `dart language-server`); no mason entry.
 
 Lib.plugin.on_load("nvim-treesitter", function()
-  require("nvim-treesitter.install").ensure_installed({ "dart" })
+  require("nvim-treesitter").install({ "dart" })
 end)
 
 Lib.plugin.on_load("conform.nvim", function()

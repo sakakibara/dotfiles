@@ -4,7 +4,7 @@ local sql_ft = { "sql", "mysql", "plsql" }
 Lib.mason.add("sqlfluff")
 
 Lib.plugin.on_load("nvim-treesitter", function()
-  require("nvim-treesitter.install").ensure_installed({ "sql" })
+  require("nvim-treesitter").install({ "sql" })
 end)
 
 Lib.plugin.on_load("conform.nvim", function()

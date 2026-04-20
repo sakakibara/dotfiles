@@ -4,7 +4,7 @@ if vim.fn.executable("terraform") == 0 then return {} end
 Lib.mason.add("terraform-ls")
 
 Lib.plugin.on_load("nvim-treesitter", function()
-  require("nvim-treesitter.install").ensure_installed({ "terraform", "hcl" })
+  require("nvim-treesitter").install({ "terraform", "hcl" })
 end)
 
 Lib.plugin.on_load("nvim-lspconfig", function()

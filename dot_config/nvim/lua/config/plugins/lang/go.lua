@@ -7,7 +7,7 @@ Lib.mason.add("delve")
 Lib.neotest.add("neotest-go", function() return require("neotest-go") end)
 
 Lib.plugin.on_load("nvim-treesitter", function()
-  require("nvim-treesitter.install").ensure_installed({ "go", "gomod", "gowork", "gosum" })
+  require("nvim-treesitter").install({ "go", "gomod", "gowork", "gosum" })
 end)
 
 Lib.plugin.on_load("nvim-lspconfig", function()

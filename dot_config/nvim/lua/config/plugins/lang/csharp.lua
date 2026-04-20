@@ -5,7 +5,7 @@ Lib.mason.add("omnisharp", "csharpier")
 Lib.mason.add("netcoredbg")
 
 Lib.plugin.on_load("nvim-treesitter", function()
-  require("nvim-treesitter.install").ensure_installed({ "c_sharp" })
+  require("nvim-treesitter").install({ "c_sharp" })
 end)
 
 Lib.plugin.on_load("nvim-dap", function()

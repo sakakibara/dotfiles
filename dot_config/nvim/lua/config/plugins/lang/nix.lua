@@ -5,7 +5,7 @@ Lib.mason.add("nil")
 -- nixfmt not in mason registry; install via `nix profile install nixpkgs#nixfmt-classic` if needed.
 
 Lib.plugin.on_load("nvim-treesitter", function()
-  require("nvim-treesitter.install").ensure_installed({ "nix" })
+  require("nvim-treesitter").install({ "nix" })
 end)
 
 Lib.plugin.on_load("nvim-lspconfig", function()

@@ -4,7 +4,7 @@ if vim.fn.executable("docker") == 0 then return {} end
 Lib.mason.add("dockerfile-language-server", "docker-compose-language-service", "hadolint")
 
 Lib.plugin.on_load("nvim-treesitter", function()
-  require("nvim-treesitter.install").ensure_installed({ "dockerfile" })
+  require("nvim-treesitter").install({ "dockerfile" })
 end)
 
 Lib.plugin.on_load("nvim-lspconfig", function()

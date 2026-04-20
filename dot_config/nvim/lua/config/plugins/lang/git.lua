@@ -2,7 +2,7 @@
 if vim.fn.executable("git") == 0 then return {} end
 
 Lib.plugin.on_load("nvim-treesitter", function()
-  require("nvim-treesitter.install").ensure_installed({
+  require("nvim-treesitter").install({
     "git_config", "gitcommit", "git_rebase", "gitignore", "gitattributes",
   })
 end)

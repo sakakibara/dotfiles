@@ -4,7 +4,7 @@ if vim.fn.executable("clj") == 0 then return {} end
 Lib.mason.add("clojure-lsp")
 
 Lib.plugin.on_load("nvim-treesitter", function()
-  require("nvim-treesitter.install").ensure_installed({ "clojure" })
+  require("nvim-treesitter").install({ "clojure" })
 end)
 
 Lib.plugin.on_load("nvim-lspconfig", function()

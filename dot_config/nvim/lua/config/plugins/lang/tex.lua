@@ -4,7 +4,7 @@ if vim.fn.executable("pdflatex") == 0 then return {} end
 Lib.mason.add("texlab")
 
 Lib.plugin.on_load("nvim-treesitter", function()
-  require("nvim-treesitter.install").ensure_installed({ "latex", "bibtex" })
+  require("nvim-treesitter").install({ "latex", "bibtex" })
 end)
 
 -- latex treesitter highlight conflicts with vimtex's syntax; disable it.

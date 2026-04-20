@@ -4,7 +4,7 @@ if vim.fn.executable("erl") == 0 then return {} end
 Lib.mason.add("erlang-ls")
 
 Lib.plugin.on_load("nvim-treesitter", function()
-  require("nvim-treesitter.install").ensure_installed({ "erlang" })
+  require("nvim-treesitter").install({ "erlang" })
 end)
 
 Lib.plugin.on_load("nvim-lspconfig", function()

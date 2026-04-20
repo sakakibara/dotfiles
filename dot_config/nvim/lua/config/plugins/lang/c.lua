@@ -5,7 +5,7 @@ Lib.mason.add("clangd")
 Lib.mason.add("codelldb")
 
 Lib.plugin.on_load("nvim-treesitter", function()
-  require("nvim-treesitter.install").ensure_installed({ "cpp" })
+  require("nvim-treesitter").install({ "cpp" })
 end)
 
 Lib.plugin.on_load("nvim-dap", function()

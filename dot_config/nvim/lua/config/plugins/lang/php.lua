@@ -5,7 +5,7 @@ Lib.mason.add("phpactor", "php-cs-fixer", "phpcs")
 Lib.mason.add("php-debug-adapter")
 
 Lib.plugin.on_load("nvim-treesitter", function()
-  require("nvim-treesitter.install").ensure_installed({ "php" })
+  require("nvim-treesitter").install({ "php" })
 end)
 
 Lib.plugin.on_load("nvim-dap", function()

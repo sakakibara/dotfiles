@@ -5,7 +5,7 @@ Lib.mason.add("jdtls")
 Lib.mason.add("java-debug-adapter", "java-test")
 
 Lib.plugin.on_load("nvim-treesitter", function()
-  require("nvim-treesitter.install").ensure_installed({ "java" })
+  require("nvim-treesitter").install({ "java" })
 end)
 
 -- nvim-jdtls owns jdtls startup entirely; no nvim-lspconfig registration.

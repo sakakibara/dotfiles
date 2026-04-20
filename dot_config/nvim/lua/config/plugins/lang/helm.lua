@@ -4,7 +4,7 @@ if vim.fn.executable("helm") == 0 then return {} end
 Lib.mason.add("helm-ls")
 
 Lib.plugin.on_load("nvim-treesitter", function()
-  require("nvim-treesitter.install").ensure_installed({ "helm" })
+  require("nvim-treesitter").install({ "helm" })
 end)
 
 Lib.plugin.on_load("nvim-lspconfig", function()

@@ -5,7 +5,7 @@ if vim.fn.executable("scala") == 0 then return {} end
 -- partial scala coverage but coursier is the standard path for Scala users).
 
 Lib.plugin.on_load("nvim-treesitter", function()
-  require("nvim-treesitter.install").ensure_installed({ "scala" })
+  require("nvim-treesitter").install({ "scala" })
 end)
 
 -- nvim-metals owns its own initialize_or_attach lifecycle; do not register

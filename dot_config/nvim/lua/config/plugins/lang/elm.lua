@@ -6,7 +6,7 @@ if vim.fn.executable("elm") == 0 then return {} end
 -- and elm-format via `npm i -g elm-format` if needed.
 
 Lib.plugin.on_load("nvim-treesitter", function()
-  require("nvim-treesitter.install").ensure_installed({ "elm" })
+  require("nvim-treesitter").install({ "elm" })
 end)
 
 Lib.plugin.on_load("nvim-lspconfig", function()

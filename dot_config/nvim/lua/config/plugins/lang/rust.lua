@@ -10,7 +10,7 @@ Lib.mason.add("codelldb")
 Lib.neotest.add("rustaceanvim", function() return require("rustaceanvim.neotest") end)
 
 Lib.plugin.on_load("nvim-treesitter", function()
-  require("nvim-treesitter.install").ensure_installed({ "rust", "ron" })
+  require("nvim-treesitter").install({ "rust", "ron" })
 end)
 
 -- NOTE: no vim.lsp.config for rust_analyzer — rustaceanvim owns it entirely.

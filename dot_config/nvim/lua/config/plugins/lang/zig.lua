@@ -6,7 +6,7 @@ Lib.mason.add("zls")
 Lib.neotest.add("neotest-zig", function() return require("neotest-zig") end)
 
 Lib.plugin.on_load("nvim-treesitter", function()
-  require("nvim-treesitter.install").ensure_installed({ "zig" })
+  require("nvim-treesitter").install({ "zig" })
 end)
 
 Lib.plugin.on_load("nvim-lspconfig", function()

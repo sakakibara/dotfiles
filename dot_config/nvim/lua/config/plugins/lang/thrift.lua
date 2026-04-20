@@ -4,7 +4,7 @@ if vim.fn.executable("thrift") == 0 then return {} end
 -- thriftls is not in the mason registry; install manually if needed.
 
 Lib.plugin.on_load("nvim-treesitter", function()
-  require("nvim-treesitter.install").ensure_installed({ "thrift" })
+  require("nvim-treesitter").install({ "thrift" })
 end)
 
 Lib.plugin.on_load("nvim-lspconfig", function()

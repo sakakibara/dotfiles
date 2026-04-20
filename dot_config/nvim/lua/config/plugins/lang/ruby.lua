@@ -7,7 +7,7 @@ Lib.mason.add("ruby-lsp", "rubocop")
 Lib.neotest.add("neotest-rspec", function() return require("neotest-rspec") end)
 
 Lib.plugin.on_load("nvim-treesitter", function()
-  require("nvim-treesitter.install").ensure_installed({ "ruby" })
+  require("nvim-treesitter").install({ "ruby" })
 end)
 
 Lib.plugin.on_load("nvim-lspconfig", function()

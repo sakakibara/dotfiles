@@ -4,7 +4,7 @@ if vim.fn.executable("node") == 0 then return {} end
 Lib.mason.add("angular-language-server")
 
 Lib.plugin.on_load("nvim-treesitter", function()
-  require("nvim-treesitter.install").ensure_installed({ "angular", "scss" })
+  require("nvim-treesitter").install({ "angular", "scss" })
 end)
 
 -- Force angular treesitter parser on component HTML files (ft normally 'html')

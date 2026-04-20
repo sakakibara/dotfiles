@@ -4,7 +4,7 @@ if vim.fn.executable("ghc") == 0 then return {} end
 -- haskell-language-server: install via ghcup (`ghcup install hls`); not managed by mason.
 
 Lib.plugin.on_load("nvim-treesitter", function()
-  require("nvim-treesitter.install").ensure_installed({ "haskell" })
+  require("nvim-treesitter").install({ "haskell" })
 end)
 
 -- haskell-tools.nvim configures the LSP on its own via vim.g.haskell_tools;

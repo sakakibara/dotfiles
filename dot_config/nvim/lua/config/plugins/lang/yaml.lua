@@ -2,7 +2,7 @@
 Lib.mason.add("yaml-language-server")
 
 Lib.plugin.on_load("nvim-treesitter", function()
-  require("nvim-treesitter.install").ensure_installed({ "yaml" })
+  require("nvim-treesitter").install({ "yaml" })
 end)
 
 Lib.plugin.on_load("nvim-lspconfig", function()

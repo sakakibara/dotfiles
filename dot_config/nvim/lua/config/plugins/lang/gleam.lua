@@ -2,7 +2,7 @@
 if vim.fn.executable("gleam") == 0 then return {} end
 
 Lib.plugin.on_load("nvim-treesitter", function()
-  require("nvim-treesitter.install").ensure_installed({ "gleam" })
+  require("nvim-treesitter").install({ "gleam" })
 end)
 
 Lib.plugin.on_load("nvim-lspconfig", function()

@@ -5,7 +5,7 @@ Lib.mason.add("elixir-ls")
 -- credo not in mason registry; user installs via `mix archive.install hex credo`.
 
 Lib.plugin.on_load("nvim-treesitter", function()
-  require("nvim-treesitter.install").ensure_installed({ "elixir", "heex", "eex" })
+  require("nvim-treesitter").install({ "elixir", "heex", "eex" })
 end)
 
 Lib.plugin.on_load("nvim-lspconfig", function()

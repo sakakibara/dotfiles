@@ -3,7 +3,7 @@ Lib.mason.add("marksman", "prettier", "markdownlint-cli2")
 -- markdown-toc not in mason registry; user installs via `npm i -g markdown-toc` if desired.
 
 Lib.plugin.on_load("nvim-treesitter", function()
-  require("nvim-treesitter.install").ensure_installed({ "markdown", "markdown_inline" })
+  require("nvim-treesitter").install({ "markdown", "markdown_inline" })
 end)
 
 Lib.plugin.on_load("nvim-lspconfig", function()
