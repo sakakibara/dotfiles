@@ -162,7 +162,17 @@ end
 
 function M.click(minwid, _, button, _)
   local h = handlers[minwid]
-  if h then h.action(button, h.col) end
+  if not h then return end
+  -- Winbar clicks don't move focus, so any menu that's already open
+  -- stays open unless we close it here. Without this, clicking a
+  -- segment while a menu is up would stack a new menu on top.
+  menu.close_all()
+  -- Capture the real source window via mouse position; current_win
+  -- would point at the menu float we just closed.
+  local pos = vim.fn.getmousepos()
+  local src_win = (pos.winid ~= 0 and vim.api.nvim_win_is_valid(pos.winid))
+    and pos.winid or nil
+  h.action(button, h.col, src_win)
 end
 
 local function clickable(id, content)
@@ -310,12 +320,13 @@ end
 -- track the rendered screen column and patch handlers[id].col.
 
 local function segment_scope(bufnr, entry, types)
-  local id = register(function(_, col)
+  local id = register(function(_, col, src_win)
     local siblings = sibling_symbols(bufnr, entry.node, types)
     menu.open(siblings, {
-      title      = entry.kind or "symbols",
-      anchor_col = col,
-      on_pick    = function(item)
+      title        = entry.kind or "symbols",
+      anchor_col   = col,
+      original_win = src_win,
+      on_pick      = function(item)
         vim.api.nvim_win_set_cursor(0, { item.lnum, item.col - 1 })
         vim.cmd("normal! zz")
       end,
@@ -330,14 +341,15 @@ local function segment_scope(bufnr, entry, types)
 end
 
 local function segment_path_dir(abs_path, label)
-  local id = register(function(_, col)
+  local id = register(function(_, col, src_win)
     local items = dir_items(abs_path)
     if #items == 0 then return end
     menu.open(items, {
-      title      = label,
-      anchor_col = col,
-      drill      = function(item) return item.is_dir and dir_items(item.file) or nil end,
-      on_pick    = function(item)
+      title        = label,
+      anchor_col   = col,
+      original_win = src_win,
+      drill        = function(item) return item.is_dir and dir_items(item.file) or nil end,
+      on_pick      = function(item)
         if item.is_dir then vim.cmd.cd(item.file); vim.notify("cd " .. item.file)
         else vim.cmd.edit(vim.fn.fnameescape(item.file)) end
       end,
@@ -352,17 +364,18 @@ end
 
 local function segment_path_file(abs_path, label, modified)
   local parent = vim.fn.fnamemodify(abs_path, ":h")
-  local id = register(function(_, col)
+  local id = register(function(_, col, src_win)
     local items = dir_items(parent)
     if #items == 0 then return end
     for _, item in ipairs(items) do
       item.current = (item.file == abs_path)
     end
     menu.open(items, {
-      title      = vim.fn.fnamemodify(parent, ":t"),
-      anchor_col = col,
-      drill      = function(item) return item.is_dir and dir_items(item.file) or nil end,
-      on_pick    = function(item)
+      title        = vim.fn.fnamemodify(parent, ":t"),
+      anchor_col   = col,
+      original_win = src_win,
+      drill        = function(item) return item.is_dir and dir_items(item.file) or nil end,
+      on_pick      = function(item)
         if item.is_dir then vim.cmd.cd(item.file)
         else vim.cmd.edit(vim.fn.fnameescape(item.file)) end
       end,
