@@ -86,6 +86,9 @@ au("ModeChanged", {
   group = grp,
   pattern = { "*:[vV\x16]*", "[vV\x16]*:*" },
   callback = function()
+    -- Skip floats (menus, pickers, etc.) — they manage their own UI and
+    -- have no business showing line numbers regardless of mode.
+    if vim.api.nvim_win_get_config(0).relative ~= "" then return end
     local is_visual = vim.fn.mode():match("[vV\x16]")
     vim.opt_local.relativenumber = not is_visual
   end,
