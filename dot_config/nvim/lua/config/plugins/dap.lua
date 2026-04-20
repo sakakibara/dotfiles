@@ -58,7 +58,7 @@ return {
         desc = "Launch Lua DAP server",
       },
       {
-        "<leader>dr",
+        "<leader>dR",
         function() require("osv").run_this() end,
         desc = "Run this Lua file under DAP",
       },

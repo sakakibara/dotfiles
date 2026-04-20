@@ -38,8 +38,6 @@ return {
     keys = {
       { "<leader>xx", "<cmd>Trouble diagnostics toggle<cr>", desc = "Diagnostics (Trouble)" },
       { "<leader>xX", "<cmd>Trouble diagnostics toggle filter.buf=0<cr>", desc = "Buffer diagnostics" },
-      { "<leader>xq", "<cmd>Trouble quickfix toggle<cr>", desc = "Quickfix (Trouble)" },
-      { "<leader>xl", "<cmd>Trouble loclist toggle<cr>", desc = "Loclist (Trouble)" },
       { "<leader>xL", "<cmd>Trouble lsp toggle<cr>", desc = "LSP refs (Trouble)" },
     },
     opts = {

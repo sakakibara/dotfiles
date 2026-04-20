@@ -224,3 +224,210 @@ T.describe("core.pack re-fires triggering event", function()
     T.truthy(plugin_saw_event)
   end)
 end)
+
+-- Helper: unmap an lhs across all tested modes, swallowing "no such mapping".
+local function unmap_all(lhs, modes)
+  for _, m in ipairs(modes or { "n", "x", "v", "o", "i" }) do
+    pcall(vim.keymap.del, m, lhs)
+  end
+end
+
+T.describe("core.pack keys — rhs resolution", function()
+  T.it("<Plug> string rhs resolves post-load (eager plugin)", function()
+    local pack = reset_pack()
+    unmap_all("<F20>")
+    pcall(vim.keymap.del, "n", "<Plug>(PackTestPlug)")
+    local fired = false
+    pack.setup({
+      specs = {
+        { dev = true, name = "plug-eager",
+          keys = { { "<F20>", "<Plug>(PackTestPlug)", mode = "n", desc = "Plug test" } },
+          config = function()
+            vim.keymap.set("n", "<Plug>(PackTestPlug)",
+              function() fired = true end, { silent = true })
+          end },
+      },
+    })
+    vim.api.nvim_feedkeys(
+      vim.api.nvim_replace_termcodes("<F20>", true, false, true), "mx", false)
+    T.truthy(fired, "<F20> -> <Plug>(PackTestPlug) did not fire")
+    unmap_all("<F20>")
+    pcall(vim.keymap.del, "n", "<Plug>(PackTestPlug)")
+  end)
+
+  T.it("function rhs fires post-load", function()
+    local pack = reset_pack()
+    unmap_all("<F21>")
+    local fired = false
+    pack.setup({
+      specs = {
+        { dev = true, name = "fn-eager",
+          keys = { { "<F21>", function() fired = true end, mode = "n", desc = "Fn test" } },
+          config = function() end },
+      },
+    })
+    vim.api.nvim_feedkeys(
+      vim.api.nvim_replace_termcodes("<F21>", true, false, true), "mx", false)
+    T.truthy(fired)
+    unmap_all("<F21>")
+  end)
+
+  T.it("<Cmd> string rhs fires post-load", function()
+    local pack = reset_pack()
+    unmap_all("<F22>")
+    pcall(vim.api.nvim_del_user_command, "PackTestCmd")
+    local fired = false
+    vim.api.nvim_create_user_command("PackTestCmd", function() fired = true end, {})
+    pack.setup({
+      specs = {
+        { dev = true, name = "cmd-eager",
+          keys = { { "<F22>", "<Cmd>PackTestCmd<CR>", mode = "n", desc = "Cmd test" } },
+          config = function() end },
+      },
+    })
+    vim.api.nvim_feedkeys(
+      vim.api.nvim_replace_termcodes("<F22>", true, false, true), "mx", false)
+    T.truthy(fired)
+    unmap_all("<F22>")
+    pcall(vim.api.nvim_del_user_command, "PackTestCmd")
+  end)
+
+  T.it("lazy plugin: keypress loads plugin and fires <Plug> rhs", function()
+    local pack = reset_pack()
+    unmap_all("<F23>")
+    pcall(vim.keymap.del, "n", "<Plug>(PackLazyPlug)")
+    local fired = false
+    pack.setup({
+      specs = {
+        { dev = true, name = "plug-lazy",
+          event = "User PackLazyTrigger",
+          keys = { { "<F23>", "<Plug>(PackLazyPlug)", mode = "n", desc = "Lazy plug" } },
+          config = function()
+            vim.keymap.set("n", "<Plug>(PackLazyPlug)",
+              function() fired = true end, { silent = true })
+          end },
+      },
+    })
+    T.eq(pack.loaded("plug-lazy"), false)
+    vim.api.nvim_feedkeys(
+      vim.api.nvim_replace_termcodes("<F23>", true, false, true), "mx", false)
+    -- replay happens in "m" mode (remap) — give the scheduler a tick
+    vim.wait(100, function() return fired end)
+    T.truthy(fired, "lazy-triggered <Plug> did not fire after load + replay")
+    T.truthy(pack.loaded("plug-lazy"))
+    unmap_all("<F23>")
+    pcall(vim.keymap.del, "n", "<Plug>(PackLazyPlug)")
+  end)
+
+  T.it("ft keys are scoped to matching filetype", function()
+    local pack = reset_pack()
+    unmap_all("<F24>")
+    local fired = false
+    pack.setup({
+      specs = {
+        { dev = true, name = "ft-keys",
+          keys = { { "<F24>", function() fired = true end, mode = "n", ft = "lua", desc = "FT test" } },
+          config = function() end },
+      },
+    })
+    vim.cmd("enew")
+    vim.bo.filetype = "lua"
+    vim.api.nvim_feedkeys(
+      vim.api.nvim_replace_termcodes("<F24>", true, false, true), "mx", false)
+    T.truthy(fired)
+    unmap_all("<F24>")
+  end)
+end)
+
+T.describe("core.pack keys — <Plug> validation", function()
+  T.it("warns when <Plug> rhs has no mapping after load", function()
+    local pack = reset_pack()
+    unmap_all("<F25>")
+    local warned = false
+    local orig = vim.notify
+    vim.notify = function(msg, lvl)
+      if lvl == vim.log.levels.WARN and msg:match("unresolved <Plug>") then warned = true end
+    end
+    pack.setup({
+      specs = {
+        { dev = true, name = "bad-plug",
+          keys = { { "<F25>", "<Plug>(PackNonExistent)", mode = "n", desc = "Bad" } },
+          config = function() end },
+      },
+    })
+    -- bad-plug is lazy (keys-only trigger); force load so install_spec_keys
+    -- runs validate_plug. A real user would see this warning the first
+    -- time they press the key — at load time, which is the right moment.
+    pack.load("bad-plug")
+    vim.notify = orig
+    T.truthy(warned, "no warning for unresolved <Plug> target")
+    unmap_all("<F25>")
+  end)
+end)
+
+T.describe("core.pack keys — conflict detection", function()
+  T.it("warns when two specs bind the same lhs+mode", function()
+    local pack = reset_pack()
+    unmap_all("<F26>")
+    local warned = false
+    local orig = vim.notify
+    vim.notify = function(msg, lvl)
+      if lvl == vim.log.levels.WARN and msg:match("keymap conflict") then warned = true end
+    end
+    pack.setup({
+      specs = {
+        { dev = true, name = "a-map",
+          keys = { { "<F26>", function() end, mode = "n", desc = "A" } },
+          config = function() end },
+        { dev = true, name = "b-map",
+          keys = { { "<F26>", function() end, mode = "n", desc = "B" } },
+          config = function() end },
+      },
+    })
+    vim.notify = orig
+    T.truthy(warned, "no warning for duplicate lhs+mode")
+    unmap_all("<F26>")
+  end)
+end)
+
+T.describe("core.pack add_keys API", function()
+  T.it("add_keys on loaded plugin installs mapping immediately", function()
+    local pack = reset_pack()
+    unmap_all("<F27>")
+    local fired = false
+    pack.setup({
+      specs = { { dev = true, name = "addk-loaded", config = function() end } },
+    })
+    T.truthy(pack.loaded("addk-loaded"))
+    pack.add_keys("addk-loaded", {
+      { "<F27>", function() fired = true end, mode = "n", desc = "Added" },
+    })
+    vim.api.nvim_feedkeys(
+      vim.api.nvim_replace_termcodes("<F27>", true, false, true), "mx", false)
+    T.truthy(fired)
+    unmap_all("<F27>")
+  end)
+
+  T.it("add_keys on lazy plugin installs mapping on load", function()
+    local pack = reset_pack()
+    unmap_all("<F28>")
+    local fired = false
+    pack.setup({
+      specs = { { dev = true, name = "addk-lazy", event = "User AddkLazy",
+                  config = function() end } },
+    })
+    T.eq(pack.loaded("addk-lazy"), false)
+    pack.add_keys("addk-lazy", {
+      { "<F28>", function() fired = true end, mode = "n", desc = "Added lazy" },
+    })
+    -- Not yet loaded: map shouldn't be live
+    T.eq(vim.fn.maparg("<F28>", "n"), "")
+    vim.api.nvim_exec_autocmds("User", { pattern = "AddkLazy" })
+    vim.wait(50)
+    -- After load: map installed
+    vim.api.nvim_feedkeys(
+      vim.api.nvim_replace_termcodes("<F28>", true, false, true), "mx", false)
+    T.truthy(fired)
+    unmap_all("<F28>")
+  end)
+end)

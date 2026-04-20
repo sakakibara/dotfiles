@@ -5,6 +5,8 @@ M._specs = {}       -- { [name] = normalized_spec }
 M._loaded = {}      -- { [name] = true }
 M._opts = {}        -- { [name] = merged_opts }
 M._on_load = {}     -- { [name] = { fn, ... } }
+M._key_registry = {} -- { [mode..":"..lhs..":"..(ft or "")] = spec.name }
+M._warned_conflicts = {} -- { [sig..":"..nameA..":"..nameB (sorted)] = true }
 
 local ALLOWED_FIELDS = {
   [1] = true, src = true, name = true, version = true, branch = true,
@@ -78,6 +80,128 @@ local function normalize(spec)
   }
 end
 
+-- ---------------------------------------------------------------------------
+-- Keymaps
+--
+-- Two phases:
+--   Real mapping: installed by load_spec (after run_config). This is the final
+--     binding the user hits on every subsequent press — zero wrapper overhead.
+--   Stub mapping: installed by _register_triggers for lazy plugins that haven't
+--     loaded yet. On first press the stub loads the plugin (which installs the
+--     real mapping, overriding the stub), then replays the key via feedkeys in
+--     "m" (remap) mode so the real mapping fires.
+--
+-- String rhs defaults to remap=true. This is correct for <Plug>, <Cmd>, and
+-- anything else a user is likely to put on the rhs of a keys entry. Users
+-- who want noremap can pass `remap = false` on the key entry.
+-- ---------------------------------------------------------------------------
+
+local function base_map_opts(k)
+  return {
+    desc    = k.desc,
+    silent  = k.silent ~= false,
+    nowait  = k.nowait,
+    expr    = k.expr,
+    buffer  = k.buffer,
+  }
+end
+
+local function remap_default(k)
+  if k.remap ~= nil then return k.remap end
+  return type(k[2]) == "string"
+end
+
+local function conflict_key(mode, lhs, ft)
+  return mode .. ":" .. lhs .. ":" .. (ft or "")
+end
+
+local function register_lhs(spec, mode, lhs, ft)
+  local sig = conflict_key(mode, lhs, ft)
+  local owner = M._key_registry[sig]
+  if owner and owner ~= spec.name then
+    -- Dedup by canonical (sorted) pair so stub→real transitions don't re-warn:
+    -- the same pair of specs conflicting on the same lhs is one conflict,
+    -- regardless of which spec registered first.
+    local a, b = owner, spec.name
+    if a > b then a, b = b, a end
+    local warn_key = sig .. "|" .. a .. "|" .. b
+    if not M._warned_conflicts[warn_key] then
+      M._warned_conflicts[warn_key] = true
+      vim.notify(
+        ("core.pack: keymap conflict '%s' (mode=%s, ft=%s): '%s' vs '%s'")
+          :format(lhs, mode, tostring(ft or "*"), owner, spec.name),
+        vim.log.levels.WARN)
+    end
+  end
+  M._key_registry[sig] = spec.name
+end
+
+-- Install one real keymap for (spec, k, mode). Handles ft-scoped (FileType
+-- autocmd + scan of already-loaded matching buffers) and global mappings.
+local function set_real_keymap(spec, k, m)
+  local lhs = k[1] or k.lhs
+  local rhs = k[2]
+  local opts = base_map_opts(k)
+  opts.remap = remap_default(k)
+  opts.desc  = opts.desc or ("key: " .. spec.name)
+
+  register_lhs(spec, m, lhs, k.ft)
+
+  -- rhs==nil means "plugin's own setup owns the keymap" — we only track it
+  -- for conflict detection and skip installing anything.
+  if rhs == nil then return end
+
+  if k.ft then
+    local fts = type(k.ft) == "table" and k.ft or { k.ft }
+    local function install_on_buf(args)
+      local bopts = vim.tbl_extend("force", opts, { buffer = args.buf })
+      vim.keymap.set(m, lhs, rhs, bopts)
+    end
+    vim.api.nvim_create_autocmd("FileType", { pattern = fts, callback = install_on_buf })
+    -- Cover the buffer that triggered the lazy load: its FileType already
+    -- fired, so the autocmd above won't install anything on it. Scan.
+    for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+      if vim.api.nvim_buf_is_loaded(buf) then
+        local cur_ft = vim.bo[buf].filetype
+        for _, want in ipairs(fts) do
+          if cur_ft == want then install_on_buf({ buf = buf }); break end
+        end
+      end
+    end
+  else
+    vim.keymap.set(m, lhs, rhs, opts)
+  end
+end
+
+-- After load, warn if a string <Plug> rhs doesn't resolve to any mapping.
+-- Catches typos and plugin-renamed plugs.
+local function validate_plug(spec, k, m)
+  local rhs = k[2]
+  if type(rhs) ~= "string" or not rhs:match("^<Plug>") then return end
+  if vim.fn.maparg(rhs, m) == "" then
+    vim.notify(
+      ("core.pack: unresolved <Plug> rhs for '%s' -> '%s' (mode=%s, spec=%s)")
+        :format(k[1] or k.lhs, rhs, m, spec.name),
+      vim.log.levels.WARN)
+  end
+end
+
+local function for_each_mode(k, fn)
+  local mode = k.mode or "n"
+  local modes = type(mode) == "table" and mode or { mode }
+  for _, m in ipairs(modes) do fn(m) end
+end
+
+local function install_spec_keys(spec)
+  if not spec.keys then return end
+  for _, k in ipairs(spec.keys) do
+    for_each_mode(k, function(m)
+      set_real_keymap(spec, k, m)
+      validate_plug(spec, k, m)
+    end)
+  end
+end
+
 local function run_config(spec)
   if M._loaded[spec.name] then return end
   M._loaded[spec.name] = true
@@ -146,7 +270,55 @@ local function load_spec(spec)
   end
   packadd(spec)
   run_config(spec)
+  -- install_spec_keys runs AFTER run_config so that:
+  --   1. any <Plug> mapping the plugin installs in setup() is present when
+  --      validate_plug checks it
+  --   2. the real keymap overrides any stub that triggered this load, so the
+  --      subsequent feedkeys replay (in "m" mode) hits the real mapping.
+  install_spec_keys(spec)
   _loading[spec.name] = nil
+end
+
+-- Stub keymap for a lazy plugin: on first press, load the plugin (which
+-- installs the real mapping via install_spec_keys), then replay the key in
+-- "m" (remap) mode so the real mapping fires. count/register preserved.
+local function set_stub_keymap(spec, k, m)
+  local lhs = k[1] or k.lhs
+  local opts = base_map_opts(k)
+  opts.remap = nil  -- stub is a plain noremap callback; it doesn't need remap
+  opts.desc  = opts.desc or ("lazy: " .. spec.name)
+
+  -- Track the stub lhs in the registry so two lazy specs binding the same
+  -- key are flagged, not silently overwriting each other at stub time.
+  register_lhs(spec, m, lhs, k.ft)
+
+  local function stub()
+    local count = vim.v.count > 0 and tostring(vim.v.count) or ""
+    local register = vim.v.register ~= "" and ('"' .. vim.v.register) or ""
+    load_spec(spec)  -- install_spec_keys inside overrides this stub with the real mapping
+    local replay = vim.api.nvim_replace_termcodes(register .. count .. lhs, true, false, true)
+    vim.api.nvim_feedkeys(replay, "m", false)
+  end
+
+  if k.ft then
+    local fts = type(k.ft) == "table" and k.ft or { k.ft }
+    vim.api.nvim_create_autocmd("FileType", {
+      pattern = fts,
+      callback = function(args)
+        local bopts = vim.tbl_extend("force", opts, { buffer = args.buf })
+        vim.keymap.set(m, lhs, stub, bopts)
+      end,
+    })
+  else
+    vim.keymap.set(m, lhs, stub, opts)
+  end
+end
+
+local function install_spec_stubs(spec)
+  if not spec.keys then return end
+  for _, k in ipairs(spec.keys) do
+    for_each_mode(k, function(m) set_stub_keymap(spec, k, m) end)
+  end
 end
 
 local function install_all(specs)
@@ -202,6 +374,8 @@ function M.setup(cfg)
   M._specs = {}
   M._loaded = {}
   M._opts = {}
+  M._key_registry = {}
+  M._warned_conflicts = {}
   -- NOTE: do NOT reset M._on_load here. Plugin spec files call
   -- Lib.plugin.on_load(...) as side effects at require-time, and
   -- require("config.plugins") runs as setup's argument — before setup's
@@ -345,70 +519,12 @@ function M._register_triggers(specs)
       end
     end
 
-    -- keys
-    -- Three forms supported:
-    --   { "<lhs>" }                        => trigger only; plugin registers the real keymap in config()
-    --   { "<lhs>", function()...end, ... } => trigger + handler; we register a wrapper that loads + invokes
-    --   { "<lhs>", "<rhs>", ... }          => trigger + string rhs; we register a wrapper that loads + feeds
-    --
-    -- `ft` on a key entry scopes the mapping to matching filetypes via a
-    -- buffer-local keymap registered on FileType. Without this, per-ft
-    -- keys (e.g. flutter's <Leader>cr) would shadow global bindings
-    -- everywhere.
-    if spec.keys then
-      for _, k in ipairs(spec.keys) do
-        local lhs = k[1] or k.lhs
-        local rhs = k[2]
-        local mode = k.mode or "n"
-        local modes = type(mode) == "table" and mode or { mode }
-        local map_opts = {
-          desc = k.desc,
-          silent = k.silent ~= false,
-          noremap = k.noremap,
-          nowait = k.nowait,
-          expr = k.expr,
-          buffer = k.buffer,
-          remap = k.remap,
-        }
-
-        local function build_mapping(m)
-          if type(rhs) == "function" then
-            return function() load_spec(spec); return rhs() end, map_opts
-          elseif type(rhs) == "string" then
-            local expr_opts = vim.tbl_extend("force", map_opts, { expr = true })
-            return function()
-              load_spec(spec)
-              return vim.api.nvim_replace_termcodes(rhs, true, false, true)
-            end, expr_opts
-          end
-          return function()
-            local count = vim.v.count > 0 and tostring(vim.v.count) or ""
-            local register = vim.v.register ~= "" and ('"' .. vim.v.register) or ""
-            load_spec(spec)
-            pcall(vim.keymap.del, m, lhs)
-            local replay = vim.api.nvim_replace_termcodes(register .. count .. lhs, true, false, true)
-            vim.api.nvim_feedkeys(replay, "m", false)
-          end, vim.tbl_extend("force", map_opts, { desc = map_opts.desc or ("lazy: " .. spec.name) })
-        end
-
-        for _, m in ipairs(modes) do
-          local fn, opts = build_mapping(m)
-          if k.ft then
-            -- Buffer-local keymap installed on FileType match. Guarded
-            -- against re-registration on repeated BufEnter events.
-            local fts = type(k.ft) == "table" and k.ft or { k.ft }
-            vim.api.nvim_create_autocmd("FileType", {
-              pattern = fts,
-              callback = function(args)
-                local buf_opts = vim.tbl_extend("force", opts, { buffer = args.buf })
-                vim.keymap.set(m, lhs, fn, buf_opts)
-              end,
-            })
-          else
-            vim.keymap.set(m, lhs, fn, opts)
-          end
-        end
-      end
+    -- keys: lazy plugins get stubs here. Eager plugins already had their
+    -- real mappings installed in load_spec -> install_spec_keys during the
+    -- eager-load pass; skipping avoids a spurious conflict warning and
+    -- overhead.
+    if spec.lazy and spec.keys then
+      install_spec_stubs(spec)
     end
   end
 end
@@ -427,6 +543,30 @@ function M.on_load(name, fn)
   if M._loaded[name] then fn(); return end
   M._on_load[name] = M._on_load[name] or {}
   table.insert(M._on_load[name], fn)
+end
+
+-- Add extra keymaps to an already-registered spec without editing spec.keys.
+-- If the plugin is loaded, installs immediately. Otherwise defers to on_load
+-- so the mapping is installed when the plugin loads via its own trigger.
+--
+-- Note: unlike spec.keys, add_keys does NOT install a stub on lazy plugins.
+-- To make a key load the plugin, put it in spec.keys. add_keys is for
+-- augmenting — user overrides from after/, per-project rebindings, etc.
+function M.add_keys(name, keys)
+  local spec = M._specs[name]
+  if not spec then
+    vim.notify(("core.pack: add_keys unknown spec '%s'"):format(name), vim.log.levels.WARN)
+    return
+  end
+  local function install()
+    for _, k in ipairs(keys) do
+      for_each_mode(k, function(m)
+        set_real_keymap(spec, k, m)
+        validate_plug(spec, k, m)
+      end)
+    end
+  end
+  if M._loaded[name] then install() else M.on_load(name, install) end
 end
 
 function M._status_lines()
