@@ -5,17 +5,17 @@ return {
     name = "nvim-dap",
     dependencies = { "nvim-dap-ui", "nvim-nio", "nvim-dap-virtual-text" },
     keys = {
-      { "<leader>db", function() require("dap").toggle_breakpoint() end, desc = "Toggle breakpoint" },
-      { "<leader>dB", function() require("dap").set_breakpoint(vim.fn.input("Condition: ")) end, desc = "Conditional breakpoint" },
-      { "<leader>dc", function() require("dap").continue() end, desc = "Continue" },
-      { "<leader>di", function() require("dap").step_into() end, desc = "Step into" },
-      { "<leader>do", function() require("dap").step_over() end, desc = "Step over" },
-      { "<leader>dO", function() require("dap").step_out() end, desc = "Step out" },
-      { "<leader>dr", function() require("dap").restart() end, desc = "Restart" },
-      { "<leader>dt", function() require("dap").terminate() end, desc = "Terminate" },
-      { "<leader>du", function() require("dapui").toggle() end, desc = "Toggle dap-ui" },
-      { "<leader>de", function() require("dapui").eval() end, desc = "Eval", mode = { "n", "x" } },
-      { "<leader>dl", function() require("dap").run_last() end, desc = "Run last" },
+      { "<Leader>db", function() require("dap").toggle_breakpoint() end, desc = "Toggle breakpoint" },
+      { "<Leader>dB", function() require("dap").set_breakpoint(vim.fn.input("Condition: ")) end, desc = "Conditional breakpoint" },
+      { "<Leader>dc", function() require("dap").continue() end, desc = "Continue" },
+      { "<Leader>di", function() require("dap").step_into() end, desc = "Step into" },
+      { "<Leader>do", function() require("dap").step_over() end, desc = "Step over" },
+      { "<Leader>dO", function() require("dap").step_out() end, desc = "Step out" },
+      { "<Leader>dr", function() require("dap").restart() end, desc = "Restart" },
+      { "<Leader>dt", function() require("dap").terminate() end, desc = "Terminate" },
+      { "<Leader>du", function() require("dapui").toggle() end, desc = "Toggle dap-ui" },
+      { "<Leader>de", function() require("dapui").eval() end, desc = "Eval", mode = { "n", "x" } },
+      { "<Leader>dl", function() require("dap").run_last() end, desc = "Run last" },
       { "<F5>",  function() require("dap").continue() end, desc = "DAP continue" },
       { "<F10>", function() require("dap").step_over() end, desc = "DAP step over" },
       { "<F11>", function() require("dap").step_into() end, desc = "DAP step into" },
@@ -50,7 +50,7 @@ return {
     dependencies = { "nvim-dap" },
     keys = {
       {
-        "<leader>dL",
+        "<Leader>dL",
         function()
           require("osv").launch({ port = 8086 })
           vim.notify("osv listening on port 8086", vim.log.levels.INFO)
@@ -58,7 +58,7 @@ return {
         desc = "Launch Lua DAP server",
       },
       {
-        "<leader>dR",
+        "<Leader>dR",
         function() require("osv").run_this() end,
         desc = "Run this Lua file under DAP",
       },

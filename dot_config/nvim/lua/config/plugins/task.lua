@@ -11,8 +11,8 @@ return {
     name = "overseer.nvim",
     cmd  = { "OverseerOpen", "OverseerClose", "OverseerToggle", "OverseerRun", "OverseerBuild", "Grep" },
     keys = {
-      { "<leader>uo", "<cmd>OverseerToggle<cr>", desc = "Overseer toggle" },
-      { "<leader>uO", "<cmd>OverseerRun<cr>",    desc = "Overseer run task" },
+      { "<Leader>uo", "<Cmd>OverseerToggle<CR>", desc = "Overseer toggle" },
+      { "<Leader>uO", "<Cmd>OverseerRun<CR>",    desc = "Overseer run task" },
     },
     opts = {},
     config = function(_, opts)
@@ -39,8 +39,8 @@ return {
     name = "quicker.nvim",
     event = "VeryLazy",
     keys = {
-      { "<leader>xq", function() require("quicker").toggle()                   end, desc = "Quickfix (quicker)" },
-      { "<leader>xl", function() require("quicker").toggle({ loclist = true }) end, desc = "Loclist (quicker)" },
+      { "<Leader>xq", function() require("quicker").toggle()                   end, desc = "Quickfix (quicker)" },
+      { "<Leader>xl", function() require("quicker").toggle({ loclist = true }) end, desc = "Loclist (quicker)" },
     },
     opts = {},
   },

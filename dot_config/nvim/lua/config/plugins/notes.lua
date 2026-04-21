@@ -9,17 +9,17 @@ return {
     ft   = "markdown",
     cmd  = { "ZkIndex", "ZkNew", "ZkNotes", "ZkBuffers", "ZkBacklinks", "ZkLinks", "ZkTags", "ZkCd", "ZkMatch", "ZkInsertLink" },
     keys = {
-      { "<leader>zi", function() vim.cmd("ZkIndex") end,                            desc = "Index notes" },
-      { "<leader>zz", function() vim.cmd("ZkNotes { sort = { 'modified' } }") end,  desc = "Find notes" },
-      { "<leader>zf", function() vim.cmd("ZkBuffers") end,                          desc = "Note buffers" },
-      { "<leader>zb", function() vim.cmd("ZkBacklinks") end,                        desc = "Backlinks" },
-      { "<leader>zl", function() vim.cmd("ZkLinks") end,                            desc = "Outbound links" },
-      { "<leader>zt", function() vim.cmd("ZkTags") end,                             desc = "Find by tags" },
-      { "<leader>zc", function() vim.cmd("ZkCd") end,                               desc = "Cd into notebook" },
-      { "<leader>zm", function() vim.cmd("ZkMatch") end,         mode = "x",        desc = "Note from selection" },
-      { "<leader>zL", function() vim.cmd("ZkInsertLink") end,                       desc = "Insert link" },
+      { "<Leader>zi", function() vim.cmd("ZkIndex") end,                            desc = "Index notes" },
+      { "<Leader>zz", function() vim.cmd("ZkNotes { sort = { 'modified' } }") end,  desc = "Find notes" },
+      { "<Leader>zf", function() vim.cmd("ZkBuffers") end,                          desc = "Note buffers" },
+      { "<Leader>zb", function() vim.cmd("ZkBacklinks") end,                        desc = "Backlinks" },
+      { "<Leader>zl", function() vim.cmd("ZkLinks") end,                            desc = "Outbound links" },
+      { "<Leader>zt", function() vim.cmd("ZkTags") end,                             desc = "Find by tags" },
+      { "<Leader>zc", function() vim.cmd("ZkCd") end,                               desc = "Cd into notebook" },
+      { "<Leader>zm", function() vim.cmd("ZkMatch") end,         mode = "x",        desc = "Note from selection" },
+      { "<Leader>zL", function() vim.cmd("ZkInsertLink") end,                       desc = "Insert link" },
       {
-        "<leader>zn",
+        "<Leader>zn",
         function()
           vim.ui.input({ prompt = "Title: " }, function(input)
             if input then require("zk").new({ title = input }) end
@@ -28,7 +28,7 @@ return {
         desc = "New note",
       },
       {
-        "<leader>zj",
+        "<Leader>zj",
         function()
           vim.ui.select({ "today", "yesterday", "tomorrow" }, { prompt = "Open journal:" }, function(choice)
             if not choice then return end

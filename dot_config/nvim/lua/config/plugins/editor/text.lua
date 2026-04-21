@@ -154,7 +154,7 @@ return {
       { "<C-p>",      "<Plug>(YankyPreviousEntry)",                                           desc = "Prev yank entry" },
       { "]y",         "<Plug>(YankyNextEntry)",                                               desc = "Next yank entry" },
       { "[y",         "<Plug>(YankyPreviousEntry)",                                           desc = "Prev yank entry" },
-      { "<leader>sy", function() vim.cmd("YankyRingHistory") end,                             desc = "Yank history" },
+      { "<Leader>sy", function() vim.cmd("YankyRingHistory") end,                             desc = "Yank history" },
     },
     opts = {
       ring             = { storage = "shada", history_length = 200 },
@@ -261,8 +261,8 @@ return {
     name = "mini.trailspace",
     event = "LazyFile",
     keys = {
-      { "<leader>uw", function() require("mini.trailspace").trim()            end, desc = "Trim trailing whitespace" },
-      { "<leader>uW", function() require("mini.trailspace").trim_last_lines() end, desc = "Trim trailing empty lines" },
+      { "<Leader>uw", function() require("mini.trailspace").trim()            end, desc = "Trim trailing whitespace" },
+      { "<Leader>uW", function() require("mini.trailspace").trim_last_lines() end, desc = "Trim trailing empty lines" },
     },
     opts = {},
   },
@@ -297,8 +297,8 @@ return {
     keys = {
       { "]t",         function() require("todo-comments").jump_next() end,            desc = "Next todo" },
       { "[t",         function() require("todo-comments").jump_prev() end,            desc = "Prev todo" },
-      { "<leader>st", "<cmd>TodoTrouble<cr>",                                         desc = "Todo (Trouble)" },
-      { "<leader>sT", "<cmd>TodoTrouble keywords=TODO,FIX,FIXME<cr>",                 desc = "Todo/Fix (Trouble)" },
+      { "<Leader>st", "<Cmd>TodoTrouble<CR>",                                         desc = "Todo (Trouble)" },
+      { "<Leader>sT", "<Cmd>TodoTrouble keywords=TODO,FIX,FIXME<CR>",                 desc = "Todo/Fix (Trouble)" },
     },
   },
 }

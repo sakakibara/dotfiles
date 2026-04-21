@@ -13,8 +13,8 @@
 -- redo the treesitter walk.
 --
 -- Keyboard entrypoints on config/keymaps.lua:
---   <leader>;   → M.pick_scope()   sibling-symbol picker at cursor
---   <leader>.   → M.pick_path()    directory picker for current file
+--   <Leader>;   → M.pick_scope()   sibling-symbol picker at cursor
+--   <Leader>.   → M.pick_path()    directory picker for current file
 --
 -- Inactive windows get path-only (scope depends on cursor, which lives
 -- in the active window).

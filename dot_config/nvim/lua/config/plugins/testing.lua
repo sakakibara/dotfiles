@@ -5,15 +5,15 @@ return {
     name = "neotest",
     dependencies = { "nvim-nio", "plenary.nvim", "trouble.nvim" },
     keys = {
-      { "<leader>tt", function() require("neotest").run.run() end, desc = "Run nearest" },
-      { "<leader>tT", function() require("neotest").run.run(vim.fn.expand("%")) end, desc = "Run file" },
-      { "<leader>tr", function() require("neotest").run.run_last() end, desc = "Run last" },
-      { "<leader>ts", function() require("neotest").summary.toggle() end, desc = "Toggle summary" },
-      { "<leader>to", function() require("neotest").output.open({ enter = true, auto_close = true }) end, desc = "Open output" },
-      { "<leader>tO", function() require("neotest").output_panel.toggle() end, desc = "Toggle output panel" },
-      { "<leader>tS", function() require("neotest").run.stop() end, desc = "Stop" },
-      { "<leader>tw", function() require("neotest").watch.toggle(vim.fn.expand("%")) end, desc = "Watch file" },
-      { "<leader>td", function() require("neotest").run.run({ strategy = "dap" }) end, desc = "Debug nearest" },
+      { "<Leader>tt", function() require("neotest").run.run() end, desc = "Run nearest" },
+      { "<Leader>tT", function() require("neotest").run.run(vim.fn.expand("%")) end, desc = "Run file" },
+      { "<Leader>tr", function() require("neotest").run.run_last() end, desc = "Run last" },
+      { "<Leader>ts", function() require("neotest").summary.toggle() end, desc = "Toggle summary" },
+      { "<Leader>to", function() require("neotest").output.open({ enter = true, auto_close = true }) end, desc = "Open output" },
+      { "<Leader>tO", function() require("neotest").output_panel.toggle() end, desc = "Toggle output panel" },
+      { "<Leader>tS", function() require("neotest").run.stop() end, desc = "Stop" },
+      { "<Leader>tw", function() require("neotest").watch.toggle(vim.fn.expand("%")) end, desc = "Watch file" },
+      { "<Leader>td", function() require("neotest").run.run({ strategy = "dap" }) end, desc = "Debug nearest" },
     },
     config = function()
       require("neotest").setup({
@@ -36,9 +36,9 @@ return {
     name = "trouble.nvim",
     cmd = "Trouble",
     keys = {
-      { "<leader>xx", "<cmd>Trouble diagnostics toggle<cr>", desc = "Diagnostics (Trouble)" },
-      { "<leader>xX", "<cmd>Trouble diagnostics toggle filter.buf=0<cr>", desc = "Buffer diagnostics" },
-      { "<leader>xL", "<cmd>Trouble lsp toggle<cr>", desc = "LSP refs (Trouble)" },
+      { "<Leader>xx", "<Cmd>Trouble diagnostics toggle<CR>", desc = "Diagnostics (Trouble)" },
+      { "<Leader>xX", "<Cmd>Trouble diagnostics toggle filter.buf=0<CR>", desc = "Buffer diagnostics" },
+      { "<Leader>xL", "<Cmd>Trouble lsp toggle<CR>", desc = "LSP refs (Trouble)" },
     },
     opts = {
       auto_close = true,

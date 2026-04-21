@@ -12,13 +12,13 @@ map("n", "<C-k>", "<C-w>k", { desc = "Up window" })
 map("n", "<C-l>", "<C-w>l", { desc = "Right window" })
 
 -- window resize
-map("n", "<C-Up>",    "<cmd>resize +2<cr>",          { desc = "Resize up" })
-map("n", "<C-Down>",  "<cmd>resize -2<cr>",          { desc = "Resize down" })
-map("n", "<C-Left>",  "<cmd>vertical resize -2<cr>", { desc = "Resize left" })
-map("n", "<C-Right>", "<cmd>vertical resize +2<cr>", { desc = "Resize right" })
+map("n", "<C-Up>",    "<Cmd>resize +2<CR>",          { desc = "Resize up" })
+map("n", "<C-Down>",  "<Cmd>resize -2<CR>",          { desc = "Resize down" })
+map("n", "<C-Left>",  "<Cmd>vertical resize -2<CR>", { desc = "Resize left" })
+map("n", "<C-Right>", "<Cmd>vertical resize +2<CR>", { desc = "Resize right" })
 
 -- clear search highlight
-map({ "i", "n" }, "<esc>", "<cmd>noh<cr><esc>", { desc = "Escape + clear hlsearch" })
+map({ "i", "n" }, "<Esc>", "<Cmd>noh<CR><Esc>", { desc = "Escape + clear hlsearch" })
 
 -- better paste/indent
 map("v", "<", "<gv")
@@ -37,42 +37,42 @@ map("n", "]w", diag(true,  "WARN"),  { desc = "Next warning" })
 map("n", "[w", diag(false, "WARN"),  { desc = "Prev warning" })
 
 -- path yanks (Lib.keymaps helpers)
-map("n", "<leader>fy", function() Lib.keymaps.yank_relative_path() end, { desc = "Yank relative path" })
-map("n", "<leader>fY", function() Lib.keymaps.yank_full_path()     end, { desc = "Yank absolute path" })
+map("n", "<Leader>fy", function() Lib.keymaps.yank_relative_path() end, { desc = "Yank relative path" })
+map("n", "<Leader>fY", function() Lib.keymaps.yank_full_path()     end, { desc = "Yank absolute path" })
 
 -- empty line above/below (preserves cursor, count supported via v:count1)
-map("n", "<leader>o", function() Lib.keymaps.put_empty_line(false) end, { desc = "Put empty line below" })
-map("n", "<leader>O", function() Lib.keymaps.put_empty_line(true)  end, { desc = "Put empty line above" })
+map("n", "<Leader>o", function() Lib.keymaps.put_empty_line(false) end, { desc = "Put empty line below" })
+map("n", "<Leader>O", function() Lib.keymaps.put_empty_line(true)  end, { desc = "Put empty line above" })
 
 -- save / quit
-map({ "i", "x", "n", "s" }, "<C-s>", "<cmd>w<cr><esc>", { desc = "Save" })
-map("n", "<leader>qq", "<cmd>qa<cr>", { desc = "Quit all" })
+map({ "i", "x", "n", "s" }, "<C-s>", "<Cmd>w<CR><Esc>", { desc = "Save" })
+map("n", "<Leader>qq", "<Cmd>qa<CR>", { desc = "Quit all" })
 
 -- buffer navigation
-map("n", "[b", "<cmd>bprevious<cr>", { desc = "Prev buffer" })
-map("n", "]b", "<cmd>bnext<cr>",     { desc = "Next buffer" })
+map("n", "[b", "<Cmd>bprevious<CR>", { desc = "Prev buffer" })
+map("n", "]b", "<Cmd>bnext<CR>",     { desc = "Next buffer" })
 
 -- winbar pickers — same menus the breadcrumb segments open on click
-map("n", "<leader>;", function() Lib.winbar.pick_scope() end, { desc = "Scope picker (sibling symbols)" })
-map("n", "<leader>.", function() Lib.winbar.pick_path()  end, { desc = "Path picker (sibling files)" })
+map("n", "<Leader>;", function() Lib.winbar.pick_scope() end, { desc = "Scope picker (sibling symbols)" })
+map("n", "<Leader>.", function() Lib.winbar.pick_path()  end, { desc = "Path picker (sibling files)" })
 
--- autoformat toggles (UI toggles convention: <leader>u…)
-map("n", "<leader>uf", function() Lib.format.toggle()     end, { desc = "Toggle autoformat (global)" })
-map("n", "<leader>uF", function() Lib.format.toggle(true) end, { desc = "Toggle autoformat (buffer)" })
-map("n", "<leader>ui", function() Lib.format.info()       end, { desc = "Autoformat info" })
+-- autoformat toggles (UI toggles convention: <Leader>u…)
+map("n", "<Leader>uf", function() Lib.format.toggle()     end, { desc = "Toggle autoformat (global)" })
+map("n", "<Leader>uF", function() Lib.format.toggle(true) end, { desc = "Toggle autoformat (buffer)" })
+map("n", "<Leader>ui", function() Lib.format.info()       end, { desc = "Autoformat info" })
 
 -- single-chord fast-access (skip a keystroke for the daily-driver ops)
-map("n", "<leader><space>", function() Snacks.picker.smart()            end, { desc = "Smart find (files)" })
-map("n", "<leader>,",       function() Snacks.picker.buffers()          end, { desc = "Buffers" })
-map("n", "<leader>/",       function() Snacks.picker.grep()             end, { desc = "Grep" })
-map("n", "<leader>:",       function() Snacks.picker.command_history()  end, { desc = "Command history" })
+map("n", "<Leader><Space>", function() Snacks.picker.smart()            end, { desc = "Smart find (files)" })
+map("n", "<Leader>,",       function() Snacks.picker.buffers()          end, { desc = "Buffers" })
+map("n", "<Leader>/",       function() Snacks.picker.grep()             end, { desc = "Grep" })
+map("n", "<Leader>:",       function() Snacks.picker.command_history()  end, { desc = "Command history" })
 
 -- windows (<C-w>… natives still work; these are leader aliases for which-key)
-map("n", "<leader>ws", "<C-w>s",           { desc = "Split window below" })
-map("n", "<leader>wv", "<C-w>v",           { desc = "Split window right" })
-map("n", "<leader>wc", "<cmd>close<cr>",   { desc = "Close window" })
-map("n", "<leader>wo", "<cmd>only<cr>",    { desc = "Close other windows" })
-map("n", "<leader>w=", "<C-w>=",           { desc = "Equalize windows" })
+map("n", "<Leader>ws", "<C-w>s",           { desc = "Split window below" })
+map("n", "<Leader>wv", "<C-w>v",           { desc = "Split window right" })
+map("n", "<Leader>wc", "<Cmd>close<CR>",   { desc = "Close window" })
+map("n", "<Leader>wo", "<Cmd>only<CR>",    { desc = "Close other windows" })
+map("n", "<Leader>w=", "<C-w>=",           { desc = "Equalize windows" })
 
 -- file explorer (oil is also on `-` for parent-dir)
-map("n", "<leader>e", "<cmd>Oil<cr>", { desc = "Oil (parent dir)" })
+map("n", "<Leader>e", "<Cmd>Oil<CR>", { desc = "Oil (parent dir)" })

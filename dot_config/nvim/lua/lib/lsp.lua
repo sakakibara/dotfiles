@@ -152,12 +152,12 @@ function M.keymaps(bufnr)
 
   bmap("i", "<C-k>", vim.lsp.buf.signature_help, { desc = "LSP: signature help" })
 
-  bmap("n", "<leader>cf",
+  bmap("n", "<Leader>cf",
     function() Lib.format.format({ buf = bufnr, force = true }) end,
     { desc = "Format buffer" })
-  bmap("n", "<leader>cl", "<cmd>checkhealth vim.lsp<cr>", { desc = "LSP: health" })
+  bmap("n", "<Leader>cl", "<Cmd>checkhealth vim.lsp<CR>", { desc = "LSP: health" })
 
-  bmap("n", "<leader>uh", function()
+  bmap("n", "<Leader>uh", function()
     local enabled = vim.lsp.inlay_hint.is_enabled({ bufnr = bufnr })
     vim.lsp.inlay_hint.enable(not enabled, { bufnr = bufnr })
     local now_on = not enabled

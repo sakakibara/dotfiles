@@ -10,7 +10,7 @@
 --     a source is active if it has sources>0 AND (it's non-primary OR no
 --     higher-priority primary was already chosen).
 --   - M.format({buf, force}) runs all active formatters. `force` bypasses the
---     autoformat-enabled check (used by :Format / <leader>cf).
+--     autoformat-enabled check (used by :Format / <Leader>cf).
 --   - On-save calls M.format({buf}) without force: no-op if disabled, no-op
 --     if no source has anything to do. No spam on every save.
 --   - With force AND nothing active: warn (the user asked — they should

@@ -12,11 +12,11 @@ return {
       "plenary.nvim",
     },
     keys = {
-      { "<leader>aa", "<cmd>AvanteAsk<cr>",     desc = "Avante ask",    mode = { "n", "x" } },
-      { "<leader>ae", "<cmd>AvanteEdit<cr>",    desc = "Avante edit",   mode = { "n", "x" } },
-      { "<leader>ar", "<cmd>AvanteRefresh<cr>", desc = "Avante refresh" },
-      { "<leader>at", "<cmd>AvanteToggle<cr>",  desc = "Avante toggle" },
-      { "<leader>an", "<cmd>AvanteNew<cr>",     desc = "Avante new chat" },
+      { "<Leader>aa", "<Cmd>AvanteAsk<CR>",     desc = "Avante ask",    mode = { "n", "x" } },
+      { "<Leader>ae", "<Cmd>AvanteEdit<CR>",    desc = "Avante edit",   mode = { "n", "x" } },
+      { "<Leader>ar", "<Cmd>AvanteRefresh<CR>", desc = "Avante refresh" },
+      { "<Leader>at", "<Cmd>AvanteToggle<CR>",  desc = "Avante toggle" },
+      { "<Leader>an", "<Cmd>AvanteNew<CR>",     desc = "Avante new chat" },
     },
     opts = {
       provider = "claude",

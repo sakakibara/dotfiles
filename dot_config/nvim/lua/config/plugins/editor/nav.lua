@@ -54,7 +54,7 @@ return {
   {
     "chrishrb/gx.nvim",
     name = "gx.nvim",
-    keys = { { "gx", "<cmd>Browse<cr>", mode = { "n", "x" }, desc = "Open URL / path" } },
+    keys = { { "gx", "<Cmd>Browse<CR>", mode = { "n", "x" }, desc = "Open URL / path" } },
     cmd  = { "Browse" },
     init = function() vim.g.netrw_nogx = 1 end,
     opts = { handler_options = { search_engine = "duckduckgo" } },
@@ -66,8 +66,8 @@ return {
     name = "grug-far.nvim",
     cmd  = "GrugFar",
     keys = {
-      { "<leader>sr", "<cmd>GrugFar<cr>",             desc = "Search & replace" },
-      { "<leader>sR", "<cmd>GrugFar<cr>", mode = "v", desc = "Search & replace (selection)" },
+      { "<Leader>sr", "<Cmd>GrugFar<CR>",             desc = "Search & replace" },
+      { "<Leader>sR", "<Cmd>GrugFar<CR>", mode = "v", desc = "Search & replace (selection)" },
     },
     opts = { headerMaxWidth = 80 },
   },
@@ -78,7 +78,7 @@ return {
     name = "chezmoi.nvim",
     cmd  = { "ChezmoiEdit", "ChezmoiList" },
     keys = {
-      { "<leader>sz", function() vim.cmd("ChezmoiList") end, desc = "Chezmoi files" },
+      { "<Leader>sz", function() vim.cmd("ChezmoiList") end, desc = "Chezmoi files" },
     },
     opts = { edit = { watch = false, force = false } },
   },

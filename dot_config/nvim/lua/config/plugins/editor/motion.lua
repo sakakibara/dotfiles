@@ -17,20 +17,20 @@ return {
     },
   },
 
-  -- Harpoon: pin up to 5 files per project, jump with <leader>1..5
+  -- Harpoon: pin up to 5 files per project, jump with <Leader>1..5
   {
     "ThePrimeagen/harpoon",
     name = "harpoon",
     branch = "harpoon2",
     dependencies = { "plenary.nvim" },
     keys = {
-      { "<leader>H", function() require("harpoon"):list():add() end,                                 desc = "Harpoon add" },
-      { "<leader>h", function() local h = require("harpoon"); h.ui:toggle_quick_menu(h:list()) end, desc = "Harpoon menu" },
-      { "<leader>1", function() require("harpoon"):list():select(1) end, desc = "Harpoon 1" },
-      { "<leader>2", function() require("harpoon"):list():select(2) end, desc = "Harpoon 2" },
-      { "<leader>3", function() require("harpoon"):list():select(3) end, desc = "Harpoon 3" },
-      { "<leader>4", function() require("harpoon"):list():select(4) end, desc = "Harpoon 4" },
-      { "<leader>5", function() require("harpoon"):list():select(5) end, desc = "Harpoon 5" },
+      { "<Leader>H", function() require("harpoon"):list():add() end,                                 desc = "Harpoon add" },
+      { "<Leader>h", function() local h = require("harpoon"); h.ui:toggle_quick_menu(h:list()) end, desc = "Harpoon menu" },
+      { "<Leader>1", function() require("harpoon"):list():select(1) end, desc = "Harpoon 1" },
+      { "<Leader>2", function() require("harpoon"):list():select(2) end, desc = "Harpoon 2" },
+      { "<Leader>3", function() require("harpoon"):list():select(3) end, desc = "Harpoon 3" },
+      { "<Leader>4", function() require("harpoon"):list():select(4) end, desc = "Harpoon 4" },
+      { "<Leader>5", function() require("harpoon"):list():select(5) end, desc = "Harpoon 5" },
     },
     opts = {},
   },
