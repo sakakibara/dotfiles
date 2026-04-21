@@ -123,6 +123,8 @@ local function define_highlights()
   hl("StslEnc",       { fg = p.yellow,   bg = p.bg_mid })
   hl("StslBom",       { fg = p.red,      bg = p.bg_mid, bold = true })
   hl("StslFmt",       { fg = p.yellow,   bg = p.bg_mid })
+  hl("StslAFOff",     { fg = p.yellow,   bg = p.bg_mid, bold = true })
+  hl("StslAFOn",      { fg = p.green,    bg = p.bg_mid, bold = true })
   hl("StslDap",       { fg = p.orange,   bg = p.bg_mid, bold = true })
   hl("StslScroll",    { fg = p.blue,     bg = p.bg_mid })
   hl("StslPos",       { fg = p.fg_bold,  bg = p.bg_mid, bold = true })
@@ -434,6 +436,29 @@ local function build_fmt(buf)
   return "%#StslFmt# " .. fmt .. " "
 end
 
+-- Auto-format state indicator. Hidden when the default is active (global on,
+-- no buffer override). Shown only when state is "unusual" — global off, or
+-- a per-buffer override is set. Clickable: toggles the current scope.
+local function build_autofmt(buf)
+  local gaf = vim.g.autoformat == nil or vim.g.autoformat
+  local baf = vim.b[buf].autoformat
+  if gaf and baf == nil then return "" end
+
+  local effective = baf == nil and gaf or baf
+  local label, hl
+  if baf == nil then        -- global override (turned off for everyone)
+    label, hl = "AF-OFF", "StslAFOff"
+  elseif baf then           -- buffer says ON (usually when global is OFF)
+    label, hl = "AF-ON(buf)", "StslAFOn"
+  else                      -- buffer says OFF
+    label, hl = "AF-OFF(buf)", "StslAFOff"
+  end
+  local _ = effective  -- silence unused; label already encodes state
+  -- Click: toggle whichever scope this buffer is actually responding to.
+  return clickable(20, function() Lib.format.toggle(baf ~= nil) end,
+    "%#" .. hl .. "#  " .. label .. " ")
+end
+
 -- NOT cached — state changes per keystroke but this is fast
 local function build_spell()
   if not vim.wo.spell then return "" end
@@ -555,6 +580,7 @@ function M.render()
     { key = "diag",    content = c.diag,           priority = 65 },
     { key = "dap",     content = build_dap(),      priority = 60 },
     { key = "lsp",     content = c.lsp,            priority = 55 },
+    { key = "autofmt", content = build_autofmt(buf), priority = 70 },
     { key = "ft",      content = c.ft,             priority = 45 },
     { key = "enc",     content = c.enc,            priority = 10 },
     { key = "bom",     content = c.bom,            priority = 5  },

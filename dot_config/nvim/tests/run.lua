@@ -8,5 +8,6 @@ dofile(vim.fn.getcwd() .. "/tests/pack_spec.lua")
 dofile(vim.fn.getcwd() .. "/tests/lsp_spec.lua")
 dofile(vim.fn.getcwd() .. "/tests/mode_color_spec.lua")
 dofile(vim.fn.getcwd() .. "/tests/statusline_spec.lua")
+dofile(vim.fn.getcwd() .. "/tests/format_spec.lua")
 
 require("tests.helpers").report_and_exit()

@@ -1,73 +1,194 @@
 -- lua/lib/format.lua
--- Format integration: BufWritePre hook, manual format, LSP fallback.
+--
+-- Pluggable format-on-save with composable sources, vim.g / vim.b autoformat
+-- toggles, and quiet-by-default on-save semantics.
+--
+-- Design:
+--   - Formatter sources register via M.register({ name, primary, priority,
+--     sources(buf), format(buf) }).
+--   - M.resolve(buf) orders them by priority and decides which are `active`:
+--     a source is active if it has sources>0 AND (it's non-primary OR no
+--     higher-priority primary was already chosen).
+--   - M.format({buf, force}) runs all active formatters. `force` bypasses the
+--     autoformat-enabled check (used by :Format / <leader>cf).
+--   - On-save calls M.format({buf}) without force: no-op if disabled, no-op
+--     if no source has anything to do. No spam on every save.
+--   - With force AND nothing active: warn (the user asked — they should
+--     know why nothing happened).
+--
+-- Why vim.g/vim.b.autoformat specifically: standard convention (LazyVim,
+-- AstroVim, etc.) so snippets/docs from those communities port over
+-- unchanged. Also makes per-project ftplugin overrides trivial.
 
-local M = {}
+local M = setmetatable({}, {
+  __call = function(m, ...) return m.format(...) end,
+})
 
-M._enabled = { global = true, buffers = {} }
+---@class FormatSource
+---@field name string
+---@field primary? boolean    only one primary runs at a time (highest priority wins)
+---@field priority number     higher runs first; sort-stable
+---@field format fun(buf:number)
+---@field sources fun(buf:number):string[]   names of formatters/clients that would run
 
-function M.enabled(opts)
-  opts = opts or {}
-  local buf = opts.buf or vim.api.nvim_get_current_buf()
-  if M._enabled.buffers[buf] == false then return false end
-  if not M._enabled.global then return false end
-  return true
+M.formatters = {} ---@type FormatSource[]
+
+---@param src FormatSource
+function M.register(src)
+  M.formatters[#M.formatters + 1] = src
+  table.sort(M.formatters, function(a, b) return (a.priority or 0) > (b.priority or 0) end)
 end
 
-function M.toggle(scope, buf)
-  if scope == "global" then
-    M._enabled.global = not M._enabled.global
-    vim.notify("Format on save: " .. (M._enabled.global and "on" or "off"))
-  elseif scope == "buffer" then
-    buf = buf or vim.api.nvim_get_current_buf()
-    local cur = M._enabled.buffers[buf]
-    if cur == nil then cur = true end
-    M._enabled.buffers[buf] = not cur
-    vim.notify(("Format on save (buffer %d): %s"):format(buf, M._enabled.buffers[buf] and "on" or "off"))
+-- Resolve which sources apply to a buffer right now. Returns a list of
+-- wrapped records (the source table as __index, plus `active` and `resolved`).
+function M.resolve(buf)
+  buf = (buf == nil or buf == 0) and vim.api.nvim_get_current_buf() or buf
+  local have_primary = false
+  local ret = {}
+  for _, f in ipairs(M.formatters) do
+    local ok, sources = pcall(f.sources, buf)
+    if not ok then sources = {} end
+    local active = #sources > 0 and (not f.primary or not have_primary)
+    if active and f.primary then have_primary = true end
+    ret[#ret + 1] = setmetatable({
+      active = active,
+      resolved = sources,
+    }, { __index = f })
   end
+  return ret
 end
 
+-- Is autoformat-on-save enabled for this buffer? vim.b overrides vim.g.
+-- Default: true.
+function M.enabled(buf)
+  buf = (buf == nil or buf == 0) and vim.api.nvim_get_current_buf() or buf
+  local baf = vim.b[buf].autoformat
+  if baf ~= nil then return baf end
+  local gaf = vim.g.autoformat
+  return gaf == nil or gaf
+end
+
+-- Set autoformat state. If `buf` is truthy, scope to the current buffer
+-- (vim.b.autoformat). If falsy/nil, set global (vim.g.autoformat) and clear
+-- the current buffer's override so the new global takes effect.
+function M.enable(enable, buf)
+  if enable == nil then enable = true end
+  if buf then
+    vim.b.autoformat = enable
+  else
+    vim.g.autoformat = enable
+    vim.b.autoformat = nil
+  end
+  pcall(vim.cmd, "redrawstatus")
+end
+
+function M.toggle(buf)
+  M.enable(not M.enabled(), buf)
+end
+
+-- Run all active formatters. opts.force bypasses the enabled check.
+-- When force=true and nothing was formatted, warns.
 function M.format(opts)
   opts = opts or {}
   local buf = opts.buf or vim.api.nvim_get_current_buf()
-  local async = opts.async == true  -- default sync
+  if buf == 0 then buf = vim.api.nvim_get_current_buf() end
+  if not (opts.force or M.enabled(buf)) then return end
 
-  local has_conform, conform = pcall(require, "conform")
-  if has_conform then
-    local formatters = conform.list_formatters_to_run(buf)
-    if formatters and #formatters > 0 then
-      conform.format({ bufnr = buf, timeout_ms = 1000, async = async })
-      return
+  local done = false
+  for _, f in ipairs(M.resolve(buf)) do
+    if f.active then
+      done = true
+      local ok, err = pcall(function() return f.format(buf) end)
+      if not ok then
+        vim.notify(("Formatter %s failed: %s"):format(f.name, err), vim.log.levels.WARN)
+      end
     end
   end
 
-  -- LSP fallback: format via attached client that supports textDocument/formatting
-  if #vim.lsp.get_clients({ bufnr = buf, method = "textDocument/formatting" }) > 0 then
-    vim.lsp.buf.format({ bufnr = buf, async = async, timeout_ms = 1000 })
-    return
+  if not done and opts.force then
+    vim.notify("No formatters available for this buffer", vim.log.levels.WARN)
   end
-
-  vim.notify("No formatters available for this buffer", vim.log.levels.WARN)
 end
 
--- Called from vim.opt.formatexpr via options.lua:
---   opt.formatexpr = "v:lua.Lib.format.formatexpr()"
-function M.formatexpr()
-  local has_conform, conform = pcall(require, "conform")
-  if has_conform then
-    return conform.formatexpr()
+-- Print a structured summary of the current state + available sources.
+-- Goes to :messages (not vim.notify): surfacing state is a read operation,
+-- not an event.
+function M.info(buf)
+  buf = (buf == nil or buf == 0) and vim.api.nvim_get_current_buf() or buf
+  local gaf = vim.g.autoformat == nil or vim.g.autoformat
+  local baf = vim.b[buf].autoformat
+  local enabled = M.enabled(buf)
+  local lines = {
+    ("Format: global=%s, buffer=%s, effective=%s"):format(
+      gaf and "on" or "off",
+      baf == nil and "inherit" or (baf and "on" or "off"),
+      enabled and "on" or "off"),
+  }
+  local any = false
+  for _, f in ipairs(M.resolve(buf)) do
+    if #f.resolved > 0 then
+      any = true
+      lines[#lines + 1] = ("  %s %s: %s%s"):format(
+        f.active and "▸" or "·",
+        f.name,
+        table.concat(f.resolved, ", "),
+        f.active and "" or " (shadowed)")
+    end
   end
-  return 1  -- fall back to default LSP formatexpr
+  if not any then lines[#lines + 1] = "  (no formatters available for this buffer)" end
+  for _, l in ipairs(lines) do print(l) end
+end
+
+-- Called from vim.opt.formatexpr via options.lua.
+function M.formatexpr()
+  local ok, conform = pcall(require, "conform")
+  if ok then return conform.formatexpr() end
+  return vim.lsp.formatexpr({ timeout_ms = 1000 })
 end
 
 function M.setup()
-  vim.api.nvim_create_autocmd("BufWritePre", {
-    group = vim.api.nvim_create_augroup("Lib.format", { clear = true }),
-    callback = function(args)
-      if M.enabled({ buf = args.buf }) then
-        M.format({ buf = args.buf, async = false })
+  -- Built-in LSP source — non-primary so it runs alongside a primary
+  -- formatter (e.g. conform) when both have sources; takes over fully if
+  -- no primary has anything configured.
+  M.register({
+    name = "LSP",
+    primary = false,
+    priority = 1,
+    format = function(buf)
+      vim.lsp.buf.format({ bufnr = buf, timeout_ms = 1000 })
+    end,
+    sources = function(buf)
+      local names = {}
+      for _, c in ipairs(vim.lsp.get_clients({ bufnr = buf, method = "textDocument/formatting" })) do
+        names[#names + 1] = c.name
       end
+      return names
     end,
   })
+
+  vim.api.nvim_create_autocmd("BufWritePre", {
+    group = vim.api.nvim_create_augroup("Lib.format", { clear = true }),
+    callback = function(args) M.format({ buf = args.buf }) end,
+  })
+
+  vim.api.nvim_create_user_command("Format", function(opts)
+    M.format({ force = true, buf = opts.range > 0 and 0 or nil })
+  end, { range = true, desc = "Format current buffer (or range)" })
+
+  vim.api.nvim_create_user_command("FormatInfo", function() M.info() end,
+    { desc = "Show autoformat state and available formatters" })
+
+  vim.api.nvim_create_user_command("FormatToggle", function(opts)
+    M.toggle(opts.bang and true or nil)
+  end, { bang = true, desc = "Toggle autoformat (! scopes to current buffer)" })
+
+  vim.api.nvim_create_user_command("FormatEnable", function(opts)
+    M.enable(true, opts.bang and true or nil)
+  end, { bang = true, desc = "Enable autoformat (! scopes to current buffer)" })
+
+  vim.api.nvim_create_user_command("FormatDisable", function(opts)
+    M.enable(false, opts.bang and true or nil)
+  end, { bang = true, desc = "Disable autoformat (! scopes to current buffer)" })
 end
 
 return M

@@ -55,3 +55,8 @@ map("n", "]b", "<cmd>bnext<cr>",     { desc = "Next buffer" })
 -- winbar pickers — same menus the breadcrumb segments open on click
 map("n", "<leader>;", function() Lib.winbar.pick_scope() end, { desc = "Scope picker (sibling symbols)" })
 map("n", "<leader>.", function() Lib.winbar.pick_path()  end, { desc = "Path picker (sibling files)" })
+
+-- autoformat toggles (UI toggles convention: <leader>u…)
+map("n", "<leader>uf", function() Lib.format.toggle()     end, { desc = "Toggle autoformat (global)" })
+map("n", "<leader>uF", function() Lib.format.toggle(true) end, { desc = "Toggle autoformat (buffer)" })
+map("n", "<leader>ui", function() Lib.format.info()       end, { desc = "Autoformat info" })

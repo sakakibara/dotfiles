@@ -7,6 +7,28 @@ return {
     cmd = "ConformInfo",
     init = function()
       Lib.mason.add("stylua")
+      -- Register as a primary format source. Done in init (pre-load) so
+      -- Lib.format.resolve sees conform before the first BufWritePre fires.
+      -- sources() uses list_formatters (configured, regardless of binary
+      -- availability) — conform.format() itself will surface the real
+      -- error if the binary is missing.
+      Lib.format.register({
+        name     = "conform",
+        primary  = true,
+        priority = 100,
+        format   = function(buf)
+          require("conform").format({ bufnr = buf, timeout_ms = 1000 })
+        end,
+        sources  = function(buf)
+          local ok, conform = pcall(require, "conform")
+          if not ok then return {} end
+          local names = {}
+          for _, f in ipairs(conform.list_formatters(buf)) do
+            names[#names + 1] = f.name
+          end
+          return names
+        end,
+      })
     end,
     opts = {
       formatters_by_ft = {
