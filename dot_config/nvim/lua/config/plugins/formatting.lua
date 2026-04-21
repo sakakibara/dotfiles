@@ -57,14 +57,43 @@ return {
         lua = { "selene" },
       }
       local grp = vim.api.nvim_create_augroup("Lib.lint", { clear = true })
-      local timer = assert(vim.uv.new_timer())
       local debounce_ms = 200
+
+      -- Per-buffer timers: saves to different buffers in quick succession
+      -- must each get linted (a single shared timer would cancel the earlier
+      -- one). try_lint reads the current buffer, so we run it via
+      -- nvim_buf_call to target the buffer that actually triggered the
+      -- event — even if focus has moved since.
+      local timers = {} ---@type table<integer, uv.uv_timer_t>
+      local function cleanup(buf)
+        local t = timers[buf]
+        if t then
+          t:stop(); t:close()
+          timers[buf] = nil
+        end
+      end
+
+      vim.api.nvim_create_autocmd("BufWipeout", {
+        group = grp,
+        callback = function(args) cleanup(args.buf) end,
+      })
+
       vim.api.nvim_create_autocmd({ "BufReadPost", "BufWritePost", "InsertLeave" }, {
         group = grp,
         callback = function(args)
-          timer:stop()
-          timer:start(debounce_ms, 0, vim.schedule_wrap(function()
-            local ft = vim.bo[args.buf].filetype
+          local buf = args.buf
+          local t = timers[buf]
+          if not t then
+            t = assert(vim.uv.new_timer())
+            timers[buf] = t
+          end
+          t:stop()
+          t:start(debounce_ms, 0, vim.schedule_wrap(function()
+            if not vim.api.nvim_buf_is_valid(buf) then
+              cleanup(buf)
+              return
+            end
+            local ft = vim.bo[buf].filetype
             local configured = lint.linters_by_ft[ft] or {}
             local runnable = {}
             for _, name in ipairs(configured) do
@@ -80,7 +109,7 @@ return {
               end
             end
             if #runnable > 0 then
-              lint.try_lint(runnable)
+              vim.api.nvim_buf_call(buf, function() lint.try_lint(runnable) end)
             end
           end))
         end,
