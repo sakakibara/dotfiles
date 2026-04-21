@@ -31,7 +31,13 @@ return {
       quickfile = { enabled = true },
       notifier  = { enabled = true },
       input     = { enabled = true },
-      picker    = { enabled = true },
+      picker    = {
+        enabled    = true,
+        -- filename_first puts "lsp.lua   lua/lib/" instead of "lua/lib/lsp.lua",
+        -- so the identifying token is always in the same column regardless of
+        -- tree depth — much easier to skim than stock left-aligned paths.
+        formatters = { file = { filename_first = true } },
+      },
       terminal  = { enabled = true },
       bufdelete = { enabled = true },
       words     = { enabled = true },   -- LSP document_highlight under cursor

@@ -172,14 +172,22 @@ end
 function M.setup()
   -- diagnostic config
   local icons = Lib.icons.diagnostics
+  local sev = vim.diagnostic.severity
+  local sev_name = { [sev.ERROR] = "Error", [sev.WARN] = "Warn", [sev.INFO] = "Info", [sev.HINT] = "Hint" }
   vim.diagnostic.config({
-    virtual_text = { spacing = 4, source = "if_many", prefix = "●" },
+    -- Per-severity prefix icon: the inline message inherits its virtual-text
+    -- highlight automatically, so no explicit hl return is needed.
+    virtual_text = {
+      spacing = 4,
+      source  = "if_many",
+      prefix  = function(d) return icons[sev_name[d.severity]] .. " " end,
+    },
     signs = {
       text = {
-        [vim.diagnostic.severity.ERROR] = icons.Error,
-        [vim.diagnostic.severity.WARN]  = icons.Warn,
-        [vim.diagnostic.severity.INFO]  = icons.Info,
-        [vim.diagnostic.severity.HINT]  = icons.Hint,
+        [sev.ERROR] = icons.Error,
+        [sev.WARN]  = icons.Warn,
+        [sev.INFO]  = icons.Info,
+        [sev.HINT]  = icons.Hint,
       },
     },
     severity_sort = true,

@@ -42,6 +42,10 @@ end
 -- ui niceties (Neovim 0.11+)
 opt.splitkeep = "screen"
 opt.smoothscroll = true
+-- Default border for floats (hover, signature, LSP completion details, etc.).
+-- Matches the rounded style we use explicitly elsewhere (diagnostic float,
+-- winbar menus) so every popup looks consistent without per-call opts.
+opt.winborder = "rounded"
 -- UI layout: global statusline at the very bottom, no fixed cmdline row
 -- (cmdline pops up via noice when needed), tabline only when >1 tab.
 opt.laststatus  = 3
