@@ -8,6 +8,21 @@ M._on_load = {}     -- { [name] = { fn, ... } }
 M._key_registry = {} -- { [mode..":"..lhs..":"..(ft or "")] = spec.name }
 M._warned_conflicts = {} -- { [sig..":"..nameA..":"..nameB (sorted)] = true }
 
+-- Deferred notify. snacks.notifier and noice subscribe to vim.notify /
+-- msg_show at VeryLazy, so anything emitted during M.setup() (keymap
+-- conflicts, unresolved <Plug>, dep cycles, eager-load config errors) lands
+-- in :messages but never reaches noice's capture — invisible from :Noice
+-- all. Queue early calls and flush once VeryLazy fires, by which time the
+-- full notification chain is attached. Post-VeryLazy calls pass through.
+M._pending_notify = {}
+local _notify_ready = false
+local function notify(msg, level)
+  if _notify_ready then
+    return (vim.notify)(msg, level)
+  end
+  M._pending_notify[#M._pending_notify + 1] = { msg, level }
+end
+
 local ALLOWED_FIELDS = {
   [1] = true, src = true, name = true, version = true, branch = true,
   dependencies = true, event = true, ft = true, cmd = true, keys = true,
@@ -36,7 +51,7 @@ local function normalize(spec)
   -- Warn on unknown fields
   for k in pairs(spec) do
     if type(k) == "string" and not ALLOWED_FIELDS[k] then
-      vim.notify(("core.pack: unknown field '%s' on spec '%s'"):format(k, name), vim.log.levels.WARN)
+      notify(("core.pack: unknown field '%s' on spec '%s'"):format(k, name), vim.log.levels.WARN)
     end
   end
 
@@ -119,7 +134,7 @@ local function register_lhs(spec, mode, lhs, ft)
     local warn_key = sig .. "|" .. a .. "|" .. b
     if not M._warned_conflicts[warn_key] then
       M._warned_conflicts[warn_key] = true
-      vim.notify(
+      notify(
         ("core.pack: keymap conflict '%s' (mode=%s, ft=%s): '%s' vs '%s'")
           :format(lhs, mode, tostring(ft or "*"), owner, spec.name),
         vim.log.levels.WARN)
@@ -171,7 +186,7 @@ local function validate_plug(spec, k, m)
   local rhs = k[2]
   if type(rhs) ~= "string" or not rhs:match("^<Plug>") then return end
   if vim.fn.maparg(rhs, m) == "" then
-    vim.notify(
+    notify(
       ("core.pack: unresolved <Plug> rhs for '%s' -> '%s' (mode=%s, spec=%s)")
         :format(k[1] or k.lhs, rhs, m, spec.name),
       vim.log.levels.WARN)
@@ -222,12 +237,12 @@ local function run_config(spec)
   end)
 
   if not ok then
-    vim.notify(("core.pack config(%s): %s"):format(spec.name, err), vim.log.levels.ERROR)
+    notify(("core.pack config(%s): %s"):format(spec.name, err), vim.log.levels.ERROR)
   end
 
   for _, fn in ipairs(M._on_load[spec.name] or {}) do
     local okfn, errfn = xpcall(fn, debug.traceback)
-    if not okfn then vim.notify(("on_load(%s): %s"):format(spec.name, errfn), vim.log.levels.ERROR) end
+    if not okfn then notify(("on_load(%s): %s"):format(spec.name, errfn), vim.log.levels.ERROR) end
   end
   M._on_load[spec.name] = nil
 end
@@ -238,7 +253,7 @@ local function packadd(spec)
   require("core.profile").span("packadd:" .. spec.name, "packadd", function()
     local ok, err = pcall(vim.cmd, "packadd " .. spec.name)
     if not ok then
-      vim.notify(("core.pack packadd(%s) failed: %s"):format(spec.name, err), vim.log.levels.ERROR)
+      notify(("core.pack packadd(%s) failed: %s"):format(spec.name, err), vim.log.levels.ERROR)
     end
   end)
 end
@@ -248,7 +263,7 @@ local _loading = {}  -- cycle-detection guard: names currently mid-load
 local function load_spec(spec)
   if M._loaded[spec.name] then return end
   if _loading[spec.name] then
-    vim.notify(("core.pack: dependency cycle detected at '%s'"):format(spec.name), vim.log.levels.ERROR)
+    notify(("core.pack: dependency cycle detected at '%s'"):format(spec.name), vim.log.levels.ERROR)
     return
   end
   _loading[spec.name] = true
@@ -257,7 +272,7 @@ local function load_spec(spec)
     if dep then
       load_spec(dep)
     else
-      vim.notify(("core.pack: unknown dependency '%s' for '%s'"):format(dep_name, spec.name), vim.log.levels.WARN)
+      notify(("core.pack: unknown dependency '%s' for '%s'"):format(dep_name, spec.name), vim.log.levels.WARN)
     end
   end
   packadd(spec)
@@ -330,7 +345,7 @@ local function install_all(specs)
     -- then sources every plugin/ file in rtp — defeating lazy loading.
     -- We take over rtp management via our own load_spec/packadd flow.
     local ok, err = pcall(vim.pack.add, add_list, { confirm = false, load = function() end })
-    if not ok then vim.notify("vim.pack.add: " .. err, vim.log.levels.ERROR) end
+    if not ok then notify("vim.pack.add: " .. err, vim.log.levels.ERROR) end
   end
 end
 
@@ -345,12 +360,12 @@ local function register_build_hooks()
       if not data or (data.kind ~= "install" and data.kind ~= "update") then return end
       local spec = data.spec and M._specs[data.spec.name]
       if not spec or type(spec.build) ~= "string" or spec.build == "" then return end
-      vim.notify(("core.pack: building %s..."):format(spec.name), vim.log.levels.INFO)
+      notify(("core.pack: building %s..."):format(spec.name), vim.log.levels.INFO)
       local result = vim.system({ "sh", "-c", spec.build }, { cwd = data.path, text = true }):wait()
       if result.code == 0 then
-        vim.notify(("core.pack: build ok for %s"):format(spec.name), vim.log.levels.INFO)
+        notify(("core.pack: build ok for %s"):format(spec.name), vim.log.levels.INFO)
       else
-        vim.notify(("core.pack: build failed for %s: %s"):format(spec.name, result.stderr or ""), vim.log.levels.ERROR)
+        notify(("core.pack: build failed for %s: %s"):format(spec.name, result.stderr or ""), vim.log.levels.ERROR)
       end
     end,
   })
@@ -383,7 +398,7 @@ function M.setup(cfg)
       ordered[#ordered + 1] = spec
       if spec.init then
         local ok, err = xpcall(spec.init, debug.traceback, spec)
-        if not ok then vim.notify(("init(%s): %s"):format(spec.name, err), vim.log.levels.ERROR) end
+        if not ok then notify(("init(%s): %s"):format(spec.name, err), vim.log.levels.ERROR) end
       end
     end
   end
@@ -419,6 +434,28 @@ function M.setup(cfg)
   for _, s in ipairs(eagers) do load_spec(s) end
 
   M._register_triggers(ordered)
+
+  -- Flush pending notifications once noice has actually attached. See the
+  -- `notify` wrapper at the top of this file for the rationale.
+  --
+  -- Why the extra vim.schedule: noice.setup() does NOT attach synchronously.
+  -- When v:vim_did_enter == 1 (our case — VeryLazy fires on UIEnter, after
+  -- VimEnter), noice/init.lua:34-36 calls `vim.schedule(load)` where `load`
+  -- is what actually overrides vim.notify and calls vim.ui_attach. So at
+  -- VeryLazy-trigger time, noice has only *queued* its attach — vim.notify
+  -- still points to whatever was set before (snacks' notifier). A
+  -- synchronous flush here routes through snacks (→ toast + :messages) but
+  -- never hits noice's ext_messages pipeline, leaving `:Noice all` empty.
+  -- By deferring one more tick with vim.schedule, FIFO ordering guarantees
+  -- noice's `load` runs first, and our flush then goes through the full
+  -- noice chain → visible in `:Noice all`.
+  require("core.event").on("VeryLazy", function()
+    vim.schedule(function()
+      _notify_ready = true
+      for _, n in ipairs(M._pending_notify) do (vim.notify)(n[1], n[2]) end
+      M._pending_notify = {}
+    end)
+  end)
 end
 
 -- Deferred re-fire of a lazy-trigger event, so plugin autocmds registered
@@ -465,7 +502,7 @@ schedule_refire = function(event, opts)
     local ok, err = pcall(vim.api.nvim_exec_autocmds, event, opts)
     _refire_active[key] = nil
     if not ok then
-      vim.notify(("core.pack refire(%s): %s"):format(event, err), vim.log.levels.ERROR)
+      notify(("core.pack refire(%s): %s"):format(event, err), vim.log.levels.ERROR)
     end
     local retry = _refire_retry[key]
     if retry then
@@ -614,7 +651,7 @@ end
 function M.add_keys(name, keys)
   local spec = M._specs[name]
   if not spec then
-    vim.notify(("core.pack: add_keys unknown spec '%s'"):format(name), vim.log.levels.WARN)
+    notify(("core.pack: add_keys unknown spec '%s'"):format(name), vim.log.levels.WARN)
     return
   end
   local function install()
@@ -652,7 +689,7 @@ end, { desc = "List registered plugin specs" })
 
 vim.api.nvim_create_user_command("PackUpdate", function(opts)
   if not (vim.pack and vim.pack.update) then
-    vim.notify("vim.pack.update not available", vim.log.levels.ERROR); return
+    notify("vim.pack.update not available", vim.log.levels.ERROR); return
   end
   local args = opts.fargs
   local names = #args > 0 and args or nil
@@ -663,7 +700,7 @@ end, { nargs = "*", desc = "Update plugin(s)" })
 
 vim.api.nvim_create_user_command("PackClean", function()
   if not (vim.pack and vim.pack.get and vim.pack.del) then
-    vim.notify("vim.pack.del not available", vim.log.levels.ERROR); return
+    notify("vim.pack.del not available", vim.log.levels.ERROR); return
   end
   local installed = vim.pack.get() or {}
   local to_remove = {}
