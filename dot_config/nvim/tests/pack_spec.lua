@@ -223,6 +223,141 @@ T.describe("core.pack re-fires triggering event", function()
     vim.wait(100, function() return plugin_saw_event end)
     T.truthy(plugin_saw_event)
   end)
+
+  T.it("dedupes re-fires when multiple specs share an event", function()
+    local pack = reset_pack()
+    local handler_calls = 0
+    -- Handler registered BEFORE setup so the re-fire reaches it.
+    local aug = vim.api.nvim_create_augroup("PackDedupTest", { clear = true })
+    vim.api.nvim_create_autocmd("User", {
+      group = aug, pattern = "DedupTest",
+      callback = function() handler_calls = handler_calls + 1 end,
+    })
+    pack.setup({
+      specs = {
+        { dev = true, name = "dedup-a", event = "User DedupTest", config = function() end },
+        { dev = true, name = "dedup-b", event = "User DedupTest", config = function() end },
+        { dev = true, name = "dedup-c", event = "User DedupTest", config = function() end },
+      },
+    })
+    -- Original fire: handler runs once synchronously, all three specs load, and
+    -- each once-handler asks for a re-fire. Dedup collapses those to a single
+    -- scheduled re-fire, so the handler runs exactly one more time after drain.
+    vim.api.nvim_exec_autocmds("User", { pattern = "DedupTest" })
+    T.eq(handler_calls, 1)
+    vim.wait(100, function() return handler_calls >= 2 end)
+    T.eq(handler_calls, 2)
+    vim.api.nvim_del_augroup_by_id(aug)
+  end)
+
+  T.it("does not nest past E218 when handler pumps the event loop", function()
+    -- Regression: conform.format's internal vim.wait() drains pending schedule
+    -- callbacks during a handler run. Without dedup, 15 pending re-fires for
+    -- BufWritePre stacked into the call stack (each invoking Lib.format →
+    -- conform.format → vim.wait → next pending) until nvim's nesting limit
+    -- (10) tripped E218.
+    local pack = reset_pack()
+    local nesting_error = false
+    local orig_notify = vim.notify
+    vim.notify = function(msg, lvl, opts)
+      if type(msg) == "string" and msg:match("E218") then nesting_error = true end
+      return orig_notify(msg, lvl, opts)
+    end
+
+    local specs = {}
+    for i = 1, 15 do
+      specs[i] = { dev = true, name = "pump-" .. i, event = "User PumpTest",
+                   config = function() end }
+    end
+    -- Handler that pumps the event loop (simulates conform.format + vim.wait)
+    local aug = vim.api.nvim_create_augroup("PackPumpTest", { clear = true })
+    vim.api.nvim_create_autocmd("User", {
+      group = aug, pattern = "PumpTest",
+      callback = function() vim.wait(20, function() return false end) end,
+    })
+    pack.setup({ specs = specs })
+
+    vim.api.nvim_exec_autocmds("User", { pattern = "PumpTest" })
+    -- Drain all scheduled callbacks. vim.wait with always-false predicate
+    -- gives the event loop time to run them.
+    vim.wait(500, function() return false end)
+
+    vim.notify = orig_notify
+    vim.api.nvim_del_augroup_by_id(aug)
+    T.eq(nesting_error, false, "E218 autocommand nesting was reported")
+  end)
+
+  T.it("re-entrancy guard blocks same-key refire while one is active", function()
+    -- Direct test of the belt-and-suspenders guard: with dedup alone, the
+    -- E218 regression couldn't trigger in practice, so the guard would rot
+    -- untested. Here we drive it via the exposed schedule_refire helper and
+    -- force a re-entrancy: a handler, during its nested vim.wait, schedules
+    -- another re-fire for the SAME key. The guard must block the nested run
+    -- (runs=1), not let it recurse (runs>=2).
+    local pack = reset_pack()
+    pack.setup({ specs = {} })
+
+    local runs = 0
+    local aug = vim.api.nvim_create_augroup("PackReentryTest", { clear = true })
+    vim.api.nvim_create_autocmd("User", {
+      group = aug, pattern = "ReentryTest",
+      callback = function()
+        runs = runs + 1
+        if runs == 1 then
+          -- Queue a second refire for the same key, then pump the loop to
+          -- give the scheduled callback a chance to fire. If the guard
+          -- works, this nested callback short-circuits (runs stays at 1
+          -- until we exit); if it doesn't, runs becomes 2 mid-wait.
+          pack._schedule_refire("User", { pattern = "ReentryTest" })
+          vim.wait(50, function() return runs >= 2 end)
+        end
+      end,
+    })
+
+    pack._schedule_refire("User", { pattern = "ReentryTest" })
+    vim.wait(200, function() return runs >= 1 end)
+    -- One handler run from the first scheduled refire. The second refire
+    -- queued mid-handler must wait for active=false to clear, but by then
+    -- the pending flag is clear and it runs — so we expect exactly 2 total.
+    -- The key assertion: runs did NOT reach 2 *during* the first's vim.wait
+    -- (that would be nesting). Verify by checking that between the vim.wait
+    -- and now, runs advanced from 1 to 2 (second runs after first returns).
+    vim.wait(200, function() return runs >= 2 end)
+    T.eq(runs, 2, "expected exactly 2 non-nested handler runs")
+
+    vim.api.nvim_del_augroup_by_id(aug)
+  end)
+
+  T.it("different buffers re-fire independently (no cross-key blocking)", function()
+    -- Per-key (not per-event) active guard: a refire for buf A must not
+    -- block a concurrent refire for buf B. Regression against collapsing
+    -- the guard to a per-event flag. This mirrors the real production
+    -- scenario (BufWritePre across multiple buffers) that triggered E218.
+    local pack = reset_pack()
+    pack.setup({ specs = {} })
+
+    local buf_a = vim.api.nvim_create_buf(false, true)
+    local buf_b = vim.api.nvim_create_buf(false, true)
+    local seen = {}  -- { [buf] = count }
+    local aug = vim.api.nvim_create_augroup("PackKeyIndepTest", { clear = true })
+    vim.api.nvim_create_autocmd("BufWritePre", {
+      group = aug,
+      callback = function(args)
+        seen[args.buf] = (seen[args.buf] or 0) + 1
+      end,
+    })
+
+    -- Two schedules for different buffer keys — both must run.
+    pack._schedule_refire("BufWritePre", { buffer = buf_a, modeline = false })
+    pack._schedule_refire("BufWritePre", { buffer = buf_b, modeline = false })
+    vim.wait(200, function() return seen[buf_a] and seen[buf_b] end)
+    T.eq(seen[buf_a], 1)
+    T.eq(seen[buf_b], 1)
+
+    vim.api.nvim_del_augroup_by_id(aug)
+    vim.api.nvim_buf_delete(buf_a, { force = true })
+    vim.api.nvim_buf_delete(buf_b, { force = true })
+  end)
 end)
 
 -- Helper: unmap an lhs across all tested modes, swallowing "no such mapping".

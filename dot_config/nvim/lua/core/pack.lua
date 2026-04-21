@@ -421,6 +421,66 @@ function M.setup(cfg)
   M._register_triggers(ordered)
 end
 
+-- Deferred re-fire of a lazy-trigger event, so plugin autocmds registered
+-- during load_spec see the current buffer. Three concerns:
+--
+-- 1. Fan-out dedup. `event = "LazyFile"` expands to 3 events and ~15 specs
+--    share it — one original fire would otherwise queue 15 redundant
+--    re-fires per event.
+--
+-- 2. Reentrancy. `vim.schedule` alone does NOT break autocmd nesting when a
+--    handler pumps the event loop synchronously. Concretely: BufWritePre →
+--    Lib.format → conform.format → vim.wait(1000). libuv runs pending
+--    schedule callbacks DURING that wait, so without dedup the other 14
+--    pending re-fires fire one after another, each re-invoking Lib.format →
+--    conform → vim.wait → next pending, recursing until E218 (autocmd
+--    nesting too deep) at level 10.
+--
+-- 3. Don't lose requests made mid-fire. When a re-fire is active and a new
+--    schedule_refire arrives for the same key, the guard must park the
+--    request (so it runs *after* active clears), not drop it — otherwise a
+--    plugin whose load was triggered during an in-flight re-fire would
+--    never get its own re-fire.
+--
+-- Keyed by (event, buffer, pattern): different buffers/patterns are
+-- independent work and must not block each other. The guard + retry slot
+-- only apply per-key, so a save on buf 5 can't starve a refire for buf 10.
+M._refire_pending = {}  -- scheduled, not yet run
+M._refire_active  = {}  -- currently running
+M._refire_retry   = {}  -- request made while active: latest opts to replay
+local _refire_pending = M._refire_pending
+local _refire_active  = M._refire_active
+local _refire_retry   = M._refire_retry
+local schedule_refire
+schedule_refire = function(event, opts)
+  local key = event .. "\0" .. (opts.buffer or 0) .. "\0" .. (opts.pattern or "")
+  if _refire_active[key] then
+    -- Park the request — we'll replay once active clears. Latest-wins is
+    -- correct for lazy-load: each call carries opts from one original
+    -- event fire, and the re-fire just needs to give handlers a chance
+    -- to catch up on the current state.
+    _refire_retry[key] = { event = event, opts = opts }
+    return
+  end
+  if _refire_pending[key] then return end
+  _refire_pending[key] = true
+  vim.schedule(function()
+    _refire_pending[key] = nil
+    _refire_active[key] = true
+    local ok, err = pcall(vim.api.nvim_exec_autocmds, event, opts)
+    _refire_active[key] = nil
+    if not ok then
+      vim.notify(("core.pack refire(%s): %s"):format(event, err), vim.log.levels.ERROR)
+    end
+    local retry = _refire_retry[key]
+    if retry then
+      _refire_retry[key] = nil
+      schedule_refire(retry.event, retry.opts)
+    end
+  end)
+end
+M._schedule_refire = schedule_refire  -- exposed for tests
+
 function M._register_triggers(specs)
   local event = require("core.event")
 
@@ -439,12 +499,10 @@ function M._register_triggers(specs)
           local pat = e:sub(6)
           vim.api.nvim_create_autocmd("User", {
             once = true, pattern = pat,
+            desc = "lazy: " .. spec.name,
             callback = function(args)
               load_spec(spec)
-              -- Defer re-fire to next tick to break autocmd nesting.
-              vim.schedule(function()
-                vim.api.nvim_exec_autocmds("User", { pattern = pat, data = args.data, modeline = false })
-              end)
+              schedule_refire("User", { pattern = pat, data = args.data, modeline = false })
             end,
           })
         else
@@ -454,20 +512,14 @@ function M._register_triggers(specs)
       if #real > 0 then
         vim.api.nvim_create_autocmd(real, {
           once = true,
+          desc = "lazy: " .. spec.name,
           callback = function(args)
             load_spec(spec)
-            -- Defer re-fire to break nesting. When multiple once-autocmds
-            -- trigger on the same event, synchronous re-fire stacks them
-            -- and the plugin's newly-registered handlers re-trigger further
-            -- autocmds -> E218: Autocommand nesting too deep. vim.schedule
-            -- returns to the event loop, avoiding the recursion.
-            vim.schedule(function()
-              vim.api.nvim_exec_autocmds(args.event, {
-                buffer = args.buf,
-                data = args.data,
-                modeline = false,
-              })
-            end)
+            schedule_refire(args.event, {
+              buffer = args.buf,
+              data = args.data,
+              modeline = false,
+            })
           end,
         })
       end
@@ -483,11 +535,10 @@ function M._register_triggers(specs)
       local fts = type(spec.ft) == "table" and spec.ft or { spec.ft }
       vim.api.nvim_create_autocmd("FileType", {
         once = true, pattern = fts,
+        desc = "lazy: " .. spec.name,
         callback = function(args)
           load_spec(spec)
-          vim.schedule(function()
-            vim.api.nvim_exec_autocmds("FileType", { buffer = args.buf, modeline = false })
-          end)
+          schedule_refire("FileType", { buffer = args.buf, modeline = false })
         end,
       })
     end
