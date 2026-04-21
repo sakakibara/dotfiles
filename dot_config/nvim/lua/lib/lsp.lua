@@ -160,7 +160,12 @@ function M.keymaps(bufnr)
   bmap("n", "<leader>uh", function()
     local enabled = vim.lsp.inlay_hint.is_enabled({ bufnr = bufnr })
     vim.lsp.inlay_hint.enable(not enabled, { bufnr = bufnr })
-    vim.notify("Inlay hints: " .. (not enabled and "on" or "off"))
+    local now_on = not enabled
+    vim.notify(
+      ("**%s**"):format(now_on and "on" or "off"),
+      now_on and vim.log.levels.INFO or vim.log.levels.WARN,
+      { title = "Inlay hints " .. (now_on and "on" or "off") }
+    )
   end, { desc = "Toggle inlay hints" })
 end
 

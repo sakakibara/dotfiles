@@ -350,7 +350,9 @@ local function segment_path_dir(abs_path, label)
       original_win = src_win,
       drill        = function(item) return item.is_dir and dir_items(item.file) or nil end,
       on_pick      = function(item)
-        if item.is_dir then vim.cmd.cd(item.file); vim.notify("cd " .. item.file)
+        if item.is_dir then
+          vim.cmd.cd(item.file)
+          vim.notify("`" .. vim.fn.fnamemodify(item.file, ":~") .. "`", vim.log.levels.INFO, { title = "cd" })
         else vim.cmd.edit(vim.fn.fnameescape(item.file)) end
       end,
     })

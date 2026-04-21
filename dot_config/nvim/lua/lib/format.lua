@@ -110,33 +110,50 @@ function M.format(opts)
   end
 end
 
--- Print a structured summary of the current state + available sources.
--- Goes to :messages (not vim.notify): surfacing state is a read operation,
--- not an event.
+-- Summarize current state + available sources. Writes markdown so
+-- snacks.notifier (default ft=markdown) renders bold/inline-code/italic
+-- as a proper floating card — not a drab :messages dump.
 function M.info(buf)
   buf = (buf == nil or buf == 0) and vim.api.nvim_get_current_buf() or buf
   local gaf = vim.g.autoformat == nil or vim.g.autoformat
   local baf = vim.b[buf].autoformat
   local enabled = M.enabled(buf)
+
+  local function code_list(xs)
+    local out = {}
+    for i, s in ipairs(xs) do out[i] = "`" .. s .. "`" end
+    return table.concat(out, " ")
+  end
+
   local lines = {
-    ("Format: global=%s, buffer=%s, effective=%s"):format(
-      gaf and "on" or "off",
-      baf == nil and "inherit" or (baf and "on" or "off"),
-      enabled and "on" or "off"),
+    ("**global**  `%s`"):format(gaf and "on" or "off"),
+    ("**buffer**  `%s`"):format(baf == nil and "inherit" or (baf and "on" or "off")),
   }
-  local any = false
+
+  local rows = {}
   for _, f in ipairs(M.resolve(buf)) do
-    if #f.resolved > 0 then
-      any = true
-      lines[#lines + 1] = ("  %s %s: %s%s"):format(
-        f.active and "▸" or "·",
-        f.name,
-        table.concat(f.resolved, ", "),
-        f.active and "" or " (shadowed)")
+    if #f.resolved > 0 then rows[#rows + 1] = f end
+  end
+
+  if #rows == 0 then
+    lines[#lines + 1] = ""
+    lines[#lines + 1] = "_no formatters for this buffer_"
+  else
+    lines[#lines + 1] = ""
+    for _, f in ipairs(rows) do
+      if f.active then
+        lines[#lines + 1] = ("▸ **%s**  %s"):format(f.name, code_list(f.resolved))
+      else
+        lines[#lines + 1] = ("· %s  %s  _(shadowed)_"):format(f.name, code_list(f.resolved))
+      end
     end
   end
-  if not any then lines[#lines + 1] = "  (no formatters available for this buffer)" end
-  for _, l in ipairs(lines) do print(l) end
+
+  vim.notify(
+    table.concat(lines, "\n"),
+    enabled and vim.log.levels.INFO or vim.log.levels.WARN,
+    { title = "Autoformat " .. (enabled and "on" or "off") }
+  )
 end
 
 -- Called from vim.opt.formatexpr via options.lua.
