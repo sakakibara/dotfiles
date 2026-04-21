@@ -50,6 +50,26 @@ function M.setup()
       Lib.lsp.setup()
       Lib.format.setup()
       Lib.root.setup()
+
+      -- Tee vim.notify into :messages. snacks.notifier replaces vim.notify
+      -- to render toasts but doesn't back-fill :messages; noice hooks on top
+      -- of snacks and routes to its own history, but only sees calls that
+      -- reach it through the chain. `nvim_echo(_, true, _)` with history=true
+      -- populates :messages AND fires msg_show → noice picks it up → the
+      -- same message surfaces in `:Noice` and `:messages` alongside the
+      -- snacks toast. Scheduled to install after noice's own VeryLazy hook.
+      vim.schedule(function()
+        local prev = vim.notify
+        vim.notify = function(msg, level, opts)
+          local lvl = type(level) == "number" and level or vim.log.levels.INFO
+          local hl = (lvl >= vim.log.levels.ERROR and "ErrorMsg")
+            or (lvl >= vim.log.levels.WARN and "WarningMsg")
+            or "Normal"
+          pcall(vim.api.nvim_echo, { { tostring(msg or ""), hl } }, true, {})
+          return prev(msg, level, opts)
+        end
+      end)
+
       require("core.profile").dump()
     end,
   })

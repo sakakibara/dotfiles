@@ -30,6 +30,12 @@ return {
         hover = { enabled = true },
         signature = { enabled = true },
       },
+      -- Noice runs a 1-second poller that warns if `vim.notify` changed.
+      -- We intentionally wrap vim.notify in config/init.lua to tee into
+      -- :messages (the wrapper delegates to noice's own `vim.notify` via
+      -- `prev`), so the check is a false alarm. Disable it to stop the
+      -- periodic warning spam.
+      health = { checker = false },
       presets = {
         command_palette = true,
         long_message_to_split = true,
