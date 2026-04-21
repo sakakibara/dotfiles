@@ -7,7 +7,7 @@ end)
 
 Lib.plugin.on_load("nvim-lspconfig", function()
   vim.lsp.config("taplo", { capabilities = Lib.lsp.capabilities() })
-  vim.lsp.enable("taplo")
+  Lib.lsp.enable("taplo")
 end)
 
 return {}

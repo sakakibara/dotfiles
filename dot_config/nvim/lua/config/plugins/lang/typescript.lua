@@ -116,7 +116,7 @@ Lib.plugin.on_load("nvim-lspconfig", function()
       javascript = ts_settings,
     },
   })
-  vim.lsp.enable("vtsls")
+  Lib.lsp.enable("vtsls")
 end)
 
 Lib.plugin.on_load("conform.nvim", function()

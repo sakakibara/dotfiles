@@ -27,7 +27,7 @@ Lib.plugin.on_load("nvim-lspconfig", function()
       ".git",
     },
   })
-  vim.lsp.enable("ocamllsp")
+  Lib.lsp.enable("ocamllsp")
 end)
 
 return {}

@@ -11,7 +11,7 @@ end)
 
 Lib.plugin.on_load("nvim-lspconfig", function()
   vim.lsp.config("zls", { capabilities = Lib.lsp.capabilities() })
-  vim.lsp.enable("zls")
+  Lib.lsp.enable("zls")
 end)
 
 return {

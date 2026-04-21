@@ -23,7 +23,7 @@ end)
 
 Lib.plugin.on_load("nvim-lspconfig", function()
   vim.lsp.config("texlab", { capabilities = Lib.lsp.capabilities() })
-  vim.lsp.enable("texlab")
+  Lib.lsp.enable("texlab")
 end)
 
 return {

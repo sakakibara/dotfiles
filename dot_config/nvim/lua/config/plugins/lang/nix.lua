@@ -10,7 +10,7 @@ end)
 
 Lib.plugin.on_load("nvim-lspconfig", function()
   vim.lsp.config("nil_ls", { capabilities = Lib.lsp.capabilities() })
-  vim.lsp.enable("nil_ls")
+  Lib.lsp.enable("nil_ls")
 end)
 
 Lib.plugin.on_load("conform.nvim", function()

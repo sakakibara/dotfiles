@@ -78,7 +78,7 @@ Lib.plugin.on_load("nvim-lspconfig", function()
       if root then on_dir(root) end
     end,
   })
-  vim.lsp.enable("clangd")
+  Lib.lsp.enable("clangd")
 end)
 
 -- Header/source switch keymap (C/C++ buffers).

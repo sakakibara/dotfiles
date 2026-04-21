@@ -11,7 +11,7 @@ end)
 
 Lib.plugin.on_load("nvim-lspconfig", function()
   vim.lsp.config("elmls", { capabilities = Lib.lsp.capabilities() })
-  vim.lsp.enable("elmls")
+  Lib.lsp.enable("elmls")
 end)
 
 Lib.plugin.on_load("conform.nvim", function()

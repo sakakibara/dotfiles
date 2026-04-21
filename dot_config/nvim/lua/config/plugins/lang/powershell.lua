@@ -10,7 +10,7 @@ Lib.plugin.on_load("nvim-lspconfig", function()
     capabilities = Lib.lsp.capabilities(),
     bundle_path = vim.fn.stdpath("data") .. "/mason/packages/powershell-editor-services",
   })
-  vim.lsp.enable("powershell_es")
+  Lib.lsp.enable("powershell_es")
 end)
 
 return {

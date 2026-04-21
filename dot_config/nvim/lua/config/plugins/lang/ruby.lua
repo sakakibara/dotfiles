@@ -12,9 +12,9 @@ end)
 
 Lib.plugin.on_load("nvim-lspconfig", function()
   vim.lsp.config("ruby_lsp", { capabilities = Lib.lsp.capabilities() })
-  vim.lsp.enable("ruby_lsp")
+  Lib.lsp.enable("ruby_lsp")
   vim.lsp.config("rubocop", { capabilities = Lib.lsp.capabilities() })
-  vim.lsp.enable("rubocop")
+  Lib.lsp.enable("rubocop")
 end)
 
 Lib.plugin.on_load("conform.nvim", function()

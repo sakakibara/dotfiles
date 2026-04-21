@@ -9,7 +9,7 @@ end)
 
 Lib.plugin.on_load("nvim-lspconfig", function()
   vim.lsp.config("erlangls", { capabilities = Lib.lsp.capabilities() })
-  vim.lsp.enable("erlangls")
+  Lib.lsp.enable("erlangls")
 end)
 
 return {}

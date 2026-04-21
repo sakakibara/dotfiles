@@ -9,7 +9,7 @@ end)
 
 Lib.plugin.on_load("nvim-lspconfig", function()
   vim.lsp.config("helm_ls", { capabilities = Lib.lsp.capabilities() })
-  vim.lsp.enable("helm_ls")
+  Lib.lsp.enable("helm_ls")
 end)
 
 -- Stop yamlls on helm-template buffers: yamlls and helm_ls both claim yaml

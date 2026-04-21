@@ -25,7 +25,7 @@ Lib.plugin.on_load("nvim-lspconfig", function()
     capabilities = Lib.lsp.capabilities(),
     filetypes = filetypes,
   })
-  vim.lsp.enable("tailwindcss")
+  Lib.lsp.enable("tailwindcss")
 end)
 
 -- Note: old config added `roobert/tailwindcss-colorizer-cmp.nvim` as an

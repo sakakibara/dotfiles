@@ -9,7 +9,7 @@ end)
 
 Lib.plugin.on_load("nvim-lspconfig", function()
   vim.lsp.config("thriftls", { capabilities = Lib.lsp.capabilities() })
-  vim.lsp.enable("thriftls")
+  Lib.lsp.enable("thriftls")
 end)
 
 return {}

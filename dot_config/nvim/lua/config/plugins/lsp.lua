@@ -31,7 +31,7 @@ return {
           },
         },
       })
-      vim.lsp.enable("lua_ls")
+      Lib.lsp.enable("lua_ls")
     end,
   },
 

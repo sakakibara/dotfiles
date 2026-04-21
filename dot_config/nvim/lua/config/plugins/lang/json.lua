@@ -19,7 +19,9 @@ Lib.plugin.on_load("nvim-lspconfig", function()
       },
     },
   })
-  vim.lsp.enable("jsonls")
+  -- jsonls ships a function `cmd`; pass an explicit binary hint so our
+  -- guarded enable can verify availability without trying to call the fn.
+  Lib.lsp.enable("jsonls", { cmd = "vscode-json-language-server" })
 end)
 
 return {

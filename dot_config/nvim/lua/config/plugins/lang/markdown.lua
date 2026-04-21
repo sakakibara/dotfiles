@@ -8,7 +8,7 @@ end)
 
 Lib.plugin.on_load("nvim-lspconfig", function()
   vim.lsp.config("marksman", { capabilities = Lib.lsp.capabilities() })
-  vim.lsp.enable("marksman")
+  Lib.lsp.enable("marksman")
 end)
 
 Lib.plugin.on_load("conform.nvim", function()

@@ -9,7 +9,7 @@ end)
 
 Lib.plugin.on_load("nvim-lspconfig", function()
   vim.lsp.config("astro", { capabilities = Lib.lsp.capabilities() })
-  vim.lsp.enable("astro")
+  Lib.lsp.enable("astro")
 end)
 
 Lib.plugin.on_load("conform.nvim", function()

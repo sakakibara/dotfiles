@@ -20,7 +20,7 @@ Lib.plugin.on_load("nvim-lspconfig", function()
       },
     },
   })
-  vim.lsp.enable("ruff")
+  Lib.lsp.enable("ruff")
 end)
 
 -- Disable ruff hover so pyright/basedpyright (if present) wins hover, matching

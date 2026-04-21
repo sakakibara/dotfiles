@@ -20,7 +20,7 @@ end)
 
 Lib.plugin.on_load("nvim-lspconfig", function()
   vim.lsp.config("nushell", { capabilities = Lib.lsp.capabilities() })
-  vim.lsp.enable("nushell")
+  Lib.lsp.enable("nushell")
 end)
 
 return {}

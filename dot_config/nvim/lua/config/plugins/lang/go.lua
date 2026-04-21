@@ -50,7 +50,7 @@ Lib.plugin.on_load("nvim-lspconfig", function()
       },
     },
   })
-  vim.lsp.enable("gopls")
+  Lib.lsp.enable("gopls")
 end)
 
 -- Populate semanticTokensProvider from negotiated capabilities if the server

@@ -15,7 +15,7 @@ Lib.plugin.on_load("nvim-lspconfig", function()
     },
   })
   vim.lsp.config("svelte", { capabilities = caps })
-  vim.lsp.enable("svelte")
+  Lib.lsp.enable("svelte")
 end)
 
 Lib.plugin.on_load("conform.nvim", function()

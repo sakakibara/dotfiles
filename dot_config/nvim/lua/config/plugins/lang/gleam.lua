@@ -7,7 +7,7 @@ end)
 
 Lib.plugin.on_load("nvim-lspconfig", function()
   vim.lsp.config("gleam", { capabilities = Lib.lsp.capabilities() })
-  vim.lsp.enable("gleam")
+  Lib.lsp.enable("gleam")
 end)
 
 return {}

@@ -17,7 +17,7 @@ vim.api.nvim_create_autocmd({ "BufReadPost", "BufNewFile" }, {
 
 Lib.plugin.on_load("nvim-lspconfig", function()
   vim.lsp.config("angularls", { capabilities = Lib.lsp.capabilities() })
-  vim.lsp.enable("angularls")
+  Lib.lsp.enable("angularls", { cmd = "ngserver" })  -- function cmd in lspconfig
 end)
 
 -- Disable angularls rename — it clashes with the TS server's rename capability.

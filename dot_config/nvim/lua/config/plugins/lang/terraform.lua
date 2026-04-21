@@ -9,7 +9,7 @@ end)
 
 Lib.plugin.on_load("nvim-lspconfig", function()
   vim.lsp.config("terraformls", { capabilities = Lib.lsp.capabilities() })
-  vim.lsp.enable("terraformls")
+  Lib.lsp.enable("terraformls")
 end)
 
 Lib.plugin.on_load("conform.nvim", function()

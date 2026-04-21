@@ -10,7 +10,7 @@ end)
 
 Lib.plugin.on_load("nvim-lspconfig", function()
   vim.lsp.config("elixirls", { capabilities = Lib.lsp.capabilities() })
-  vim.lsp.enable("elixirls")
+  Lib.lsp.enable("elixirls")
 end)
 
 Lib.plugin.on_load("nvim-lint", function()

@@ -9,7 +9,7 @@ end)
 
 Lib.plugin.on_load("nvim-lspconfig", function()
   vim.lsp.config("clojure_lsp", { capabilities = Lib.lsp.capabilities() })
-  vim.lsp.enable("clojure_lsp")
+  Lib.lsp.enable("clojure_lsp")
 end)
 
 return {

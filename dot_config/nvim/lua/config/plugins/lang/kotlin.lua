@@ -47,7 +47,7 @@ end)
 
 Lib.plugin.on_load("nvim-lspconfig", function()
   vim.lsp.config("kotlin_language_server", { capabilities = Lib.lsp.capabilities() })
-  vim.lsp.enable("kotlin_language_server")
+  Lib.lsp.enable("kotlin_language_server")
 end)
 
 Lib.plugin.on_load("conform.nvim", function()

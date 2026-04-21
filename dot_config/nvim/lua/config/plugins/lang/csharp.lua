@@ -48,7 +48,7 @@ Lib.plugin.on_load("nvim-lspconfig", function()
     organize_imports_on_format = true,
     enable_import_completion = true,
   })
-  vim.lsp.enable("omnisharp")
+  Lib.lsp.enable("omnisharp")
 end)
 
 -- Omnisharp-extended "Goto Definition" keymap.

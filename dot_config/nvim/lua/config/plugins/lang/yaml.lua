@@ -32,7 +32,7 @@ Lib.plugin.on_load("nvim-lspconfig", function()
       },
     },
   })
-  vim.lsp.enable("yamlls")
+  Lib.lsp.enable("yamlls", { cmd = "yaml-language-server" })  -- function cmd in lspconfig
 end)
 
 return {

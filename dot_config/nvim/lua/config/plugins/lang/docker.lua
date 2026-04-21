@@ -9,9 +9,9 @@ end)
 
 Lib.plugin.on_load("nvim-lspconfig", function()
   vim.lsp.config("dockerls", { capabilities = Lib.lsp.capabilities() })
-  vim.lsp.enable("dockerls")
+  Lib.lsp.enable("dockerls")
   vim.lsp.config("docker_compose_language_service", { capabilities = Lib.lsp.capabilities() })
-  vim.lsp.enable("docker_compose_language_service")
+  Lib.lsp.enable("docker_compose_language_service")
 end)
 
 Lib.plugin.on_load("nvim-lint", function()

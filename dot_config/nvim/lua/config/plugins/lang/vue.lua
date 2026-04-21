@@ -9,7 +9,7 @@ end)
 
 Lib.plugin.on_load("nvim-lspconfig", function()
   vim.lsp.config("vue_ls", { capabilities = Lib.lsp.capabilities() })
-  vim.lsp.enable("vue_ls")
+  Lib.lsp.enable("vue_ls")
 end)
 
 -- Note: old config coordinated vue_ls with vtsls via `@vue/typescript-plugin`

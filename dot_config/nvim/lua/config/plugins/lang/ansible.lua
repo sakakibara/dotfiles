@@ -5,7 +5,7 @@ Lib.mason.add("ansible-language-server", "ansible-lint")
 
 Lib.plugin.on_load("nvim-lspconfig", function()
   vim.lsp.config("ansiblels", { capabilities = Lib.lsp.capabilities() })
-  vim.lsp.enable("ansiblels")
+  Lib.lsp.enable("ansiblels")
 end)
 
 Lib.plugin.on_load("nvim-lint", function()
