@@ -101,17 +101,23 @@ return {
     end,
   },
 
-  -- Autopair brackets / quotes / backticks
+  -- Autopair brackets / quotes / backticks. nvim-autopairs over mini.pairs
+  -- for richer rules (jsx, markdown fences) and fast-wrap (<M-e> wraps the
+  -- word after cursor). Treesitter-aware via check_ts: skips pairing inside
+  -- strings / comments when a parser is available, prevents annoying
+  -- double-quote inside docstrings, etc.
   {
-    "echasnovski/mini.pairs",
-    name = "mini.pairs",
+    "windwp/nvim-autopairs",
+    name = "nvim-autopairs",
     event = "InsertEnter",
     opts = {
-      modes = { insert = true, command = true, terminal = false },
-      skip_next       = [=[[%w%%%'%[%"%.%`%$]]=],
-      skip_ts         = { "string" },
-      skip_unbalanced = true,
-      markdown        = true,
+      check_ts        = true,
+      ts_config       = {
+        lua        = { "string" },
+        javascript = { "template_string" },
+      },
+      disable_filetype = { "TelescopePrompt", "vim", "spectre_panel" },
+      fast_wrap       = { map = "<M-e>" },
     },
   },
 
@@ -197,14 +203,14 @@ return {
     dependencies = { "nvim-treesitter" },
   },
 
-  -- Incremental rename preview — see the rename happen while you type
+  -- Incremental rename preview — see the rename happen while you type.
+  -- The `grn` key is wired in lib/lsp.lua on LspAttach, overriding Neovim
+  -- 0.11+'s default plain-rename with this preview variant. This spec just
+  -- declares the plugin + its loader; the keymap lives with the LSP setup.
   {
     "smjonas/inc-rename.nvim",
     name = "inc-rename.nvim",
     cmd  = "IncRename",
-    keys = {
-      { "<leader>cr", function() return ":IncRename " .. vim.fn.expand("<cword>") end, expr = true, desc = "LSP rename (incremental)" },
-    },
     opts = {},
   },
 

@@ -123,30 +123,45 @@ function M._fire_attach(args)
 end
 
 function M.keymaps(bufnr)
-  local map = function(mode, lhs, rhs, desc)
-    vim.keymap.set(mode, lhs, rhs, { buffer = bufnr, desc = desc, silent = true })
+  local function bmap(mode, lhs, rhs, opts)
+    opts = opts or {}
+    opts.buffer = bufnr
+    opts.silent = opts.silent ~= false
+    vim.keymap.set(mode, lhs, rhs, opts)
   end
 
-  map("n", "gd", vim.lsp.buf.definition,       "LSP: definition")
-  map("n", "gD", vim.lsp.buf.declaration,      "LSP: declaration")
-  map("n", "gr", vim.lsp.buf.references,       "LSP: references")
-  map("n", "gi", vim.lsp.buf.implementation,   "LSP: implementation")
-  map("n", "gy", vim.lsp.buf.type_definition,  "LSP: type definition")
-  map("n", "K",  vim.lsp.buf.hover,            "LSP: hover")
-  map("n", "gK", vim.lsp.buf.signature_help,   "LSP: signature help")
-  map("i", "<C-k>", vim.lsp.buf.signature_help,"LSP: signature help")
-  map({ "n", "x" }, "<leader>ca", vim.lsp.buf.code_action, "LSP: code action")
-  -- Note: <leader>cr is claimed by inc-rename.nvim (see editor/text.lua)
-  -- for its incremental-preview rename, which is strictly better than the
-  -- plain LSP rename. Defining it here would shadow it as a buffer-local.
-  map("n", "<leader>cf", function() Lib.format.format({ buf = bufnr, force = true }) end, "Format buffer")
-  map("n", "<leader>cl", "<cmd>checkhealth vim.lsp<cr>", "LSP: health")
+  -- LSP navigation follows Neovim 0.11+'s `gr*` namespace so muscle memory
+  -- transfers to any stock Neovim. Where a Snacks picker gives a richer
+  -- experience than nvim's default, we override the default here. Stock
+  -- defaults kept: `gra` (code action), `gO` (document symbols), `K` (hover).
+  -- `<C-s>` (insert: signature help) is shadowed by our save binding; use
+  -- `<C-k>` below instead. `gd` → Snacks picker is set globally in core.lua
+  -- to fill the gap nvim left (there's no `grd` default, and `gd` is
+  -- universal muscle memory).
+  bmap("n", "gD", vim.lsp.buf.declaration,                           { desc = "LSP: declaration" })
+  bmap("n", "grr", function() Snacks.picker.lsp_references()       end, { desc = "LSP: references" })
+  bmap("n", "gri", function() Snacks.picker.lsp_implementations()  end, { desc = "LSP: implementations" })
+  bmap("n", "grt", function() Snacks.picker.lsp_type_definitions() end, { desc = "LSP: type definition" })
 
-  map("n", "<leader>uh", function()
+  -- grn: inc-rename's preview UI overrides nvim's plain rename default.
+  -- Our LspAttach fires after nvim's defaults, so this buffer-local
+  -- override wins. :IncRename lazy-loads inc-rename.nvim via its cmd trigger.
+  bmap("n", "grn",
+    function() return ":IncRename " .. vim.fn.expand("<cword>") end,
+    { desc = "LSP: rename (incremental preview)", expr = true })
+
+  bmap("i", "<C-k>", vim.lsp.buf.signature_help, { desc = "LSP: signature help" })
+
+  bmap("n", "<leader>cf",
+    function() Lib.format.format({ buf = bufnr, force = true }) end,
+    { desc = "Format buffer" })
+  bmap("n", "<leader>cl", "<cmd>checkhealth vim.lsp<cr>", { desc = "LSP: health" })
+
+  bmap("n", "<leader>uh", function()
     local enabled = vim.lsp.inlay_hint.is_enabled({ bufnr = bufnr })
     vim.lsp.inlay_hint.enable(not enabled, { bufnr = bufnr })
     vim.notify("Inlay hints: " .. (not enabled and "on" or "off"))
-  end, "Toggle inlay hints")
+  end, { desc = "Toggle inlay hints" })
 end
 
 function M.setup()

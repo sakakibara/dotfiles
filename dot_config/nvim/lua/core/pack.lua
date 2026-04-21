@@ -80,22 +80,14 @@ local function normalize(spec)
   }
 end
 
--- ---------------------------------------------------------------------------
--- Keymaps
+-- Keymaps. Two phases: (1) load_spec installs the real mapping after
+-- run_config — zero wrapper overhead on every subsequent press. (2) For
+-- lazy plugins, _register_triggers installs a stub; on first press the
+-- stub loads the plugin, install_spec_keys overrides it, then feedkeys
+-- ("m" mode) replays the key so the real mapping fires.
 --
--- Two phases:
---   Real mapping: installed by load_spec (after run_config). This is the final
---     binding the user hits on every subsequent press — zero wrapper overhead.
---   Stub mapping: installed by _register_triggers for lazy plugins that haven't
---     loaded yet. On first press the stub loads the plugin (which installs the
---     real mapping, overriding the stub), then replays the key via feedkeys in
---     "m" (remap) mode so the real mapping fires.
---
--- String rhs defaults to remap=true. This is correct for <Plug>, <Cmd>, and
--- anything else a user is likely to put on the rhs of a keys entry. Users
--- who want noremap can pass `remap = false` on the key entry.
--- ---------------------------------------------------------------------------
-
+-- String rhs defaults to remap=true (correct for <Plug>, <Cmd>, etc.);
+-- pass remap=false on the key entry to override.
 local function base_map_opts(k)
   return {
     desc    = k.desc,

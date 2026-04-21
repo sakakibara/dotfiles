@@ -60,3 +60,19 @@ map("n", "<leader>.", function() Lib.winbar.pick_path()  end, { desc = "Path pic
 map("n", "<leader>uf", function() Lib.format.toggle()     end, { desc = "Toggle autoformat (global)" })
 map("n", "<leader>uF", function() Lib.format.toggle(true) end, { desc = "Toggle autoformat (buffer)" })
 map("n", "<leader>ui", function() Lib.format.info()       end, { desc = "Autoformat info" })
+
+-- single-chord fast-access (skip a keystroke for the daily-driver ops)
+map("n", "<leader><space>", function() Snacks.picker.smart()            end, { desc = "Smart find (files)" })
+map("n", "<leader>,",       function() Snacks.picker.buffers()          end, { desc = "Buffers" })
+map("n", "<leader>/",       function() Snacks.picker.grep()             end, { desc = "Grep" })
+map("n", "<leader>:",       function() Snacks.picker.command_history()  end, { desc = "Command history" })
+
+-- windows (<C-w>… natives still work; these are leader aliases for which-key)
+map("n", "<leader>ws", "<C-w>s",           { desc = "Split window below" })
+map("n", "<leader>wv", "<C-w>v",           { desc = "Split window right" })
+map("n", "<leader>wc", "<cmd>close<cr>",   { desc = "Close window" })
+map("n", "<leader>wo", "<cmd>only<cr>",    { desc = "Close other windows" })
+map("n", "<leader>w=", "<C-w>=",           { desc = "Equalize windows" })
+
+-- file explorer (oil is also on `-` for parent-dir)
+map("n", "<leader>e", "<cmd>Oil<cr>", { desc = "Oil (parent dir)" })

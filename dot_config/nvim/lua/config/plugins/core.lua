@@ -51,10 +51,11 @@ return {
       { "<leader>sn", function() Snacks.picker.notifications() end,           desc = "Notifications" },
       { "<leader>cd", function() Snacks.picker.diagnostics_buffer() end,      desc = "Diagnostics (buffer)" },
       { "<leader>cD", function() Snacks.picker.diagnostics() end,             desc = "Diagnostics (workspace)" },
-      { "gr",         function() Snacks.picker.lsp_references() end,          desc = "LSP references" },
+      -- gd is the one pre-gr* classic we keep: nvim 0.11+ added `grr/gri/grt/gra/grn/gO`
+      -- but not a definition verb in that family. Keeping `gd` here preserves
+      -- universal muscle memory; `grr/gri/grt` (buffer-local overrides on
+      -- LspAttach, see lib/lsp.lua) cover references / implementations / type.
       { "gd",         function() Snacks.picker.lsp_definitions() end,         desc = "LSP definitions" },
-      { "gy",         function() Snacks.picker.lsp_type_definitions() end,    desc = "LSP type defs" },
-      { "gi",         function() Snacks.picker.lsp_implementations() end,     desc = "LSP implementations" },
       { "<leader>ss", function() Snacks.picker.lsp_symbols() end,             desc = "LSP symbols (buffer)" },
       { "<leader>sS", function() Snacks.picker.lsp_workspace_symbols() end,   desc = "LSP symbols (workspace)" },
       -- git
