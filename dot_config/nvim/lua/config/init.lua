@@ -12,6 +12,17 @@ function M.setup()
   -- before any buffer (argument file, :e, session restore) is ever read.
   require("config.autocmds")
 
+  -- K must be remapped in Stage 1: if user spams K during startup before
+  -- Stage 3 (VeryLazy) runs, nvim's default K → keywordprg=:Man spawns a
+  -- synchronous subprocess per press and stalls the input queue. Installing
+  -- globally here also suppresses nvim's LspAttach-installed buffer-local K
+  -- (it only installs when maparg('K','n',...) is empty). Noice's markdown
+  -- K inside hover floats is dealt with separately in plugins/ui.lua.
+  vim.keymap.set("n", "K", function()
+    local clients = vim.lsp.get_clients({ bufnr = 0, method = "textDocument/hover" })
+    if #clients > 0 then vim.lsp.buf.hover() end
+  end, { desc = "LSP hover (no-op without hover client)" })
+
   -- Plugins. install.colorscheme pre-applies catppuccin synchronously
   -- after install, before any eager spec's config — so chrome's apply_hl
   -- (called below) samples themed highlights the first time.

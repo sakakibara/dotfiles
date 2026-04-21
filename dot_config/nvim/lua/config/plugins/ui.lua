@@ -42,6 +42,25 @@ return {
         } }, view = "mini" },
       },
     },
+    config = function(_, opts)
+      require("noice").setup(opts)
+      -- Noice installs a buffer-local K in every markdown-rendered hover
+      -- float (noice/text/markdown.lua:244). When the cursor isn't on a
+      -- URL/help-tag pattern, its handler calls
+      -- `nvim_feedkeys("K", "n", false)` — the "n" flag is noremap, so
+      -- our global K (config/init.lua) is bypassed and nvim falls through
+      -- to default `keywordprg=:Man`, spawning a subprocess per K press
+      -- and producing `man.lua: no manual entry for X` spam on K-repeat.
+      -- We delete that buffer-local K immediately after noice installs
+      -- it, so our global K wins inside the float. `gx` (URL follow) is
+      -- preserved.
+      local md = require("noice.text.markdown")
+      local orig_keys = md.keys
+      md.keys = function(buf)
+        orig_keys(buf)
+        pcall(vim.keymap.del, "n", "K", { buffer = buf })
+      end
+    end,
   },
 
   { "MunifTanjim/nui.nvim", name = "nui.nvim", lazy = true },
