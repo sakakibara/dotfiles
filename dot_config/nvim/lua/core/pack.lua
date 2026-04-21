@@ -422,29 +422,24 @@ function M.setup(cfg)
 end
 
 -- Deferred re-fire of a lazy-trigger event, so plugin autocmds registered
--- during load_spec see the current buffer. Three concerns:
+-- during load_spec see the current buffer.
 --
--- 1. Fan-out dedup. `event = "LazyFile"` expands to 3 events and ~15 specs
---    share it — one original fire would otherwise queue 15 redundant
---    re-fires per event.
+-- Grouping in _register_triggers (one autocmd per event, not per spec)
+-- prevents fan-out at the source: N specs sharing BufWritePre produce 1
+-- re-fire, not N. The dedup/guard/retry below are defense-in-depth for
+-- edge cases:
 --
--- 2. Reentrancy. `vim.schedule` alone does NOT break autocmd nesting when a
---    handler pumps the event loop synchronously. Concretely: BufWritePre →
---    Lib.format → conform.format → vim.wait(1000). libuv runs pending
---    schedule callbacks DURING that wait, so without dedup the other 14
---    pending re-fires fire one after another, each re-invoking Lib.format →
---    conform → vim.wait → next pending, recursing until E218 (autocmd
---    nesting too deep) at level 10.
---
--- 3. Don't lose requests made mid-fire. When a re-fire is active and a new
---    schedule_refire arrives for the same key, the guard must park the
---    request (so it runs *after* active clears), not drop it — otherwise a
---    plugin whose load was triggered during an in-flight re-fire would
---    never get its own re-fire.
+-- - Dedup: two different trigger sites (e.g. cascaded BufReadPre→BufReadPost)
+--   scheduling the same-key refire in one tick collapse to one.
+-- - Re-entrancy guard: `vim.schedule` alone does NOT break autocmd nesting
+--   when a handler pumps the event loop (BufWritePre → conform.format →
+--   vim.wait(1000) — libuv runs pending schedule callbacks during that
+--   wait). Guard short-circuits any same-key recursion.
+-- - Retry slot: a schedule arriving while active must not be dropped —
+--   park it and replay after active clears.
 --
 -- Keyed by (event, buffer, pattern): different buffers/patterns are
--- independent work and must not block each other. The guard + retry slot
--- only apply per-key, so a save on buf 5 can't starve a refire for buf 10.
+-- independent work and must not block each other.
 M._refire_pending = {}  -- scheduled, not yet run
 M._refire_active  = {}  -- currently running
 M._refire_retry   = {}  -- request made while active: latest opts to replay
@@ -484,66 +479,45 @@ M._schedule_refire = schedule_refire  -- exposed for tests
 function M._register_triggers(specs)
   local event = require("core.event")
 
+  -- Group specs by triggering event/pattern/ft. Matches lazy.nvim's design:
+  -- one once=true autocmd per trigger group loads all specs registered to
+  -- it, so N specs sharing BufWritePre fan into 1 handler, not N. Prevents
+  -- the E218 nesting class of bugs at the structural level — no runtime
+  -- dedup needed for the common case.
+  local user_groups  = {}  -- [pattern] -> { specs = {...} }
+  local event_groups = {}  -- [event]   -> { specs = {...} }
+  local ft_groups    = {}  -- [ft]      -> { specs = {...} }
+
+  local function push(map, key, spec)
+    local g = map[key]
+    if not g then
+      g = { specs = {} }
+      map[key] = g
+    end
+    table.insert(g.specs, spec)
+  end
+
   for _, spec in ipairs(specs) do
-    -- `keys` registration applies to BOTH eager and lazy plugins:
-    -- eager plugins still want their spec.keys bound (just without a load wrapper).
-    -- `event/ft/cmd` only apply to lazy plugins (nothing to trigger for eager).
     if spec.lazy and spec.event then
-      local events = event.expand(spec.event)
-      local real, user = {}, {}
-      for _, e in ipairs(events) do
+      for _, e in ipairs(event.expand(spec.event)) do
         if e == "VeryLazy" then
-          table.insert(user, "VeryLazy")
-        elseif e:match("^User ") then
-          -- "User Pattern"
-          local pat = e:sub(6)
-          vim.api.nvim_create_autocmd("User", {
-            once = true, pattern = pat,
-            desc = "lazy: " .. spec.name,
-            callback = function(args)
-              load_spec(spec)
-              schedule_refire("User", { pattern = pat, data = args.data, modeline = false })
-            end,
-          })
-        else
-          table.insert(real, e)
-        end
-      end
-      if #real > 0 then
-        vim.api.nvim_create_autocmd(real, {
-          once = true,
-          desc = "lazy: " .. spec.name,
-          callback = function(args)
-            load_spec(spec)
-            schedule_refire(args.event, {
-              buffer = args.buf,
-              data = args.data,
-              modeline = false,
-            })
-          end,
-        })
-      end
-      for _, p in ipairs(user) do
-        if p == "VeryLazy" then
           event.on("VeryLazy", function() load_spec(spec) end)
+        elseif e:match("^User ") then
+          push(user_groups, e:sub(6), spec)
+        else
+          push(event_groups, e, spec)
         end
       end
     end
 
-    -- ft (lazy only)
     if spec.lazy and spec.ft then
       local fts = type(spec.ft) == "table" and spec.ft or { spec.ft }
-      vim.api.nvim_create_autocmd("FileType", {
-        once = true, pattern = fts,
-        desc = "lazy: " .. spec.name,
-        callback = function(args)
-          load_spec(spec)
-          schedule_refire("FileType", { buffer = args.buf, modeline = false })
-        end,
-      })
+      for _, ft in ipairs(fts) do push(ft_groups, ft, spec) end
     end
 
-    -- cmd (lazy only)
+    -- cmd (lazy only) — registered per-command, not per-spec, so no
+    -- grouping concern; two specs binding the same command is already a
+    -- user error caught at vim.api.nvim_create_user_command.
     if spec.lazy and spec.cmd then
       local cmds = type(spec.cmd) == "table" and spec.cmd or { spec.cmd }
       for _, c in ipairs(cmds) do
@@ -569,6 +543,48 @@ function M._register_triggers(specs)
     if spec.lazy and spec.keys then
       install_spec_stubs(spec)
     end
+  end
+
+  local function group_desc(group)
+    local names = {}
+    for _, s in ipairs(group.specs) do names[#names + 1] = s.name end
+    return "lazy: " .. table.concat(names, ", ")
+  end
+
+  local function load_group(group)
+    for _, s in ipairs(group.specs) do load_spec(s) end
+  end
+
+  for pat, group in pairs(user_groups) do
+    vim.api.nvim_create_autocmd("User", {
+      once = true, pattern = pat, desc = group_desc(group),
+      callback = function(args)
+        load_group(group)
+        schedule_refire("User", { pattern = pat, data = args.data, modeline = false })
+      end,
+    })
+  end
+
+  for e, group in pairs(event_groups) do
+    vim.api.nvim_create_autocmd(e, {
+      once = true, desc = group_desc(group),
+      callback = function(args)
+        load_group(group)
+        schedule_refire(args.event, {
+          buffer = args.buf, data = args.data, modeline = false,
+        })
+      end,
+    })
+  end
+
+  for ft, group in pairs(ft_groups) do
+    vim.api.nvim_create_autocmd("FileType", {
+      once = true, pattern = ft, desc = group_desc(group),
+      callback = function(args)
+        load_group(group)
+        schedule_refire("FileType", { buffer = args.buf, modeline = false })
+      end,
+    })
   end
 end
 
