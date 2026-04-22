@@ -51,22 +51,57 @@ function M.setup()
       Lib.format.setup()
       Lib.root.setup()
 
-      -- Tee vim.notify into :messages. snacks.notifier replaces vim.notify
-      -- to render toasts but doesn't back-fill :messages; noice hooks on top
-      -- of snacks and routes to its own history, but only sees calls that
-      -- reach it through the chain. `nvim_echo(_, true, _)` with history=true
-      -- populates :messages AND fires msg_show → noice picks it up → the
-      -- same message surfaces in `:Noice` and `:messages` alongside the
-      -- snacks toast. Scheduled to install after noice's own VeryLazy hook.
+      -- Tee vim.notify into native :messages without producing the
+      -- duplicate-toast / duplicate-:Noice-all-entry problem a naïve
+      -- wrapper causes.
+      --
+      -- The problem with a naïve `nvim_echo(..., true, ..); prev(...)`
+      -- wrapper: noice has ext_messages attached, so every nvim_echo
+      -- fires an msg_show event that noice stores in its Manager AND
+      -- routes through its default `msg_show` / `warning` / `error`
+      -- routes — all of which resolve to the same "notify" view that
+      -- the `event = "notify"` route (fired by the `prev(...)` call)
+      -- also uses. Result: two Manager entries (visible in :Noice all)
+      -- and two snacks toasts per vim.notify call.
+      --
+      -- The fix has two parts, both installed after noice's own
+      -- VeryLazy schedule so `vim.notify` and the Manager module are the
+      -- noice-owned versions:
+      --   1. Tag our tee'd nvim_echo with a custom `kind` string.
+      --      Nvim's history is populated from `add_msg_hist` independent
+      --      of the UI layer, so :messages gets the entry regardless of
+      --      whether noice stores/routes it.
+      --   2. Wrap `noice.message.manager.add` to drop msg_show events
+      --      with that kind. This is the ONLY place noice records a
+      --      Message, so no entry reaches :Noice all and no route ever
+      --      resolves to a toast view. The `prev(...)` call afterward
+      --      produces the single `event = "notify"` message that hits
+      --      :Noice all once and toasts once via noice's snacks backend.
       vim.schedule(function()
-        local prev = vim.notify
-        vim.notify = function(msg, level, opts)
-          local lvl = type(level) == "number" and level or vim.log.levels.INFO
-          local hl = (lvl >= vim.log.levels.ERROR and "ErrorMsg")
-            or (lvl >= vim.log.levels.WARN and "WarningMsg")
-            or "Normal"
-          pcall(vim.api.nvim_echo, { { tostring(msg or ""), hl } }, true, {})
-          return prev(msg, level, opts)
+        local ok_mgr, Manager = pcall(require, "noice.message.manager")
+        if ok_mgr then
+          local SILENT_KIND = "lib_tee"
+          local orig_add = Manager.add
+          Manager.add = function(m)
+            if m.event == "msg_show" and m.kind == SILENT_KIND then
+              return
+            end
+            return orig_add(m)
+          end
+
+          local prev = vim.notify
+          vim.notify = function(msg, level, opts)
+            local lvl = type(level) == "number" and level or vim.log.levels.INFO
+            local hl = (lvl >= vim.log.levels.ERROR and "ErrorMsg")
+              or (lvl >= vim.log.levels.WARN and "WarningMsg")
+              or "Normal"
+            local text = tostring(msg or "")
+            if type(opts) == "table" and opts.title then
+              text = ("[%s] %s"):format(opts.title, text)
+            end
+            pcall(vim.api.nvim_echo, { { text, hl } }, true, { kind = SILENT_KIND })
+            return prev(msg, level, opts)
+          end
         end
       end)
 
