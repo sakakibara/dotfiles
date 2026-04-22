@@ -43,6 +43,32 @@ au("FileType", {
   callback = function() vim.opt_local.colorcolumn = "80" end,
 })
 
+-- markdown: <CR> toggles GFM task-list checkboxes. Single keypress, scoped
+-- to the buffer so it can't leak into quickfix/list buffers where <CR> is
+-- "follow item". Normal mode toggles the current line; visual mode toggles
+-- every line in the selection. The selection is re-entered after toggling
+-- so repeated hits stay ergonomic — `<Cmd>` keymaps don't leave visual but
+-- we need `'<`/`'>` marks (which only update on leaving visual) to know
+-- the range, so we `<Esc>` out, toggle, then `gv` back in.
+au("FileType", {
+  group = grp,
+  pattern = "markdown",
+  callback = function(ev)
+    vim.keymap.set("n", "<CR>", function()
+      local row = vim.api.nvim_win_get_cursor(0)[1] - 1
+      Lib.markdown.toggle_line(0, row)
+    end, { buffer = ev.buf, desc = "Toggle checkbox" })
+
+    vim.keymap.set("x", "<CR>", function()
+      vim.cmd("normal! \27")
+      local from = vim.api.nvim_buf_get_mark(0, "<")[1] - 1
+      local to   = vim.api.nvim_buf_get_mark(0, ">")[1] - 1
+      Lib.markdown.toggle_range(0, from, to)
+      vim.cmd("normal! gv")
+    end, { buffer = ev.buf, desc = "Toggle checkboxes in selection" })
+  end,
+})
+
 -- WSL /mnt/* volumes: don't fix end-of-line (Windows line endings)
 au({ "BufReadPre", "BufNewFile" }, {
   group = grp,
