@@ -154,12 +154,35 @@ function Menu:open()
   local width  = widest + 1
   local anchor = math.min(self.anchor_col, math.max(0, vim.o.columns - width - 2))
 
+  -- Root menu anchors just below the clicked pane's winbar and flips
+  -- above when it would run off the bottom. Submenus stay at the parent
+  -- menu's row. `row` is the top-left of the float (border included),
+  -- so a float with height `h` spans h + 2 screen rows.
+  local anchor_row, height
+  if self.prev_menu then
+    local pos = vim.api.nvim_win_get_position(self.prev_win)
+    anchor_row = pos[1] or 1
+    height     = max_h
+  else
+    local ok, pos = pcall(vim.api.nvim_win_get_position, self.prev_win)
+    local winbar_row = (ok and pos and pos[1]) or 0
+    local below = vim.o.lines - (winbar_row + 1) - 2
+    local above = winbar_row - 2
+    if below >= max_h or below >= above then
+      anchor_row = winbar_row + 1
+      height     = math.max(1, math.min(max_h, below))
+    else
+      height     = math.max(1, math.min(max_h, above))
+      anchor_row = winbar_row - height - 2
+    end
+  end
+
   self.win = vim.api.nvim_open_win(self.buf, true, {
     relative  = "editor",
-    row       = 1,
+    row       = anchor_row,
     col       = anchor,
     width     = width,
-    height    = max_h,
+    height    = height,
     style     = "minimal",
     border    = "rounded",
     title     = self.title and (" " .. self.title .. " ") or nil,
