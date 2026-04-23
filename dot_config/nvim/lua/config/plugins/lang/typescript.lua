@@ -64,14 +64,6 @@ Lib.plugin.on_load("nvim-dap", function()
       }
     end
   end
-
-  -- Load .vscode/launch.json if present (matches old config behavior).
-  pcall(function()
-    vscode.load_launchjs(nil, {
-      ["pwa-node"] = js_filetypes,
-      ["node"] = js_filetypes,
-    })
-  end)
 end)
 
 Lib.plugin.on_load("nvim-lspconfig", function()
