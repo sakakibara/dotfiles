@@ -16,8 +16,9 @@ return {
       { "<Leader>td", function() require("neotest").run.run({ strategy = "dap" }) end, desc = "Debug nearest" },
     },
     config = function()
-      require("neotest").setup({
-        adapters = Lib.neotest.list(),
+      -- Lib.neotest.setup injects `adapters` from its registry and re-applies
+      -- when late-loaded adapter plugins packadd. See lib/neotest.lua.
+      Lib.neotest.setup({
         status = { virtual_text = true },
         output = { open_on_run = true },
         quickfix = {
