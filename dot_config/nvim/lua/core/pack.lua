@@ -8,19 +8,10 @@ M._on_load = {}     -- { [name] = { fn, ... } }
 M._key_registry = {} -- { [mode..":"..lhs..":"..(ft or "")] = spec.name }
 M._warned_conflicts = {} -- { [sig..":"..nameA..":"..nameB (sorted)] = true }
 
--- Deferred notify. snacks.notifier and noice subscribe to vim.notify /
--- msg_show at VeryLazy, so anything emitted during M.setup() (keymap
--- conflicts, unresolved <Plug>, dep cycles, eager-load config errors) lands
--- in :messages but never reaches noice's capture — invisible from :Noice
--- all. Queue early calls and flush once VeryLazy fires, by which time the
--- full notification chain is attached. Post-VeryLazy calls pass through.
-M._pending_notify = {}
-local _notify_ready = false
+-- Pre-noice queuing and :messages tee are handled by wrapper A in
+-- config/init.lua — we just forward to vim.notify here.
 local function notify(msg, level)
-  if _notify_ready then
-    return (vim.notify)(msg, level)
-  end
-  M._pending_notify[#M._pending_notify + 1] = { msg, level }
+  vim.notify(msg, level)
 end
 
 local ALLOWED_FIELDS = {
@@ -434,28 +425,6 @@ function M.setup(cfg)
   for _, s in ipairs(eagers) do load_spec(s) end
 
   M._register_triggers(ordered)
-
-  -- Flush pending notifications once noice has actually attached. See the
-  -- `notify` wrapper at the top of this file for the rationale.
-  --
-  -- Why the extra vim.schedule: noice.setup() does NOT attach synchronously.
-  -- When v:vim_did_enter == 1 (our case — VeryLazy fires on UIEnter, after
-  -- VimEnter), noice/init.lua:34-36 calls `vim.schedule(load)` where `load`
-  -- is what actually overrides vim.notify and calls vim.ui_attach. So at
-  -- VeryLazy-trigger time, noice has only *queued* its attach — vim.notify
-  -- still points to whatever was set before (snacks' notifier). A
-  -- synchronous flush here routes through snacks (→ toast + :messages) but
-  -- never hits noice's ext_messages pipeline, leaving `:Noice all` empty.
-  -- By deferring one more tick with vim.schedule, FIFO ordering guarantees
-  -- noice's `load` runs first, and our flush then goes through the full
-  -- noice chain → visible in `:Noice all`.
-  require("core.event").on("VeryLazy", function()
-    vim.schedule(function()
-      _notify_ready = true
-      for _, n in ipairs(M._pending_notify) do (vim.notify)(n[1], n[2]) end
-      M._pending_notify = {}
-    end)
-  end)
 end
 
 -- Deferred re-fire of a lazy-trigger event, so plugin autocmds registered

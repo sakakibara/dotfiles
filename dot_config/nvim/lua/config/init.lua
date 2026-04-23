@@ -1,7 +1,51 @@
 -- lua/config/init.lua
 local M = {}
 
+-- Pre-noice vim.notify tee. See M.setup() header for the full story.
+local _pending = {}
+local SILENT_KIND = "lib_tee"
+
 function M.setup()
+  -- Wrapper A: install vim.notify tee synchronously, BEFORE require("lib").init()
+  -- and core.pack.setup — before any plugin, autocmd, or buffer load can fire
+  -- vim.notify.
+  --
+  -- The window this closes: noice's `ext_messages` attach is scheduled from
+  -- VeryLazy (noice/init.lua:~34 calls vim.schedule(load)), and wrapper B
+  -- below is also scheduled from our VeryLazy+schedule. Anything calling
+  -- vim.notify before wrapper B runs — FileType autocmds firing during cold-
+  -- boot argv reads, `:e foo.tsx` via oil while noice is mid-attach, core.pack
+  -- internals reporting keymap conflicts, etc. — bypasses noice entirely. The
+  -- historical symptom: a warning flashes in the cmdline briefly (truncated
+  -- by press-ENTER), never reaches :Noice all or toasts, and if emitted via
+  -- vim.notify_once, never fires again the rest of the session.
+  --
+  -- Wrapper A echoes with history=true so :messages is populated immediately,
+  -- and queues {msg, level, opts}. When noice attaches (see handler below),
+  -- its `load` replaces vim.notify with noice's handler — wrapper A becomes
+  -- unreachable. Wrapper B then re-installs a tee on top of noice's vim.notify
+  -- and drains the queue through noice, so :Noice all and the toast backend
+  -- get every pre-noice message.
+  --
+  -- vim.notify_once late-binds via `vim.notify` field lookup, so wrapper A
+  -- catches it too; its internal `notified[msg]` cache is set on first call,
+  -- which means the replay through noice doesn't re-fire vim.notify_once —
+  -- we replay through `prev` directly, bypassing the cache entirely.
+  vim.notify = function(msg, level, opts)
+    local lvl = type(level) == "number" and level or vim.log.levels.INFO
+    local hl = (lvl >= vim.log.levels.ERROR and "ErrorMsg")
+      or (lvl >= vim.log.levels.WARN and "WarningMsg")
+      or "Normal"
+    local text = tostring(msg or "")
+    if type(opts) == "table" and opts.title then
+      text = ("[%s] %s"):format(opts.title, text)
+    end
+    -- No kind on this echo: noice isn't attached yet, so there's no Manager
+    -- to dedup against and nothing to route. Just populate :messages.
+    pcall(vim.api.nvim_echo, { { text, hl } }, true, {})
+    table.insert(_pending, { msg = msg, level = level, opts = opts })
+  end
+
   -- Stage 1: early, synchronous
   require("lib").init()
   require("core.profile").start()
@@ -51,58 +95,54 @@ function M.setup()
       Lib.format.setup()
       Lib.root.setup()
 
-      -- Tee vim.notify into native :messages without producing the
-      -- duplicate-toast / duplicate-:Noice-all-entry problem a naïve
-      -- wrapper causes.
+      -- Wrapper B: install the post-noice tee and drain wrapper A's queue.
       --
-      -- The problem with a naïve `nvim_echo(..., true, ..); prev(...)`
-      -- wrapper: noice has ext_messages attached, so every nvim_echo
-      -- fires an msg_show event that noice stores in its Manager AND
-      -- routes through its default `msg_show` / `warning` / `error`
-      -- routes — all of which resolve to the same "notify" view that
-      -- the `event = "notify"` route (fired by the `prev(...)` call)
-      -- also uses. Result: two Manager entries (visible in :Noice all)
-      -- and two snacks toasts per vim.notify call.
+      -- Schedule ordering inside this tick, FIFO:
+      --   1. noice's own `load` (scheduled from noice.setup during its
+      --      VeryLazy load_spec) — attaches ext_messages and replaces
+      --      vim.notify with noice's handler, discarding wrapper A.
+      --   2. this callback — captures noice's vim.notify as `prev`, wraps
+      --      with the silent-kind tee, drains _pending through `prev`.
       --
-      -- The fix has two parts, both installed after noice's own
-      -- VeryLazy schedule so `vim.notify` and the Manager module are the
-      -- noice-owned versions:
-      --   1. Tag our tee'd nvim_echo with a custom `kind` string.
-      --      Nvim's history is populated from `add_msg_hist` independent
-      --      of the UI layer, so :messages gets the entry regardless of
-      --      whether noice stores/routes it.
-      --   2. Wrap `noice.message.manager.add` to drop msg_show events
-      --      with that kind. This is the ONLY place noice records a
-      --      Message, so no entry reaches :Noice all and no route ever
-      --      resolves to a toast view. The `prev(...)` call afterward
-      --      produces the single `event = "notify"` message that hits
-      --      :Noice all once and toasts once via noice's snacks backend.
+      -- Manager.add wrapper filters msg_show events tagged SILENT_KIND so the
+      -- tee's echo doesn't produce duplicate Manager entries / duplicate
+      -- toasts. Only the `prev(...)` call at the bottom reaches Manager as a
+      -- normal notify event, giving exactly one :Noice all entry and one
+      -- toast per vim.notify call. (See commit history on this file for the
+      -- dedup derivation.)
       vim.schedule(function()
         local ok_mgr, Manager = pcall(require, "noice.message.manager")
-        if ok_mgr then
-          local SILENT_KIND = "lib_tee"
-          local orig_add = Manager.add
-          Manager.add = function(m)
-            if m.event == "msg_show" and m.kind == SILENT_KIND then
-              return
-            end
-            return orig_add(m)
-          end
+        if not ok_mgr then return end
 
-          local prev = vim.notify
-          vim.notify = function(msg, level, opts)
-            local lvl = type(level) == "number" and level or vim.log.levels.INFO
-            local hl = (lvl >= vim.log.levels.ERROR and "ErrorMsg")
-              or (lvl >= vim.log.levels.WARN and "WarningMsg")
-              or "Normal"
-            local text = tostring(msg or "")
-            if type(opts) == "table" and opts.title then
-              text = ("[%s] %s"):format(opts.title, text)
-            end
-            pcall(vim.api.nvim_echo, { { text, hl } }, true, { kind = SILENT_KIND })
-            return prev(msg, level, opts)
+        local orig_add = Manager.add
+        Manager.add = function(m)
+          if m.event == "msg_show" and m.kind == SILENT_KIND then
+            return
           end
+          return orig_add(m)
         end
+
+        local prev = vim.notify
+        vim.notify = function(msg, level, opts)
+          local lvl = type(level) == "number" and level or vim.log.levels.INFO
+          local hl = (lvl >= vim.log.levels.ERROR and "ErrorMsg")
+            or (lvl >= vim.log.levels.WARN and "WarningMsg")
+            or "Normal"
+          local text = tostring(msg or "")
+          if type(opts) == "table" and opts.title then
+            text = ("[%s] %s"):format(opts.title, text)
+          end
+          pcall(vim.api.nvim_echo, { { text, hl } }, true, { kind = SILENT_KIND })
+          return prev(msg, level, opts)
+        end
+
+        -- Drain via `prev` directly, not wrapper B: wrapper A already echoed
+        -- each entry to :messages at capture time, so routing through B would
+        -- produce a duplicate echo. We only need noice to see them.
+        for _, n in ipairs(_pending) do
+          prev(n.msg, n.level, n.opts)
+        end
+        _pending = {}
       end)
 
       require("core.profile").dump()
