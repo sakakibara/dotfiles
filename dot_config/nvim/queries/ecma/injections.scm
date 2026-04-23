@@ -1,22 +1,16 @@
 ; extends
 
-; styled.div`...` / styled.button`...` / etc.
-((call_expression
-   function: (member_expression
-     object: (identifier) @_obj (#eq? @_obj "styled"))
-   arguments: (template_string) @injection.content)
- (#set! injection.language "css"))
+; Bundled ecma/injections.scm covers: styled.div`...`, styled(Component)`...`,
+; styled.div.attrs(...)`...`, styled(Component).attrs(...)`...`, css`...`,
+; keyframes`...`, injection.language = "styled". Only add patterns not in the
+; bundled set; mirror its format (offset strips the backticks, include-children
+; keeps ${interpolation} inside the injection).
 
-; styled(Component)`...`
-((call_expression
-   function: (call_expression
-     function: (identifier) @_fn (#eq? @_fn "styled"))
-   arguments: (template_string) @injection.content)
- (#set! injection.language "css"))
-
-; css`...` / keyframes`...` / injectGlobal`...` / createGlobalStyle`...`
-((call_expression
-   function: (identifier) @_fn
-   (#any-of? @_fn "css" "keyframes" "injectGlobal" "createGlobalStyle")
-   arguments: (template_string) @injection.content)
- (#set! injection.language "css"))
+; createGlobalStyle`...` / injectGlobal`...`
+(call_expression
+  function: (identifier) @_fn
+  (#any-of? @_fn "createGlobalStyle" "injectGlobal")
+  arguments: ((template_string) @injection.content
+    (#offset! @injection.content 0 1 0 -1)
+    (#set! injection.include-children)
+    (#set! injection.language "styled")))

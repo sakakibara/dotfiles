@@ -26,7 +26,7 @@ return {
       require("nvim-treesitter").install({
         "bash", "c", "cpp", "css", "html", "javascript", "json",
         "lua", "luadoc", "markdown", "markdown_inline", "python",
-        "query", "regex", "rust", "toml", "tsx", "typescript",
+        "query", "regex", "rust", "styled", "toml", "tsx", "typescript",
         "vim", "vimdoc", "yaml",
       })
 
