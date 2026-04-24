@@ -79,6 +79,11 @@ fish_add_path $HOME/.nimble/bin
 fish_add_path $HOME/.cargo/bin
 fish_add_path $HOME/.local/bin
 
+if test -d $XDG_DATA_HOME/pnpm
+    set -gx PNPM_HOME $XDG_DATA_HOME/pnpm
+    fish_add_path $PNPM_HOME
+end
+
 # Set editor
 if test (command -v nvim)
     set -gx EDITOR nvim

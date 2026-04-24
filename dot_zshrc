@@ -96,6 +96,14 @@ path=(
   ${path}
 )
 
+if [[ -d "${XDG_DATA_HOME}/pnpm" ]]; then
+  export PNPM_HOME="${XDG_DATA_HOME}/pnpm"
+  path=(
+    "${PNPM_HOME}"
+    ${path}
+  )
+fi
+
 # Set editor
 if (( ${+commands[nvim]} )); then
   export EDITOR=nvim
