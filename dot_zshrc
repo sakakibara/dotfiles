@@ -92,7 +92,7 @@ path=(
   "${HOME}/.cargo/bin"
   "${HOME}/.nimble/bin"
   "${HOME}/.fzf/bin"
-  "${GOPATH}/.go/bin"
+  "${GOPATH}/bin"
   ${path}
 )
 
