@@ -1,0 +1,11 @@
+#!/usr/bin/env sh
+# Show the weather forecast via wttr.in. With no args, prints local. With
+# args, prints each location in turn.
+
+if [ $# -eq 0 ]; then
+  curl 'wttr.in?F'
+else
+  for a in "$@"; do
+    curl "wttr.in/$a?F"
+  done
+fi
