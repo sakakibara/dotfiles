@@ -7,7 +7,33 @@ if wezterm.config_builder then
   config = wezterm.config_builder()
 end
 
-config.color_scheme = "Catppuccin Mocha"
+-- Theme: read state file (single line "family/variant"), derive wezterm's
+-- color_scheme as "{Family} {Variant}". Falls back to Catppuccin Mocha if
+-- the state file is missing or malformed.
+local function _theme_state_path()
+  if wezterm.target_triple:find("windows") then
+    local appdata = os.getenv("LOCALAPPDATA") or ""
+    return appdata .. "\\dotfiles\\theme"
+  end
+  local home = os.getenv("HOME") or ""
+  local state = os.getenv("XDG_STATE_HOME") or (home .. "/.local/state")
+  return state .. "/dotfiles/theme"
+end
+
+local function _read_theme()
+  local f = io.open(_theme_state_path(), "r")
+  if not f then return "catppuccin", "mocha" end
+  local line = f:read("*l") or ""
+  f:close()
+  local family, variant = line:match("^([^/]+)/(.+)$")
+  if not family or not variant then return "catppuccin", "mocha" end
+  return family, variant
+end
+
+local function _title(s) return s:sub(1, 1):upper() .. s:sub(2) end
+
+local _theme_family, _theme_variant = _read_theme()
+config.color_scheme = _title(_theme_family) .. " " .. _title(_theme_variant)
 config.font = wezterm.font("Sarasa Term J Nerd Font")
 config.font_size = 14.0
 config.use_fancy_tab_bar = true
