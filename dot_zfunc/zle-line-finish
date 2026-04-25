@@ -1,0 +1,5 @@
+#!/usr/bin/env zsh
+# Disables terminal application mode after ZLE exits.
+if (( $+terminfo[rmkx] )); then
+  echoti rmkx
+fi

@@ -1,0 +1,3 @@
+#!/usr/bin/env zsh
+# No-op widget. Bound to keys that would otherwise produce odd behavior in
+# vi mode (e.g. casing flips on F-keys / PageUp / PageDown).

@@ -1,0 +1,4 @@
+#!/usr/bin/env zsh
+# Accept current target and place cursor at the end of the line.
+zle accept-search
+zle end-of-line

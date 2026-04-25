@@ -247,107 +247,19 @@ zle -N edit-command-line
 #
 # Key bind functions
 #
-
-# Runs bindkey but for all of the keymaps. Running it with no arguments will
-# print out the mappings for all of the keymaps.
-function bindkey-all {
-  local keymap=''
-  for keymap in $(bindkey -l); do
-    [[ "$#" -eq 0 ]] && printf "#### %s\n" "${keymap}" 1>&2
-    bindkey -M "${keymap}" "$@"
-  done
-}
-
-# Enables terminal application mode
-function zle-line-init {
-  # The terminal must be in application mode when ZLE is active for $terminfo
-  # values to be valid.
-  if (( $+terminfo[smkx] )); then
-    # Enable terminal application mode
-    echoti smkx
-  fi
-}
-zle -N zle-line-init
-
-# Disables terminal application mode
-function zle-line-finish {
-  # The terminal must be in application mode when ZLE is active for $terminfo
-  # values to be valid.
-  if (( $+terminfo[rmkx] )); then
-    # Disable terminal application mode
-    echoti rmkx
-  fi
-}
-zle -N zle-line-finish
-
-# Accept current target and place cursor at the beginning of the line
-function accept-and-beginning-of-line {
-  zle accept-search
-  zle beginning-of-line
-}
-zle -N accept-and-beginning-of-line
-
-# Accept current target and place cursor at the end of the line
-function accept-and-end-of-line {
-  zle accept-search
-  zle end-of-line
-}
-zle -N accept-and-end-of-line
-
-# Expand or complete only if buffer is not empty
-function expand-or-complete-non-nil {
-  if [[ ${#BUFFER} != 0 ]]; then
-    zle expand-or-complete
-  fi
-}
-zle -N expand-or-complete-non-nil
-
-# Expands .... to ../..
-function expand-dot-to-parent-directory-path {
-  if [[ $LBUFFER = *.. ]]; then
-    LBUFFER+='/..'
-  else
-    LBUFFER+='.'
-  fi
-}
-zle -N expand-dot-to-parent-directory-path
-
-# Inserts 'sudo ' at the beginning of the line
-function prepend-sudo {
-  if [[ "$BUFFER" != su(do|)\ * ]]; then
-    BUFFER="sudo $BUFFER"
-    (( CURSOR += 5 ))
-  fi
-}
-zle -N prepend-sudo
-
-# Expand aliases
-function glob-alias {
-  zle _expand_alias
-  zle expand-word
-  zle magic-space
-}
-zle -N glob-alias
-
-# Toggle the comment character at the start of the line. This is meant to work
-# around a buggy implementation of pound-insert in zsh.
+# Function bodies live in dot_zfunc/ and are autoloaded via the fpath setup
+# above; register the ZLE widgets here. `bindkey-all` is an interactive
+# helper, not a widget, so no `zle -N` for it.
 #
-# This is currently only used for the emacs keys because vi-pound-insert has
-# been reported to work properly.
-function pound-toggle {
-  if [[ "$BUFFER" = '#'* ]]; then
-    # Because of an oddity in how zsh handles the cursor when the buffer size
-    # changes, we need to make this check before we modify the buffer and let
-    # zsh handle moving the cursor back if it's past the end of the line.
-    if [[ $CURSOR != $#BUFFER ]]; then
-      (( CURSOR -= 1 ))
-    fi
-    BUFFER="${BUFFER:1}"
-  else
-    BUFFER="#$BUFFER"
-    (( CURSOR += 1 ))
-  fi
-}
+
+zle -N zle-line-init
+zle -N zle-line-finish
+zle -N accept-and-beginning-of-line
+zle -N accept-and-end-of-line
+zle -N expand-or-complete-non-nil
+zle -N expand-dot-to-parent-directory-path
+zle -N prepend-sudo
+zle -N glob-alias
 zle -N pound-toggle
 
 # Reset to default key bindings
@@ -424,7 +336,6 @@ bindkey -M vicmd "#" vi-pound-insert
 # undefined things. In emacs mode they just insert a tilde, but bind these keys
 # in the main keymap to a noop op so if there is no keybind in the users mode
 # it will fall back and do nothing.
-function _zle-noop {  ; }
 zle -N _zle-noop
 local -a unbound_keys
 unbound_keys=(

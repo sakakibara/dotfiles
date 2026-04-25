@@ -1,0 +1,5 @@
+#!/usr/bin/env zsh
+# Enables terminal application mode so $terminfo values are valid for ZLE.
+if (( $+terminfo[smkx] )); then
+  echoti smkx
+fi

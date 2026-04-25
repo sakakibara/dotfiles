@@ -1,0 +1,5 @@
+#!/usr/bin/env zsh
+# Expand or complete only if buffer is not empty.
+if [[ ${#BUFFER} != 0 ]]; then
+  zle expand-or-complete
+fi
