@@ -6,6 +6,7 @@ etc/**
 **/.git
 **/.claude
 .config/nvim/nvim-pack-lock.json
+.config/kitty/current-theme.conf
 {{ if ne .chezmoi.os "darwin" }}
 .config/aerospace/**
 .config/mpv/mpv.conf
