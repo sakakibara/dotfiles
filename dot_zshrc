@@ -47,7 +47,18 @@ _evalcache osname init
 export XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-$HOME/.config}
 export XDG_CACHE_HOME=${XDG_CACHE_HOME:-$HOME/.cache}
 export XDG_DATA_HOME=${XDG_DATA_HOME:-$HOME/.local/share}
+export XDG_STATE_HOME=${XDG_STATE_HOME:-$HOME/.local/state}
 export XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-$HOME/.xdg}
+
+# Theme state — drives THEME_FAMILY / THEME_VARIANT for theme-aware tools.
+# State file is written by `theme set` and re-read on every shell start.
+if [[ -f "${XDG_STATE_HOME}/dotfiles/theme" ]]; then
+  IFS=/ read -r THEME_FAMILY THEME_VARIANT < "${XDG_STATE_HOME}/dotfiles/theme"
+else
+  THEME_FAMILY=catppuccin
+  THEME_VARIANT=mocha
+fi
+export THEME_FAMILY THEME_VARIANT
 
 if [[ "$OSTYPE" == darwin* ]]; then
   export XDG_DESKTOP_DIR=${XDG_DESKTOP_DIR:-$HOME/Desktop}
@@ -117,10 +128,6 @@ if [[ -n "${IS_WSL}" || -n "${WSL_DISTRO_NAME}" ]]; then
   export DISPLAY=:0
 fi
 
-# Catppuccin flavor (latte | frappe | macchiato | mocha) — drives FZF colors
-# below and `vivid generate catppuccin-${CATPPUCCIN_FLAVOR}` for LS_COLORS.
-export CATPPUCCIN_FLAVOR="${CATPPUCCIN_FLAVOR:-mocha}"
-
 if (( ${+commands[fzf]} )); then
   local fd_command
   if (( ${+commands[fd]} )); then
@@ -132,13 +139,17 @@ if (( ${+commands[fzf]} )); then
   export FZF_CTRL_T_COMMAND="${FZF_DEFAULT_COMMAND}"
   export FZF_ALT_C_COMMAND="${fd_command} --type directory --follow --hidden"
 
-  typeset -gA _fzf_catppuccin_palettes=(
-    latte     '--color=bg+:#ccd0da,bg:#eff1f5,spinner:#dc8a78,hl:#d20f39 --color=fg:#4c4f69,header:#d20f39,info:#8839ef,pointer:#dc8a78 --color=marker:#dc8a78,fg+:#4c4f69,prompt:#8839ef,hl+:#d20f39'
-    frappe    '--color=bg+:#414559,bg:#303446,spinner:#f2d5cf,hl:#e78284 --color=fg:#c6d0f5,header:#e78284,info:#ca9ee6,pointer:#f2d5cf --color=marker:#f2d5cf,fg+:#c6d0f5,prompt:#ca9ee6,hl+:#e78284'
-    macchiato '--color=bg+:#363a4f,bg:#24273a,spinner:#f4dbd6,hl:#ed8796 --color=fg:#cad3f5,header:#ed8796,info:#c6a0f6,pointer:#f4dbd6 --color=marker:#f4dbd6,fg+:#cad3f5,prompt:#c6a0f6,hl+:#ed8796'
-    mocha     '--color=bg+:#313244,bg:#1e1e2e,spinner:#f5e0dc,hl:#f38ba8 --color=fg:#cdd6f4,header:#f38ba8,info:#cba6f7,pointer:#f5e0dc --color=marker:#f5e0dc,fg+:#cdd6f4,prompt:#cba6f7,hl+:#f38ba8'
-  )
-  export FZF_DEFAULT_OPTS=" ${_fzf_catppuccin_palettes[$CATPPUCCIN_FLAVOR]}"
+  case "$THEME_FAMILY" in
+    catppuccin)
+      typeset -gA _fzf_catppuccin_palettes=(
+        latte     '--color=bg+:#ccd0da,bg:#eff1f5,spinner:#dc8a78,hl:#d20f39 --color=fg:#4c4f69,header:#d20f39,info:#8839ef,pointer:#dc8a78 --color=marker:#dc8a78,fg+:#4c4f69,prompt:#8839ef,hl+:#d20f39'
+        frappe    '--color=bg+:#414559,bg:#303446,spinner:#f2d5cf,hl:#e78284 --color=fg:#c6d0f5,header:#e78284,info:#ca9ee6,pointer:#f2d5cf --color=marker:#f2d5cf,fg+:#c6d0f5,prompt:#ca9ee6,hl+:#e78284'
+        macchiato '--color=bg+:#363a4f,bg:#24273a,spinner:#f4dbd6,hl:#ed8796 --color=fg:#cad3f5,header:#ed8796,info:#c6a0f6,pointer:#f4dbd6 --color=marker:#f4dbd6,fg+:#cad3f5,prompt:#c6a0f6,hl+:#ed8796'
+        mocha     '--color=bg+:#313244,bg:#1e1e2e,spinner:#f5e0dc,hl:#f38ba8 --color=fg:#cdd6f4,header:#f38ba8,info:#cba6f7,pointer:#f5e0dc --color=marker:#f5e0dc,fg+:#cdd6f4,prompt:#cba6f7,hl+:#f38ba8'
+      )
+      export FZF_DEFAULT_OPTS=" ${_fzf_catppuccin_palettes[$THEME_VARIANT]}"
+      ;;
+  esac
 fi
 
 if (( ${+commands[zoxide]} )); then
@@ -553,12 +564,12 @@ _evalcache "${HOME}/.local/bin/mise" activate zsh
 
 if (( ${+commands[vivid]} )); then
   # _evalcache requires its target to print shell code; wrap vivid's value
-  # output in an `export` statement and key the cache on the flavor so
-  # changing CATPPUCCIN_FLAVOR invalidates the cached entry.
+  # in an `export` statement and key the cache on family+variant so theme
+  # switches invalidate the cached entry.
   function _vivid_export {
-    printf 'export LS_COLORS=%q\n' "$(vivid generate "catppuccin-${1}")"
+    printf 'export LS_COLORS=%q\n' "$(vivid generate "$1-$2")"
   }
-  _evalcache _vivid_export "${CATPPUCCIN_FLAVOR}"
+  _evalcache _vivid_export "${THEME_FAMILY}" "${THEME_VARIANT}"
 fi
 
 #
