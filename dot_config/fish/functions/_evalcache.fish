@@ -1,4 +1,5 @@
 function _evalcache
+    test -z "$FISH_EVALCACHE_DIR"; and set -gx FISH_EVALCACHE_DIR $HOME/.fish-evalcache
     set -f cmdHash nohash
     set -f data $argv
     set -f name
