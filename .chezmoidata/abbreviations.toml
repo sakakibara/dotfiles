@@ -1,0 +1,138 @@
+# Single source of truth for shell abbreviations.
+# Rendered at chezmoi-apply time into dot_zabbr.tmpl (zsh-abbr) and
+# dot_config/fish/conf.d/abbreviations.fish.tmpl (fish abbr).
+#
+# Each entry is a [[abbreviations]] table with:
+#   key        the abbreviation
+#   expansion  what it expands to
+#   shells     optional list, default ["zsh", "fish"]
+#   when       optional executable name; entry is rendered only if on PATH
+
+[[abbreviations]]
+key = "e"
+expansion = "nvim"
+
+[[abbreviations]]
+key = "se"
+expansion = "sudo nvim"
+
+[[abbreviations]]
+key = "ef"
+expansion = "nvim ~/.config/fish/config.fish"
+shells = ["fish"]
+
+[[abbreviations]]
+key = "ef"
+expansion = "nvim ~/.zshrc"
+shells = ["zsh"]
+
+# Tmux helpers (same in both shells)
+[[abbreviations]]
+key = "ta"
+expansion = "tmux attach -t"
+
+[[abbreviations]]
+key = "tad"
+expansion = "tmux attach -d -t"
+
+[[abbreviations]]
+key = "tkss"
+expansion = "tmux kill-session -t"
+
+[[abbreviations]]
+key = "tksv"
+expansion = "tmux kill-server"
+
+[[abbreviations]]
+key = "tl"
+expansion = "tmux list-sessions"
+
+[[abbreviations]]
+key = "ts"
+expansion = "tmux new-session -s"
+
+# Navigation. zsh's existing convention is literal "../.."; fish's idiomatic
+# convention is dot-count "...". Both expand to the same `cd ../..` string.
+[[abbreviations]]
+key = "-"
+expansion = "cd -"
+
+[[abbreviations]]
+key = ".."
+expansion = "cd .."
+
+[[abbreviations]]
+key = "../.."
+expansion = "cd ../.."
+shells = ["zsh"]
+
+[[abbreviations]]
+key = "..."
+expansion = "cd ../.."
+shells = ["fish"]
+
+[[abbreviations]]
+key = "../../.."
+expansion = "cd ../../.."
+shells = ["zsh"]
+
+[[abbreviations]]
+key = "...."
+expansion = "cd ../../.."
+shells = ["fish"]
+
+[[abbreviations]]
+key = "../../../.."
+expansion = "cd ../../../.."
+shells = ["zsh"]
+
+[[abbreviations]]
+key = "....."
+expansion = "cd ../../../.."
+shells = ["fish"]
+
+# Conditional on the binary being on PATH at chezmoi-apply time.
+[[abbreviations]]
+key = "fd"
+expansion = "fdfind"
+when = "fdfind"
+
+[[abbreviations]]
+key = "lad"
+expansion = "lazydocker"
+when = "lazydocker"
+
+[[abbreviations]]
+key = "lag"
+expansion = "lazygit"
+when = "lazygit"
+
+[[abbreviations]]
+key = "n"
+expansion = "zk"
+when = "zk"
+
+[[abbreviations]]
+key = "ne"
+expansion = "zk edit --interactive"
+when = "zk"
+
+[[abbreviations]]
+key = "nj"
+expansion = "zk journal"
+when = "zk"
+
+[[abbreviations]]
+key = "t"
+expansion = "task"
+when = "task"
+
+[[abbreviations]]
+key = "tw"
+expansion = "timew"
+when = "timew"
+
+[[abbreviations]]
+key = "ti"
+expansion = "taskwarrior-tui"
+when = "taskwarrior-tui"

@@ -2,7 +2,7 @@
 {{- range .abbreviations -}}
 {{- $shells := index . "shells" -}}
 {{- $when := index . "when" -}}
-{{- if and (or (not $shells) (has "zsh" $shells)) (or (not $when) (lookPath $when)) }}
-abbr {{ printf "%q" .key }}={{ printf "%q" .expansion }}
+{{- if and (or (not $shells) (has "fish" $shells)) (or (not $when) (lookPath $when)) }}
+abbr -a -- {{ .key }} {{ .expansion }}
 {{- end -}}
 {{- end }}

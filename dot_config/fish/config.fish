@@ -157,45 +157,8 @@ if status --is-interactive
     bind \e\cP history-token-search-backward
     bind \e\cN history-token-search-forward
 
-    # Navigation aliases
-    abbr -a e $EDITOR
-    abbr -a se sudo $EDITOR
-    abbr -a ef $EDITOR \~/.config/fish/config.fish
-    abbr -a .. cd ..
-    abbr -a ... cd ../..
-    abbr -a .... cd ../../..
-    abbr -a ..... cd ../../../..
-    abbr -a -- - cd -
-    abbr -a -- ta tmux attach -t
-    abbr -a -- tad tmux attach -d -t
-    abbr -a -- tkss tmux kill-session -t
-    abbr -a -- tksv tmux kill-server
-    abbr -a -- tl tmux list-sessions
-    abbr -a -- ts tmux new-session -s
-
-    if test (command -v fdfind)
-        abbr -a fd fdfind
-    end
-    if test (command -v lazydocker)
-        abbr -a lad lazydocker
-    end
-    if test (command -v lazygit)
-        abbr -a lag lazygit
-    end
-    if test (command -v task)
-        abbr -a t task
-    end
-    if test (command -v timew)
-        abbr -a tw timew
-    end
-    if test (command -v taskwarrior-tui)
-        abbr -a ti taskwarrior-tui
-    end
-    if test (command -v zk)
-        abbr -a n zk
-        abbr -a ne zk edit --interactive
-        abbr -a nj zk journal
-    end
+    # Abbreviations live in conf.d/abbreviations.fish (rendered from
+    # .chezmoidata/abbreviations.toml — single source of truth shared with zsh).
 
     # LS_COLORS settings — no-variant families pass just the family name.
     if test (command -v vivid)
