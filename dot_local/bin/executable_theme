@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# theme — switch theme across consumers
+# theme — switch theme across consumers and manage cached assets.
 #
-# Tool B (the switcher) of the dotfiles theme system. Updates the state file
-# and fires reload signals to running consumers. Does NOT manage assets — that
-# is theme-fetch's job (Tool A). This script must work all the time without
-# failure: no external dependencies beyond bash + standard unix utilities.
+# Reads a flat key=value manifest per family at $XDG_CONFIG_HOME/dotfiles/
+# themes/<family>, writes a state file ($XDG_STATE_HOME/dotfiles/theme) that
+# every theme-aware config reads, and fires best-effort reload signals to
+# running consumers. The install/refresh/verify subcommands manage the
+# downloaded asset cache at $XDG_DATA_HOME/dotfiles/themes/.
 #
-# State:     $XDG_STATE_HOME/dotfiles/theme   (single line: "family/variant")
-# Manifests: $XDG_CONFIG_HOME/dotfiles/themes/<family>
-# Cache:     $XDG_DATA_HOME/dotfiles/themes/<asset>/<family>-<variant>.<ext>
+# No external dependencies — bash + curl + sha256sum/shasum + standard unix
+# utilities only.
 #
 # Manifest format (flat key=value, dot-paths for nesting, comma arrays):
 #
@@ -18,9 +18,8 @@
 #   naming.wezterm = Catppuccin {Variant}
 #
 # Naming substitutions: {family}, {variant}, {Family}, {Variant} (title-cased
-# first letter). Built-in defaults applied when a naming.<tool> entry is
-# absent: nvim={family}-{variant}, tmux={variant}, wezterm={Family} {Variant},
-# vivid={family}-{variant}.
+# first letter). Built-in default conventions: nvim={family}-{variant},
+# tmux={variant}, wezterm={Family} {Variant}, vivid={family}-{variant}.
 
 set -euo pipefail
 
@@ -30,11 +29,12 @@ readonly _XDG_DATA="${XDG_DATA_HOME:-$HOME/.local/share}"
 readonly _STATE_FILE="$_XDG_STATE/dotfiles/theme"
 readonly _MANIFESTS="$_XDG_CONFIG/dotfiles/themes"
 readonly _ASSETS="$_XDG_DATA/dotfiles/themes"
+readonly _LOCK="$_ASSETS/.lock"
 
-die() { printf 'theme: %s\n' "$*" >&2; exit 1; }
+die()  { printf 'theme: %s\n' "$*" >&2; exit 1; }
+warn() { printf 'theme: %s\n' "$*" >&2; }
 
 # ------------- manifest reader -------------
-# _manifest_get FAMILY KEY → value on stdout, exit 1 if key absent
 _manifest_get() {
   local file="$_MANIFESTS/$1" key="$2" line k v
   [[ -f "$file" ]] || return 1
@@ -45,15 +45,11 @@ _manifest_get() {
     v="${line#*=}"
     k="${k#"${k%%[![:space:]]*}"}"; k="${k%"${k##*[![:space:]]}"}"
     v="${v#"${v%%[![:space:]]*}"}"; v="${v%"${v##*[![:space:]]}"}"
-    if [[ "$k" == "$key" ]]; then
-      printf '%s\n' "$v"
-      return 0
-    fi
+    [[ "$k" == "$key" ]] && { printf '%s\n' "$v"; return 0; }
   done < "$file"
   return 1
 }
 
-# _variants FAMILY → one variant per line
 _variants() {
   local raw v
   raw=$(_manifest_get "$1" variants) || return 1
@@ -61,7 +57,6 @@ _variants() {
   printf '%s\n' "${v[@]}" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//'
 }
 
-# _families → one family per line, sorted
 _families() {
   [[ -d "$_MANIFESTS" ]] || return 0
   local f
@@ -71,7 +66,24 @@ _families() {
   done | sort
 }
 
-# _validate FAMILY VARIANT → exit 0 if known pair, else die
+# Discover asset names declared in a manifest (entries shaped asset.<NAME>.url).
+_assets_for() {
+  local file="$_MANIFESTS/$1" line k seen=""
+  [[ -f "$file" ]] || return 1
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line="${line%%#*}"
+    k="${line%%=*}"
+    k="${k#"${k%%[![:space:]]*}"}"; k="${k%"${k##*[![:space:]]}"}"
+    if [[ "$k" =~ ^asset\.([^.]+)\.url$ ]]; then
+      local asset="${BASH_REMATCH[1]}"
+      if [[ ",$seen," != *",$asset,"* ]]; then
+        seen="$seen,$asset"
+        printf '%s\n' "$asset"
+      fi
+    fi
+  done < "$file"
+}
+
 _validate() {
   [[ -f "$_MANIFESTS/$1" ]] || die "unknown family: $1 (run 'theme list' to see known families)"
   if ! _variants "$1" | grep -qx -- "$2"; then
@@ -80,10 +92,8 @@ _validate() {
 }
 
 # ------------- naming -------------
-# _title FOO → Foo (uppercase first char)
 _title() { printf '%s%s' "$(printf '%s' "${1:0:1}" | tr '[:lower:]' '[:upper:]')" "${1:1}"; }
 
-# _name FAMILY VARIANT TOOL DEFAULT_TEMPLATE → resolved string
 _name() {
   local family="$1" variant="$2" tool="$3" default="$4" tmpl
   tmpl=$(_manifest_get "$family" "naming.$tool") || tmpl="$default"
@@ -97,12 +107,83 @@ _name() {
   printf '%s\n' "$tmpl"
 }
 
+# ------------- asset helpers -------------
+_apply_url_template() {
+  local tmpl="$1" variant="$2" Variant
+  Variant=$(_title "$variant")
+  tmpl="${tmpl//\{variant\}/$variant}"
+  tmpl="${tmpl//\{Variant\}/$Variant}"
+  printf '%s\n' "$tmpl"
+}
+
+_url_extension() {
+  local url="$1" tail
+  tail="${url%%\?*}"
+  tail="${tail##*/}"
+  if [[ "$tail" == *.* ]]; then
+    printf '%s\n' "${tail##*.}"
+  else
+    printf 'dat\n'
+  fi
+}
+
+_target_path() {
+  local family="$1" variant="$2" asset="$3" url="$4" ext
+  ext=$(_url_extension "$url")
+  printf '%s/%s/%s-%s.%s\n' "$_ASSETS" "$asset" "$family" "$variant" "$ext"
+}
+
+_sha256() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | awk '{print $1}'
+  elif command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$1" | awk '{print $1}'
+  else
+    die "neither sha256sum nor shasum is on PATH"
+  fi
+}
+
+_download() {
+  local url="$1" target="$2" tmp
+  tmp="$target.tmp.$$"
+  mkdir -p "$(dirname "$target")"
+  if curl --fail --location --silent --show-error --max-time 30 --retry 2 -o "$tmp" "$url"; then
+    mv "$tmp" "$target"
+    return 0
+  fi
+  rm -f "$tmp"
+  return 1
+}
+
+_lock_get() {
+  local key="$1"
+  [[ -f "$_LOCK" ]] || return 1
+  local line
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    if [[ "$line" == "$key="* ]]; then
+      printf '%s\n' "${line#*=}"
+      return 0
+    fi
+  done < "$_LOCK"
+  return 1
+}
+
+_lock_set() {
+  local key="$1" value="$2"
+  mkdir -p "$(dirname "$_LOCK")"
+  if [[ -f "$_LOCK" ]]; then
+    grep -v "^${key}=" "$_LOCK" > "$_LOCK.tmp" 2>/dev/null || true
+    mv "$_LOCK.tmp" "$_LOCK"
+  fi
+  printf '%s=%s\n' "$key" "$value" >> "$_LOCK"
+  sort -o "$_LOCK" "$_LOCK"
+}
+
 # ------------- state -------------
 _current() {
   if [[ -f "$_STATE_FILE" ]]; then
     head -n1 "$_STATE_FILE"
   else
-    # Fall back to the first family's default if any manifest exists.
     local f
     f=$(_families | head -n1) || true
     if [[ -n "$f" ]] && _manifest_get "$f" default >/dev/null 2>&1; then
@@ -120,12 +201,10 @@ _write_state() {
 }
 
 # ------------- reload -------------
-# Each consumer wrapped in `|| true` so one failure doesn't abort the rest.
-# Consumers that aren't installed simply produce no signal.
 _reload() {
   local family="$1" variant="$2"
 
-  # kitty: re-symlink current-theme.conf (asset must already be cached by theme-fetch)
+  # kitty: re-symlink current-theme.conf if asset is cached
   local kitty_conf="$_ASSETS/kitty/$family-$variant.conf"
   if [[ -f "$kitty_conf" ]]; then
     mkdir -p "$_XDG_CONFIG/kitty"
@@ -157,6 +236,128 @@ _reload() {
   return 0
 }
 
+# Warn (non-fatal) when assets the consumers want are missing from the cache.
+_warn_missing_assets() {
+  local family="$1" variant="$2"
+  local asset url target missing=()
+  for asset in $(_assets_for "$family"); do
+    url=$(_apply_url_template "$(_manifest_get "$family" "asset.$asset.url")" "$variant")
+    target=$(_target_path "$family" "$variant" "$asset" "$url")
+    [[ -f "$target" ]] || missing+=("$asset")
+  done
+  if [[ ${#missing[@]} -gt 0 ]]; then
+    warn "missing cached assets: ${missing[*]} (run 'theme install $family/$variant' to fetch)"
+  fi
+}
+
+# ------------- iteration filter (for install / refresh / verify) -------------
+_parse_filter() {
+  __filter_fam=""
+  __filter_var=""
+  local arg="${1:-}"
+  [[ -z "$arg" ]] && return 0
+  if [[ "$arg" == */* ]]; then
+    __filter_fam="${arg%%/*}"
+    __filter_var="${arg#*/}"
+  else
+    __filter_fam="$arg"
+  fi
+}
+
+_iter() {
+  local cb="$1"
+  local family variant asset url target key
+  for family in $(_families); do
+    [[ -n "$__filter_fam" && "$family" != "$__filter_fam" ]] && continue
+    for variant in $(_variants "$family"); do
+      [[ -n "$__filter_var" && "$variant" != "$__filter_var" ]] && continue
+      for asset in $(_assets_for "$family"); do
+        url=$(_apply_url_template "$(_manifest_get "$family" "asset.$asset.url")" "$variant")
+        target=$(_target_path "$family" "$variant" "$asset" "$url")
+        key="$family/$variant/$asset"
+        "$cb" "$family" "$variant" "$asset" "$url" "$target" "$key"
+      done
+    done
+  done
+}
+
+__cb_install() {
+  local family="$1" variant="$2" asset="$3" url="$4" target="$5" key="$6" sha expected
+  if [[ -f "$target" ]]; then
+    expected=$(_lock_get "$key" 2>/dev/null || true)
+    if [[ -n "$expected" ]]; then
+      sha=$(_sha256 "$target")
+      if [[ "$sha" != "$expected" ]]; then
+        warn "$key: sha mismatch — re-downloading"
+        if _download "$url" "$target"; then
+          sha=$(_sha256 "$target")
+          if [[ "$sha" == "$expected" ]]; then
+            printf '✓ %s (re-downloaded)\n' "$key"
+          else
+            warn "$key: re-download sha $sha != lockfile $expected"
+          fi
+        else
+          warn "$key: re-download failed"
+        fi
+      else
+        printf '✓ %s\n' "$key"
+      fi
+    else
+      sha=$(_sha256 "$target")
+      _lock_set "$key" "$sha"
+      printf '✓ %s (recorded sha)\n' "$key"
+    fi
+  else
+    if _download "$url" "$target"; then
+      sha=$(_sha256 "$target")
+      expected=$(_lock_get "$key" 2>/dev/null || true)
+      if [[ -z "$expected" ]]; then
+        _lock_set "$key" "$sha"
+        printf '↓ %s (downloaded, recorded sha)\n' "$key"
+      elif [[ "$sha" == "$expected" ]]; then
+        printf '↓ %s (downloaded, sha matches)\n' "$key"
+      else
+        warn "$key: downloaded sha $sha != lockfile $expected"
+      fi
+    else
+      warn "$key: download failed from $url"
+    fi
+  fi
+}
+
+__cb_refresh() {
+  local family="$1" variant="$2" asset="$3" url="$4" target="$5" key="$6" sha
+  if _download "$url" "$target"; then
+    sha=$(_sha256 "$target")
+    _lock_set "$key" "$sha"
+    printf '↓ %s sha=%s\n' "$key" "$sha"
+  else
+    warn "$key: download failed from $url"
+  fi
+}
+
+__cb_verify() {
+  local family="$1" variant="$2" asset="$3" url="$4" target="$5" key="$6" sha expected
+  if [[ ! -f "$target" ]]; then
+    warn "$key: missing"
+    __verify_ok=false
+    return 0
+  fi
+  expected=$(_lock_get "$key" 2>/dev/null || true)
+  if [[ -z "$expected" ]]; then
+    warn "$key: no lockfile entry"
+    __verify_ok=false
+    return 0
+  fi
+  sha=$(_sha256 "$target")
+  if [[ "$sha" != "$expected" ]]; then
+    warn "$key: sha mismatch ($sha != $expected)"
+    __verify_ok=false
+  else
+    printf '✓ %s\n' "$key"
+  fi
+}
+
 # ------------- subcommands -------------
 cmd_get() { _current; }
 
@@ -182,6 +383,7 @@ cmd_set() {
   _validate "$family" "$variant"
   _write_state "$family/$variant"
   _reload "$family" "$variant"
+  _warn_missing_assets "$family" "$variant"
   printf '→ %s/%s\n' "$family" "$variant"
 }
 
@@ -195,9 +397,6 @@ cmd_reload() {
 }
 
 cmd_resolve() {
-  # Internal helper for consumer configs that want a tool-resolved name.
-  # Usage: theme resolve <tool>            (uses current state)
-  #        theme resolve <tool> <fam>/<v>  (uses specified)
   local tool="${1:-}"; [[ -z "$tool" ]] && die "usage: theme resolve <tool> [family/variant]"
   shift
   local family variant
@@ -217,9 +416,26 @@ cmd_resolve() {
   esac
 }
 
+cmd_install() {
+  _parse_filter "${1:-}"
+  _iter __cb_install
+}
+
+cmd_refresh() {
+  _parse_filter "${1:-}"
+  _iter __cb_refresh
+}
+
+cmd_verify() {
+  _parse_filter "${1:-}"
+  __verify_ok=true
+  _iter __cb_verify
+  $__verify_ok || exit 1
+}
+
 cmd_help() {
   cat <<EOF
-theme — switch theme across consumers
+theme — switch theme across consumers and manage cached assets
 
 Usage:
   theme                          Print current theme (family/variant)
@@ -229,14 +445,17 @@ Usage:
   theme set <variant>            Switch variant within current family
   theme reload                   Re-fire reload signals without state change
   theme resolve <tool> [fam/var] Print tool-specific resolved name
-  theme --help                   Show this help
+
+Asset cache:
+  theme install [family[/variant]]  Download missing assets, record sha
+  theme refresh [family[/variant]]  Force re-download, update lockfile
+  theme verify  [family[/variant]]  Verify cached assets against lockfile
 
 Locations:
   state:     $_STATE_FILE
   manifests: $_MANIFESTS/<family>
   cache:     $_ASSETS/<asset>/<family>-<variant>.<ext>
-
-For asset download / hash refresh, see theme-fetch (Tool A).
+  lockfile:  $_LOCK
 EOF
 }
 
@@ -247,7 +466,10 @@ case "${1:-}" in
   set)            shift; cmd_set "$@" ;;
   reload)         shift; cmd_reload "$@" ;;
   resolve)        shift; cmd_resolve "$@" ;;
+  install)        shift; cmd_install "$@" ;;
+  refresh)        shift; cmd_refresh "$@" ;;
+  verify)         shift; cmd_verify "$@" ;;
   -h|--help|help) cmd_help ;;
-  */*)            cmd_set "$1" ;;          # shortcut: theme catppuccin/frappe
+  */*)            cmd_set "$1" ;;
   *)              die "unknown command: $1 (try 'theme --help')" ;;
 esac

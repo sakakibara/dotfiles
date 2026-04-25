@@ -8,6 +8,9 @@ _theme() {
     'set:Switch to a specific theme'
     'reload:Re-fire reload signals without changing state'
     'resolve:Print tool-specific resolved name'
+    'install:Download missing assets, record sha'
+    'refresh:Force re-download, update lockfile'
+    'verify:Verify cached assets against lockfile'
     'help:Show help'
   )
 
@@ -18,7 +21,6 @@ _theme() {
   case "$state" in
     cmd)
       _describe -t commands 'theme command' subcmds
-      # Also offer family/variant shorthand at the top level
       _theme_families_variants
       ;;
     args)
@@ -26,7 +28,7 @@ _theme() {
         list)
           _theme_families
           ;;
-        set)
+        set|install|refresh|verify)
           _theme_families_variants
           ;;
         resolve)
@@ -48,10 +50,10 @@ _theme_families() {
 }
 
 _theme_families_variants() {
-  # Suggest both bare variants of the current family and family/variant pairs.
-  local family variants pairs all
+  local family variant
   local -a all_arr
   for family in ${(f)"$(theme list 2>/dev/null)"}; do
+    all_arr+=("$family")
     for variant in ${(f)"$(theme list "$family" 2>/dev/null)"}; do
       all_arr+=("$family/$variant")
     done
