@@ -72,7 +72,7 @@ local function derive_palette()
   local git_chg  = get("diffChanged",     "fg", nil) or yellow
 
   palette = {
-    bg_end = bg_end, bg_mid = bg_mid, fg = fg, fg_bold = fg_bold, fg_dim = fg_dim,
+    bg_end = bg_end, bg_mid = bg_a, fg = fg, fg_bold = fg_bold, fg_dim = fg_dim,
     red = red, yellow = yellow, green = green, blue = blue,
     purple = purple, orange = orange, cyan = cyan,
     info = info, hint = hint,
