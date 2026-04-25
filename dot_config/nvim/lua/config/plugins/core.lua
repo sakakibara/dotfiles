@@ -1,11 +1,15 @@
 -- lua/config/plugins/core.lua
+local theme = Lib.theme.read()
+local catppuccin_active = theme.family == "catppuccin"
+local catppuccin_variant = catppuccin_active and theme.variant or "mocha"
+
 return {
   {
     "catppuccin/nvim",
     name = "catppuccin",
     priority = 1000,
     opts = {
-      flavour = "mocha",
+      flavour = catppuccin_variant,
       background = { light = "latte", dark = "mocha" },
       integrations = {
         snacks = { enabled = true },
@@ -17,7 +21,9 @@ return {
     },
     config = function(_, opts)
       require("catppuccin").setup(opts)
-      vim.cmd.colorscheme("catppuccin")
+      if catppuccin_active then
+        vim.cmd.colorscheme("catppuccin-" .. opts.flavour)
+      end
     end,
   },
 

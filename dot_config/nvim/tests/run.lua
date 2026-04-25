@@ -10,5 +10,6 @@ dofile(vim.fn.getcwd() .. "/tests/mode_color_spec.lua")
 dofile(vim.fn.getcwd() .. "/tests/statusline_spec.lua")
 dofile(vim.fn.getcwd() .. "/tests/format_spec.lua")
 dofile(vim.fn.getcwd() .. "/tests/lang_spec.lua")
+dofile(vim.fn.getcwd() .. "/tests/theme_spec.lua")
 
 require("tests.helpers").report_and_exit()
