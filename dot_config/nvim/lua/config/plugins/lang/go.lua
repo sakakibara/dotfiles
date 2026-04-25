@@ -1,58 +1,6 @@
 -- lua/config/plugins/lang/go.lua
 if vim.fn.executable("go") == 0 then return {} end
 
-Lib.mason.add("gopls", "goimports", "gofumpt")
-Lib.mason.add("delve")
-
-Lib.neotest.add("neotest-go", function() return require("neotest-go") end)
-
-Lib.plugin.on_load("nvim-treesitter", function()
-  require("nvim-treesitter").install({ "go", "gomod", "gowork", "gosum" })
-end)
-
-Lib.plugin.on_load("nvim-lspconfig", function()
-  vim.lsp.config("gopls", {
-    capabilities = Lib.lsp.capabilities(),
-    settings = {
-      gopls = {
-        gofumpt = true,
-        codelenses = {
-          gc_details = false,
-          generate = true,
-          regenerate_cgo = true,
-          run_govulncheck = true,
-          test = true,
-          tidy = true,
-          upgrade_dependency = true,
-          vendor = true,
-        },
-        hints = {
-          assignVariableTypes = true,
-          compositeLiteralFields = true,
-          compositeLiteralTypes = true,
-          constantValues = true,
-          functionTypeParameters = true,
-          parameterNames = true,
-          rangeVariableTypes = true,
-        },
-        analyses = {
-          fieldalignment = true,
-          nilness = true,
-          unusedparams = true,
-          unusedwrite = true,
-          useany = true,
-        },
-        usePlaceholders = true,
-        completeUnimported = true,
-        staticcheck = true,
-        directoryFilters = { "-.git", "-.vscode", "-.idea", "-.vscode-test", "-node_modules" },
-        semanticTokens = true,
-      },
-    },
-  })
-  Lib.lsp.enable("gopls")
-end)
-
 -- Populate semanticTokensProvider from negotiated capabilities if the server
 -- didn't advertise one — matches the old setup() hook behavior.
 Lib.lsp.on_attach(function(args)
@@ -75,22 +23,64 @@ Lib.lsp.on_attach(function(args)
   end
 end)
 
-Lib.plugin.on_load("conform.nvim", function()
-  require("conform").formatters_by_ft.go = { "goimports", "gofumpt" }
-end)
-
-return {
-  {
-    "leoluz/nvim-dap-go",
-    name = "nvim-dap-go",
-    ft = "go",
-    dependencies = { "nvim-dap" },
-    config = function() require("dap-go").setup() end,
+return Lib.lang.setup({
+  mason = { "gopls", "goimports", "gofumpt", "delve" },
+  parsers = { "go", "gomod", "gowork", "gosum" },
+  servers = {
+    gopls = {
+      settings = {
+        gopls = {
+          gofumpt = true,
+          codelenses = {
+            gc_details = false,
+            generate = true,
+            regenerate_cgo = true,
+            run_govulncheck = true,
+            test = true,
+            tidy = true,
+            upgrade_dependency = true,
+            vendor = true,
+          },
+          hints = {
+            assignVariableTypes = true,
+            compositeLiteralFields = true,
+            compositeLiteralTypes = true,
+            constantValues = true,
+            functionTypeParameters = true,
+            parameterNames = true,
+            rangeVariableTypes = true,
+          },
+          analyses = {
+            fieldalignment = true,
+            nilness = true,
+            unusedparams = true,
+            unusedwrite = true,
+            useany = true,
+          },
+          usePlaceholders = true,
+          completeUnimported = true,
+          staticcheck = true,
+          directoryFilters = { "-.git", "-.vscode", "-.idea", "-.vscode-test", "-node_modules" },
+          semanticTokens = true,
+        },
+      },
+    },
   },
-  {
-    "nvim-neotest/neotest-go",
-    name = "neotest-go",
-    ft = "go",
-    dependencies = { "neotest" },
+  formatters = { go = { "goimports", "gofumpt" } },
+  neotest = { ["neotest-go"] = function() return require("neotest-go") end },
+  plugins = {
+    {
+      "leoluz/nvim-dap-go",
+      name = "nvim-dap-go",
+      ft = "go",
+      dependencies = { "nvim-dap" },
+      config = function() require("dap-go").setup() end,
+    },
+    {
+      "nvim-neotest/neotest-go",
+      name = "neotest-go",
+      ft = "go",
+      dependencies = { "neotest" },
+    },
   },
-}
+})
