@@ -552,7 +552,13 @@ _evalcache "${HOME}/.local/bin/mise" activate zsh
 #
 
 if (( ${+commands[vivid]} )); then
-  export LS_COLORS="$(vivid generate "catppuccin-${CATPPUCCIN_FLAVOR}")"
+  # _evalcache requires its target to print shell code; wrap vivid's value
+  # output in an `export` statement and key the cache on the flavor so
+  # changing CATPPUCCIN_FLAVOR invalidates the cached entry.
+  function _vivid_export {
+    printf 'export LS_COLORS=%q\n' "$(vivid generate "catppuccin-${1}")"
+  }
+  _evalcache _vivid_export "${CATPPUCCIN_FLAVOR}"
 fi
 
 #
