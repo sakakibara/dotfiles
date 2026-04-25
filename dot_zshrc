@@ -536,7 +536,9 @@ _evalcache fzf --zsh
 # (( ${+aliases[zi]} )) && unalias zi
 _evalcache zoxide init zsh
 
-_evalcache "${HOME}/.local/bin/hive" init-shell zsh
+if (( ${+commands[hive]} )); then
+  _evalcache hive workspace shell zsh
+fi
 
 _evalcache "${HOME}/.local/bin/mise" activate zsh
 
@@ -591,6 +593,10 @@ _evalcache pip completion --zsh
 
 if (( ${+commands[chezmoi]} )); then
   _evalcache chezmoi completion zsh
+fi
+
+if (( ${+commands[hive]} )); then
+  _evalcache hive completion zsh
 fi
 
 if [[ ! "${ZSH_COMPDUMP}.zwc" -nt "${ZSH_COMPDUMP}" ]]; then
