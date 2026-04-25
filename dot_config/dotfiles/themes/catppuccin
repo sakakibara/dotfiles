@@ -1,6 +1,6 @@
 # Catppuccin theme manifest.
 # Format: flat key=value, dot-paths for nesting, comma-separated arrays.
-# Read by `theme` (switcher, optionally) and `theme-fetch` (asset downloader).
+# Read by `theme` (switcher and asset manager).
 
 default = mocha
 variants = latte, frappe, macchiato, mocha
