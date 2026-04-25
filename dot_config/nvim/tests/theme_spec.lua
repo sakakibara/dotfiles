@@ -29,9 +29,9 @@ T.describe("lib.theme.read", function()
     end)
   end)
 
-  T.it("returns defaults when state file is malformed (no slash)", function()
-    with_state("not-a-valid-state-line", function(theme)
-      T.eq(theme.read(), { family = "catppuccin", variant = "mocha" })
+  T.it("parses no-variant state (family without slash)", function()
+    with_state("dracula", function(theme)
+      T.eq(theme.read(), { family = "dracula", variant = "" })
     end)
   end)
 

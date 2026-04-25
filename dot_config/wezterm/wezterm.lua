@@ -25,15 +25,21 @@ local function _read_theme()
   if not f then return "catppuccin", "mocha" end
   local line = f:read("*l") or ""
   f:close()
-  local family, variant = line:match("^([^/]+)/(.+)$")
-  if not family or not variant then return "catppuccin", "mocha" end
-  return family, variant
+  line = line:gsub("^%s+", ""):gsub("%s+$", "")
+  if line == "" then return "catppuccin", "mocha" end
+  local slash = line:find("/", 1, true)
+  if slash then return line:sub(1, slash - 1), line:sub(slash + 1) end
+  return line, ""
 end
 
 local function _title(s) return s:sub(1, 1):upper() .. s:sub(2) end
 
 local _theme_family, _theme_variant = _read_theme()
-config.color_scheme = _title(_theme_family) .. " " .. _title(_theme_variant)
+if _theme_variant ~= "" then
+  config.color_scheme = _title(_theme_family) .. " " .. _title(_theme_variant)
+else
+  config.color_scheme = _title(_theme_family)
+end
 config.font = wezterm.font("Sarasa Term J Nerd Font")
 config.font_size = 14.0
 config.use_fancy_tab_bar = true

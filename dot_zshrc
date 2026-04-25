@@ -565,11 +565,12 @@ _evalcache "${HOME}/.local/bin/mise" activate zsh
 if (( ${+commands[vivid]} )); then
   # _evalcache requires its target to print shell code; wrap vivid's value
   # in an `export` statement and key the cache on family+variant so theme
-  # switches invalidate the cached entry.
+  # switches invalidate the cached entry. For no-variant families the theme
+  # name is just the family (no -variant suffix).
   function _vivid_export {
-    printf 'export LS_COLORS=%q\n' "$(vivid generate "$1-$2")"
+    printf 'export LS_COLORS=%q\n' "$(vivid generate "$1")"
   }
-  _evalcache _vivid_export "${THEME_FAMILY}" "${THEME_VARIANT}"
+  _evalcache _vivid_export "${THEME_FAMILY}${THEME_VARIANT:+-${THEME_VARIANT}}"
 fi
 
 #

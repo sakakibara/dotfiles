@@ -4,10 +4,17 @@
 # Same state file, same manifest format, same naming conventions, same
 # lockfile shape as the bash theme script. Used on Windows native; WSL
 # users get the bash version.
+#
+# Two kinds of family are first-class:
+#   - variant'd:  manifest has a `variants` list (e.g. catppuccin)
+#                 state stored as "family/variant"
+#                 cache as <family>-<variant>.<ext>
+#   - no-variant: manifest omits `variants` entirely (e.g. dracula, nord)
+#                 state stored as just "family"
+#                 cache as <family>.<ext>
 
 $ErrorActionPreference = 'Stop'
 
-# Take args via $args directly; param binding would intercept "--help" etc.
 $Command = if ($args.Count -ge 1) { $args[0] } else { '' }
 $Rest    = if ($args.Count -ge 2) { @($args[1..($args.Count - 1)]) } else { @() }
 
@@ -57,6 +64,11 @@ function _Variants([string]$family) {
     return @($raw -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
 }
 
+function _HasVariants([string]$family) {
+    $vs = _Variants $family
+    return ($vs.Count -gt 0)
+}
+
 function _Families {
     if (-not (Test-Path -LiteralPath $Script:Manifests)) { return @() }
     return @(Get-ChildItem -Path $Script:Manifests -File | Sort-Object Name | ForEach-Object { $_.Name })
@@ -89,10 +101,61 @@ function _Validate([string]$family, [string]$variant) {
     if (-not (Test-Path -LiteralPath $file)) {
         _Die "unknown family: $family (run 'theme list' to see known families)"
     }
-    $vs = _Variants $family
-    if ($vs -notcontains $variant) {
-        _Die "unknown variant for $family`: $variant (known: $($vs -join ', '))"
+    $hasVars = _HasVariants $family
+    if ($hasVars) {
+        if (-not $variant) {
+            $known = (_Variants $family) -join ', '
+            _Die "family '$family' has variants; pick one (known: $known)"
+        }
+        $vs = _Variants $family
+        if ($vs -notcontains $variant) {
+            _Die "unknown variant for $family`: $variant (known: $($vs -join ', '))"
+        }
+    } else {
+        if ($variant) {
+            _Die "family '$family' has no variants; '$variant' is not valid"
+        }
     }
+}
+
+# --- state ---
+function _StateStr([string]$family, [string]$variant) {
+    if ($variant) { return "$family/$variant" }
+    return $family
+}
+
+function _SplitState([string]$state) {
+    if ($state -match '^([^/]+)/(.+)$') {
+        return @{ family = $Matches[1]; variant = $Matches[2] }
+    }
+    return @{ family = $state; variant = '' }
+}
+
+function _Current {
+    if (Test-Path -LiteralPath $Script:StateFile) {
+        $line = Get-Content -LiteralPath $Script:StateFile -TotalCount 1
+        return $line.Trim()
+    }
+    $first = (_Families | Select-Object -First 1)
+    if (-not $first) {
+        _Die "no manifests found at $Script:Manifests"
+    }
+    if (_HasVariants $first) {
+        $d = _Manifest-Get $first 'default'
+        if (-not $d) { _Die "family '$first' has variants but no default" }
+        return "$first/$d"
+    }
+    return $first
+}
+
+function _Write-State([string]$value) {
+    $dir = Split-Path -Parent $Script:StateFile
+    if (-not (Test-Path -LiteralPath $dir)) {
+        New-Item -ItemType Directory -Path $dir -Force | Out-Null
+    }
+    $tmp = "$Script:StateFile.tmp"
+    [System.IO.File]::WriteAllText($tmp, "$value`n")
+    Move-Item -LiteralPath $tmp -Destination $Script:StateFile -Force
 }
 
 # --- naming ---
@@ -101,9 +164,29 @@ function _TitleCase([string]$s) {
     return $s.Substring(0, 1).ToUpper() + $s.Substring(1)
 }
 
-function _Name([string]$family, [string]$variant, [string]$tool, [string]$default) {
+function _DefaultTemplate([string]$tool, [bool]$hasVariant) {
+    if ($hasVariant) {
+        switch ($tool) {
+            'nvim'    { '{family}-{variant}' }
+            'vivid'   { '{family}-{variant}' }
+            'wezterm' { '{Family} {Variant}' }
+            'tmux'    { '{variant}' }
+            default   { '{family}-{variant}' }
+        }
+    } else {
+        switch ($tool) {
+            'wezterm' { '{Family}' }
+            'tmux'    { '' }
+            default   { '{family}' }
+        }
+    }
+}
+
+function _Name([string]$family, [string]$variant, [string]$tool) {
     $tmpl = _Manifest-Get $family "naming.$tool"
-    if (-not $tmpl) { $tmpl = $default }
+    if (-not $tmpl) {
+        $tmpl = _DefaultTemplate $tool ([bool]$variant)
+    }
     $tmpl = $tmpl.Replace('{family}',  $family)
     $tmpl = $tmpl.Replace('{variant}', $variant)
     $tmpl = $tmpl.Replace('{Family}',  (_TitleCase $family))
@@ -128,7 +211,8 @@ function _UrlExtension([string]$url) {
 
 function _TargetPath([string]$family, [string]$variant, [string]$asset, [string]$url) {
     $ext = _UrlExtension $url
-    return (Join-Path (Join-Path $Script:Assets $asset) "$family-$variant.$ext")
+    $stem = if ($variant) { "$family-$variant" } else { $family }
+    return (Join-Path (Join-Path $Script:Assets $asset) "$stem.$ext")
 }
 
 function _Sha256([string]$path) {
@@ -175,34 +259,10 @@ function _LockSet([string]$key, [string]$value) {
     $lines | Sort-Object | Set-Content -LiteralPath $Script:Lock -Encoding utf8
 }
 
-# --- state ---
-function _Current {
-    if (Test-Path -LiteralPath $Script:StateFile) {
-        $line = Get-Content -LiteralPath $Script:StateFile -TotalCount 1
-        return $line.Trim()
-    }
-    $first = (_Families | Select-Object -First 1)
-    if ($first) {
-        $d = _Manifest-Get $first 'default'
-        if ($d) { return "$first/$d" }
-    }
-    _Die "no state file and no manifests found at $Script:Manifests"
-}
-
-function _Write-State([string]$value) {
-    $dir = Split-Path -Parent $Script:StateFile
-    if (-not (Test-Path -LiteralPath $dir)) {
-        New-Item -ItemType Directory -Path $dir -Force | Out-Null
-    }
-    $tmp = "$Script:StateFile.tmp"
-    [System.IO.File]::WriteAllText($tmp, "$value`n")
-    Move-Item -LiteralPath $tmp -Destination $Script:StateFile -Force
-}
-
 # --- reload ---
 function _Reload([string]$family, [string]$variant) {
     if (Get-Command nvim -ErrorAction SilentlyContinue) {
-        $cs = _Name $family $variant 'nvim' '{family}-{variant}'
+        $cs = _Name $family $variant 'nvim'
         try {
             Get-ChildItem -Path '\\.\pipe\' -ErrorAction SilentlyContinue |
                 Where-Object { $_.Name -match '^nvim' } |
@@ -218,7 +278,8 @@ function _Reload([string]$family, [string]$variant) {
         try { (Get-Item -LiteralPath $wez).LastWriteTime = Get-Date } catch { }
     }
 
-    $kittyAsset = Join-Path $Script:Assets "kitty/$family-$variant.conf"
+    $stem = if ($variant) { "$family-$variant" } else { $family }
+    $kittyAsset = Join-Path $Script:Assets "kitty/$stem.conf"
     if (Test-Path -LiteralPath $kittyAsset) {
         $kittyLink = Join-Path $Script:ConfigHome 'kitty/current-theme.conf'
         $linkDir = Split-Path -Parent $kittyLink
@@ -242,7 +303,8 @@ function _Warn-MissingAssets([string]$family, [string]$variant) {
         if (-not (Test-Path -LiteralPath $target)) { $missing += $asset }
     }
     if ($missing.Count -gt 0) {
-        _Warn "missing cached assets: $($missing -join ' ') (run 'theme install $family/$variant' to fetch)"
+        $state = _StateStr $family $variant
+        _Warn "missing cached assets: $($missing -join ' ') (run 'theme install $state' to fetch)"
     }
 }
 
@@ -262,15 +324,22 @@ function _ParseFilter([string]$arg) {
     }
 }
 
+function _IterVariantsOf([string]$family) {
+    if (_HasVariants $family) {
+        return _Variants $family
+    }
+    return @('')
+}
+
 function _Iter([scriptblock]$callback) {
     foreach ($family in _Families) {
         if ($Script:FilterFam -and $family -ne $Script:FilterFam) { continue }
-        foreach ($variant in _Variants $family) {
+        foreach ($variant in _IterVariantsOf $family) {
             if ($Script:FilterVar -and $variant -ne $Script:FilterVar) { continue }
             foreach ($asset in _AssetsFor $family) {
                 $url = _ApplyUrlTemplate (_Manifest-Get $family "asset.$asset.url") $variant
                 $target = _TargetPath $family $variant $asset $url
-                $key = "$family/$variant/$asset"
+                $key = if ($variant) { "$family/$variant/$asset" } else { "$family/$asset" }
                 & $callback $family $variant $asset $url $target $key
             }
         }
@@ -363,51 +432,66 @@ function _Cmd-List([string[]]$arr) {
     if ($arr.Count -eq 0) {
         _Families
     } else {
-        $vs = _Variants $arr[0]
-        if ($vs.Count -eq 0) { _Die "unknown family: $($arr[0])" }
-        $vs
+        $file = Join-Path $Script:Manifests $arr[0]
+        if (-not (Test-Path -LiteralPath $file)) { _Die "unknown family: $($arr[0])" }
+        if (_HasVariants $arr[0]) { _Variants $arr[0] }
     }
 }
 
 function _Cmd-Set([string[]]$arr) {
     if ($arr.Count -eq 0) {
-        _Die "usage: theme set <family>/<variant>  (or  theme set <variant>  to keep current family)"
+        _Die "usage: theme set <family> | <family>/<variant> | <variant>"
     }
     $arg = $arr[0]
+    $family = ''
+    $variant = ''
     if ($arg -match '^([^/]+)/(.+)$') {
         $family = $Matches[1]; $variant = $Matches[2]
+    } elseif ((_Families) -contains $arg) {
+        $family = $arg
+        if (_HasVariants $family) {
+            $d = _Manifest-Get $family 'default'
+            if (-not $d) { _Die "family '$family' has variants but no default; pick explicitly with $family/<variant>" }
+            $variant = $d
+        }
     } else {
         $cur = _Current
-        $family = $cur.Split('/', 2)[0]
+        $split = _SplitState $cur
+        if (-not $split.variant) {
+            _Die "current family '$($split.family)' has no variants and '$arg' is not a known family"
+        }
+        $family = $split.family
         $variant = $arg
     }
     _Validate $family $variant
-    _Write-State "$family/$variant"
+    $state = _StateStr $family $variant
+    _Write-State $state
     _Reload $family $variant
     _Warn-MissingAssets $family $variant
-    Write-Output "→ $family/$variant"
+    Write-Output "→ $state"
 }
 
 function _Cmd-Reload {
     $cur = _Current
-    $parts = $cur.Split('/', 2)
-    _Reload $parts[0] $parts[1]
+    $split = _SplitState $cur
+    _Reload $split.family $split.variant
     Write-Output "→ reloaded $cur"
 }
 
 function _Cmd-Resolve([string[]]$arr) {
     if ($arr.Count -eq 0) {
-        _Die "usage: theme resolve <tool> [family/variant]"
+        _Die "usage: theme resolve <tool> [family[/variant]]"
     }
     $tool = $arr[0]
-    if ($arr.Count -ge 2 -and $arr[1] -match '/') { $cur = $arr[1] } else { $cur = _Current }
-    $parts = $cur.Split('/', 2)
-    $family = $parts[0]; $variant = $parts[1]
+    if ($arr.Count -ge 2) {
+        $split = _SplitState $arr[1]
+    } else {
+        $split = _SplitState (_Current)
+    }
+    $family = $split.family
+    $variant = $split.variant
     switch ($tool) {
-        'nvim'    { _Name $family $variant 'nvim'    '{family}-{variant}' }
-        'tmux'    { _Name $family $variant 'tmux'    '{variant}' }
-        'wezterm' { _Name $family $variant 'wezterm' '{Family} {Variant}' }
-        'vivid'   { _Name $family $variant 'vivid'   '{family}-{variant}' }
+        { @('nvim','tmux','wezterm','vivid') -contains $_ } { _Name $family $variant $tool }
         'family'  { Write-Output $family }
         'variant' { Write-Output $variant }
         default   { _Die "unknown tool: $tool (known: nvim tmux wezterm vivid family variant)" }
@@ -436,13 +520,14 @@ function _Cmd-Help {
 theme — switch theme across consumers and manage cached assets
 
 Usage:
-  theme                          Print current theme (family/variant)
+  theme                          Print current theme
   theme list                     List known families
-  theme list <family>            List variants for a family
-  theme set <family>/<variant>   Switch to a specific theme
+  theme list <family>            List variants for a family (empty if none)
+  theme set <family>/<variant>   Switch to a specific variant of a family
+  theme set <family>             Switch to family (default variant or no-variant)
   theme set <variant>            Switch variant within current family
   theme reload                   Re-fire reload signals without state change
-  theme resolve <tool> [fam/var] Print tool-specific resolved name
+  theme resolve <tool> [target]  Print tool-specific resolved name
 
 Asset cache:
   theme install [family[/variant]]  Download missing assets, record sha
@@ -452,7 +537,7 @@ Asset cache:
 Locations:
   state:     $($Script:StateFile)
   manifests: $($Script:Manifests)\<family>
-  cache:     $($Script:Assets)\<asset>\<family>-<variant>.<ext>
+  cache:     $($Script:Assets)\<asset>\<family>[-<variant>].<ext>
   lockfile:  $($Script:Lock)
 "@
 }
@@ -472,7 +557,10 @@ switch ($Command) {
     '-h'      { _Cmd-Help }
     '--help'  { _Cmd-Help }
     default   {
-        if ($Command -match '/') { _Cmd-Set @($Command) }
-        else { _Die "unknown command: $Command (try 'theme --help')" }
+        if (($Command -match '/') -or ((_Families) -contains $Command)) {
+            _Cmd-Set @($Command)
+        } else {
+            _Die "unknown command: $Command (try 'theme --help')"
+        }
     }
 }

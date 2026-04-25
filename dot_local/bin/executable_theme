@@ -7,6 +7,14 @@
 # running consumers. The install/refresh/verify subcommands manage the
 # downloaded asset cache at $XDG_DATA_HOME/dotfiles/themes/.
 #
+# Two kinds of family are first-class:
+#   - variant'd:  manifest has a `variants` list (e.g. catppuccin)
+#                 state stored as "family/variant"
+#                 cache as <family>-<variant>.<ext>
+#   - no-variant: manifest omits `variants` entirely (e.g. dracula, nord)
+#                 state stored as just "family"
+#                 cache as <family>.<ext>
+#
 # No external dependencies — bash + curl + sha256sum/shasum + standard unix
 # utilities only.
 #
@@ -17,9 +25,10 @@
 #   asset.kitty.url = https://example.com/{variant}.conf
 #   naming.wezterm = Catppuccin {Variant}
 #
-# Naming substitutions: {family}, {variant}, {Family}, {Variant} (title-cased
-# first letter). Built-in default conventions: nvim={family}-{variant},
-# tmux={variant}, wezterm={Family} {Variant}, vivid={family}-{variant}.
+# Naming substitutions: {family}, {variant}, {Family}, {Variant}. Built-in
+# defaults for variant'd families: nvim={family}-{variant}, tmux={variant},
+# wezterm={Family} {Variant}, vivid={family}-{variant}. For no-variant
+# families: nvim={family}, tmux='', wezterm={Family}, vivid={family}.
 
 set -euo pipefail
 
@@ -54,7 +63,14 @@ _variants() {
   local raw v
   raw=$(_manifest_get "$1" variants) || return 1
   IFS=, read -ra v <<<"$raw"
-  printf '%s\n' "${v[@]}" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//'
+  printf '%s\n' "${v[@]}" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' | grep -v '^$'
+}
+
+# True if the family declares a non-empty variants list.
+_has_variants() {
+  local raw
+  raw=$(_manifest_get "$1" variants 2>/dev/null) || return 1
+  [[ -n "$(printf '%s' "$raw" | tr -d ', \t\n')" ]]
 }
 
 _families() {
@@ -85,21 +101,96 @@ _assets_for() {
 }
 
 _validate() {
-  [[ -f "$_MANIFESTS/$1" ]] || die "unknown family: $1 (run 'theme list' to see known families)"
-  if ! _variants "$1" | grep -qx -- "$2"; then
-    die "unknown variant for $1: $2 (known: $(_variants "$1" | paste -sd, -))"
+  local family="$1" variant="$2"
+  [[ -f "$_MANIFESTS/$family" ]] || die "unknown family: $family (run 'theme list' to see known families)"
+  if _has_variants "$family"; then
+    [[ -n "$variant" ]] || die "family '$family' has variants; pick one (known: $(_variants "$family" | paste -sd, -))"
+    if ! _variants "$family" | grep -qx -- "$variant"; then
+      die "unknown variant for $family: $variant (known: $(_variants "$family" | paste -sd, -))"
+    fi
+  else
+    [[ -z "$variant" ]] || die "family '$family' has no variants; '$variant' is not valid"
   fi
+}
+
+# ------------- state -------------
+_state_str() {
+  if [[ -n "${2:-}" ]]; then
+    printf '%s/%s\n' "$1" "$2"
+  else
+    printf '%s\n' "$1"
+  fi
+}
+
+_current() {
+  if [[ -f "$_STATE_FILE" ]]; then
+    head -n1 "$_STATE_FILE"
+  else
+    local f
+    f=$(_families | head -n1) || true
+    [[ -z "$f" ]] && die "no manifests found at $_MANIFESTS"
+    if _has_variants "$f"; then
+      local d
+      d=$(_manifest_get "$f" default 2>/dev/null) || die "family '$f' has variants but no default"
+      printf '%s/%s\n' "$f" "$d"
+    else
+      printf '%s\n' "$f"
+    fi
+  fi
+}
+
+# Splits state ("family" or "family/variant") into __cur_fam and __cur_var.
+_split_current() {
+  local cur="$1"
+  if [[ "$cur" == */* ]]; then
+    __cur_fam="${cur%%/*}"
+    __cur_var="${cur#*/}"
+  else
+    __cur_fam="$cur"
+    __cur_var=""
+  fi
+}
+
+_write_state() {
+  mkdir -p "$(dirname "$_STATE_FILE")"
+  printf '%s\n' "$1" > "$_STATE_FILE.tmp"
+  mv "$_STATE_FILE.tmp" "$_STATE_FILE"
 }
 
 # ------------- naming -------------
 _title() { printf '%s%s' "$(printf '%s' "${1:0:1}" | tr '[:lower:]' '[:upper:]')" "${1:1}"; }
 
+# Built-in default template per (tool, has-variant). Override via
+# naming.<tool> in the family manifest.
+_default_template() {
+  local tool="$1" has_variant="$2"
+  if [[ "$has_variant" == "1" ]]; then
+    case "$tool" in
+      nvim|vivid) printf '{family}-{variant}\n' ;;
+      wezterm)    printf '{Family} {Variant}\n' ;;
+      tmux)       printf '{variant}\n' ;;
+      *)          printf '{family}-{variant}\n' ;;
+    esac
+  else
+    case "$tool" in
+      wezterm) printf '{Family}\n' ;;
+      tmux)    printf '\n' ;;
+      *)       printf '{family}\n' ;;
+    esac
+  fi
+}
+
 _name() {
-  local family="$1" variant="$2" tool="$3" default="$4" tmpl
-  tmpl=$(_manifest_get "$family" "naming.$tool") || tmpl="$default"
+  local family="$1" variant="$2" tool="$3" tmpl
+  tmpl=$(_manifest_get "$family" "naming.$tool" 2>/dev/null || true)
+  if [[ -z "$tmpl" ]]; then
+    local has=0
+    [[ -n "$variant" ]] && has=1
+    tmpl=$(_default_template "$tool" "$has")
+  fi
   local Family Variant
   Family=$(_title "$family")
-  Variant=$(_title "$variant")
+  Variant=$(_title "${variant:-}")
   tmpl="${tmpl//\{family\}/$family}"
   tmpl="${tmpl//\{variant\}/$variant}"
   tmpl="${tmpl//\{Family\}/$Family}"
@@ -110,7 +201,7 @@ _name() {
 # ------------- asset helpers -------------
 _apply_url_template() {
   local tmpl="$1" variant="$2" Variant
-  Variant=$(_title "$variant")
+  Variant=$(_title "${variant:-}")
   tmpl="${tmpl//\{variant\}/$variant}"
   tmpl="${tmpl//\{Variant\}/$Variant}"
   printf '%s\n' "$tmpl"
@@ -130,7 +221,11 @@ _url_extension() {
 _target_path() {
   local family="$1" variant="$2" asset="$3" url="$4" ext
   ext=$(_url_extension "$url")
-  printf '%s/%s/%s-%s.%s\n' "$_ASSETS" "$asset" "$family" "$variant" "$ext"
+  if [[ -n "$variant" ]]; then
+    printf '%s/%s/%s-%s.%s\n' "$_ASSETS" "$asset" "$family" "$variant" "$ext"
+  else
+    printf '%s/%s/%s.%s\n' "$_ASSETS" "$asset" "$family" "$ext"
+  fi
 }
 
 _sha256() {
@@ -179,33 +274,17 @@ _lock_set() {
   sort -o "$_LOCK" "$_LOCK"
 }
 
-# ------------- state -------------
-_current() {
-  if [[ -f "$_STATE_FILE" ]]; then
-    head -n1 "$_STATE_FILE"
-  else
-    local f
-    f=$(_families | head -n1) || true
-    if [[ -n "$f" ]] && _manifest_get "$f" default >/dev/null 2>&1; then
-      printf '%s/%s\n' "$f" "$(_manifest_get "$f" default)"
-    else
-      die "no state file and no manifests found at $_MANIFESTS"
-    fi
-  fi
-}
-
-_write_state() {
-  mkdir -p "$(dirname "$_STATE_FILE")"
-  printf '%s\n' "$1" > "$_STATE_FILE.tmp"
-  mv "$_STATE_FILE.tmp" "$_STATE_FILE"
-}
-
 # ------------- reload -------------
 _reload() {
   local family="$1" variant="$2"
 
   # kitty: re-symlink current-theme.conf if asset is cached
-  local kitty_conf="$_ASSETS/kitty/$family-$variant.conf"
+  local kitty_conf
+  if [[ -n "$variant" ]]; then
+    kitty_conf="$_ASSETS/kitty/$family-$variant.conf"
+  else
+    kitty_conf="$_ASSETS/kitty/$family.conf"
+  fi
   if [[ -f "$kitty_conf" ]]; then
     mkdir -p "$_XDG_CONFIG/kitty"
     ln -sf "$kitty_conf" "$_XDG_CONFIG/kitty/current-theme.conf" 2>/dev/null || true
@@ -225,18 +304,16 @@ _reload() {
   # nvim: best-effort broadcast to listening sockets
   if command -v nvim >/dev/null 2>&1; then
     local nvim_cs sock
-    nvim_cs=$(_name "$family" "$variant" nvim '{family}-{variant}')
+    nvim_cs=$(_name "$family" "$variant" nvim)
     for sock in "${XDG_RUNTIME_DIR:-/tmp}"/nvim.*.0 "${TMPDIR:-/tmp}"/nvim.*/0; do
       [[ -S "$sock" ]] || continue
       nvim --server "$sock" --remote-expr "execute('silent! colorscheme $nvim_cs')" >/dev/null 2>&1 || true
     done
   fi
 
-  # fish: running shells re-read state on next prompt via conf.d hook
   return 0
 }
 
-# Warn (non-fatal) when assets the consumers want are missing from the cache.
 _warn_missing_assets() {
   local family="$1" variant="$2"
   local asset url target missing=()
@@ -246,7 +323,7 @@ _warn_missing_assets() {
     [[ -f "$target" ]] || missing+=("$asset")
   done
   if [[ ${#missing[@]} -gt 0 ]]; then
-    warn "missing cached assets: ${missing[*]} (run 'theme install $family/$variant' to fetch)"
+    warn "missing cached assets: ${missing[*]} (run 'theme install $(_state_str "$family" "$variant")' to fetch)"
   fi
 }
 
@@ -264,20 +341,34 @@ _parse_filter() {
   fi
 }
 
+# Yields the family's variants (one per line) for variant'd families,
+# or a single empty line for no-variant families.
+_iter_variants_of() {
+  if _has_variants "$1"; then
+    _variants "$1"
+  else
+    printf '\n'
+  fi
+}
+
 _iter() {
   local cb="$1"
   local family variant asset url target key
   for family in $(_families); do
     [[ -n "$__filter_fam" && "$family" != "$__filter_fam" ]] && continue
-    for variant in $(_variants "$family"); do
+    while IFS= read -r variant; do
       [[ -n "$__filter_var" && "$variant" != "$__filter_var" ]] && continue
       for asset in $(_assets_for "$family"); do
         url=$(_apply_url_template "$(_manifest_get "$family" "asset.$asset.url")" "$variant")
         target=$(_target_path "$family" "$variant" "$asset" "$url")
-        key="$family/$variant/$asset"
+        if [[ -n "$variant" ]]; then
+          key="$family/$variant/$asset"
+        else
+          key="$family/$asset"
+        fi
         "$cb" "$family" "$variant" "$asset" "$url" "$target" "$key"
       done
-    done
+    done < <(_iter_variants_of "$family")
   done
 }
 
@@ -365,51 +456,63 @@ cmd_list() {
   if [[ $# -eq 0 ]]; then
     _families
   else
-    _variants "$1" || die "unknown family: $1"
+    [[ -f "$_MANIFESTS/$1" ]] || die "unknown family: $1"
+    _has_variants "$1" && _variants "$1" || true
   fi
 }
 
 cmd_set() {
   local arg="${1:-}"
-  [[ -z "$arg" ]] && die "usage: theme set <family>/<variant>  (or  theme set <variant>  to keep the current family)"
+  [[ -z "$arg" ]] && die "usage: theme set <family> | <family>/<variant> | <variant>"
   local family variant
   if [[ "$arg" == */* ]]; then
     family="${arg%%/*}"
     variant="${arg#*/}"
+  elif _families | grep -qx -- "$arg"; then
+    family="$arg"
+    if _has_variants "$family"; then
+      variant=$(_manifest_get "$family" default 2>/dev/null) \
+        || die "family '$family' has variants but no default; pick explicitly with $family/<variant>"
+    else
+      variant=""
+    fi
   else
-    family=$(_current | cut -d/ -f1)
+    local cur; cur=$(_current); _split_current "$cur"
+    if [[ -z "$__cur_var" ]]; then
+      die "current family '$__cur_fam' has no variants and '$arg' is not a known family"
+    fi
+    family="$__cur_fam"
     variant="$arg"
   fi
   _validate "$family" "$variant"
-  _write_state "$family/$variant"
+  _write_state "$(_state_str "$family" "$variant")"
   _reload "$family" "$variant"
   _warn_missing_assets "$family" "$variant"
-  printf '→ %s/%s\n' "$family" "$variant"
+  printf '→ %s\n' "$(_state_str "$family" "$variant")"
 }
 
 cmd_reload() {
-  local cur family variant
-  cur=$(_current)
-  family="${cur%%/*}"
-  variant="${cur#*/}"
-  _reload "$family" "$variant"
-  printf '→ reloaded %s/%s\n' "$family" "$variant"
+  local cur; cur=$(_current); _split_current "$cur"
+  _reload "$__cur_fam" "$__cur_var"
+  printf '→ reloaded %s\n' "$cur"
 }
 
 cmd_resolve() {
-  local tool="${1:-}"; [[ -z "$tool" ]] && die "usage: theme resolve <tool> [family/variant]"
+  local tool="${1:-}"; [[ -z "$tool" ]] && die "usage: theme resolve <tool> [family[/variant]]"
   shift
   local family variant
-  if [[ $# -ge 1 && "$1" == */* ]]; then
-    family="${1%%/*}"; variant="${1#*/}"
+  if [[ $# -ge 1 ]]; then
+    if [[ "$1" == */* ]]; then
+      family="${1%%/*}"; variant="${1#*/}"
+    else
+      family="$1"; variant=""
+    fi
   else
-    local cur; cur=$(_current); family="${cur%%/*}"; variant="${cur#*/}"
+    local cur; cur=$(_current); _split_current "$cur"
+    family="$__cur_fam"; variant="$__cur_var"
   fi
   case "$tool" in
-    nvim)    _name "$family" "$variant" nvim    '{family}-{variant}' ;;
-    tmux)    _name "$family" "$variant" tmux    '{variant}' ;;
-    wezterm) _name "$family" "$variant" wezterm '{Family} {Variant}' ;;
-    vivid)   _name "$family" "$variant" vivid   '{family}-{variant}' ;;
+    nvim|tmux|wezterm|vivid) _name "$family" "$variant" "$tool" ;;
     family)  printf '%s\n' "$family" ;;
     variant) printf '%s\n' "$variant" ;;
     *)       die "unknown tool: $tool (known: nvim tmux wezterm vivid family variant)" ;;
@@ -438,13 +541,14 @@ cmd_help() {
 theme — switch theme across consumers and manage cached assets
 
 Usage:
-  theme                          Print current theme (family/variant)
+  theme                          Print current theme
   theme list                     List known families
-  theme list <family>            List variants for a family
-  theme set <family>/<variant>   Switch to a specific theme
+  theme list <family>            List variants for a family (empty if none)
+  theme set <family>/<variant>   Switch to a specific variant of a family
+  theme set <family>             Switch to family (default variant or no-variant)
   theme set <variant>            Switch variant within current family
   theme reload                   Re-fire reload signals without state change
-  theme resolve <tool> [fam/var] Print tool-specific resolved name
+  theme resolve <tool> [target]  Print tool-specific resolved name
 
 Asset cache:
   theme install [family[/variant]]  Download missing assets, record sha
@@ -454,7 +558,7 @@ Asset cache:
 Locations:
   state:     $_STATE_FILE
   manifests: $_MANIFESTS/<family>
-  cache:     $_ASSETS/<asset>/<family>-<variant>.<ext>
+  cache:     $_ASSETS/<asset>/<family>[-<variant>].<ext>
   lockfile:  $_LOCK
 EOF
 }
@@ -471,5 +575,12 @@ case "${1:-}" in
   verify)         shift; cmd_verify "$@" ;;
   -h|--help|help) cmd_help ;;
   */*)            cmd_set "$1" ;;
-  *)              die "unknown command: $1 (try 'theme --help')" ;;
+  *)
+    # Bare family-name shortcut (e.g. `theme dracula`).
+    if _families | grep -qx -- "$1" 2>/dev/null; then
+      cmd_set "$1"
+    else
+      die "unknown command: $1 (try 'theme --help')"
+    fi
+    ;;
 esac

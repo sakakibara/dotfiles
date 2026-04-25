@@ -1,7 +1,9 @@
 -- lua/lib/theme.lua
--- Reads $XDG_STATE_HOME/dotfiles/theme (single line "family/variant"),
--- written by the `theme` switcher. Falls back to catppuccin/mocha if the
--- state file is missing or malformed.
+-- Reads $XDG_STATE_HOME/dotfiles/theme, written by the `theme` switcher.
+-- The state file is one of:
+--   "family/variant"  for variant'd families (catppuccin, tokyonight, ...)
+--   "family"          for no-variant families (dracula, nord, ...)
+-- Falls back to catppuccin/mocha if the file is missing or malformed.
 
 local M = {}
 
@@ -17,11 +19,15 @@ function M.read()
   if not ok or type(lines) ~= "table" or #lines == 0 then
     return vim.deepcopy(DEFAULT)
   end
-  local family, variant = (lines[1] or ""):match("^([^/]+)/(.+)$")
-  if not family or not variant then
+  local line = (lines[1] or ""):gsub("^%s+", ""):gsub("%s+$", "")
+  if line == "" then
     return vim.deepcopy(DEFAULT)
   end
-  return { family = family, variant = variant }
+  local slash = line:find("/", 1, true)
+  if slash then
+    return { family = line:sub(1, slash - 1), variant = line:sub(slash + 1) }
+  end
+  return { family = line, variant = "" }
 end
 
 return M

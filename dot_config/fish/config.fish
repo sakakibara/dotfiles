@@ -203,9 +203,11 @@ if status --is-interactive
         abbr -a nj zk journal
     end
 
-    # LS_COLORS settings
+    # LS_COLORS settings — no-variant families pass just the family name.
     if test (command -v vivid)
-        set -gx LS_COLORS (vivid generate $THEME_FAMILY-$THEME_VARIANT)
+        set -l _theme_id $THEME_FAMILY
+        test -n "$THEME_VARIANT"; and set _theme_id "$THEME_FAMILY-$THEME_VARIANT"
+        set -gx LS_COLORS (vivid generate $_theme_id)
     end
 end
 
