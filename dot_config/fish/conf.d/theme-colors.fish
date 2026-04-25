@@ -1,6 +1,6 @@
 # theme-colors.fish — apply fish UI colors from the active theme.
 #
-# Reads theme files cached by theme-fetch at:
+# Reads theme files cached by `theme install` at:
 #   $XDG_DATA_HOME/dotfiles/themes/fish/<family>-<variant>.theme
 #
 # The fish theme file format is `name value [value...]` per line. Only
