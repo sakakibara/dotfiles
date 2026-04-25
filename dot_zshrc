@@ -525,34 +525,36 @@ if [[ -n $FAST_HIGHLIGHT ]]; then
 fi
 
 #
-# External plugins (interactive only, matching fish's `is-interactive` gate)
+# External plugins
 #
 
-if [[ -o interactive ]]; then
-  _evalcache fzf --zsh
+_evalcache fzf --zsh
 
-  _evalcache zoxide init zsh
+_evalcache zoxide init zsh
 
-  if (( ${+commands[hive]} )); then
-    _evalcache hive workspace shell zsh
-  fi
+if (( ${+commands[hive]} )); then
+  _evalcache hive workspace shell zsh
+fi
 
-  _evalcache "${HOME}/.local/bin/mise" activate zsh
+_evalcache "${HOME}/.local/bin/mise" activate zsh
 
-  if (( ${+commands[vivid]} )); then
-    # _evalcache requires its target to print shell code; wrap vivid's value
-    # in an `export` statement and key the cache on family+variant so theme
-    # switches invalidate the cached entry. For no-variant families the theme
-    # name is just the family (no -variant suffix).
-    function _vivid_export {
-      printf 'export LS_COLORS=%q\n' "$(vivid generate "$1")"
-    }
-    _evalcache _vivid_export "${THEME_FAMILY}${THEME_VARIANT:+-${THEME_VARIANT}}"
-  fi
+#
+# LS_COLORS settings
+#
 
-  if (( ${+commands[starship]} )); then
-    _evalcache starship init zsh
-  fi
+if (( ${+commands[vivid]} )); then
+  # _evalcache requires its target to print shell code; wrap vivid's value
+  # in an `export` statement and key the cache on family+variant so theme
+  # switches invalidate the cached entry. For no-variant families the theme
+  # name is just the family (no -variant suffix).
+  function _vivid_export {
+    printf 'export LS_COLORS=%q\n' "$(vivid generate "$1")"
+  }
+  _evalcache _vivid_export "${THEME_FAMILY}${THEME_VARIANT:+-${THEME_VARIANT}}"
+fi
+
+if (( ${+commands[starship]} )); then
+  _evalcache starship init zsh
 fi
 
 #
@@ -583,16 +585,14 @@ else
   touch "${ZSH_COMPDUMP}"
 fi
 
-if [[ -o interactive ]]; then
-  _evalcache pip completion --zsh
+_evalcache pip completion --zsh
 
-  if (( ${+commands[chezmoi]} )); then
-    _evalcache chezmoi completion zsh
-  fi
+if (( ${+commands[chezmoi]} )); then
+  _evalcache chezmoi completion zsh
+fi
 
-  if (( ${+commands[hive]} )); then
-    _evalcache hive completion zsh
-  fi
+if (( ${+commands[hive]} )); then
+  _evalcache hive completion zsh
 fi
 
 if [[ ! "${ZSH_COMPDUMP}.zwc" -nt "${ZSH_COMPDUMP}" ]]; then
