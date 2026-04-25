@@ -153,6 +153,14 @@ if status --is-interactive
         _evalcache hive completion fish
     end
 
+    if test (command -v pip)
+        _evalcache pip completion --fish
+    end
+
+    if test (command -v fzf)
+        _evalcache fzf --fish
+    end
+
     # Keybind
     bind \e\cP history-token-search-backward
     bind \e\cN history-token-search-forward
