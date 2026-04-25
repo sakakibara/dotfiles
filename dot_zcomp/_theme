@@ -1,0 +1,62 @@
+#compdef theme
+
+_theme() {
+  local -a subcmds
+  subcmds=(
+    'get:Print current theme (family/variant)'
+    'list:List families, or variants of a given family'
+    'set:Switch to a specific theme'
+    'reload:Re-fire reload signals without changing state'
+    'resolve:Print tool-specific resolved name'
+    'help:Show help'
+  )
+
+  _arguments -C \
+    '1: :->cmd' \
+    '*::arg:->args'
+
+  case "$state" in
+    cmd)
+      _describe -t commands 'theme command' subcmds
+      # Also offer family/variant shorthand at the top level
+      _theme_families_variants
+      ;;
+    args)
+      case "${words[1]}" in
+        list)
+          _theme_families
+          ;;
+        set)
+          _theme_families_variants
+          ;;
+        resolve)
+          if (( CURRENT == 2 )); then
+            _values 'tool' nvim tmux wezterm vivid family variant
+          else
+            _theme_families_variants
+          fi
+          ;;
+      esac
+      ;;
+  esac
+}
+
+_theme_families() {
+  local -a families
+  families=(${(f)"$(theme list 2>/dev/null)"})
+  _describe -t families 'family' families
+}
+
+_theme_families_variants() {
+  # Suggest both bare variants of the current family and family/variant pairs.
+  local family variants pairs all
+  local -a all_arr
+  for family in ${(f)"$(theme list 2>/dev/null)"}; do
+    for variant in ${(f)"$(theme list "$family" 2>/dev/null)"}; do
+      all_arr+=("$family/$variant")
+    done
+  done
+  _describe -t themes 'theme' all_arr
+}
+
+_theme "$@"

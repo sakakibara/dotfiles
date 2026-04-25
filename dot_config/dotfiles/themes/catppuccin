@@ -1,0 +1,17 @@
+# Catppuccin theme manifest.
+# Format: flat key=value, dot-paths for nesting, comma-separated arrays.
+# Read by `theme` (switcher, optionally) and `theme-fetch` (asset downloader).
+
+default = mocha
+variants = latte, frappe, macchiato, mocha
+
+# Asset URLs. {variant} and {Variant} are substituted at fetch time.
+asset.kitty.url = https://raw.githubusercontent.com/catppuccin/kitty/main/themes/{variant}.conf
+asset.fish.url  = https://raw.githubusercontent.com/catppuccin/fish/main/themes/Catppuccin%20{Variant}.theme
+
+# Naming overrides. Built-in defaults handle nvim/tmux/vivid; wezterm matches
+# the {Family} {Variant} default, so it's omitted here. Listed for documentation.
+# naming.nvim    = catppuccin-{variant}
+# naming.tmux    = {variant}
+# naming.wezterm = Catppuccin {Variant}
+# naming.vivid   = catppuccin-{variant}

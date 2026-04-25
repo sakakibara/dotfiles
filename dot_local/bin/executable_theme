@@ -1,0 +1,253 @@
+#!/usr/bin/env bash
+# theme — switch theme across consumers
+#
+# Tool B (the switcher) of the dotfiles theme system. Updates the state file
+# and fires reload signals to running consumers. Does NOT manage assets — that
+# is theme-fetch's job (Tool A). This script must work all the time without
+# failure: no external dependencies beyond bash + standard unix utilities.
+#
+# State:     $XDG_STATE_HOME/dotfiles/theme   (single line: "family/variant")
+# Manifests: $XDG_CONFIG_HOME/dotfiles/themes/<family>
+# Cache:     $XDG_DATA_HOME/dotfiles/themes/<asset>/<family>-<variant>.<ext>
+#
+# Manifest format (flat key=value, dot-paths for nesting, comma arrays):
+#
+#   default = mocha
+#   variants = latte, frappe, macchiato, mocha
+#   asset.kitty.url = https://example.com/{variant}.conf
+#   naming.wezterm = Catppuccin {Variant}
+#
+# Naming substitutions: {family}, {variant}, {Family}, {Variant} (title-cased
+# first letter). Built-in defaults applied when a naming.<tool> entry is
+# absent: nvim={family}-{variant}, tmux={variant}, wezterm={Family} {Variant},
+# vivid={family}-{variant}.
+
+set -euo pipefail
+
+readonly _XDG_STATE="${XDG_STATE_HOME:-$HOME/.local/state}"
+readonly _XDG_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}"
+readonly _XDG_DATA="${XDG_DATA_HOME:-$HOME/.local/share}"
+readonly _STATE_FILE="$_XDG_STATE/dotfiles/theme"
+readonly _MANIFESTS="$_XDG_CONFIG/dotfiles/themes"
+readonly _ASSETS="$_XDG_DATA/dotfiles/themes"
+
+die() { printf 'theme: %s\n' "$*" >&2; exit 1; }
+
+# ------------- manifest reader -------------
+# _manifest_get FAMILY KEY → value on stdout, exit 1 if key absent
+_manifest_get() {
+  local file="$_MANIFESTS/$1" key="$2" line k v
+  [[ -f "$file" ]] || return 1
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line="${line%%#*}"
+    [[ "$line" =~ ^[[:space:]]*$ ]] && continue
+    k="${line%%=*}"
+    v="${line#*=}"
+    k="${k#"${k%%[![:space:]]*}"}"; k="${k%"${k##*[![:space:]]}"}"
+    v="${v#"${v%%[![:space:]]*}"}"; v="${v%"${v##*[![:space:]]}"}"
+    if [[ "$k" == "$key" ]]; then
+      printf '%s\n' "$v"
+      return 0
+    fi
+  done < "$file"
+  return 1
+}
+
+# _variants FAMILY → one variant per line
+_variants() {
+  local raw v
+  raw=$(_manifest_get "$1" variants) || return 1
+  IFS=, read -ra v <<<"$raw"
+  printf '%s\n' "${v[@]}" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//'
+}
+
+# _families → one family per line, sorted
+_families() {
+  [[ -d "$_MANIFESTS" ]] || return 0
+  local f
+  for f in "$_MANIFESTS"/*; do
+    [[ -f "$f" ]] || continue
+    basename "$f"
+  done | sort
+}
+
+# _validate FAMILY VARIANT → exit 0 if known pair, else die
+_validate() {
+  [[ -f "$_MANIFESTS/$1" ]] || die "unknown family: $1 (run 'theme list' to see known families)"
+  if ! _variants "$1" | grep -qx -- "$2"; then
+    die "unknown variant for $1: $2 (known: $(_variants "$1" | paste -sd, -))"
+  fi
+}
+
+# ------------- naming -------------
+# _title FOO → Foo (uppercase first char)
+_title() { printf '%s%s' "$(printf '%s' "${1:0:1}" | tr '[:lower:]' '[:upper:]')" "${1:1}"; }
+
+# _name FAMILY VARIANT TOOL DEFAULT_TEMPLATE → resolved string
+_name() {
+  local family="$1" variant="$2" tool="$3" default="$4" tmpl
+  tmpl=$(_manifest_get "$family" "naming.$tool") || tmpl="$default"
+  local Family Variant
+  Family=$(_title "$family")
+  Variant=$(_title "$variant")
+  tmpl="${tmpl//\{family\}/$family}"
+  tmpl="${tmpl//\{variant\}/$variant}"
+  tmpl="${tmpl//\{Family\}/$Family}"
+  tmpl="${tmpl//\{Variant\}/$Variant}"
+  printf '%s\n' "$tmpl"
+}
+
+# ------------- state -------------
+_current() {
+  if [[ -f "$_STATE_FILE" ]]; then
+    head -n1 "$_STATE_FILE"
+  else
+    # Fall back to the first family's default if any manifest exists.
+    local f
+    f=$(_families | head -n1) || true
+    if [[ -n "$f" ]] && _manifest_get "$f" default >/dev/null 2>&1; then
+      printf '%s/%s\n' "$f" "$(_manifest_get "$f" default)"
+    else
+      die "no state file and no manifests found at $_MANIFESTS"
+    fi
+  fi
+}
+
+_write_state() {
+  mkdir -p "$(dirname "$_STATE_FILE")"
+  printf '%s\n' "$1" > "$_STATE_FILE.tmp"
+  mv "$_STATE_FILE.tmp" "$_STATE_FILE"
+}
+
+# ------------- reload -------------
+# Each consumer wrapped in `|| true` so one failure doesn't abort the rest.
+# Consumers that aren't installed simply produce no signal.
+_reload() {
+  local family="$1" variant="$2"
+
+  # kitty: re-symlink current-theme.conf (asset must already be cached by theme-fetch)
+  local kitty_conf="$_ASSETS/kitty/$family-$variant.conf"
+  if [[ -f "$kitty_conf" ]]; then
+    mkdir -p "$_XDG_CONFIG/kitty"
+    ln -sf "$kitty_conf" "$_XDG_CONFIG/kitty/current-theme.conf" 2>/dev/null || true
+  fi
+  if command -v kitten >/dev/null 2>&1 && [[ -n "${KITTY_LISTEN_ON:-}" ]]; then
+    kitten @ --to="$KITTY_LISTEN_ON" load-config >/dev/null 2>&1 || true
+  fi
+
+  # wezterm: SIGHUP triggers config reload; wezterm.lua reads state file
+  command -v pkill >/dev/null 2>&1 && pkill -HUP wezterm-gui 2>/dev/null || true
+
+  # tmux: re-source config (run-shell directives re-read state file)
+  if command -v tmux >/dev/null 2>&1 && tmux list-sessions >/dev/null 2>&1; then
+    tmux source-file ~/.tmux.conf >/dev/null 2>&1 || true
+  fi
+
+  # nvim: best-effort broadcast to listening sockets
+  if command -v nvim >/dev/null 2>&1; then
+    local nvim_cs sock
+    nvim_cs=$(_name "$family" "$variant" nvim '{family}-{variant}')
+    for sock in "${XDG_RUNTIME_DIR:-/tmp}"/nvim.*.0 "${TMPDIR:-/tmp}"/nvim.*/0; do
+      [[ -S "$sock" ]] || continue
+      nvim --server "$sock" --remote-expr "execute('silent! colorscheme $nvim_cs')" >/dev/null 2>&1 || true
+    done
+  fi
+
+  # fish: running shells re-read state on next prompt via conf.d hook
+  return 0
+}
+
+# ------------- subcommands -------------
+cmd_get() { _current; }
+
+cmd_list() {
+  if [[ $# -eq 0 ]]; then
+    _families
+  else
+    _variants "$1" || die "unknown family: $1"
+  fi
+}
+
+cmd_set() {
+  local arg="${1:-}"
+  [[ -z "$arg" ]] && die "usage: theme set <family>/<variant>  (or  theme set <variant>  to keep the current family)"
+  local family variant
+  if [[ "$arg" == */* ]]; then
+    family="${arg%%/*}"
+    variant="${arg#*/}"
+  else
+    family=$(_current | cut -d/ -f1)
+    variant="$arg"
+  fi
+  _validate "$family" "$variant"
+  _write_state "$family/$variant"
+  _reload "$family" "$variant"
+  printf '→ %s/%s\n' "$family" "$variant"
+}
+
+cmd_reload() {
+  local cur family variant
+  cur=$(_current)
+  family="${cur%%/*}"
+  variant="${cur#*/}"
+  _reload "$family" "$variant"
+  printf '→ reloaded %s/%s\n' "$family" "$variant"
+}
+
+cmd_resolve() {
+  # Internal helper for consumer configs that want a tool-resolved name.
+  # Usage: theme resolve <tool>            (uses current state)
+  #        theme resolve <tool> <fam>/<v>  (uses specified)
+  local tool="${1:-}"; [[ -z "$tool" ]] && die "usage: theme resolve <tool> [family/variant]"
+  shift
+  local family variant
+  if [[ $# -ge 1 && "$1" == */* ]]; then
+    family="${1%%/*}"; variant="${1#*/}"
+  else
+    local cur; cur=$(_current); family="${cur%%/*}"; variant="${cur#*/}"
+  fi
+  case "$tool" in
+    nvim)    _name "$family" "$variant" nvim    '{family}-{variant}' ;;
+    tmux)    _name "$family" "$variant" tmux    '{variant}' ;;
+    wezterm) _name "$family" "$variant" wezterm '{Family} {Variant}' ;;
+    vivid)   _name "$family" "$variant" vivid   '{family}-{variant}' ;;
+    family)  printf '%s\n' "$family" ;;
+    variant) printf '%s\n' "$variant" ;;
+    *)       die "unknown tool: $tool (known: nvim tmux wezterm vivid family variant)" ;;
+  esac
+}
+
+cmd_help() {
+  cat <<EOF
+theme — switch theme across consumers
+
+Usage:
+  theme                          Print current theme (family/variant)
+  theme list                     List known families
+  theme list <family>            List variants for a family
+  theme set <family>/<variant>   Switch to a specific theme
+  theme set <variant>            Switch variant within current family
+  theme reload                   Re-fire reload signals without state change
+  theme resolve <tool> [fam/var] Print tool-specific resolved name
+  theme --help                   Show this help
+
+Locations:
+  state:     $_STATE_FILE
+  manifests: $_MANIFESTS/<family>
+  cache:     $_ASSETS/<asset>/<family>-<variant>.<ext>
+
+For asset download / hash refresh, see theme-fetch (Tool A).
+EOF
+}
+
+# ------------- dispatch -------------
+case "${1:-}" in
+  ""|get)         shift 2>/dev/null || true; cmd_get "$@" ;;
+  list)           shift; cmd_list "$@" ;;
+  set)            shift; cmd_set "$@" ;;
+  reload)         shift; cmd_reload "$@" ;;
+  resolve)        shift; cmd_resolve "$@" ;;
+  -h|--help|help) cmd_help ;;
+  */*)            cmd_set "$1" ;;          # shortcut: theme catppuccin/frappe
+  *)              die "unknown command: $1 (try 'theme --help')" ;;
+esac
