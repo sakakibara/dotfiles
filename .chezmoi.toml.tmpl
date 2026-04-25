@@ -1,3 +1,4 @@
+{{- $default_profile := env "CHEZMOI_PROFILE" | default "personal" -}}
 [data]
 email = "{{ promptStringOnce . "email" "Email address" }}"
-profile = "{{ promptStringOnce . "profile" "Profile (personal/work)" }}"
+profile = "{{ promptStringOnce . "profile" "Profile (personal/work)" $default_profile }}"
