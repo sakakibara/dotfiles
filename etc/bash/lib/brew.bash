@@ -28,6 +28,7 @@ brew::setup() {
   brew::require || return 1
   # Update homebrew
   brew update
-  # Installing packages via homebrew
-  brew bundle --no-lock --file="${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi/etc/darwin/Brewfile"
+  # Installing packages via homebrew. (Homebrew 4+ removed brew bundle's
+  # lock-file behavior, so the legacy --no-lock flag is no longer accepted.)
+  brew bundle --file="${XDG_DATA_HOME:-$HOME/.local/share}/chezmoi/etc/darwin/Brewfile"
 }
