@@ -17,7 +17,10 @@ local P = {}  -- derived palette cache
 
 local function derive()
   P.bg_end  = get("Normal", "bg", "#000000")
-  P.bg_mid  = get("StatusLine", "bg", nil) or get("CursorLine", "bg", P.bg_end)
+  -- Must match lib.statusline's derive_palette() chain exactly so the slant
+  -- separator's bg matches the path segment's bg (otherwise you get a 1-char
+  -- visual step between the mode block and the rest of the line).
+  P.bg_mid  = get("Folded", "bg", nil) or get("PmenuSel", "bg", nil) or get("Visual", "bg", P.bg_end)
   P.red     = get("DiagnosticError", "fg", nil) or get("Error", "fg", "#ff5555")
   P.green   = get("String",   "fg", "#50fa7b")
   P.teal    = get("Type",     "fg", nil) or get("Special", "fg", "#8be9fd")
