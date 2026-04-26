@@ -134,3 +134,23 @@ T.describe("lib.colors toggle correctness", function()
     vim.api.nvim_buf_delete(buf, { force = true })
   end)
 end)
+
+T.describe("lib.colors DirChanged rescans project", function()
+  T.it("clears _overlay on DirChanged", function()
+    package.loaded["lib.colors"] = nil
+    package.loaded["lib.colors.tailwind"] = nil
+    _G.Lib = nil
+    require("lib").init()
+    Lib.colors.setup({})
+
+    local TW = require("lib.colors.tailwind")
+    TW._overlay = { brand = { 0.5, 0.1, 200 } }
+    TW._overlay_by_file = { ["/some/path.css"] = { "brand" } }
+
+    vim.api.nvim_exec_autocmds("DirChanged", { pattern = "global" })
+
+    -- Overlay was reset (then scan_project was called against cwd; we don't
+    -- assert on its contents — just that the staged stale entry is gone).
+    T.eq(TW._overlay["brand"], nil, "stale entry not cleared")
+  end)
+end)

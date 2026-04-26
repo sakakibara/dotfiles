@@ -86,6 +86,19 @@ function M.setup(opts)
     callback = function(args) schedule(args.buf) end,
   })
 
+  vim.api.nvim_create_autocmd("DirChanged", {
+    group   = grp,
+    pattern = { "global", "tabpage" },
+    callback = function()
+      if M._opts.tailwind and M._opts.tailwind.project_scan then
+        local TW_mod = require("lib.colors.tailwind")
+        TW_mod._overlay         = {}
+        TW_mod._overlay_by_file = {}
+        pcall(TW_mod.scan_project)
+      end
+    end,
+  })
+
   -- Re-scan project CSS files when one is saved.
   vim.api.nvim_create_autocmd("BufWritePost", {
     group = grp,
