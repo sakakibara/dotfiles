@@ -33,7 +33,27 @@ return {
     priority = 900,
     lazy = false,  -- keys spec below would flip us to lazy; keep snacks eager (Snacks global needed by many)
     opts = {
-      bigfile   = { enabled = true },
+      bigfile   = {
+        enabled = true,
+        -- Override the default setup. Stock snacks re-enables `syntax = ft`
+        -- on a scheduled tick, which re-arms Vim's regex syntax engine — and
+        -- that's what freezes nvim on multi-MB single lines (minified bundles,
+        -- panic logs). We keep the rest of the disables and add wrap/cursorline.
+        setup = function(ctx)
+          if vim.fn.exists(":NoMatchParen") ~= 0 then
+            vim.cmd("NoMatchParen")
+          end
+          Snacks.util.wo(0, {
+            foldmethod    = "manual",
+            statuscolumn  = "",
+            conceallevel  = 0,
+            wrap          = false,
+            cursorline    = false,
+          })
+          vim.bo[ctx.buf].synmaxcol = 200
+          vim.b.minianimate_disable = true
+        end,
+      },
       quickfile = { enabled = true },
       notifier  = { enabled = true },
       input     = { enabled = true },
