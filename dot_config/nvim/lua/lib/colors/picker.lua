@@ -75,7 +75,7 @@ local function compact_lines(state)
 
   local lines = {
     "  " .. hex,                                       -- 0: header
-    "  " .. string.rep("█", 34),                       -- 1: swatch (34 blocks → symmetric 2-cell margin in 38-col window)
+    "  " .. string.rep("█", 38),                       -- 1: swatch (38 blocks → symmetric 2-cell margin in 42-col window)
     "",                                                -- 2: blank
   }
 
@@ -102,7 +102,8 @@ local function compact_lines(state)
   table.insert(lines, "")                              -- blank
   -- Footer with key hints. Keys are highlighted via extmark in render() so
   -- they stand out from their description words.
-  table.insert(lines, "  " .. space_label(state) .. "   Tab y ⏎ ⎋")
+  table.insert(lines, "  " .. space_label(state) .. "   Tab cycle")
+  table.insert(lines, "  y yank   ⏎ commit   ⎋ cancel   q close")
   return lines
 end
 
@@ -168,17 +169,37 @@ local function render(state)
       end_col  = #lines[active_row + 1],  -- lua 1-indexed
       hl_group = "LibColorsPickerActive",
     })
-    -- Key hint footer: bold + accent so keys stand out from the space label
+    -- Key hint footer: highlight only the key TOKENS (Tab, y, ⏎, ⎋, q) so they
+    -- stand out from their action words. Footer is the last 2 lines.
     vim.api.nvim_set_hl(0, "LibColorsPickerKey", { fg = "#f5c2e7", bold = true })
-    local footer_idx = #lines - 1
-    local footer_str = lines[#lines]
-    local key_start = footer_str:find("Tab")
-    if key_start then
-      vim.api.nvim_buf_set_extmark(state.buf, M.ns, footer_idx, key_start - 1, {
-        end_row  = footer_idx,
-        end_col  = #footer_str,
-        hl_group = "LibColorsPickerKey",
-      })
+    local function hl_key(row_idx, key)
+      local line = lines[row_idx + 1]  -- lua 1-indexed
+      if not line then return end
+      local s, e = line:find(key, 1, true)
+      if s then
+        vim.api.nvim_buf_set_extmark(state.buf, M.ns, row_idx, s - 1, {
+          end_row = row_idx, end_col = e,
+          hl_group = "LibColorsPickerKey",
+        })
+      end
+    end
+    local last = #lines - 1   -- 0-indexed of last line ("y yank ⏎ commit ⎋ cancel q close")
+    local prev = last - 1     -- 0-indexed of penultimate line ("[xxx] hsl oklch  Tab cycle")
+    hl_key(prev, "Tab")
+    hl_key(last, "y")
+    hl_key(last, "⏎")
+    hl_key(last, "⎋")
+    -- "q close" — match the standalone "q" with surrounding spaces to avoid
+    -- matching "q" inside "cancel" or other words.
+    do
+      local line = lines[last + 1] or ""
+      local s, e = line:find(" q ", 1, true)
+      if s then
+        vim.api.nvim_buf_set_extmark(state.buf, M.ns, last, s, {
+          end_row = last, end_col = s + 1,
+          hl_group = "LibColorsPickerKey",
+        })
+      end
     end
     -- Color channel labels in their respective hues
     local label_palette = {
@@ -208,7 +229,7 @@ local function render(state)
     -- current window, so `relative = "cursor"` would re-anchor to the
     -- picker's own cursor and drift on every keypress.
     local cur = vim.api.nvim_win_get_config(state.win)
-    local want_w, want_h = (state.mode == "expanded") and 52 or 38, (state.mode == "expanded") and 18 or 9
+    local want_w, want_h = (state.mode == "expanded") and 52 or 42, (state.mode == "expanded") and 18 or 10
     if cur.width ~= want_w or cur.height ~= want_h then
       vim.api.nvim_win_set_config(state.win, { width = want_w, height = want_h })
     end
@@ -243,8 +264,8 @@ function M.open(opts)
     relative  = "cursor",
     row       = 1,
     col       = 0,
-    width     = 38,
-    height    = 9,
+    width     = 42,
+    height    = 10,
     style     = "minimal",
     border    = "rounded",
     title     = " color ",
