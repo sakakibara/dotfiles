@@ -90,6 +90,18 @@ function M.open(opts)
     title_pos = "left",
   })
   render(state)
+  local map = function(lhs, fn)
+    vim.keymap.set("n", lhs, fn, { buffer = state.buf, silent = true, nowait = true })
+  end
+  map("h",     function() M.adjust(state, -1) end)
+  map("l",     function() M.adjust(state,  1) end)
+  map("H",     function() M.adjust(state, -10) end)
+  map("L",     function() M.adjust(state,  10) end)
+  map("j",     function() M.cycle_slider(state) end)
+  map("k",     function() state.slider = ((state.slider - 2) % 3) + 1; render(state) end)
+  map("<Tab>", function() M.cycle_space(state) end)
+  map("<C-e>", function() M.toggle_expand(state) end)
+  map("<Esc>", function() M.close(state) end)
   return state
 end
 
