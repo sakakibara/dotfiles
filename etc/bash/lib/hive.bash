@@ -53,5 +53,6 @@ hive::require() {
 hive::setup() {
   msg::heading "Set up workspace with hive"
   hive::require || return 1
-  "${HIVE_INSTALL_DIR}/hive" init
+  # `hive init` was renamed to `hive workspace init` in newer hive releases.
+  "${HIVE_INSTALL_DIR}/hive" workspace init
 }
