@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-import msg packages
+import msg packages dict
 
 brew::install() {
   msg::heading "Installing homebrew"
@@ -71,13 +71,45 @@ brew::setup() {
     brew tap "$t" || msg::error "tap failed: $t"
   done
 
-  # Batch-install formulae and casks. brew silently no-ops on already-installed
-  # entries (so this stays idempotent).
-  if (( ${#brews[@]} > 0 )); then
-    brew install "${brews[@]}"
+  # Filter to packages that aren't installed yet. `brew install` would
+  # otherwise trigger upgrades on already-installed items — which surprises
+  # the user during a routine apply. `brew upgrade` stays a deliberate
+  # gesture (run manually when you want fresh versions).
+  dict::clear _brew_installed_f
+  local line
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    dict::set _brew_installed_f "$line" 1
+  done < <(brew list --formula -1 2>/dev/null)
+
+  dict::clear _brew_installed_c
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    dict::set _brew_installed_c "$line" 1
+  done < <(brew list --cask -1 2>/dev/null)
+
+  local missing_brews=() missing_casks=()
+  local p
+  for p in "${brews[@]:-}"; do
+    [[ -z "$p" ]] && continue
+    dict::has _brew_installed_f "$p" || missing_brews+=("$p")
+  done
+  for p in "${casks[@]:-}"; do
+    [[ -z "$p" ]] && continue
+    dict::has _brew_installed_c "$p" || missing_casks+=("$p")
+  done
+
+  if (( ${#missing_brews[@]} > 0 )); then
+    msg::arrow "installing ${#missing_brews[@]} formula(e)"
+    brew install "${missing_brews[@]}"
+  else
+    msg::arrow "all formulae already installed"
   fi
-  if (( ${#casks[@]} > 0 )); then
-    brew install --cask "${casks[@]}"
+  if (( ${#missing_casks[@]} > 0 )); then
+    msg::arrow "installing ${#missing_casks[@]} cask(s)"
+    brew install --cask "${missing_casks[@]}"
+  else
+    msg::arrow "all casks already installed"
   fi
 
   # Symmetry: list profile-skipped entries so the user knows why something
