@@ -71,3 +71,22 @@ T.describe("lib.colors.render virtual swatch", function()
     vim.api.nvim_buf_delete(buf, { force = true })
   end)
 end)
+
+T.describe("lib.colors.render bigfile regression", function()
+  T.it("4MB buffer with 1.8MB single line produces 0 extmarks", function()
+    R.reset()
+    local huge = string.rep("a", 1800000) .. " #ff0000"  -- 1.8MB line
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, { huge })
+
+    local D = require("lib.colors.detect")
+    local detected = D.detect(buf, 0, 0)
+    T.eq(#detected, 0, "expected detect to skip oversized line, got " .. #detected)
+
+    R.apply(buf, detected)
+    local marks = vim.api.nvim_buf_get_extmarks(buf, R.ns, 0, -1, {})
+    T.eq(#marks, 0)
+
+    vim.api.nvim_buf_delete(buf, { force = true })
+  end)
+end)
