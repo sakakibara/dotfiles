@@ -343,9 +343,11 @@ pick::_read_key() {
 pick::_matches_filter() {
   local label="$1" filter="$2"
   if [[ -z "$filter" ]]; then return 0; fi
+  # Pin LC_ALL on tr so case folding works for Greek / Cyrillic / etc.
+  # regardless of the caller's locale (CI runners often default to C).
   local lc_label lc_filter
-  lc_label=$(printf '%s' "$label" | tr '[:upper:]' '[:lower:]')
-  lc_filter=$(printf '%s' "$filter" | tr '[:upper:]' '[:lower:]')
+  lc_label=$(printf '%s' "$label"  | LC_ALL=en_US.UTF-8 tr '[:upper:]' '[:lower:]')
+  lc_filter=$(printf '%s' "$filter" | LC_ALL=en_US.UTF-8 tr '[:upper:]' '[:lower:]')
   [[ "$lc_label" == *"$lc_filter"* ]]
 }
 

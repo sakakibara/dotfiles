@@ -101,6 +101,23 @@ packages::applies_to() {
   return 1
 }
 
+# Yield every line in FILE as `kind<TAB>name` on stdout, ignoring profile
+# annotations and blacklists. Used by sync to recognize "is this tracked
+# anywhere" regardless of which profile the entry happens to apply to.
+#
+# Args: FILE [DEFAULT_KIND]
+packages::all() {
+  local file="$1" default_kind="${2:-pkg}"
+  [[ -r "$file" ]] || return 1
+  local _pkg_kind _pkg_name _pkg_profiles
+  local line
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    packages::parse "$line" || continue
+    local k="${_pkg_kind:-$default_kind}"
+    printf '%s\t%s\n' "$k" "$_pkg_name"
+  done < "$file"
+}
+
 # Yield each applicable line in FILE for PROFILE as `kind<TAB>name` on stdout.
 # Lines that don't apply (wrong profile) or are blacklisted (in BLACKLIST_FILE,
 # matched by `kind:name`) are silently skipped. Default kind for un-prefixed

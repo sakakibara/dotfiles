@@ -113,6 +113,8 @@ jobs:
         run: bash etc/tests/pick.sh
       - name: packages (parser)
         run: bash etc/tests/packages.sh
+      - name: sync (diff + apply)
+        run: bash etc/tests/sync.sh
 
   theme-tests-pwsh:
     name: Theme tests (Windows / pwsh)

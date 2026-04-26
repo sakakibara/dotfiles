@@ -89,6 +89,7 @@ Usage:
   dotfiles install          Interactive menu to (re)run install steps
   dotfiles install all      Run every install step non-interactively
   dotfiles install <names>  Run only the named steps (e.g. brew mise)
+  dotfiles sync             Review untracked packages and add/blacklist them
   dotfiles <cmd>            Forward to chezmoi (e.g. dotfiles apply, dotfiles diff)
   dotfiles --help           Show this help
 
@@ -214,6 +215,41 @@ EOF
   DOTFILES_PICK_SCOPE="install" pick "${items[@]}"
 }
 
+cmd_sync() {
+  case "${1:-}" in
+    -h|--help)
+      cat <<'EOF'
+dotfiles sync — review installed-but-untracked packages.
+
+Diffs the system package manager's current state against
+etc/<os>/packages.txt (and packages-blacklist.txt). For each untracked
+entry, opens an interactive TUI where you assign one action per row:
+
+  skip   — leave it alone
+  add    — append `kind:name` to packages.txt (no profile annotation)
+  @prof  — append `kind:name @profile` (profile-gated)
+  block  — append to packages-blacklist.txt (sync won't surface again)
+
+Inside the menu:
+  ↑/↓ navigate · space cycle · a add · p add @personal · w add @work
+  b blacklist · s skip · enter apply · q cancel · ? help
+EOF
+      return 0
+      ;;
+  esac
+
+  local source_dir
+  source_dir=$(chezmoi source-path 2>/dev/null) || {
+    printf 'dotfiles sync: chezmoi not found on PATH\n' >&2
+    return 1
+  }
+  set +e +u +o pipefail
+  # shellcheck disable=SC1091
+  source "$source_dir/etc/bash/lib/init.bash"
+  import sync
+  CHEZMOI_SOURCE_DIR="$source_dir" sync::run
+}
+
 case "${1:-}" in
   ""|info)
     shift 2>/dev/null || true
@@ -225,6 +261,10 @@ case "${1:-}" in
   install)
     shift
     cmd_install "$@"
+    ;;
+  sync)
+    shift
+    cmd_sync "$@"
     ;;
   help)
     if [[ $# -eq 1 ]]; then cmd_help; else exec chezmoi "$@"; fi

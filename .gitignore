@@ -1,2 +1,3 @@
 Brewfile.lock.json
 flycheck_*
+dot_config/nvim/nvim-pack-lock.json

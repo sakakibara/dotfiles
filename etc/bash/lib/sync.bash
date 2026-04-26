@@ -1,0 +1,443 @@
+#!/usr/bin/env bash
+# sync — interactive review of installed-but-untracked packages.
+#
+# Diffs `<os pkg manager>` output against the tracked packages file
+# (and the blacklist) and offers a per-row TUI to assign one of these
+# actions to each untracked entry:
+#
+#   skip   — leave it alone
+#   add    — append plain `kind:name` to packages.txt (applies everywhere)
+#   @prof  — append `kind:name @profile` (profile-gated)
+#   block  — append to packages-blacklist.txt (sync won't surface again)
+#
+# State is held in two parallel arrays (one row per item):
+#   _sync_items[]    "kind<TAB>name"
+#   _sync_actions[]  "skip" | "add" | "@<profile>" | "block"
+#   _sync_desc[]     short description (or empty)
+#
+# Reuses pick's terminal primitives (alt-screen, key reader, width helpers).
+
+import msg dict packages pick
+
+# ---------- query installed (OS-dispatched) ----------
+
+sync::_query_installed() {
+  local os="$1"
+  case "$os" in
+    darwin) sync::_query_installed_darwin ;;
+    *) ;;
+  esac
+}
+
+sync::_query_installed_darwin() {
+  # Taps
+  local t
+  while IFS= read -r t; do
+    [[ -z "$t" ]] && continue
+    printf 'tap\t%s\n' "$t"
+  done < <(brew tap 2>/dev/null)
+  # Formulae installed on user request (skips deps pulled in transitively)
+  local f
+  while IFS= read -r f; do
+    [[ -z "$f" ]] && continue
+    printf 'brew\t%s\n' "$f"
+  done < <(brew leaves --installed-on-request 2>/dev/null)
+  # Casks
+  local c
+  while IFS= read -r c; do
+    [[ -z "$c" ]] && continue
+    printf 'cask\t%s\n' "$c"
+  done < <(brew list --cask 2>/dev/null)
+}
+
+# Compute the diff between currently-installed and tracked. Outputs
+# "kind<TAB>name" for each untracked, non-blacklisted entry.
+# Args: PACKAGES_FILE BLACKLIST_FILE OS DEFAULT_KIND
+sync::compute_untracked() {
+  local pkg_file="$1" blacklist_file="$2" os="$3" default_kind="$4"
+
+  dict::clear _sync_tracked
+  dict::clear _sync_blacklisted
+
+  if [[ -r "$pkg_file" ]]; then
+    local kind name
+    while IFS=$'\t' read -r kind name; do
+      dict::set _sync_tracked "${kind}:${name}" 1
+    done < <(packages::all "$pkg_file" "$default_kind")
+  fi
+
+  if [[ -r "$blacklist_file" ]]; then
+    local kind name
+    while IFS=$'\t' read -r kind name; do
+      dict::set _sync_blacklisted "${kind}:${name}" 1
+    done < <(packages::all "$blacklist_file" "$default_kind")
+  fi
+
+  local kind name
+  while IFS=$'\t' read -r kind name; do
+    dict::has _sync_tracked     "${kind}:${name}" && continue
+    dict::has _sync_blacklisted "${kind}:${name}" && continue
+    printf '%s\t%s\n' "$kind" "$name"
+  done < <(sync::_query_installed "$os")
+}
+
+# Compute the inverse: tracked entries that aren't installed locally.
+# Output: "kind<TAB>name<TAB>profiles" (profiles = comma-separated, may be empty).
+# Lines that *should* be installed for the current profile but aren't are
+# the interesting ones; cross-profile entries are silently filtered out.
+# Args: PACKAGES_FILE OS DEFAULT_KIND CURRENT_PROFILE
+sync::compute_missing() {
+  local pkg_file="$1" os="$2" default_kind="$3" profile="$4"
+  [[ -r "$pkg_file" ]] || return 0
+
+  dict::clear _sync_installed
+  local kind name
+  while IFS=$'\t' read -r kind name; do
+    dict::set _sync_installed "${kind}:${name}" 1
+  done < <(sync::_query_installed "$os")
+
+  local _pkg_kind _pkg_name _pkg_profiles
+  local line
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    packages::parse "$line" || continue
+    packages::applies_to "$profile" || continue
+    local k="${_pkg_kind:-$default_kind}"
+    dict::has _sync_installed "${k}:${_pkg_name}" && continue
+    local profile_str=""
+    if (( ${#_pkg_profiles[@]} > 0 )); then
+      local IFS=','
+      profile_str="${_pkg_profiles[*]}"
+    fi
+    printf '%s\t%s\t%s\n' "$k" "$_pkg_name" "$profile_str"
+  done < "$pkg_file"
+}
+
+# ---------- description fetch ----------
+
+# Populate _sync_desc[] (parallel to _sync_items[]) by batching `brew desc`
+# calls per-kind. Empty string for items with no description.
+sync::_fetch_descriptions() {
+  dict::clear _sync_desc_map
+
+  local brews=() casks=()
+  local i n=${#_sync_items[@]}
+  for ((i=0; i<n; i++)); do
+    local kind name
+    IFS=$'\t' read -r kind name <<< "${_sync_items[i]}"
+    case "$kind" in
+      brew) brews+=("$name") ;;
+      cask) casks+=("$name") ;;
+    esac
+  done
+
+  if (( ${#brews[@]} > 0 )) && command -v brew >/dev/null 2>&1; then
+    local line nm desc
+    while IFS= read -r line; do
+      [[ "$line" == *": "* ]] || continue
+      nm="${line%%: *}"
+      desc="${line#*: }"
+      dict::set _sync_desc_map "brew:$nm" "$desc"
+    done < <(brew desc "${brews[@]}" 2>/dev/null)
+  fi
+  if (( ${#casks[@]} > 0 )) && command -v brew >/dev/null 2>&1; then
+    local line nm desc
+    while IFS= read -r line; do
+      [[ "$line" == *": "* ]] || continue
+      nm="${line%%: *}"
+      desc="${line#*: }"
+      dict::set _sync_desc_map "cask:$nm" "$desc"
+    done < <(brew desc --cask "${casks[@]}" 2>/dev/null)
+  fi
+
+  _sync_desc=()
+  for ((i=0; i<n; i++)); do
+    local kind name d
+    IFS=$'\t' read -r kind name <<< "${_sync_items[i]}"
+    d=$(dict::get _sync_desc_map "${kind}:${name}" 2>/dev/null || echo "")
+    _sync_desc[i]="$d"
+  done
+}
+
+# ---------- review TUI ----------
+
+# Pad an action label to ACTION_LABEL_WIDTH columns, accounting for visible
+# width (for CJK if anyone ever puts a multi-byte profile name).
+sync::_action_label() {
+  local action="$1"
+  local label color
+  case "$action" in
+    skip)  label='skip';   color='\033[2m' ;;
+    add)   label='add';    color='\033[1;32m' ;;
+    @*)    label="$action"; color='\033[1;36m' ;;
+    block) label='block';  color='\033[1;31m' ;;
+    *)     label="$action"; color='' ;;
+  esac
+  local w
+  w=$(pick::_str_width "$label")
+  local pad=$((10 - w))
+  (( pad < 0 )) && pad=0
+  printf '%b[%s%*s]\033[0m' "$color" "$label" "$pad" ""
+}
+
+sync::_render() {
+  local cursor="$1" current="$2"
+  local cols
+  cols=$(pick::_cols)
+
+  printf '\033[H\033[2J'
+  printf '\033[1mReview untracked packages\033[0m\n'
+  printf '\033[2m↑/↓ move · space cycle · a add · p add @personal · w add @work\n'
+  printf '   b blacklist · s skip · enter apply · q cancel · ? help\033[0m\n\n'
+
+  local n=${#_sync_items[@]} pending=0
+  local i
+  for ((i=0; i<n; i++)); do
+    local action="${_sync_actions[i]}"
+    [[ "$action" != "skip" ]] && pending=$((pending + 1))
+
+    local kind name
+    IFS=$'\t' read -r kind name <<< "${_sync_items[i]}"
+    local display="${kind}:${name}"
+
+    local marker
+    if (( i == cursor )); then
+      marker=$'\033[7m›\033[0m '
+    else
+      marker='  '
+    fi
+
+    local action_str
+    action_str=$(sync::_action_label "$action")
+
+    local desc="${_sync_desc[i]:-}"
+    if [[ -n "$desc" ]]; then
+      printf '%s%b %s \033[2m— %s\033[0m\n' "$marker" "$action_str" "$display" "$desc"
+    else
+      printf '%s%b %s\n' "$marker" "$action_str" "$display"
+    fi
+  done
+
+  printf '\n\033[2m%d pending · profile: %s\033[0m\n' "$pending" "$current"
+}
+
+sync::_render_help() {
+  printf '\033[H\033[2J'
+  printf '\033[1mSync keybindings\033[0m\n\n'
+  cat <<'EOF'
+  ↑ / k          move up
+  ↓ / j          move down
+  space          cycle: skip → add → @<current> → @<other> → block → skip
+  a              add (no profile annotation — applies everywhere)
+  p              add @personal
+  w              add @work
+  b              blacklist (write to packages-blacklist.txt)
+  s              skip (default — no action)
+  enter          apply pending actions
+  q / esc        cancel without writing
+  ?              this help
+
+EOF
+  printf '\033[2mPress any key to return.\033[0m\n'
+  pick::_read_key >/dev/null
+}
+
+# Cycle through actions: skip → add → @<current> → @<other> → block → skip.
+sync::_cycle_action() {
+  local current="$1" other="$2" action="$3"
+  case "$action" in
+    skip) printf 'add' ;;
+    add)  printf '@%s' "$current" ;;
+    "@$current")
+      if [[ -n "$other" ]]; then printf '@%s' "$other"
+      else printf 'block'; fi
+      ;;
+    "@$other") printf 'block' ;;
+    block) printf 'skip' ;;
+    *)     printf 'skip' ;;
+  esac
+}
+
+# Run the review TUI. Reads _sync_items[] and writes _sync_actions[].
+# Returns 0 if user pressed enter, 130 if they cancelled.
+sync::review() {
+  local current other
+  current=$(packages::current_profile)
+  case "$current" in
+    personal) other=work ;;
+    work)     other=personal ;;
+    *)        other="" ;;
+  esac
+
+  local n=${#_sync_items[@]}
+  if (( n == 0 )); then
+    msg::heading "Everything installed is already tracked."
+    return 0
+  fi
+
+  _sync_actions=()
+  local i
+  for ((i=0; i<n; i++)); do _sync_actions[i]=skip; done
+
+  msg::heading "Fetching package descriptions…"
+  sync::_fetch_descriptions
+
+  pick::_tui_open
+  trap 'pick::_tui_close' EXIT INT TERM
+
+  local cursor=0 result=apply
+  while true; do
+    sync::_render "$cursor" "$current"
+    local key
+    key=$(pick::_read_key)
+    case "$key" in
+      up)    (( cursor > 0 ))     && cursor=$((cursor - 1)) ;;
+      down)  (( cursor < n - 1 )) && cursor=$((cursor + 1)) ;;
+      space) _sync_actions[cursor]=$(sync::_cycle_action "$current" "$other" "${_sync_actions[cursor]}") ;;
+      a)     _sync_actions[cursor]=add ;;
+      s)     _sync_actions[cursor]=skip ;;
+      b)     _sync_actions[cursor]=block ;;
+      p)     _sync_actions[cursor]="@personal" ;;
+      w)     _sync_actions[cursor]="@work" ;;
+      help)  sync::_render_help ;;
+      enter) result=apply; break ;;
+      q|esc) result=cancel; break ;;
+    esac
+  done
+
+  pick::_tui_close
+  trap - EXIT INT TERM
+
+  [[ "$result" == "cancel" ]] && return 130
+  return 0
+}
+
+# ---------- apply ----------
+
+# Format a parsed entry back into the file's flat-text syntax. Default
+# kind (e.g. "brew" on darwin) is dropped — bare names are formula entries.
+# Args: kind name default_kind [profile_annotation]
+sync::_format_entry() {
+  local kind="$1" name="$2" default_kind="$3" annotation="${4:-}"
+  local prefix=""
+  [[ "$kind" != "$default_kind" ]] && prefix="${kind}:"
+  if [[ -n "$annotation" ]]; then
+    printf '%s%s %s' "$prefix" "$name" "$annotation"
+  else
+    printf '%s%s' "$prefix" "$name"
+  fi
+}
+
+# Atomically append lines to FILE. Lines are passed on stdin.
+sync::_append() {
+  local file="$1"
+  [[ -z "$file" ]] && return 1
+  # tmpfile in same dir for atomic rename.
+  local dir tmp
+  dir="$(dirname "$file")"
+  mkdir -p "$dir" 2>/dev/null
+  tmp=$(mktemp "$dir/.packages-sync.XXXXXX") || return 1
+  if [[ -f "$file" ]]; then
+    cat "$file" > "$tmp"
+    # Ensure trailing newline before appending.
+    [[ -s "$tmp" ]] && [[ "$(tail -c1 "$tmp" | od -An -c | tr -d ' ')" != $'\\n' ]] && printf '\n' >> "$tmp"
+  fi
+  cat >> "$tmp"
+  mv "$tmp" "$file"
+}
+
+# Apply the pending actions to packages.txt and packages-blacklist.txt.
+# Args: PACKAGES_FILE BLACKLIST_FILE DEFAULT_KIND
+sync::apply() {
+  local pkg_file="$1" blacklist_file="$2" default_kind="$3"
+
+  local n=${#_sync_items[@]}
+  local i
+  local pkg_lines=()
+  local blacklist_lines=()
+
+  for ((i=0; i<n; i++)); do
+    local action="${_sync_actions[i]}"
+    [[ "$action" == "skip" ]] && continue
+    local kind name
+    IFS=$'\t' read -r kind name <<< "${_sync_items[i]}"
+
+    case "$action" in
+      add)
+        pkg_lines+=("$(sync::_format_entry "$kind" "$name" "$default_kind")")
+        ;;
+      @*)
+        pkg_lines+=("$(sync::_format_entry "$kind" "$name" "$default_kind" "$action")")
+        ;;
+      block)
+        blacklist_lines+=("$(sync::_format_entry "$kind" "$name" "$default_kind")")
+        ;;
+    esac
+  done
+
+  if (( ${#pkg_lines[@]} > 0 )); then
+    {
+      printf '\n# Added by `dotfiles sync` on %s\n' "$(date -u +%FT%TZ)"
+      local l
+      for l in "${pkg_lines[@]}"; do printf '%s\n' "$l"; done
+    } | sync::_append "$pkg_file"
+    msg::success "added ${#pkg_lines[@]} entr$([[ ${#pkg_lines[@]} -eq 1 ]] && echo y || echo ies) to packages.txt"
+  fi
+  if (( ${#blacklist_lines[@]} > 0 )); then
+    {
+      printf '\n# Blacklisted by `dotfiles sync` on %s\n' "$(date -u +%FT%TZ)"
+      local l
+      for l in "${blacklist_lines[@]}"; do printf '%s\n' "$l"; done
+    } | sync::_append "$blacklist_file"
+    msg::success "blacklisted ${#blacklist_lines[@]} entr$([[ ${#blacklist_lines[@]} -eq 1 ]] && echo y || echo ies)"
+  fi
+  return 0
+}
+
+# ---------- main entry ----------
+
+# sync::run [os] — the orchestration function the wrapper calls.
+sync::run() {
+  local os
+  case "$(uname -s)" in
+    Darwin) os=darwin ;;
+    *) msg::error "sync: only darwin is supported in this build (linux/windows in Stage C)"; return 1 ;;
+  esac
+
+  local source_dir pkg_file blacklist_file default_kind profile
+  source_dir="${CHEZMOI_SOURCE_DIR:-$(chezmoi source-path 2>/dev/null)}"
+  if [[ -z "$source_dir" ]]; then
+    msg::error "sync: chezmoi source dir not found"
+    return 1
+  fi
+  default_kind=brew
+  pkg_file="$source_dir/etc/darwin/packages.txt"
+  blacklist_file="$source_dir/etc/darwin/packages-blacklist.txt"
+  profile=$(packages::current_profile)
+
+  msg::heading "Computing untracked packages…"
+  _sync_items=()
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    _sync_items+=("$line")
+  done < <(sync::compute_untracked "$pkg_file" "$blacklist_file" "$os" "$default_kind")
+
+  if (( ${#_sync_items[@]} == 0 )); then
+    msg::success "Everything installed is already tracked. Nothing to sync."
+  else
+    sync::review || return $?
+    sync::apply "$pkg_file" "$blacklist_file" "$default_kind"
+  fi
+
+  # Stale-entry honesty: list tracked-but-not-installed for the current profile.
+  local missing
+  missing=$(sync::compute_missing "$pkg_file" "$os" "$default_kind" "$profile")
+  if [[ -n "$missing" ]]; then
+    msg::heading "Tracked but not installed locally (run \`dotfiles install\` to fix):"
+    while IFS=$'\t' read -r kind name profiles; do
+      [[ -z "$kind" ]] && continue
+      local suffix=""
+      [[ -n "$profiles" ]] && suffix=" \033[2m@$profiles\033[0m"
+      printf '  • %s:%s%b\n' "$kind" "$name" "$suffix"
+    done <<<"$missing"
+  fi
+}
