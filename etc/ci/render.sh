@@ -12,10 +12,13 @@ fails=0
 _render() {
   local file="$1" type="${2:-}"
   local out
+  # --source "$PWD": tell chezmoi to load .chezmoidata/ from the checked-out
+  # repo, not from its default source dir (~/.local/share/chezmoi) which
+  # doesn't exist in CI.
   # No --init: regular templates need .chezmoidata/ loaded, which --init mode
   # bypasses. Templates with promptString*-driven values rely on index+default
   # patterns or chezmoi.toml data; missing data falls back to defaults.
-  if ! out=$(chezmoi execute-template < "$file" 2>&1); then
+  if ! out=$(chezmoi execute-template --source "$PWD" < "$file" 2>&1); then
     printf 'FAIL render: %s\n%s\n' "$file" "$out" >&2
     fails=$((fails + 1))
     return
@@ -49,7 +52,7 @@ _render_init() {
   # --init mode (and no .chezmoidata access since that doesn't exist yet at
   # init time anyway).
   local file="$1"
-  if ! chezmoi execute-template --init < "$file" >/dev/null 2>&1; then
+  if ! chezmoi execute-template --init --source "$PWD" < "$file" >/dev/null 2>&1; then
     printf 'FAIL render: %s\n' "$file" >&2
     fails=$((fails + 1))
   fi

@@ -15,7 +15,7 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install zsh + fish + luajit + lua5.4 (Linux)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y zsh fish luajit lua5.4
@@ -28,7 +28,7 @@ jobs:
     name: PowerShell syntax
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Parse PowerShell scripts
         shell: pwsh
         run: |
@@ -51,7 +51,7 @@ jobs:
     name: chezmoi execute-template
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install zsh + fish + luajit
         run: sudo apt-get update && sudo apt-get install -y zsh fish luajit
       - name: Install chezmoi
@@ -64,7 +64,7 @@ jobs:
     name: Nvim tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install Neovim
         run: |
           curl -fsSL https://github.com/neovim/neovim/releases/download/stable/nvim-linux-x86_64.tar.gz -o nvim.tar.gz
@@ -95,14 +95,14 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: bash etc/tests/theme.sh
 
   theme-tests-pwsh:
     name: Theme tests (Windows / pwsh)
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Parse-check theme.ps1 (no test harness yet)
         shell: pwsh
         run: |
@@ -120,7 +120,7 @@ jobs:
     runs-on: ubuntu-latest
     container: fedora:latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: dnf -y check-update || true
       - run: bash etc/ci/validate-packages.sh fedora
 
@@ -129,7 +129,7 @@ jobs:
     runs-on: ubuntu-latest
     container: debian:stable
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: apt-get update
       - run: bash etc/ci/validate-packages.sh debian
 
@@ -138,6 +138,6 @@ jobs:
     runs-on: ubuntu-latest
     container: archlinux:latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: pacman -Syu --noconfirm
       - run: bash etc/ci/validate-packages.sh arch
