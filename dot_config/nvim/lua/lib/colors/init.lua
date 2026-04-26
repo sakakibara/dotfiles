@@ -104,6 +104,19 @@ function M.setup(opts)
       R().clear(args.buf)
     end,
   })
+
+  vim.api.nvim_create_user_command("ColorsToggle", function(cmd)
+    if cmd.fargs[1] == "global" then
+      M._opts.enabled = not M._opts.enabled
+      for buf in pairs(M._timers) do redraw(buf) end
+    else
+      M.toggle(0)
+    end
+  end, {
+    desc     = "Toggle Lib.colors highlights for current buffer (or global)",
+    nargs    = "?",
+    complete = function() return { "global" } end,
+  })
 end
 
 function M.toggle(buf)

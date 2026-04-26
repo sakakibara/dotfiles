@@ -58,3 +58,13 @@ T.describe("lib.colors.setup", function()
     vim.api.nvim_buf_delete(buf, { force = true })
   end)
 end)
+
+T.describe("lib.colors :ColorsToggle command", function()
+  T.it("registers :ColorsToggle after setup()", function()
+    package.loaded["lib.colors"] = nil
+    require("lib").init()
+    Lib.colors.setup({})
+    local cmds = vim.api.nvim_get_commands({})
+    T.truthy(cmds.ColorsToggle, ":ColorsToggle not registered")
+  end)
+end)
