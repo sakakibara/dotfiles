@@ -8,7 +8,6 @@
 # `dotfiles sync` from re-adding entries you've explicitly opted out of).
 
 # ── Taps
-tap:homebrew/services
 tap:microsoft/git
 
 # ── Build / compile-time
