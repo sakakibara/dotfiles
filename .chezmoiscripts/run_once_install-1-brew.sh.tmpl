@@ -1,0 +1,13 @@
+{{ if eq .chezmoi.os "darwin" -}}
+#!/usr/bin/env bash
+# Hash trigger — chezmoi re-runs this script whenever the comment hash below
+# changes, which is whenever the Brewfile changes.
+# Brewfile hash: {{ include "etc/darwin/Brewfile" | sha256sum }}
+source {{ joinPath .chezmoi.sourceDir "etc" "bash" "lib" "init.bash" | quote }}
+
+import unix darwin brew
+
+unix::keep_sudo
+darwin::require_clt || exit 1
+brew::setup
+{{ end -}}

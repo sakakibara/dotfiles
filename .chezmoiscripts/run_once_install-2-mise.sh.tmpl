@@ -1,0 +1,11 @@
+{{ if or (eq .chezmoi.os "darwin") (eq .chezmoi.os "linux") -}}
+#!/usr/bin/env bash
+# Hash trigger — re-runs when mise's config (tools, plugins) changes.
+# mise config hash: {{ include "dot_config/mise/config.toml.tmpl" | sha256sum }}
+source {{ joinPath .chezmoi.sourceDir "etc" "bash" "lib" "init.bash" | quote }}
+
+import unix mise
+
+unix::keep_sudo
+mise::setup
+{{ end -}}

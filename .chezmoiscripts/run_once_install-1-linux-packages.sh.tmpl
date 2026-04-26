@@ -1,0 +1,14 @@
+{{ if eq .chezmoi.os "linux" -}}
+#!/usr/bin/env bash
+# Hash trigger — re-runs whenever any of the per-distro package lists change.
+# packages-fedora hash: {{ include "etc/linux/packages-fedora.txt" | sha256sum }}
+# packages-debian hash: {{ include "etc/linux/packages-debian.txt" | sha256sum }}
+# packages-arch hash:   {{ include "etc/linux/packages-arch.txt"   | sha256sum }}
+# packages-suse hash:   {{ include "etc/linux/packages-suse.txt"   | sha256sum }}
+source {{ joinPath .chezmoi.sourceDir "etc" "bash" "lib" "init.bash" | quote }}
+
+import unix linux
+
+unix::keep_sudo
+linux::setup
+{{ end -}}

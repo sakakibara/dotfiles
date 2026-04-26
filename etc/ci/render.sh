@@ -62,8 +62,12 @@ _render_init() {
 _render dot_zshrc.tmpl                                       zsh
 _render dot_config/fish/config.fish.tmpl                     fish
 _render dot_config/fish/conf.d/abbreviations.fish.tmpl       fish
-_render .chezmoiscripts/run_once_install-packages.sh.tmpl    bash
-_render .chezmoiscripts/run_once_setup-theme.sh.tmpl         bash
+_render .chezmoiscripts/run_once_install-1-brew.sh.tmpl            bash
+_render .chezmoiscripts/run_once_install-1-linux-packages.sh.tmpl  bash
+_render .chezmoiscripts/run_once_install-2-mise.sh.tmpl            bash
+_render .chezmoiscripts/run_once_install-3-extras.sh.tmpl          bash
+_render .chezmoiscripts/run_once_install-4-hive.sh.tmpl            bash
+_render .chezmoiscripts/run_once_setup-theme.sh.tmpl               bash
 
 # Non-shell templates with format-specific post-render checks
 _render dot_config/starship.toml.tmpl                        toml
