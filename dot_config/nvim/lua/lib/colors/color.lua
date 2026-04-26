@@ -158,4 +158,20 @@ function M.to_oklch(c)
   return L, C, h
 end
 
+-- WCAG relative luminance (linear sRGB weighted by CIE Y coefficients)
+local function relative_luminance(c)
+  local lr = srgb_to_linear(c.r)
+  local lg = srgb_to_linear(c.g)
+  local lb = srgb_to_linear(c.b)
+  return 0.2126 * lr + 0.7152 * lg + 0.0722 * lb
+end
+
+-- Pick black or white text for a given background such that contrast is maximized.
+function M.contrast_text(bg)
+  local L = relative_luminance(bg)
+  local on_black = (L + 0.05) / 0.05
+  local on_white = 1.05 / (L + 0.05)
+  return on_white > on_black and "#ffffff" or "#000000"
+end
+
 return M
