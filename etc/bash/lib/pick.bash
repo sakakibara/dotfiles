@@ -371,12 +371,24 @@ pick::_read_key() {
 pick::_matches_filter() {
   local label="$1" filter="$2"
   if [[ -z "$filter" ]]; then return 0; fi
-  # Pin LC_ALL on tr so case folding works for Greek / Cyrillic / etc.
-  # regardless of the caller's locale (CI runners often default to C).
   local lc_label lc_filter
-  lc_label=$(printf '%s' "$label"  | LC_ALL=C.UTF-8 tr '[:upper:]' '[:lower:]')
-  lc_filter=$(printf '%s' "$filter" | LC_ALL=C.UTF-8 tr '[:upper:]' '[:lower:]')
+  pick::_to_lower_v "$label";  lc_label="$_pick_lc"
+  pick::_to_lower_v "$filter"; lc_filter="$_pick_lc"
   [[ "$lc_label" == *"$lc_filter"* ]]
+}
+
+# Lowercase $1 into the dynamic-scoped `_pick_lc`. Locale-aware on bash 4+
+# via the built-in `${var,,}` (handles Greek / Cyrillic / etc.). On bash
+# 3.2 (macOS first-install only — Linux ships bash 4+) we fall back to
+# `tr`, which on BSD tr handles multibyte; GNU tr is single-byte but that
+# combination (bash 3.2 + GNU tr) is essentially impossible in practice.
+pick::_to_lower_v() {
+  if (( BASH_VERSINFO[0] >= 4 )); then
+    local LC_ALL=C.UTF-8
+    _pick_lc="${1,,}"
+  else
+    _pick_lc=$(printf '%s' "$1" | LC_ALL=C.UTF-8 tr '[:upper:]' '[:lower:]')
+  fi
 }
 
 pick::_recompute_visible() {
