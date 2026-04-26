@@ -540,6 +540,44 @@ case "$out" in
   *) _eq "cursor on selectable" "match" "$out" ;;
 esac
 
+_section "_jump_column: stays put in single-column mode"
+out=$(
+  _pick_n=5
+  _pick_names=(a b c d e)
+  _pick_labels=(A B C D E)
+  _pick_states=(normal normal normal normal normal)
+  _pick_reasons=("" "" "" "" "")
+  _pick_visible=(0 1 2 3 4)
+  # Force single-column by reporting a tall terminal.
+  _PICK_FORCE_ROWS=100
+  pick::_jump_column 2 1
+)
+_eq "no jump in single-col" "2" "$out"
+
+_section "_jump_column: jumps by col_size in 2-col mode"
+out=$(
+  _pick_n=10
+  _pick_names=(a b c d e f g h i j)
+  _pick_labels=(A B C D E F G H I J)
+  _pick_states=(normal normal normal normal normal normal normal normal normal normal)
+  _pick_reasons=("" "" "" "" "" "" "" "" "" "")
+  _pick_visible=(0 1 2 3 4 5 6 7 8 9)
+  # Force two-column by reporting a tiny terminal.
+  _PICK_FORCE_ROWS=8
+  # 10 items, col_size = ceil(10/2) = 5. Jump from cursor=2 right → 7.
+  printf 'right=%s\n' "$(pick::_jump_column 2 1)"
+  # Jump from 7 left → 2.
+  printf 'left=%s\n' "$(pick::_jump_column 7 -1)"
+  # From 0, can go right to 5.
+  printf 'edge-right=%s\n' "$(pick::_jump_column 0 1)"
+  # From 9 (last in right column), going right is OOB.
+  printf 'oob=%s\n' "$(pick::_jump_column 9 1)"
+)
+case "$out" in
+  *"right=7"*"left=2"*"edge-right=5"*"oob=9"*) _true "column jumps map correctly" 0 ;;
+  *) _eq "expected right=7 left=2 edge-right=5 oob=9" "match" "$out" ;;
+esac
+
 _section "filter: case-insensitive substring match"
 pick::_matches_filter "Homebrew packages" "brew"; _true "lowercase filter matches mixed-case label" "$?"
 pick::_matches_filter "Homebrew packages" "BREW"; _true "uppercase filter matches" "$?"

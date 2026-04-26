@@ -117,10 +117,25 @@ pick::_parse_item() {
 # ---------- terminal helpers ----------
 
 pick::_cols() {
+  if [[ -n "${_PICK_FORCE_COLS:-}" ]]; then
+    printf '%d' "$_PICK_FORCE_COLS"
+    return
+  fi
   local c
   c=$(tput cols 2>/dev/null) || c=80
   (( c < 20 )) && c=20
   printf '%d' "$c"
+}
+
+pick::_rows() {
+  if [[ -n "${_PICK_FORCE_ROWS:-}" ]]; then
+    printf '%d' "$_PICK_FORCE_ROWS"
+    return
+  fi
+  local r
+  r=$(tput lines 2>/dev/null) || r=24
+  (( r < 10 )) && r=10
+  printf '%d' "$r"
 }
 
 # Print decimal Unicode codepoint of the first character of $1. Decodes
@@ -362,6 +377,44 @@ pick::_recompute_visible() {
   fi
 }
 
+# Move cursor by ±col_size (column jump for two-column layout). Returns
+# the new cursor index. No-op if the layout is single-column or the jump
+# would go out of bounds.
+pick::_jump_column() {
+  local cursor="$1" dir="$2"
+  local nv=${#_pick_visible[@]}
+  local rows
+  rows=$(pick::_rows)
+  local body_rows=$((rows - 6))
+  (( body_rows < 5 )) && body_rows=5
+  if (( nv <= body_rows )); then printf '%d' "$cursor"; return; fi
+
+  # Count selectable items + locate cursor's position among them.
+  local sel_count=0 cursor_sel_pos=-1 vi
+  for ((vi=0; vi<nv; vi++)); do
+    [[ "${_pick_states[${_pick_visible[vi]}]}" == "header" ]] && continue
+    if (( vi == cursor )); then cursor_sel_pos=$sel_count; fi
+    sel_count=$((sel_count + 1))
+  done
+  if (( cursor_sel_pos < 0 )); then printf '%d' "$cursor"; return; fi
+
+  local col_size=$(( (sel_count + 1) / 2 ))
+  local target=$((cursor_sel_pos + dir * col_size))
+  if (( target < 0 || target >= sel_count )); then
+    printf '%d' "$cursor"
+    return
+  fi
+
+  # Map target sel-position back to _pick_visible index.
+  local sp=0
+  for ((vi=0; vi<nv; vi++)); do
+    [[ "${_pick_states[${_pick_visible[vi]}]}" == "header" ]] && continue
+    if (( sp == target )); then printf '%d' "$vi"; return; fi
+    sp=$((sp + 1))
+  done
+  printf '%d' "$cursor"
+}
+
 # Search _pick_visible for the next/previous selectable index from $1 in
 # direction $2 (1 forward, -1 backward). Prints the index, or nothing if
 # none. Headers are skipped.
@@ -378,100 +431,163 @@ pick::_seek_selectable() {
   done
 }
 
+# Render one visible item into globals:
+#   _render_styled — line with ANSI styling
+#   _render_plain  — line without ANSI (used for width math when laying out
+#                    multiple columns)
+# Args: vi (index into _pick_visible), cursor, budget (max visible columns)
+pick::_render_item() {
+  local vi="$1" cursor="$2" budget="$3"
+  local i="${_pick_visible[vi]}"
+  local name="${_pick_names[i]}"
+  local label="${_pick_labels[i]}"
+  local state="${_pick_states[i]}"
+  local reason="${_pick_reasons[i]}"
+
+  if [[ "$state" == "header" ]]; then
+    _render_styled=$'  \033[1;36m'"$label"$'\033[0m'
+    _render_plain="  $label"
+    return 0
+  fi
+
+  local mark plain_mark
+  case "$state" in
+    required) mark=$'\033[1;32m🔒\033[0m '; plain_mark='🔒 ' ;;
+    disabled) mark=$'\033[2m·\033[0m  ';     plain_mark='·  ' ;;
+    *)
+      if dict::has pick_selected "$name"; then
+        mark=$'\033[1;32m✔\033[0m  '; plain_mark='✔  '
+      else
+        mark='   ';                   plain_mark='   '
+      fi
+      ;;
+  esac
+
+  local prefix plain_prefix
+  if (( vi == cursor )); then
+    prefix=$'\033[7m›\033[0m '; plain_prefix='› '
+  else
+    prefix='  ';                plain_prefix='  '
+  fi
+
+  local change plain_change
+  if dict::has pick_changed "$name"; then
+    change=$'\033[1;33m*\033[0m'; plain_change='*'
+  else
+    change=' ';                   plain_change=' '
+  fi
+
+  local styled_label="$label"
+  case "$state" in
+    disabled) styled_label=$'\033[2m'"$label"$'\033[0m' ;;
+    *) (( vi == cursor )) && styled_label=$'\033[1m'"$label"$'\033[0m' ;;
+  esac
+
+  local reason_suffix=''
+  local plain_reason=''
+  if [[ "$state" == "disabled" && -n "$reason" ]]; then
+    reason_suffix=$' \033[2m('"$reason"$')\033[0m'
+    plain_reason=" ($reason)"
+  fi
+
+  local visible="${label}${plain_reason}"
+  local visible_budget=$((budget - 7))   # 2 prefix + 3 mark + 1 change + 1 spacer
+  local vwidth
+  vwidth=$(pick::_str_width "$visible")
+  if (( vwidth > visible_budget )); then
+    local trunc
+    trunc=$(pick::_trunc "$visible" "$visible_budget")
+    _render_styled="${prefix}${mark}${change} ${trunc}"
+    _render_plain="${plain_prefix}${plain_mark}${plain_change} ${trunc}"
+  else
+    _render_styled="${prefix}${mark}${change} ${styled_label}${reason_suffix}"
+    _render_plain="${plain_prefix}${plain_mark}${plain_change} ${label}${plain_reason}"
+  fi
+  return 0
+}
+
 pick::_render() {
-  local cursor="$1" cols selected_count=0
+  local cursor="$1" cols rows selected_count=0
   cols=$(pick::_cols)
+  rows=$(pick::_rows)
 
   printf '\033[H\033[2J'  # cursor home + clear screen
   printf '\033[1mSelect steps to run\033[0m\n'
-  printf '\033[2m↑/↓ move · space toggle · a all · n none · / filter · enter run · q quit · ? help\033[0m\n\n'
+  printf '\033[2m↑/↓ move · ←/→ column · space toggle · a all · n none · / filter · enter run · q quit · ? help\033[0m\n\n'
 
   local nv=${#_pick_visible[@]}
   if (( nv == 0 )); then
     printf '\033[2m  (no items match filter)\033[0m\n'
   fi
 
-  local vi i
-  for ((vi=0; vi<nv; vi++)); do
-    i="${_pick_visible[vi]}"
-    local name="${_pick_names[i]}"
-    local label="${_pick_labels[i]}"
-    local state="${_pick_states[i]}"
-    local reason="${_pick_reasons[i]}"
-    local mark prefix
-    local is_selected=0
-
-    # Header row — bold cyan, no checkbox, no cursor highlight, blank line above.
-    if [[ "$state" == "header" ]]; then
-      printf '\n  \033[1;36m%s\033[0m\n' "$label"
-      continue
-    fi
-
-    case "$state" in
-      required)
-        mark=$'\033[1;32m🔒\033[0m '
-        is_selected=1
-        ;;
-      disabled)
-        mark=$'\033[2m·\033[0m  '
-        ;;
-      *)
-        if dict::has pick_selected "$name"; then
-          mark=$'\033[1;32m✔\033[0m  '
-          is_selected=1
-        else
-          mark='   '
-        fi
-        ;;
-    esac
-    (( is_selected )) && selected_count=$((selected_count + 1))
-
-    if (( vi == cursor )); then
-      prefix=$'\033[7m›\033[0m '
-    else
-      prefix='  '
-    fi
-
-    # Style the label by state (dim disabled, bold current)
-    local styled_label="$label"
-    case "$state" in
-      disabled) styled_label=$'\033[2m'"$label"$'\033[0m' ;;
-      *) (( vi == cursor )) && styled_label=$'\033[1m'"$label"$'\033[0m' ;;
-    esac
-
-    # Reason suffix (disabled only)
-    local reason_suffix=''
-    if [[ "$state" == "disabled" && -n "$reason" ]]; then
-      reason_suffix=$' \033[2m('"$reason"$')\033[0m'
-    fi
-
-    # Changed/new marker (yellow `*` after the mark).
-    local change=' '
-    if dict::has pick_changed "$name"; then
-      change=$'\033[1;33m*\033[0m'
-    fi
-
-    # Compose; truncation operates on visible (un-styled) text and uses
-    # column width (CJK Wide chars count 2). We re-apply styling only when
-    # the line fits — truncated lines render plain so we don't have to
-    # split ANSI sequences mid-string.
-    local visible="${label}"
-    [[ "$state" == "disabled" && -n "$reason" ]] && visible="${visible} (${reason})"
-    local budget=$((cols - 7))   # 2 prefix + 3 mark + 1 change + 1 spacer
-    local vwidth
-    vwidth=$(pick::_str_width "$visible")
-    if (( vwidth > budget )); then
-      visible=$(pick::_trunc "$visible" "$budget")
-      printf '%s%s%s %s\n' "$prefix" "$mark" "$change" "$visible"
-    else
-      printf '%s%s%s %s%s\n' "$prefix" "$mark" "$change" "$styled_label" "$reason_suffix"
-    fi
+  # Tally selected count up-front (cheap; lets the footer display it).
+  local i
+  for ((i=0; i<_pick_n; i++)); do
+    [[ "${_pick_states[i]}" == "header" ]] && continue
+    dict::has pick_selected "${_pick_names[i]}" && selected_count=$((selected_count + 1))
   done
+
+  # Decide single- vs two-column layout based on body lines available
+  # (terminal rows minus header + footer chrome).
+  local body_rows=$((rows - 6))
+  (( body_rows < 5 )) && body_rows=5
+  local two_col=0
+  if (( nv > body_rows )); then
+    two_col=1
+  fi
+
+  local _render_styled _render_plain
+
+  if (( two_col == 0 )); then
+    # Single column.
+    local vi
+    for ((vi=0; vi<nv; vi++)); do
+      pick::_render_item "$vi" "$cursor" "$cols"
+      printf '%s\n' "$_render_styled"
+    done
+  else
+    # Two columns, column-major. Headers don't translate well across
+    # columns so we drop them from the layout in this mode.
+    local left_buf=() right_buf=() left_plain=()
+    local count_non_header=0
+    local vi
+    for ((vi=0; vi<nv; vi++)); do
+      [[ "${_pick_states[${_pick_visible[vi]}]}" == "header" ]] && continue
+      count_non_header=$((count_non_header + 1))
+    done
+    local col_size=$(( (count_non_header + 1) / 2 ))
+    local placed=0
+    local col_w=$((cols / 2))
+    for ((vi=0; vi<nv; vi++)); do
+      [[ "${_pick_states[${_pick_visible[vi]}]}" == "header" ]] && continue
+      pick::_render_item "$vi" "$cursor" "$col_w"
+      if (( placed < col_size )); then
+        left_buf+=("$_render_styled")
+        left_plain+=("$_render_plain")
+      else
+        right_buf+=("$_render_styled")
+      fi
+      placed=$((placed + 1))
+    done
+    local r
+    for ((r=0; r<col_size; r++)); do
+      local lp="${left_plain[r]}" left_w pad
+      left_w=$(pick::_str_width "$lp")
+      pad=$((col_w - left_w))
+      (( pad < 1 )) && pad=1
+      if (( r < ${#right_buf[@]} )); then
+        printf '%s%*s%s\n' "${left_buf[r]}" "$pad" "" "${right_buf[r]}"
+      else
+        printf '%s\n' "${left_buf[r]}"
+      fi
+    done
+  fi
 
   printf '\n\033[2m%d selected · %d total' "$selected_count" "$_pick_n"
   if [[ -n "$_pick_filter" ]]; then
     printf ' · filtered: "%s" (Esc to clear)' "$_pick_filter"
   fi
+  (( two_col )) && printf ' · 2-col'
   printf '\033[0m\n'
 }
 
@@ -844,6 +960,12 @@ pick() {
       down)
         local seek
         seek=$(pick::_seek_selectable "$cursor" 1) && cursor="$seek"
+        ;;
+      left)
+        cursor=$(pick::_jump_column "$cursor" -1)
+        ;;
+      right)
+        cursor=$(pick::_jump_column "$cursor" 1)
         ;;
       space)
         if (( item_idx >= 0 )); then
