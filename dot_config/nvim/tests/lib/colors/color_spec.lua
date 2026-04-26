@@ -167,3 +167,25 @@ T.describe("lib.colors.color contrast_text", function()
     T.eq(C.contrast_text({ r = 0, g = 0, b = 0.4, a = 1 }), "#ffffff")
   end)
 end)
+
+T.describe("lib.colors.color Display-P3 conversion", function()
+  T.it("from_p3(0, 0, 0) is black", function()
+    local c = C.from_p3(0, 0, 0)
+    T.truthy(c.r < 0.01 and c.g < 0.01 and c.b < 0.01)
+  end)
+
+  T.it("from_p3(1, 1, 1) is white", function()
+    local c = C.from_p3(1, 1, 1)
+    T.truthy(math.abs(c.r - 1) < 0.01 and math.abs(c.g - 1) < 0.01 and math.abs(c.b - 1) < 0.01)
+  end)
+
+  T.it("from_p3(1, 0, 0) saturates outside sRGB and clamps", function()
+    -- Display-P3 red is more saturated than sRGB red. The mapping should
+    -- still produce a valid sRGB color (clamped), and r should be near 1
+    -- with g,b near 0 (the closest sRGB representation).
+    local c = C.from_p3(1, 0, 0)
+    T.truthy(c.r > 0.95, "expected r near 1, got " .. c.r)
+    T.truthy(c.g < 0.1, "expected g near 0 (clamped), got " .. c.g)
+    T.truthy(c.b < 0.1, "expected b near 0 (clamped), got " .. c.b)
+  end)
+end)

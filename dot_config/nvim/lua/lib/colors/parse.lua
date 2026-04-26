@@ -193,6 +193,37 @@ add_detector("lch%([^)]+%)", function(match)
   return C.from_lch(L, Cval, h, alpha)
 end)
 
+-- color(<space> r g b [/ alpha]) — currently only display-p3 is supported.
+add_detector("color%([^)]+%)", function(match)
+  local inner = match:gsub("^color%(", ""):gsub("%)$", "")
+  inner = inner:gsub("/", " ")
+  local toks = {}
+  for tok in inner:gmatch("%S+") do table.insert(toks, tok) end
+  if #toks < 4 or #toks > 5 then return nil end
+
+  local space = toks[1]
+  if space ~= "display-p3" then return nil end
+
+  local function num_or_pct(s)
+    local pct = s:match("^(%-?[%d%.]+)%%$")
+    if pct then return tonumber(pct) / 100 end
+    return tonumber(s)
+  end
+
+  local r = num_or_pct(toks[2])
+  local g = num_or_pct(toks[3])
+  local b = num_or_pct(toks[4])
+
+  local alpha
+  if toks[5] then
+    local pct = toks[5]:match("^([%d%.]+)%%$")
+    alpha = pct and (tonumber(pct) / 100) or tonumber(toks[5])
+  end
+
+  if not r or not g or not b then return nil end
+  return C.from_p3(r, g, b, alpha)
+end)
+
 -- CSS named colors. Use Lua frontier patterns (%f[%a] / %f[^%a]) to require
 -- letter boundaries on both sides, so that "red" inside "border-radius" is
 -- not matched.

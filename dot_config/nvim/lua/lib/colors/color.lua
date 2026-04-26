@@ -195,6 +195,31 @@ function M.from_lch(L, C, h, alpha)
   return c
 end
 
+-- Display-P3 → CIE XYZ (D65). Reference: CSS Color Module Level 4.
+local P3_to_XYZ_D65 = {
+  { 0.4865709486482162,   0.26566769316909306, 0.1982172852343625 },
+  { 0.2289745640697488,   0.6917385218365064,  0.079286914093745  },
+  { 0.0000000000000000,   0.04511338185890264, 1.043944368900976  },
+}
+
+function M.from_p3(r, g, b, alpha)
+  -- Display-P3 uses the sRGB transfer function (same gamma curve).
+  local lr = srgb_to_linear(r)
+  local lg = srgb_to_linear(g)
+  local lb = srgb_to_linear(b)
+  -- P3 linear → CIE XYZ (D65) → linear sRGB
+  local x, y, z = mat3_mul(P3_to_XYZ_D65, { lr, lg, lb })
+  local r2, g2, b2 = mat3_mul(XYZ_D65_to_linear_sRGB, { x, y, z })
+  return {
+    r = clamp(linear_to_srgb(r2), 0, 1),
+    g = clamp(linear_to_srgb(g2), 0, 1),
+    b = clamp(linear_to_srgb(b2), 0, 1),
+    a = alpha or 1,
+    space = "p3",
+    source = { fmt = "p3" },
+  }
+end
+
 function M.from_oklab(L, a, b, alpha)
   local lr, lg, lb = oklab_to_linear_srgb(L, a, b)
   return {
