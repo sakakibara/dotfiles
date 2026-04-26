@@ -116,3 +116,24 @@ T.describe("lib.colors.picker keymaps", function()
     T.eq(s.mode, "closed")
   end)
 end)
+
+T.describe("lib.colors.picker commit", function()
+  T.it("CR replaces anchor range with new value in source format", function()
+    local src = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(src, 0, -1, false, { "color: #ff0000;" })
+    -- Parse the hex to get a color whose source.fmt = "hex"
+    local hit = require("lib.colors.parse").parse("color: #ff0000;", 9)
+    T.truthy(hit, "expected parse to find hex literal")
+    local s = P.open({
+      initial = hit.color,
+      anchor  = { buf = src, lnum = 0, col_s = hit.range.col_s, col_e = hit.range.col_e },
+    })
+    P.cycle_space(s)  -- → hsl
+    P.adjust(s, 60)   -- hue +60
+    P.commit(s)
+    local line = vim.api.nvim_buf_get_lines(src, 0, 1, false)[1]
+    T.truthy(line:match("color: #[0-9a-f]+;"), "expected hex in source, got: " .. line)
+    T.truthy(not line:match("#ff0000"), "expected color to have changed")
+    vim.api.nvim_buf_delete(src, { force = true })
+  end)
+end)

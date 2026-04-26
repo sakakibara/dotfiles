@@ -67,13 +67,14 @@ function M.open(opts)
   opts = opts or {}
   local color = opts.initial or default_color()
   local state = {
-    color  = color,
-    mode   = "compact",
-    space  = "rgb",
-    slider = 1,
-    anchor = opts.anchor,
-    buf    = nil,
-    win    = nil,
+    color      = color,
+    source_fmt = color.source and color.source.fmt or "hex",
+    mode       = "compact",
+    space      = "rgb",
+    slider     = 1,
+    anchor     = opts.anchor,
+    buf        = nil,
+    win        = nil,
   }
   state.buf = vim.api.nvim_create_buf(false, true)
   vim.bo[state.buf].buftype   = "nofile"
@@ -101,8 +102,39 @@ function M.open(opts)
   map("k",     function() state.slider = ((state.slider - 2) % 3) + 1; render(state) end)
   map("<Tab>", function() M.cycle_space(state) end)
   map("<C-e>", function() M.toggle_expand(state) end)
+  map("<CR>",  function() M.commit(state) end)
   map("<Esc>", function() M.close(state) end)
   return state
+end
+
+function M.commit(state)
+  if state.anchor and vim.api.nvim_buf_is_valid(state.anchor.buf) then
+    local a = state.anchor
+    local fmt = state.source_fmt or "hex"
+    local text
+    if fmt == "rgb" then
+      text = string.format("rgb(%d %d %d)",
+        math.floor(state.color.r * 255 + 0.5),
+        math.floor(state.color.g * 255 + 0.5),
+        math.floor(state.color.b * 255 + 0.5))
+    elseif fmt == "hsl" then
+      local h, s, l = C.to_hsl(state.color)
+      text = string.format("hsl(%d %d%% %d%%)",
+        math.floor(h), math.floor(s * 100), math.floor(l * 100))
+    elseif fmt == "oklch" then
+      local L, Cval, h = C.to_oklch(state.color)
+      text = string.format("oklch(%.3f %.3f %.1f)", L, Cval, h)
+    elseif fmt == "oklab" then
+      local L, Cval, h = C.to_oklch(state.color)
+      local av = Cval * math.cos(math.rad(h))
+      local bv = Cval * math.sin(math.rad(h))
+      text = string.format("oklab(%.3f %.3f %.3f)", L, av, bv)
+    else
+      text = C.to_hex(state.color)
+    end
+    vim.api.nvim_buf_set_text(a.buf, a.lnum, a.col_s, a.lnum, a.col_e, { text })
+  end
+  M.close(state)
 end
 
 function M.close(state)
