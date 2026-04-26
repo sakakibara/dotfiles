@@ -44,3 +44,18 @@ T.describe("lib.colors.picker compact render", function()
     P.close(s)
   end)
 end)
+
+T.describe("lib.colors.picker swatch rendering", function()
+  T.it("creates an extmark with bg-colored hl group on the swatch line", function()
+    local s = P.open({ initial = C.from_hex("#ff0000") })
+    local marks = vim.api.nvim_buf_get_extmarks(s.buf, P.ns, 0, -1, { details = true })
+    T.truthy(#marks >= 1, "expected at least 1 extmark on swatch line")
+    local found = false
+    for _, m in ipairs(marks) do
+      local d = m[4]
+      if d and d.hl_group and d.hl_group:find("ff0000") then found = true; break end
+    end
+    T.truthy(found, "expected an hl_group with ff0000")
+    P.close(s)
+  end)
+end)

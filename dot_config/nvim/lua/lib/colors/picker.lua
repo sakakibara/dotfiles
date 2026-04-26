@@ -3,6 +3,18 @@
 local C = require("lib.colors.color")
 local M = {}
 
+M.ns = vim.api.nvim_create_namespace("lib.colors.picker")
+
+local function ensure_swatch_hl(color)
+  local hex = C.to_hex({ r = color.r, g = color.g, b = color.b, a = 1 })
+  local short = hex:sub(2)  -- strip "#"
+  vim.api.nvim_set_hl(0, "LibColorsPickerSwatch_" .. short, {
+    bg = hex,
+    fg = C.contrast_text(color),
+  })
+  return short
+end
+
 local function default_color()
   return C.from_hex("#ffffff")
 end
@@ -41,6 +53,13 @@ local function render(state)
   local lines = state.mode == "compact" and compact_lines(state) or compact_lines(state)
   vim.bo[state.buf].modifiable = true
   vim.api.nvim_buf_set_lines(state.buf, 0, -1, false, lines)
+  vim.api.nvim_buf_clear_namespace(state.buf, M.ns, 0, -1)
+  local short = ensure_swatch_hl(state.color)
+  vim.api.nvim_buf_set_extmark(state.buf, M.ns, 1, 0, {
+    end_row  = 1,
+    end_col  = #lines[2],
+    hl_group = "LibColorsPickerSwatch_" .. short,
+  })
   vim.bo[state.buf].modifiable = false
 end
 
