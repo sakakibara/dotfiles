@@ -29,3 +29,18 @@ T.describe("lib.colors.picker state", function()
     P.close(s)
   end)
 end)
+
+T.describe("lib.colors.picker compact render", function()
+  T.it("open creates a floating buffer with current color displayed", function()
+    local s = P.open({ initial = C.from_hex("#ff0000") })
+    T.truthy(s.buf and vim.api.nvim_buf_is_valid(s.buf), "expected valid floating buf")
+    local lines = vim.api.nvim_buf_get_lines(s.buf, 0, -1, false)
+    T.truthy(#lines >= 4, "expected ≥4 lines, got " .. #lines)
+    local found = false
+    for _, l in ipairs(lines) do
+      if l:find("#ff0000", 1, true) then found = true; break end
+    end
+    T.truthy(found, "expected #ff0000 in some line, got: " .. table.concat(lines, "\\n"))
+    P.close(s)
+  end)
+end)
