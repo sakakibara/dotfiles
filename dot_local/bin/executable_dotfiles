@@ -100,6 +100,7 @@ Usage:
   dotfiles edit <pattern>   Fuzzy-find a managed file and edit via chezmoi
   dotfiles profile [name]   Print or switch the active chezmoi profile
   dotfiles doctor           Health-check the dotfiles + chezmoi setup
+  dotfiles upgrade [--all]  Upgrade chezmoi (or every managed tool with --all)
   dotfiles <cmd>            Forward to chezmoi (e.g. dotfiles apply, dotfiles diff)
   dotfiles --help           Show this help
 
@@ -344,6 +345,76 @@ EOF
   _check "hive on PATH" $?
 
   printf '\n%d passed, %d failed\n' "$passes" "$fails"
+  return "$fails"
+}
+
+cmd_upgrade() {
+  case "${1:-}" in
+    -h|--help)
+      cat <<'EOF'
+dotfiles upgrade — bring chezmoi (and optionally everything) up to date.
+
+Usage:
+  dotfiles upgrade           Upgrade chezmoi binary (= chezmoi upgrade)
+  dotfiles upgrade --all     chezmoi binary + sources + brew + mise + hive
+
+`--all` runs the upgrade gestures for each tool in dependency order. On
+Linux it deliberately SKIPS distro package upgrade (`dnf upgrade` etc.) —
+kernel/service implications make that a manual gesture.
+EOF
+      return 0
+      ;;
+    "")
+      command -v chezmoi >/dev/null 2>&1 || {
+        printf 'dotfiles upgrade: chezmoi not on PATH\n' >&2
+        return 1
+      }
+      exec chezmoi upgrade
+      ;;
+    --all)
+      _upgrade_all
+      return $?
+      ;;
+    *)
+      printf 'unknown flag: %q\n' "$1" >&2
+      printf 'try: dotfiles upgrade --help\n' >&2
+      return 1
+      ;;
+  esac
+}
+
+_upgrade_all() {
+  local fails=0
+  _step() {
+    printf '\n%s== %s ==%s\n' "$C_BOLD" "$1" "$C_RESET"
+    shift
+    "$@" || fails=$((fails + 1))
+  }
+
+  command -v chezmoi >/dev/null 2>&1 && _step "chezmoi (binary)" chezmoi upgrade
+  command -v chezmoi >/dev/null 2>&1 && _step "chezmoi (sources + apply)" chezmoi update --apply
+
+  case "$(uname -s)" in
+    Darwin)
+      command -v brew >/dev/null 2>&1 && _step "brew" brew upgrade
+      ;;
+    Linux)
+      printf '\n%s== distro packages ==%s\n  ' "$C_BOLD" "$C_RESET"
+      printf '%sskipped (run `sudo dnf upgrade` / `sudo apt upgrade` etc. manually)%s\n' \
+        "$C_DIM" "$C_RESET"
+      ;;
+  esac
+
+  command -v mise >/dev/null 2>&1 && _step "mise (self)"  mise self-update
+  command -v mise >/dev/null 2>&1 && _step "mise (tools)" mise upgrade
+  command -v hive >/dev/null 2>&1 && _step "hive"         hive upgrade
+
+  printf '\n'
+  if (( fails == 0 )); then
+    printf '%s✓%s all upgrade steps succeeded\n' "${C_BOLD}$(printf '\033[1;32m')" "$C_RESET"
+  else
+    printf '%s✖%s %d step(s) failed\n' "${C_BOLD}$(printf '\033[1;31m')" "$C_RESET" "$fails"
+  fi
   return "$fails"
 }
 
@@ -628,10 +699,23 @@ case "${1:-}" in
     shift
     cmd_profile "$@"
     ;;
+  upgrade)
+    shift
+    cmd_upgrade "$@"
+    ;;
   help)
     if [[ $# -eq 1 ]]; then cmd_help; else exec chezmoi "$@"; fi
     ;;
   *)
-    exec chezmoi "$@"
+    # Flags pass through unchecked (e.g. chezmoi --version). For bare
+    # subcommands, probe `chezmoi help <name>` first so typos surface a
+    # dotfiles-aware error instead of silently routing to chezmoi.
+    if [[ "$1" == -* ]] || chezmoi help "$1" >/dev/null 2>&1; then
+      exec chezmoi "$@"
+    else
+      printf 'dotfiles: unknown subcommand %q\n' "$1" >&2
+      printf 'see `dotfiles --help` (wrapper) or `chezmoi --help` (forwarded)\n' >&2
+      exit 1
+    fi
     ;;
 esac
