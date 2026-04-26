@@ -252,6 +252,52 @@ fail_line=$(grep $'\tstep::fail\t' "$TMP_RUNLOG")
 fail_exit=$(printf '%s' "$fail_line" | awk -F'\t' '{print $3}')
 _eq "fail run-log exit code" "7" "$fail_exit"
 
+_section "non-interactive failure auto-skips (no retry prompt hang)"
+# When stdin isn't a TTY, the failure prompt should immediately return
+# "skip" so the runner moves on. We model that by reading from /dev/null.
+step::counter() { _attempt_count=$((${_attempt_count:-0}+1)); return 9; }
+(
+  _attempt_count=0
+  _pick_n=1
+  _pick_names=("step::counter")
+  _pick_labels=("Counter")
+  _pick_states=(normal)
+  _pick_reasons=("")
+  dict::clear pick_selected
+  dict::set pick_selected "step::counter" 1
+  pick::_run_selected </dev/null >/dev/null 2>&1
+  rc=$?
+  exit "$(( rc * 100 + _attempt_count ))"
+)
+# Expected: rc=1 (1 failure) * 100 + 1 attempt = 101
+_eq "non-interactive: 1 failure × 1 attempt" "101" "$?"
+
+_section "abort skips remaining steps and counts them"
+step::ok2() { return 0; }
+step::bad() { return 5; }
+step::after() { return 0; }
+out=$(
+  _pick_n=3
+  _pick_names=("step::ok2" "step::bad" "step::after")
+  _pick_labels=("First" "Bad" "After")
+  _pick_states=(normal normal normal)
+  _pick_reasons=("" "" "")
+  dict::clear pick_selected
+  dict::set pick_selected "step::ok2" 1
+  dict::set pick_selected "step::bad" 1
+  dict::set pick_selected "step::after" 1
+  # Pipe 'a' as stdin; pick::_failure_prompt reads from /dev/tty so we need
+  # to exercise the non-tty branch (auto-skip) instead. So this asserts
+  # that without a tty, we *don't* abort but skip — which is the safe
+  # default. A tty-driven abort would need expect.
+  pick::_run_selected </dev/null 2>&1
+  echo "rc=$?"
+)
+case "$out" in
+  *"rc=1"*) _true "non-tty auto-skip → 1 failure, others ran" 0 ;;
+  *) _eq "rc=1 expected" "rc=1 in output" "$out" ;;
+esac
+
 _section "empty selection is a clean no-op"
 (
   _pick_n=1

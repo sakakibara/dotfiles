@@ -424,8 +424,27 @@ pick::_run_step() {
   return "$exit_code"
 }
 
+# When a step fails interactively, prompt for action: retry / skip / abort.
+# Returns: "retry" "skip" or "abort" on stdout. Single-key, no Enter needed.
+# Non-interactive shells (no stdin TTY) auto-skip — they'd just hang here.
+pick::_failure_prompt() {
+  if ! [[ -t 0 ]]; then
+    printf 'skip'
+    return 0
+  fi
+  printf '  \033[1m[r]\033[0metry · \033[1m[s]\033[0mkip · \033[1m[a]\033[0mbort  > ' >&2
+  local ans
+  IFS= read -rsn1 ans </dev/tty 2>/dev/null || ans=''
+  printf '\n' >&2
+  case "$ans" in
+    r|R) printf 'retry' ;;
+    a|A|q|Q) printf 'abort' ;;
+    *) printf 'skip' ;;
+  esac
+}
+
 pick::_run_selected() {
-  local i ran=0 failed=0 skipped=0 selected=0
+  local i ran=0 failed=0 skipped=0 selected=0 aborted=0
 
   for ((i=0; i<_pick_n; i++)); do
     dict::has pick_selected "${_pick_names[i]}" && selected=$((selected + 1))
@@ -443,16 +462,40 @@ pick::_run_selected() {
       skipped=$((skipped + 1))
       continue
     fi
-    if pick::_run_step "$nm" "$lbl"; then
-      ran=$((ran + 1))
-    else
-      failed=$((failed + 1))
-      ran=$((ran + 1))
+    if (( aborted )); then
+      skipped=$((skipped + 1))
+      continue
     fi
+    # Run with retry. Each retry re-renders the step header.
+    while true; do
+      if pick::_run_step "$nm" "$lbl"; then
+        ran=$((ran + 1))
+        break
+      fi
+      # Failed. Decide what to do.
+      local action
+      action=$(pick::_failure_prompt)
+      case "$action" in
+        retry) continue ;;
+        abort)
+          failed=$((failed + 1))
+          ran=$((ran + 1))
+          aborted=1
+          break
+          ;;
+        skip|*)
+          failed=$((failed + 1))
+          ran=$((ran + 1))
+          break
+          ;;
+      esac
+    done
   done
 
   msg::heading "Summary"
-  printf '  ✔ %d ran   ✖ %d failed   ↪ %d skipped\n' "$ran" "$failed" "$skipped"
+  printf '  ✔ %d ran   ✖ %d failed   ↪ %d skipped' "$ran" "$failed" "$skipped"
+  (( aborted )) && printf '   \033[1;31m(aborted)\033[0m'
+  printf '\n'
   if (( failed > 0 )); then
     printf '  logs: %s\n' "$(pick::_log_dir)"
   fi
