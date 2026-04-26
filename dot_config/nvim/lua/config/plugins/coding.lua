@@ -15,12 +15,17 @@ return {
         ghost_text = { enabled = false },
       },
       sources = {
-        default = { "lsp", "path", "snippets", "buffer", "lazydev" },
+        default = { "lsp", "path", "snippets", "buffer", "lazydev", "chezmoi" },
         providers = {
           lazydev = {
             name = "LazyDev",
             module = "lazydev.integrations.blink",
             score_offset = 100,
+          },
+          chezmoi = {
+            name = "Chezmoi",
+            module = "lib.chezmoi.blink",
+            score_offset = 50,
           },
         },
       },

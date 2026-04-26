@@ -52,6 +52,10 @@ function M.setup()
 
   require("config.options")
 
+  -- chezmoi template support: filetype detection for *.tmpl, gotmpl
+  -- treesitter injection in {{...}} regions, blink.cmp source registration.
+  Lib.chezmoi.setup()
+
   -- Autocmds load unconditionally so our SwapExists handler is in place
   -- before any buffer (argument file, :e, session restore) is ever read.
   require("config.autocmds")
