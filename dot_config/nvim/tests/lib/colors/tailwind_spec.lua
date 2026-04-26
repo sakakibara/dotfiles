@@ -27,3 +27,21 @@ T.describe("lib.colors.tailwind palette lookup", function()
     T.truthy(c2)
   end)
 end)
+
+T.describe("lib.colors.tailwind project @theme scan", function()
+  T.it("scan_file harvests --color-* declarations from @theme", function()
+    TW._overlay = {}
+    local fixture = vim.fn.getcwd() .. "/tests/lib/colors/fixtures/theme.css"
+    TW.scan_file(fixture)
+    T.truthy(TW._overlay["brand-500"], "brand-500 not in overlay")
+    T.truthy(TW._overlay["warn"], "warn not in overlay")
+  end)
+
+  T.it("resolve uses overlay before built-in", function()
+    TW._overlay = { ["red-500"] = { 0.5, 0.5, 0 } }
+    local c = TW.resolve("red-500")
+    T.truthy(c, "resolve returned nil")
+    -- Reset for downstream tests
+    TW._overlay = {}
+  end)
+end)

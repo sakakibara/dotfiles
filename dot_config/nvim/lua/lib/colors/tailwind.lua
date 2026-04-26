@@ -45,4 +45,40 @@ function M.resolve_class(class)
   return nil
 end
 
+-- Lazy require to avoid a require cycle (tailwind <-> parse).
+local _parse, _color
+local function parse() if not _parse then _parse = require("lib.colors.parse") end; return _parse end
+local function color() if not _color then _color = require("lib.colors.color") end; return _color end
+
+-- Read a CSS file and harvest `--color-NAME: <value>;` declarations from
+-- inside @theme {} blocks. Pure text scan; @theme bodies don't nest braces.
+function M.scan_file(path)
+  local fd = io.open(path, "r")
+  if not fd then return end
+  local content = fd:read("*a")
+  fd:close()
+  for body in content:gmatch("@theme%s*{(.-)}") do
+    for name, value in body:gmatch("%-%-color%-([%w%-]+)%s*:%s*([^;]+);") do
+      local results = parse().parse_all(value)
+      if #results > 0 then
+        local L, Cval, h = color().to_oklch(results[1].color)
+        M._overlay[name] = { L, Cval, h }
+      end
+    end
+  end
+end
+
+-- Scan all *.css files under the given root (default: cwd). Skips common
+-- vendored / build directories.
+function M.scan_project(root)
+  root = root or vim.fn.getcwd()
+  local files = vim.fn.globpath(root, "**/*.css", false, true)
+  for _, f in ipairs(files) do
+    if not (f:match("/node_modules/") or f:match("/%.git/")
+            or f:match("/dist/") or f:match("/build/")) then
+      pcall(M.scan_file, f)
+    end
+  end
+end
+
 return M
