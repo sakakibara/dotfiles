@@ -1,5 +1,5 @@
 -- Generated from dot_config/nvim/lua/lib/role.lua.tmpl.
 -- Driven by chezmoi data key `profile` (personal | work).
 return {
-  kind = "{{ .profile }}",
+  kind = "{{ (index . "profile") | default "personal" }}",
 }

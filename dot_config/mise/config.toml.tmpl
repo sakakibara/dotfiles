@@ -6,6 +6,6 @@ php = "latest"
 
 [settings]
 experimental = true
-{{- if eq .profile "work" }}
+{{- if eq ((index . "profile") | default "personal") "work" }}
 idiomatic_version_file_enable_tools = ["ruby"]
 {{- end }}
