@@ -79,6 +79,8 @@ function M.setup()
     install = { colorscheme = "catppuccin" },
   })
 
+  Lib.colors.setup({})
+
   -- Chrome highlights are derived (fg = Function.fg etc.) so they must
   -- be registered AFTER catppuccin applied — otherwise we'd sample
   -- default highlights and rely on ColorScheme to re-apply, which leaves

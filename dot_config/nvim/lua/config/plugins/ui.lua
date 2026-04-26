@@ -79,22 +79,6 @@ return {
     opts = {},
   },
 
-  -- Virtual-text color previews for hex / rgb / hsl / tailwind
-  {
-    "brenoprata10/nvim-highlight-colors",
-    name  = "nvim-highlight-colors",
-    event = "LazyFile",
-    -- The regex scan over visible rows freezes nvim when a visible line
-    -- crosses ~1MB (saw a 1.8MB single line in a *.panic dump take >2min
-    -- of pegged CPU). exclude bigfile buffers — autocmds.lua sets that
-    -- filetype on any file >1.5MB before BufReadPost.
-    opts  = {
-      render             = "virtual",
-      enable_tailwind    = true,
-      exclude_filetypes  = { "bigfile" },
-    },
-  },
-
   -- Color picker: :CccPick / :CccConvert / :CccHighlighterToggle
   {
     "uga-rosa/ccc.nvim",
