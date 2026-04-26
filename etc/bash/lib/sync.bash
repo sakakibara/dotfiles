@@ -264,6 +264,9 @@ sync::_render() {
     (( _sync_offset > n - body_rows )) && _sync_offset=$((n - body_rows))
   fi
 
+  # DEC sync mode 2026 — commit the redraw atomically (no flash between
+  # clear and re-draw). Ignored by terminals that don't support it.
+  printf '\033[?2026h'
   printf '\033[H\033[2J'
   printf '\033[1mReview untracked packages\033[0m\n'
   printf '\033[2m↑/↓ move · space cycle · a add · p add @personal · w add @work\n'
@@ -307,6 +310,7 @@ sync::_render() {
     printf ' · %d–%d/%d' "$((_sync_offset + 1))" "$end" "$n"
   fi
   printf '\033[0m\n'
+  printf '\033[?2026l'  # commit atomic redraw
 }
 
 sync::_render_help() {

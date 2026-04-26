@@ -513,6 +513,9 @@ pick::_render() {
   cols=$(pick::_cols)
   rows=$(pick::_rows)
 
+  # DEC sync mode 2026 — commit the redraw atomically (no flash between
+  # clear and re-draw). Ignored by terminals that don't support it.
+  printf '\033[?2026h'
   printf '\033[H\033[2J'  # cursor home + clear screen
   printf '\033[1mSelect steps to run\033[0m\n'
   printf '\033[2m↑/↓ move · ←/→ column · space toggle · a all · n none · / filter · enter run · q quit · ? help\033[0m\n\n'
@@ -591,6 +594,7 @@ pick::_render() {
   fi
   (( two_col )) && printf ' · 2-col'
   printf '\033[0m\n'
+  printf '\033[?2026l'  # commit atomic redraw
 }
 
 pick::_render_help() {
