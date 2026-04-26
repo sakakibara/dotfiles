@@ -135,10 +135,10 @@ end
 -- ============================================================================
 
 local SEP = {
-  cap_l    = "",  -- U+E0B6 rounded left
-  cap_r    = "",  -- U+E0B4 rounded right
-  slant_r  = "",  -- U+E0B8 slant-right (mode→mid)
-  slant_l  = "",  -- U+E0BA slant-left  (mid→mode on right side, unused)
+  cap_l    = "\u{e0b6}",  -- rounded left
+  cap_r    = "\u{e0b4}",  -- rounded right
+  slant_r  = "\u{e0b8}",  -- slant-right (mode→mid)
+  slant_l  = "\u{e0ba}",  -- slant-left  (mid→mode on right side, unused)
 }
 
 -- 6 levels of horizontal-bar glyphs (U+1FB76..U+1FB7B). Used as a 2-char
