@@ -155,6 +155,20 @@ jobs:
       - name: pick.ps1 (parse + non-interactive paths)
         shell: pwsh
         run: pwsh -NoProfile -File etc/tests/pick_ps1.ps1
+      - name: Parse-check sync.ps1
+        shell: pwsh
+        run: |
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile(
+            "dot_local/bin/sync.ps1", [ref]$null, [ref]$errors)
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Host $_ }
+            exit 1
+          }
+          Write-Host "sync.ps1 parses cleanly"
+      - name: sync.ps1 (parsers + format + apply)
+        shell: pwsh
+        run: pwsh -NoProfile -File etc/tests/sync_ps1.ps1
 
   validate-packages-fedora:
     name: Validate packages (Fedora)

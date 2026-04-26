@@ -111,7 +111,7 @@ Usage:
   dotfiles                  Print info snapshot (default)
   dotfiles info             Same as default
   dotfiles install          Run install steps (PowerShell port pending — use chezmoi apply)
-  dotfiles sync             Review untracked packages (PowerShell port pending)
+  dotfiles sync             Review untracked packages and add/blacklist them
   dotfiles edit <pattern>   Fuzzy-find a managed file and edit via chezmoi
   dotfiles profile [name]   Print or switch the active chezmoi profile
   dotfiles doctor           Health-check the dotfiles + chezmoi setup
@@ -369,14 +369,15 @@ inputs (packages.txt, mise config, hive layout) actually changed.
 "@ | Write-Host
 }
 
-function Cmd-Sync-Stub {
-    @"
-dotfiles sync: PowerShell port pending.
-
-For now on Windows, edit etc/windows/packages.txt directly to add or
-remove entries, then run:
-  chezmoi apply                   # picks up package additions/removals
-"@ | Write-Host
+function Cmd-Sync {
+    # sync.ps1 lives next to dotfiles.ps1.
+    $script = Join-Path $PSScriptRoot 'sync.ps1'
+    if (-not (Test-Path -LiteralPath $script)) {
+        [Console]::Error.WriteLine("dotfiles sync: $script not found")
+        exit 1
+    }
+    & $script
+    exit $LASTEXITCODE
 }
 
 # ---------- dispatch ----------
@@ -397,7 +398,7 @@ switch ($first) {
         }
     }
     'install'  { Cmd-Install-Stub }
-    'sync'     { Cmd-Sync-Stub }
+    'sync'     { Cmd-Sync }
     'edit'     { Cmd-Edit    $rest }
     'profile'  { Cmd-Profile $rest }
     'doctor'   { Cmd-Doctor  $rest }
