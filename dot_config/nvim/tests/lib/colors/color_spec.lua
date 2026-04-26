@@ -63,3 +63,32 @@ T.describe("lib.colors.color hsl conversion", function()
     T.truthy(math.abs(l - 0.5) < 0.01, "light ~0.5, got " .. l)
   end)
 end)
+
+T.describe("lib.colors.color oklch conversion", function()
+  T.it("from_oklch produces sRGB in 0..1 range", function()
+    local c = C.from_oklch(0.5, 0.1, 30)
+    T.truthy(c.r >= 0 and c.r <= 1, "r out of range: " .. c.r)
+    T.truthy(c.g >= 0 and c.g <= 1, "g out of range: " .. c.g)
+    T.truthy(c.b >= 0 and c.b <= 1, "b out of range: " .. c.b)
+  end)
+
+  T.it("white round-trips", function()
+    local white = { r = 1, g = 1, b = 1, a = 1 }
+    local l, c, h = C.to_oklch(white)
+    T.truthy(math.abs(l - 1) < 0.01, "L ~1, got " .. l)
+    T.truthy(c < 0.01, "C ~0 for white, got " .. c)
+  end)
+
+  T.it("black round-trips", function()
+    local black = { r = 0, g = 0, b = 0, a = 1 }
+    local l = C.to_oklch(black)
+    T.truthy(l < 0.01, "L ~0 for black, got " .. l)
+  end)
+
+  T.it("oklch(0.74 0.16 50) approximates #ff8800", function()
+    local c = C.from_oklch(0.74, 0.16, 50)
+    T.truthy(math.abs(c.r - 1.0) < 0.05, "r near 1.0, got " .. c.r)
+    T.truthy(math.abs(c.g - 0.533) < 0.1, "g near 0.533, got " .. c.g)
+    T.truthy(math.abs(c.b - 0.0) < 0.1, "b near 0, got " .. c.b)
+  end)
+end)
