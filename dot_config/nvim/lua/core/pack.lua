@@ -663,6 +663,10 @@ vim.api.nvim_create_user_command("PackUpdate", function(opts)
   local args = opts.fargs
   local names = #args > 0 and args or nil
   vim.pack.update(names)
+  -- vim.pack opens a preview buffer; convention is `:w` to apply, close to
+  -- cancel. Not discoverable without docs, so surface the hint.
+  vim.notify(":w to apply  ·  close (:bd!) to cancel", vim.log.levels.INFO,
+    { title = "PackUpdate" })
   -- nvim-pack-lock.json is written by vim.pack.update itself; no extra
   -- refresh needed here.
 end, { nargs = "*", desc = "Update plugin(s)" })
