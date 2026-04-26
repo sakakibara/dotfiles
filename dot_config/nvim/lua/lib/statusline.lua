@@ -507,7 +507,11 @@ local function build_dap()
 end
 
 local function build_pos()
-  return "%#StslPos# %l:%c "
+  local lnum     = vim.fn.line(".")
+  local col      = vim.fn.virtcol(".")
+  local maxline  = vim.fn.line("$")
+  local lw       = math.max(#tostring(maxline), 3)  -- min 3 for "999"
+  return string.format("%%#StslPos# %" .. lw .. "d:%-3d ", lnum, col)
 end
 
 local function build_scroll()
@@ -599,8 +603,8 @@ function M.render()
     { key = "spell",   content = build_spell(),    priority = 20 },
     { key = "snippet", content = build_snippet(),  priority = 25 },
     { key = "search",  content = build_search(),   priority = 25 },
-    { key = "scroll",  content = build_scroll(),   priority = 30 },
     { key = "pos",     content = build_pos(),      priority = 95 },
+    { key = "scroll",  content = build_scroll(),   priority = 30 },
     { key = "cap",     content = end_cap(),        priority = 99 },
   }
 
