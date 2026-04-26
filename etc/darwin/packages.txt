@@ -85,15 +85,15 @@ zoxide
 # ── Casks (GUI apps)
 cask:1password
 cask:alfred
-cask:anytype
+cask:anytype @personal
 cask:chatgpt
 cask:discord @personal
-cask:fantastical
+cask:fantastical @personal
 cask:figma
 cask:firefox
 cask:flutter
 cask:ghostty
-cask:google-chrome
+cask:google-chrome @personal
 cask:httpie
 cask:iterm2
 cask:karabiner-elements
@@ -101,10 +101,10 @@ cask:licecap
 cask:logi-options+
 cask:microsoft-auto-update
 cask:microsoft-office
-cask:movist-pro
+cask:movist-pro @personal
 cask:orbstack
 cask:scroll-reverser
-cask:steam
+cask:steam @personal
 cask:tableplus
 cask:todoist
 cask:zen-browser
