@@ -11,6 +11,41 @@ local function get_marks(buf)
   return vim.api.nvim_buf_get_extmarks(buf, R.ns, 0, -1, { details = true })
 end
 
+T.describe("lib.colors.render diff invariant", function()
+  local C = require("lib.colors.color")
+
+  T.it("re-applying same detected list reuses extmarks (no churn)", function()
+    R.reset()
+    local buf = make_buf({ "x: #ff0000; y: #00ff00;" })
+    local detected = {
+      { lnum = 0, col_s = 3,  col_e = 10, color = C.from_hex("#ff0000") },
+      { lnum = 0, col_s = 15, col_e = 22, color = C.from_hex("#00ff00") },
+    }
+    R.apply(buf, detected)
+    local marks_a = get_marks(buf)
+    R.apply(buf, detected)
+    local marks_b = get_marks(buf)
+    T.eq(marks_a[1][1], marks_b[1][1], "mark id changed for unchanged color")
+    T.eq(marks_a[2][1], marks_b[2][1], "mark id changed for unchanged color")
+    vim.api.nvim_buf_delete(buf, { force = true })
+  end)
+
+  T.it("removing a color from list deletes its mark only", function()
+    R.reset()
+    local buf = make_buf({ "x: #ff0000; y: #00ff00;" })
+    R.apply(buf, {
+      { lnum = 0, col_s = 3,  col_e = 10, color = C.from_hex("#ff0000") },
+      { lnum = 0, col_s = 15, col_e = 22, color = C.from_hex("#00ff00") },
+    })
+    R.apply(buf, {
+      { lnum = 0, col_s = 3,  col_e = 10, color = C.from_hex("#ff0000") },
+    })
+    local marks = get_marks(buf)
+    T.eq(#marks, 1, "expected 1 mark after removal, got " .. #marks)
+    vim.api.nvim_buf_delete(buf, { force = true })
+  end)
+end)
+
 T.describe("lib.colors.render virtual swatch", function()
   T.it("places one extmark per detected color", function()
     R.reset()
