@@ -1,0 +1,38 @@
+# Native packages for Debian/Ubuntu. Best-effort starting point — CI validates
+# against debian:stable. Some tools (gh, lazygit, etc.) need to be installed
+# via extras.bash on Debian since they're not in default repos.
+#
+# Notes:
+#   - bat may install as `batcat` on older Ubuntu/Debian (renamed due to
+#     conflict with bacula-cli). User's zshrc/fish handles fdfind→fd alias.
+#   - gh is NOT in default Debian repos; handled by extras::gh.
+#
+# CLI tools and shells
+bash
+bat
+fd-find
+ffmpeg
+fish
+fzf
+gawk
+git
+gnupg
+imagemagick
+jq
+neovim
+nnn
+ripgrep
+tree
+wget
+yt-dlp
+zoxide
+zsh
+
+# Build tools
+build-essential
+autoconf
+automake
+bison
+cmake
+pkg-config
+re2c

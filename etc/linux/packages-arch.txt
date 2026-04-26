@@ -1,0 +1,30 @@
+# Native packages for Arch/Manjaro/EndeavourOS. Best-effort — CI validates
+# against archlinux:latest container. Arch tends to have everything in
+# extra/community; this list mirrors what's in Brewfile minus macOS-specific.
+#
+# CLI tools and shells
+bash
+bat
+fd
+ffmpeg
+fish
+fzf
+gawk
+github-cli
+git
+gnupg
+imagemagick
+jq
+neovim
+nnn
+ripgrep
+tree
+wget
+yt-dlp
+zoxide
+zsh
+
+# Build tools (base-devel meta-package covers most)
+base-devel
+cmake
+re2c

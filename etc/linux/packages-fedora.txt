@@ -1,0 +1,35 @@
+# Native packages for Fedora (and RHEL-family). Validated by CI via
+# `dnf info <pkg>` against fedora:latest container.
+#
+# CLI tools and shells
+bash
+bat
+fd-find
+ffmpeg-free
+fish
+fzf
+gawk
+gh
+git
+gnupg2
+ImageMagick
+jq
+neovim
+nnn
+ripgrep
+tree
+wget
+yt-dlp
+zoxide
+zsh
+
+# Build tools
+autoconf
+automake
+bison
+cmake
+gcc
+gcc-c++
+make
+pkgconf-pkg-config
+re2c

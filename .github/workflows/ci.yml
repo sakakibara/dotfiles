@@ -102,3 +102,30 @@ jobs:
             exit 1
           }
           Write-Host "theme.ps1 parses cleanly (TODO: port etc/tests/theme.sh to PowerShell)"
+
+  validate-packages-fedora:
+    name: Validate packages (Fedora)
+    runs-on: ubuntu-latest
+    container: fedora:latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: dnf -y check-update || true
+      - run: bash etc/ci/validate-packages.sh fedora
+
+  validate-packages-debian:
+    name: Validate packages (Debian)
+    runs-on: ubuntu-latest
+    container: debian:stable
+    steps:
+      - uses: actions/checkout@v4
+      - run: apt-get update
+      - run: bash etc/ci/validate-packages.sh debian
+
+  validate-packages-arch:
+    name: Validate packages (Arch)
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pacman -Syu --noconfirm
+      - run: bash etc/ci/validate-packages.sh arch
