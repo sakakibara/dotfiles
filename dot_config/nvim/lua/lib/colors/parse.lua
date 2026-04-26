@@ -3,6 +3,7 @@
 -- Each format has its own pattern. parse() returns the literal that contains
 -- the given offset (or nil); parse_all() scans an entire string.
 local C = require("lib.colors.color")
+local NAMED = require("lib.colors._named")
 local M = {}
 
 -- Each detector: pattern (Lua), capture-to-Color converter
@@ -109,6 +110,17 @@ add_detector("oklch%([^)]+%)", function(match)
 
   if not L or not Cval or not h then return nil end
   return C.from_oklch(L, Cval, h, a)
+end)
+
+-- CSS named colors. Use Lua frontier patterns (%f[%a] / %f[^%a]) to require
+-- letter boundaries on both sides, so that "red" inside "border-radius" is
+-- not matched.
+add_detector("%f[%a][%a]+%f[^%a]", function(match)
+  local hex = NAMED[match:lower()]
+  if not hex then return nil end
+  local c = C.from_hex(hex)
+  c.source = { fmt = "named", original = match }
+  return c
 end)
 
 -- Scan str for all literals; return list of {range, color}.
