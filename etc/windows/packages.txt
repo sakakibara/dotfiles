@@ -1,0 +1,30 @@
+# Windows packages — bare names install via scoop's default bucket; entries
+# of the form `bucket/name` use that scoop bucket; `winget:Pkg.Id` falls back
+# to winget when scoop doesn't have the package. Profile gating uses the same
+# trailing ` @profile1,profile2` syntax as the macOS / Linux files.
+#
+# Companion: etc/windows/packages-blacklist.txt (same syntax).
+#
+# NOTE: bash `dotfiles sync` doesn't run on native Windows (no bash). A
+# PowerShell sibling that consumes this file is future work; for now this
+# is the canonical source of what should be installed and the run_once
+# `windows/run_once_install-scoop.ps1.tmpl` script (TODO) will read it.
+
+# Buckets (scoop bucket add)
+# bucket:extras
+# bucket:nerd-fonts
+
+# CLI
+# neovim
+# ripgrep
+# fd
+# bat
+# fzf
+# git
+# gh
+
+# GUI / casks
+# extras/firefox
+# extras/google-chrome
+# extras/1password
+# winget:Microsoft.PowerToys

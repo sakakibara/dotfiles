@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-import msg
+import msg packages
 
 # Detect the distro family. Returns one of: fedora, debian, arch, suse, unknown.
 # Maps RHEL-family (Fedora/Rocky/Alma/CentOS) → fedora, Debian-family
@@ -48,47 +48,49 @@ linux::is_wsl() {
   [[ -n "${WSL_DISTRO_NAME:-}" ]]
 }
 
-# Read a packages-<distro>.txt list, stripping comments and blanks.
-linux::_read_packages() {
-  local file="$1"
-  [[ -f "$file" ]] || return 1
-  sed -E 's/#.*$//; s/[[:space:]]+$//' "$file" | grep -vE '^[[:space:]]*$'
-}
-
 linux::install_packages() {
   local distro="$1"
-  local file="${CHEZMOI_SOURCE_DIR:-$HOME/.local/share/chezmoi}/etc/linux/packages-${distro}.txt"
+  local source_dir="${CHEZMOI_SOURCE_DIR:-$HOME/.local/share/chezmoi}"
+  local file="$source_dir/etc/linux/packages-${distro}.txt"
+  local blacklist="$source_dir/etc/linux/packages-blacklist.txt"
+  local profile
+  profile=$(packages::current_profile)
+
   if [[ ! -f "$file" ]]; then
     msg::error "no package list at $file"
     return 1
   fi
 
-  msg::heading "Installing native packages ($distro)"
-  local pkgs
-  pkgs=$(linux::_read_packages "$file")
-  if [[ -z "$pkgs" ]]; then
+  msg::heading "Installing native packages ($distro, profile=$profile)"
+
+  local pkgs=() unsupported=()
+  local kind name
+  while IFS=$'\t' read -r kind name; do
+    case "$kind" in
+      pkg) pkgs+=("$name") ;;
+      *)   unsupported+=("${kind}:${name}") ;;
+    esac
+  done < <(packages::filtered "$file" "$profile" pkg "$blacklist")
+
+  if (( ${#unsupported[@]} > 0 )); then
+    msg::error "unsupported kinds for linux (skipped): ${unsupported[*]}"
+  fi
+
+  if (( ${#pkgs[@]} == 0 )); then
     msg::arrow "no packages to install"
     return 0
   fi
 
   case "$distro" in
-    fedora)
-      # shellcheck disable=SC2086
-      sudo dnf install -y $pkgs
-      ;;
+    fedora) sudo dnf install -y "${pkgs[@]}" ;;
     debian)
       sudo apt-get update
-      # shellcheck disable=SC2086
-      sudo apt-get install -y $pkgs
+      sudo apt-get install -y "${pkgs[@]}"
       ;;
-    arch)
-      # shellcheck disable=SC2086
-      sudo pacman -Syu --needed --noconfirm $pkgs
-      ;;
+    arch)   sudo pacman -Syu --needed --noconfirm "${pkgs[@]}" ;;
     suse)
       sudo zypper --non-interactive refresh
-      # shellcheck disable=SC2086
-      sudo zypper --non-interactive install $pkgs
+      sudo zypper --non-interactive install "${pkgs[@]}"
       ;;
     *)
       msg::error "unsupported distro: $distro"

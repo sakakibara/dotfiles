@@ -1,0 +1,3 @@
+# Linux packages-blacklist — entries (in the same syntax as
+# packages-<distro>.txt) that `dotfiles sync` should never offer to re-add.
+# Use this for one-off installs you don't want tracked across machines.

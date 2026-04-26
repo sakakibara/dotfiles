@@ -1,11 +1,16 @@
 {{ if eq .chezmoi.os "linux" -}}
 #!/usr/bin/env bash
-# Hash trigger — re-runs whenever any of the per-distro package lists change.
-# packages-fedora hash: {{ include "etc/linux/packages-fedora.txt" | sha256sum }}
-# packages-debian hash: {{ include "etc/linux/packages-debian.txt" | sha256sum }}
-# packages-arch hash:   {{ include "etc/linux/packages-arch.txt"   | sha256sum }}
-# packages-suse hash:   {{ include "etc/linux/packages-suse.txt"   | sha256sum }}
+# Hash trigger — re-runs whenever any of the per-distro lists or the
+# blacklist change.
+# packages-fedora hash: {{ include "etc/linux/packages-fedora.txt"   | sha256sum }}
+# packages-debian hash: {{ include "etc/linux/packages-debian.txt"   | sha256sum }}
+# packages-arch hash:   {{ include "etc/linux/packages-arch.txt"     | sha256sum }}
+# packages-suse hash:   {{ include "etc/linux/packages-suse.txt"     | sha256sum }}
+# blacklist hash:       {{ include "etc/linux/packages-blacklist.txt" | sha256sum }}
 source {{ joinPath .chezmoi.sourceDir "etc" "bash" "lib" "init.bash" | quote }}
+
+export DOTFILES_PROFILE={{ (index . "profile") | default "personal" | quote }}
+export CHEZMOI_SOURCE_DIR={{ .chezmoi.sourceDir | quote }}
 
 import unix linux
 

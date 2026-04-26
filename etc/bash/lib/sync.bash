@@ -17,7 +17,7 @@
 #
 # Reuses pick's terminal primitives (alt-screen, key reader, width helpers).
 
-import msg dict packages pick
+import msg dict packages pick linux
 
 # ---------- query installed (OS-dispatched) ----------
 
@@ -25,7 +25,38 @@ sync::_query_installed() {
   local os="$1"
   case "$os" in
     darwin) sync::_query_installed_darwin ;;
+    linux)  sync::_query_installed_linux ;;
     *) ;;
+  esac
+}
+
+sync::_query_installed_linux() {
+  # Yields user-installed packages (not transitive deps) as `pkg<TAB>name`.
+  # Distro-specific because each package manager has its own "manually-
+  # installed" query.
+  local distro
+  distro=$(linux::detect_distro 2>/dev/null || echo unknown)
+  case "$distro" in
+    fedora)
+      # `dnf repoquery --userinstalled` emits `name-ver-arch` per line; strip
+      # to bare names. This matches the request set, not transitive deps.
+      dnf repoquery --userinstalled --qf '%{name}\n' 2>/dev/null \
+        | sort -u | sed 's/^/pkg\t/'
+      ;;
+    debian)
+      apt-mark showmanual 2>/dev/null | sort -u | sed 's/^/pkg\t/'
+      ;;
+    arch)
+      pacman -Qe -q 2>/dev/null | sort -u | sed 's/^/pkg\t/'
+      ;;
+    suse)
+      # `zypper se -i -t package` includes deps; filter to "i+" rows
+      # (user-installed, not auto). zypper output has 7 columns —
+      # 'S | Repo | Name | ...'; we want the Name column.
+      zypper --non-interactive se -i -t package 2>/dev/null \
+        | awk -F'|' '$1 ~ /i\+/ {gsub(/^[[:space:]]+|[[:space:]]+$/,"",$3); print $3}' \
+        | sort -u | sed 's/^/pkg\t/'
+      ;;
   esac
 }
 
@@ -116,9 +147,8 @@ sync::compute_missing() {
 
 # Populate _sync_desc[] (parallel to _sync_items[]) by batching `brew desc`
 # calls per-kind. Empty string for items with no description.
-sync::_fetch_descriptions() {
-  dict::clear _sync_desc_map
-
+sync::_fetch_descriptions_darwin() {
+  command -v brew >/dev/null 2>&1 || return 0
   local brews=() casks=()
   local i n=${#_sync_items[@]}
   for ((i=0; i<n; i++)); do
@@ -130,26 +160,55 @@ sync::_fetch_descriptions() {
     esac
   done
 
-  if (( ${#brews[@]} > 0 )) && command -v brew >/dev/null 2>&1; then
+  if (( ${#brews[@]} > 0 )); then
     local line nm desc
     while IFS= read -r line; do
       [[ "$line" == *": "* ]] || continue
-      nm="${line%%: *}"
-      desc="${line#*: }"
+      nm="${line%%: *}"; desc="${line#*: }"
       dict::set _sync_desc_map "brew:$nm" "$desc"
     done < <(brew desc "${brews[@]}" 2>/dev/null)
   fi
-  if (( ${#casks[@]} > 0 )) && command -v brew >/dev/null 2>&1; then
+  if (( ${#casks[@]} > 0 )); then
     local line nm desc
     while IFS= read -r line; do
       [[ "$line" == *": "* ]] || continue
-      nm="${line%%: *}"
-      desc="${line#*: }"
+      nm="${line%%: *}"; desc="${line#*: }"
       dict::set _sync_desc_map "cask:$nm" "$desc"
     done < <(brew desc --cask "${casks[@]}" 2>/dev/null)
   fi
+}
+
+# Fetch a one-line description for each pkg-kind item via the distro's
+# package manager. Single-package query per item — slower than darwin's
+# batched `brew desc`, but the untracked subset is usually small.
+sync::_fetch_descriptions_linux() {
+  local distro
+  distro=$(linux::detect_distro 2>/dev/null || echo unknown)
+  local i n=${#_sync_items[@]}
+  for ((i=0; i<n; i++)); do
+    local kind name
+    IFS=$'\t' read -r kind name <<< "${_sync_items[i]}"
+    [[ "$kind" == "pkg" ]] || continue
+    local d=""
+    case "$distro" in
+      fedora) d=$(dnf info "$name" 2>/dev/null | awk -F': *' '/^Summary/ {print $2; exit}') ;;
+      debian) d=$(apt-cache show "$name" 2>/dev/null | awk -F': *' '/^Description-en|^Description:/ {print $2; exit}') ;;
+      arch)   d=$(pacman -Si "$name" 2>/dev/null | awk -F': *' '/^Description/ {print $2; exit}') ;;
+      suse)   d=$(zypper --non-interactive info "$name" 2>/dev/null | awk -F': *' '/^Summary/ {print $2; exit}') ;;
+    esac
+    [[ -n "$d" ]] && dict::set _sync_desc_map "pkg:$name" "$d"
+  done
+}
+
+sync::_fetch_descriptions() {
+  dict::clear _sync_desc_map
+  case "$(uname -s)" in
+    Darwin) sync::_fetch_descriptions_darwin ;;
+    Linux)  sync::_fetch_descriptions_linux  ;;
+  esac
 
   _sync_desc=()
+  local i n=${#_sync_items[@]}
   for ((i=0; i<n; i++)); do
     local kind name d
     IFS=$'\t' read -r kind name <<< "${_sync_items[i]}"
@@ -400,7 +459,8 @@ sync::run() {
   local os
   case "$(uname -s)" in
     Darwin) os=darwin ;;
-    *) msg::error "sync: only darwin is supported in this build (linux/windows in Stage C)"; return 1 ;;
+    Linux)  os=linux  ;;
+    *) msg::error "sync: unsupported OS $(uname -s) (Windows path is PowerShell-only — see windows/scoop.ps1)"; return 1 ;;
   esac
 
   local source_dir pkg_file blacklist_file default_kind profile
@@ -409,9 +469,25 @@ sync::run() {
     msg::error "sync: chezmoi source dir not found"
     return 1
   fi
-  default_kind=brew
-  pkg_file="$source_dir/etc/darwin/packages.txt"
-  blacklist_file="$source_dir/etc/darwin/packages-blacklist.txt"
+
+  case "$os" in
+    darwin)
+      default_kind=brew
+      pkg_file="$source_dir/etc/darwin/packages.txt"
+      blacklist_file="$source_dir/etc/darwin/packages-blacklist.txt"
+      ;;
+    linux)
+      default_kind=pkg
+      local distro
+      distro=$(linux::detect_distro 2>/dev/null || echo unknown)
+      if [[ "$distro" == "unknown" ]]; then
+        msg::error "sync: could not detect linux distro"
+        return 1
+      fi
+      pkg_file="$source_dir/etc/linux/packages-${distro}.txt"
+      blacklist_file="$source_dir/etc/linux/packages-blacklist.txt"
+      ;;
+  esac
   profile=$(packages::current_profile)
 
   msg::heading "Computing untracked packages…"

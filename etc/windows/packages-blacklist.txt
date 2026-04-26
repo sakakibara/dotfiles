@@ -1,0 +1,2 @@
+# Windows packages-blacklist — entries (in the same syntax as packages.txt)
+# that the future PowerShell sync should never offer to re-add.

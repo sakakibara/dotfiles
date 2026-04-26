@@ -138,5 +138,36 @@ case "$content" in
   *) _eq "timestamp comment present" "yes" "missing" ;;
 esac
 
+# ---------- linux: compute_untracked using a stubbed installed query ----------
+_section "compute_untracked (linux): pkg-only, prefix items skipped"
+
+cat > "$TMP/linux-pkgs.txt" <<'EOF'
+git
+neovim
+ripgrep
+slack @work
+EOF
+: > "$TMP/linux-blacklist.txt"
+
+# Stub the linux installed query: pretend git + neovim + something-extra are installed.
+sync::_query_installed_linux() {
+  cat <<EOF
+pkg	git
+pkg	neovim
+pkg	something-extra
+EOF
+}
+
+# Drive compute_untracked manually with os=linux. This indirectly exercises the
+# OS dispatch in sync::_query_installed.
+untracked=$(sync::compute_untracked "$TMP/linux-pkgs.txt" "$TMP/linux-blacklist.txt" linux pkg | tr '\t' = | tr '\n' ',')
+_eq "linux: only something-extra is untracked" "pkg=something-extra," "$untracked"
+
+_section "compute_missing (linux): tracked-but-not-installed for current profile"
+missing=$(sync::compute_missing "$TMP/linux-pkgs.txt" linux pkg work | tr '\t' = | tr '\n' ',')
+# Expected: ripgrep is tracked-everywhere but not installed → missing.
+# slack is @work and not installed → missing.
+_eq "work missing: ripgrep + slack" "pkg=ripgrep=,pkg=slack=work," "$missing"
+
 printf '\n%d passed, %d failed\n' "$passes" "$fails"
 exit "$((fails > 0 ? 1 : 0))"
