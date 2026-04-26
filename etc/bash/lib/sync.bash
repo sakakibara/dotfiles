@@ -240,19 +240,45 @@ sync::_action_label() {
 
 sync::_render() {
   local cursor="$1" current="$2"
-  local cols
+  local cols rows
   cols=$(pick::_cols)
+  rows=$(pick::_rows)
+
+  local n=${#_sync_items[@]}
+  # 4 chrome lines (title + 2 keymap lines + blank), 2 footer lines (blank + status).
+  local body_rows=$((rows - 6))
+  (( body_rows < 3 )) && body_rows=3
+
+  # Slide the viewport so the cursor stays visible with one-line padding
+  # at top/bottom when room allows. _sync_offset is dynamic-scoped from
+  # sync::review and persists across redraws.
+  if (( n <= body_rows )); then
+    _sync_offset=0
+  else
+    if (( cursor < _sync_offset + 1 )); then
+      _sync_offset=$((cursor - 1))
+    elif (( cursor >= _sync_offset + body_rows - 1 )); then
+      _sync_offset=$((cursor - body_rows + 2))
+    fi
+    (( _sync_offset < 0 )) && _sync_offset=0
+    (( _sync_offset > n - body_rows )) && _sync_offset=$((n - body_rows))
+  fi
 
   printf '\033[H\033[2J'
   printf '\033[1mReview untracked packages\033[0m\n'
   printf '\033[2m↑/↓ move · space cycle · a add · p add @personal · w add @work\n'
   printf '   b blacklist · s skip · enter apply · q cancel · ? help\033[0m\n\n'
 
-  local n=${#_sync_items[@]} pending=0
-  local i
+  local end=$((_sync_offset + body_rows))
+  (( end > n )) && end=$n
+
+  local pending=0 i
   for ((i=0; i<n; i++)); do
+    [[ "${_sync_actions[i]}" != "skip" ]] && pending=$((pending + 1))
+  done
+
+  for ((i=_sync_offset; i<end; i++)); do
     local action="${_sync_actions[i]}"
-    [[ "$action" != "skip" ]] && pending=$((pending + 1))
 
     local kind name
     IFS=$'\t' read -r kind name <<< "${_sync_items[i]}"
@@ -276,7 +302,11 @@ sync::_render() {
     fi
   done
 
-  printf '\n\033[2m%d pending · profile: %s\033[0m\n' "$pending" "$current"
+  printf '\n\033[2m%d pending · profile: %s' "$pending" "$current"
+  if (( n > body_rows )); then
+    printf ' · %d–%d/%d' "$((_sync_offset + 1))" "$end" "$n"
+  fi
+  printf '\033[0m\n'
 }
 
 sync::_render_help() {
@@ -344,6 +374,7 @@ sync::review() {
   trap 'pick::_tui_close' EXIT INT TERM
 
   local cursor=0 result=apply
+  local _sync_offset=0
   while true; do
     sync::_render "$cursor" "$current"
     local key
