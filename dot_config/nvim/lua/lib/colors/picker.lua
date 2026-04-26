@@ -60,20 +60,22 @@ local function compact_lines(state)
     string.rep("█", 28),
     "",
   }
+  -- Active-slider indicator: ▸ on the line whose component is being adjusted.
+  local function mark(idx) return state.slider == idx and "▸ " or "  " end
   if state.space == "rgb" then
-    table.insert(lines, string.format("R %3d", math.floor(state.color.r * 255 + 0.5)))
-    table.insert(lines, string.format("G %3d", math.floor(state.color.g * 255 + 0.5)))
-    table.insert(lines, string.format("B %3d", math.floor(state.color.b * 255 + 0.5)))
+    table.insert(lines, string.format("%sR %3d", mark(1), math.floor(state.color.r * 255 + 0.5)))
+    table.insert(lines, string.format("%sG %3d", mark(2), math.floor(state.color.g * 255 + 0.5)))
+    table.insert(lines, string.format("%sB %3d", mark(3), math.floor(state.color.b * 255 + 0.5)))
   elseif state.space == "hsl" then
     local h, s, l = C.to_hsl(state.color)
-    table.insert(lines, string.format("H %3d", math.floor(h)))
-    table.insert(lines, string.format("S %3d", math.floor(s * 100)))
-    table.insert(lines, string.format("L %3d", math.floor(l * 100)))
+    table.insert(lines, string.format("%sH %3d", mark(1), math.floor(h)))
+    table.insert(lines, string.format("%sS %3d", mark(2), math.floor(s * 100)))
+    table.insert(lines, string.format("%sL %3d", mark(3), math.floor(l * 100)))
   else
     local L, Cval, h = C.to_oklch(state.color)
-    table.insert(lines, string.format("L %.2f", L))
-    table.insert(lines, string.format("C %.2f", Cval))
-    table.insert(lines, string.format("H %3d", math.floor(h)))
+    table.insert(lines, string.format("%sL %.2f", mark(1), L))
+    table.insert(lines, string.format("%sC %.2f", mark(2), Cval))
+    table.insert(lines, string.format("%sH %3d",  mark(3), math.floor(h)))
   end
   table.insert(lines, "")
   table.insert(lines, "[" .. state.space .. "] <Tab> cycle  <CR> commit  <Esc> cancel  <C-e> expand")
@@ -179,10 +181,12 @@ function M.open(opts)
   local map = function(lhs, fn)
     vim.keymap.set("n", lhs, fn, { buffer = state.buf, silent = true, nowait = true })
   end
-  map("h",     function() M.adjust(state, -1) end)
-  map("l",     function() M.adjust(state,  1) end)
-  map("H",     function() M.adjust(state, -10) end)
-  map("L",     function() M.adjust(state,  10) end)
+  -- ±5 per press: visible jump in any color space (~2% RGB byte, 5% HSL, 0.05 oklch).
+  -- Hold shift for ±20.
+  map("h",     function() M.adjust(state, -5) end)
+  map("l",     function() M.adjust(state,  5) end)
+  map("H",     function() M.adjust(state, -20) end)
+  map("L",     function() M.adjust(state,  20) end)
   map("j",     function() M.cycle_slider(state) end)
   map("k",     function() state.slider = ((state.slider - 2) % 3) + 1; render(state) end)
   map("<Tab>", function() M.cycle_space(state) end)

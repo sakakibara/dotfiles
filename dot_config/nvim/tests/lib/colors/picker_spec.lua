@@ -92,11 +92,11 @@ T.describe("lib.colors.picker adjustment", function()
 end)
 
 T.describe("lib.colors.picker keymaps", function()
-  T.it("l increases active component by 1", function()
+  T.it("l increases active component by 5", function()
     local s = P.open({ initial = C.from_hex("#7f0000") })
     vim.api.nvim_buf_call(s.buf, function() vim.cmd("normal l") end)
     local r = math.floor(s.color.r * 255 + 0.5)
-    T.eq(r, 0x80)
+    T.eq(r, 0x84)  -- 0x7f + 5
     P.close(s)
   end)
 
