@@ -424,6 +424,78 @@ case "$out" in
   *) _true "brew NOT in changed (unchanged hash)" 0 ;;
 esac
 
+_section "filter: case-insensitive substring match"
+pick::_matches_filter "Homebrew packages" "brew"; _true "lowercase filter matches mixed-case label" "$?"
+pick::_matches_filter "Homebrew packages" "BREW"; _true "uppercase filter matches" "$?"
+pick::_matches_filter "Homebrew packages" "ZIG";  _false "non-matching filter" "$?"
+pick::_matches_filter "Anything" "";              _true "empty filter matches all" "$?"
+
+_section "filter: recompute_visible builds index list"
+out=$(
+  _pick_n=4
+  _pick_names=(brew mise gleam zig)
+  _pick_labels=(Brew Mise Gleam Zig)
+  _pick_states=(normal normal normal normal)
+  _pick_reasons=("" "" "" "")
+  _pick_visible=()
+  cursor=0
+
+  _pick_filter=""
+  pick::_recompute_visible
+  printf 'no-filter: %d\n' "${#_pick_visible[@]}"
+
+  _pick_filter="m"
+  pick::_recompute_visible
+  printf 'm: %s\n' "$(printf '%s,' "${_pick_visible[@]}")"
+
+  _pick_filter="zig"
+  pick::_recompute_visible
+  printf 'zig: %s\n' "$(printf '%s,' "${_pick_visible[@]}")"
+
+  _pick_filter="nope"
+  pick::_recompute_visible
+  printf 'nope: count=%d cursor=%d\n' "${#_pick_visible[@]}" "$cursor"
+)
+case "$out" in
+  *"no-filter: 4"*) _true "no filter → 4 visible" 0 ;;
+  *) _eq "no filter expected 4" "got" "$out" ;;
+esac
+case "$out" in
+  *"m: 1,2,"*) _true "filter 'm' → mise(1) + gleam(2)" 0 ;;
+  *) _eq "filter m" "1,2," "$out" ;;
+esac
+case "$out" in
+  *"zig: 3,"*) _true "filter 'zig' → just zig(3)" 0 ;;
+  *) _eq "filter zig" "3," "$out" ;;
+esac
+case "$out" in
+  *"nope: count=0 cursor=0"*) _true "no matches → cursor clamped to 0" 0 ;;
+  *) _eq "nope count=0 cursor=0" "match" "$out" ;;
+esac
+
+_section "filter: cursor clamps when filter shrinks visible set"
+out=$(
+  _pick_n=3
+  _pick_names=(a b c)
+  _pick_labels=(Alpha Bravo Charlie)
+  _pick_states=(normal normal normal)
+  _pick_reasons=("" "" "")
+  _pick_visible=()
+  cursor=2
+
+  _pick_filter=""
+  pick::_recompute_visible
+  printf 'before: cursor=%d nv=%d\n' "$cursor" "${#_pick_visible[@]}"
+
+  _pick_filter="alpha"
+  pick::_recompute_visible
+  printf 'after: cursor=%d nv=%d\n' "$cursor" "${#_pick_visible[@]}"
+)
+case "$out" in
+  *"before: cursor=2 nv=3"*"after: cursor=0 nv=1"*) _true "cursor clamped from 2 to 0" 0 ;;
+  *) _eq "expected clamped cursor" "before: cursor=2 nv=3, after: cursor=0 nv=1" "$out" ;;
+esac
+
 _section "hash diff: legacy hashless state file still loads"
 out=$(
   export DOTFILES_PICK_SCOPE="legacy-hash-test"

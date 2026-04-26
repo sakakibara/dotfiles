@@ -185,16 +185,51 @@ pick::_read_key() {
 #   _pick_reasons[]
 #   pick_selected     dict name holding the current selection set
 
+# Recompute _pick_visible[] (indices into _pick_names) based on the current
+# _pick_filter string. Empty filter → all items visible. Substring match is
+# case-insensitive against the label.
+pick::_matches_filter() {
+  local label="$1" filter="$2"
+  if [[ -z "$filter" ]]; then return 0; fi
+  local lc_label lc_filter
+  lc_label=$(printf '%s' "$label" | tr '[:upper:]' '[:lower:]')
+  lc_filter=$(printf '%s' "$filter" | tr '[:upper:]' '[:lower:]')
+  [[ "$lc_label" == *"$lc_filter"* ]]
+}
+
+pick::_recompute_visible() {
+  _pick_visible=()
+  local i
+  for ((i=0; i<_pick_n; i++)); do
+    if pick::_matches_filter "${_pick_labels[i]}" "$_pick_filter"; then
+      _pick_visible+=("$i")
+    fi
+  done
+  # Clamp cursor to visible range.
+  local nv=${#_pick_visible[@]}
+  if (( nv == 0 )); then
+    cursor=0
+  elif (( cursor >= nv )); then
+    cursor=$((nv - 1))
+  fi
+}
+
 pick::_render() {
   local cursor="$1" cols selected_count=0
   cols=$(pick::_cols)
 
   printf '\033[H\033[2J'  # cursor home + clear screen
   printf '\033[1mSelect steps to run\033[0m\n'
-  printf '\033[2m↑/↓ move · space toggle · a all · n none · enter run · q quit · ? help\033[0m\n\n'
+  printf '\033[2m↑/↓ move · space toggle · a all · n none · / filter · enter run · q quit · ? help\033[0m\n\n'
 
-  local i
-  for ((i=0; i<_pick_n; i++)); do
+  local nv=${#_pick_visible[@]}
+  if (( nv == 0 )); then
+    printf '\033[2m  (no items match filter)\033[0m\n'
+  fi
+
+  local vi i
+  for ((vi=0; vi<nv; vi++)); do
+    i="${_pick_visible[vi]}"
     local name="${_pick_names[i]}"
     local label="${_pick_labels[i]}"
     local state="${_pick_states[i]}"
@@ -221,7 +256,7 @@ pick::_render() {
     esac
     (( is_selected )) && selected_count=$((selected_count + 1))
 
-    if (( i == cursor )); then
+    if (( vi == cursor )); then
       prefix=$'\033[7m›\033[0m '
     else
       prefix='  '
@@ -231,7 +266,7 @@ pick::_render() {
     local styled_label="$label"
     case "$state" in
       disabled) styled_label=$'\033[2m'"$label"$'\033[0m' ;;
-      *) (( i == cursor )) && styled_label=$'\033[1m'"$label"$'\033[0m' ;;
+      *) (( vi == cursor )) && styled_label=$'\033[1m'"$label"$'\033[0m' ;;
     esac
 
     # Reason suffix (disabled only)
@@ -260,7 +295,11 @@ pick::_render() {
     fi
   done
 
-  printf '\n\033[2m%d selected · %d total\033[0m\n' "$selected_count" "$_pick_n"
+  printf '\n\033[2m%d selected · %d total' "$selected_count" "$_pick_n"
+  if [[ -n "$_pick_filter" ]]; then
+    printf ' · filtered: "%s" (Esc to clear)' "$_pick_filter"
+  fi
+  printf '\033[0m\n'
 }
 
 pick::_render_help() {
@@ -270,8 +309,11 @@ pick::_render_help() {
   ↑ / k          move up
   ↓ / j          move down
   space          toggle the highlighted item
-  a              select all eligible items
-  n              clear all eligible items (required stay selected)
+  a              select all visible non-disabled items
+  n              clear all visible non-required items
+  /              filter (case-insensitive substring match on label)
+                   while filtering: Esc clears, Enter keeps the filter,
+                   Backspace edits, any other key appends
   enter          run the selection
   q / esc        cancel without running
   ?              this help
@@ -600,38 +642,82 @@ pick() {
   trap 'pick::_tui_close' EXIT INT TERM
 
   local cursor=0 result=run
+  local _pick_filter=""
+  local _pick_visible=()
+  pick::_recompute_visible
+
   while true; do
     pick::_render "$cursor"
     local key
     key=$(pick::_read_key)
+    local nv=${#_pick_visible[@]}
+    local item_idx=-1
+    (( nv > 0 )) && item_idx="${_pick_visible[cursor]}"
+
     case "$key" in
       up)
         (( cursor > 0 )) && cursor=$((cursor - 1))
         ;;
       down)
-        (( cursor < _pick_n - 1 )) && cursor=$((cursor + 1))
+        (( cursor < nv - 1 )) && cursor=$((cursor + 1))
         ;;
       space)
-        local s="${_pick_states[cursor]}"
-        local nm="${_pick_names[cursor]}"
-        if [[ "$s" == "normal" ]]; then
-          if dict::has pick_selected "$nm"; then
-            dict::del pick_selected "$nm"
-          else
-            dict::set pick_selected "$nm" 1
+        if (( item_idx >= 0 )); then
+          local s="${_pick_states[item_idx]}"
+          local nm="${_pick_names[item_idx]}"
+          if [[ "$s" == "normal" ]]; then
+            if dict::has pick_selected "$nm"; then
+              dict::del pick_selected "$nm"
+            else
+              dict::set pick_selected "$nm" 1
+            fi
           fi
         fi
         ;;
       a)
-        for ((i=0; i<_pick_n; i++)); do
-          [[ "${_pick_states[i]}" == "normal" ]] && \
-            dict::set pick_selected "${_pick_names[i]}" 1
+        # Select all visible non-disabled items.
+        local v
+        for v in "${_pick_visible[@]:-}"; do
+          [[ -z "$v" ]] && continue
+          if [[ "${_pick_states[v]}" == "normal" ]]; then
+            dict::set pick_selected "${_pick_names[v]}" 1
+          fi
         done
         ;;
       n)
-        for ((i=0; i<_pick_n; i++)); do
-          [[ "${_pick_states[i]}" == "normal" ]] && \
-            dict::del pick_selected "${_pick_names[i]}"
+        # Clear all visible non-required items.
+        local v
+        for v in "${_pick_visible[@]:-}"; do
+          [[ -z "$v" ]] && continue
+          if [[ "${_pick_states[v]}" == "normal" ]]; then
+            dict::del pick_selected "${_pick_names[v]}"
+          fi
+        done
+        ;;
+      search)
+        # Enter filter input mode. Live-update _pick_filter on each keystroke.
+        local ch
+        while true; do
+          pick::_render "$cursor"
+          IFS= read -rsn 1 ch || break
+          case "$ch" in
+            $'\x1b')        # Esc: clear filter, exit input mode
+              _pick_filter=""
+              pick::_recompute_visible
+              break
+              ;;
+            $'\n'|$'\r')    # Enter: keep filter, exit input mode
+              break
+              ;;
+            $'\x7f'|$'\x08') # Backspace
+              _pick_filter="${_pick_filter%?}"
+              pick::_recompute_visible
+              ;;
+            *)
+              _pick_filter+="$ch"
+              pick::_recompute_visible
+              ;;
+          esac
         done
         ;;
       help)
