@@ -161,22 +161,23 @@ sync::_fetch_descriptions_darwin() {
     esac
   done
 
-  if (( ${#brews[@]} > 0 )); then
-    local line nm desc
-    while IFS= read -r line; do
-      [[ "$line" == *": "* ]] || continue
-      nm="${line%%: *}"; desc="${line#*: }"
-      _sync_desc_map::put "brew:$nm" "$desc"
-    done < <(brew desc "${brews[@]}" 2>/dev/null)
-  fi
-  if (( ${#casks[@]} > 0 )); then
-    local line nm desc
-    while IFS= read -r line; do
-      [[ "$line" == *": "* ]] || continue
-      nm="${line%%: *}"; desc="${line#*: }"
-      _sync_desc_map::put "cask:$nm" "$desc"
-    done < <(brew desc --cask "${casks[@]}" 2>/dev/null)
-  fi
+  # Run formula and cask description fetches in parallel — same shape as
+  # the parallel _query_installed_darwin call. Each producer prefixes its
+  # output lines with kind+TAB so the merged stream stays parseable; the
+  # `&&` inside the brace block gates each spawn on the kind being non-
+  # empty, so we never background a `brew desc` with zero arguments.
+  local line kind rest nm desc
+  while IFS= read -r line; do
+    [[ "$line" == *$'\t'*": "* ]] || continue
+    kind="${line%%$'\t'*}"
+    rest="${line#*$'\t'}"
+    nm="${rest%%: *}"; desc="${rest#*: }"
+    _sync_desc_map::put "${kind}:${nm}" "$desc"
+  done < <(
+    (( ${#brews[@]} > 0 )) && brew desc        "${brews[@]}" 2>/dev/null | awk '{ print "brew\t" $0 }' &
+    (( ${#casks[@]} > 0 )) && brew desc --cask "${casks[@]}" 2>/dev/null | awk '{ print "cask\t" $0 }' &
+    wait
+  )
 }
 
 # Fetch a one-line description for each pkg-kind item via the distro's
