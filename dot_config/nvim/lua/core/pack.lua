@@ -656,6 +656,47 @@ vim.api.nvim_create_user_command("PackStatus", function()
   for _, l in ipairs(M._status_lines()) do print(l) end
 end, { desc = "List registered plugin specs" })
 
+-- Bottom-right progress float (fidget-style). Single line, no border.
+-- We render directly instead of routing through vim.notify because the
+-- notify pipeline (init.lua → noice → snacks.notifier) doesn't honor
+-- `id`/`replace` reliably under rapid updates and ends up stacking toasts.
+local BAR_W = 16
+local SPINNER = { "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏" }
+
+local function progress_open(title, width)
+  local buf = vim.api.nvim_create_buf(false, true)
+  vim.bo[buf].buftype, vim.bo[buf].bufhidden = "nofile", "wipe"
+  local row = vim.o.lines - vim.o.cmdheight - 2
+  local col = vim.o.columns - width - 2
+  local win = vim.api.nvim_open_win(buf, false, {
+    relative = "editor", row = row, col = col,
+    width = width, height = 1,
+    style = "minimal", focusable = false, noautocmd = true, zindex = 60,
+  })
+  vim.wo[win].winhl = "Normal:NormalFloat"
+  return { buf = buf, win = win, title = title, width = width, frame = 1 }
+end
+
+local function progress_render(state, done, total)
+  if not vim.api.nvim_win_is_valid(state.win) then return end
+  local pct    = total > 0 and done / total or 0
+  local filled = math.floor(pct * BAR_W + 0.5)
+  local bar    = string.rep("█", filled) .. string.rep("░", BAR_W - filled)
+  local spin   = done >= total and "✓" or SPINNER[state.frame]
+  state.frame  = (state.frame % #SPINNER) + 1
+  local line   = string.format(" %s %s  %s  %d/%d ",
+    spin, state.title, bar, done, total)
+  local pad    = state.width - vim.fn.strdisplaywidth(line)
+  if pad > 0 then line = line .. string.rep(" ", pad) end
+  vim.api.nvim_buf_set_lines(state.buf, 0, -1, false, { line })
+end
+
+local function progress_close(state)
+  if state and vim.api.nvim_win_is_valid(state.win) then
+    vim.api.nvim_win_close(state.win, true)
+  end
+end
+
 -- Async pre-fetch: vim.pack.update() blocks on its internal `:wait()` for the
 -- duration of all git fetches (parallel internally, but main thread waits).
 -- Instead, we spawn `git fetch` ourselves via vim.system (libuv-async, doesn't
@@ -684,29 +725,21 @@ local function pack_update_async(names)
   end
 
   local total, done, failures = #targets, 0, {}
-  -- Persistent notification handle so subsequent updates replace the line
-  -- in-place instead of stacking N progress toasts.
-  local notif_id = nil
-  local function progress(msg, level)
-    notif_id = vim.notify(msg, level or vim.log.levels.INFO,
-      { title = "PackUpdate", id = notif_id, replace = notif_id })
-  end
-  progress(string.format("Fetching 0/%d…", total))
+  local widget = progress_open("PackUpdate", 40)
+  progress_render(widget, 0, total)
 
   local function on_done(target, ok)
     done = done + 1
     if not ok then table.insert(failures, target.name) end
-    if done < total then
-      progress(string.format("Fetching %d/%d…", done, total))
-    else
+    progress_render(widget, done, total)
+    if done >= total then
+      progress_close(widget)
       if #failures > 0 then
-        progress("Fetch failed for: " .. table.concat(failures, ", "),
+        notify("Fetch failed for: " .. table.concat(failures, ", "),
           vim.log.levels.WARN)
       end
-      -- Open the preview buffer with already-fetched results
       vim.pack.update(names, { offline = true })
-      vim.notify(":w to apply  ·  :bd! to cancel",
-        vim.log.levels.INFO, { title = "PackUpdate" })
+      notify(":w to apply  ·  :bd! to cancel", vim.log.levels.INFO)
     end
   end
 
