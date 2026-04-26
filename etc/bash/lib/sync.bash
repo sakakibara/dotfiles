@@ -231,11 +231,12 @@ sync::_action_label() {
     block) label='block';  color='\033[1;31m' ;;
     *)     label="$action"; color='' ;;
   esac
-  local w
+  local total=10 w
   w=$(pick::_str_width "$label")
-  local pad=$((10 - w))
+  local pad=$((total - w))
   (( pad < 0 )) && pad=0
-  printf '%b[%s%*s]\033[0m' "$color" "$label" "$pad" ""
+  local pl=$((pad / 2)) pr=$((pad - pad / 2))
+  printf '%b[%*s%s%*s]\033[0m' "$color" "$pl" "" "$label" "$pr" ""
 }
 
 sync::_render() {
