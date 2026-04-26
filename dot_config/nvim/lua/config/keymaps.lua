@@ -76,3 +76,6 @@ map("n", "<Leader>w=", "<C-w>=",           { desc = "Equalize windows" })
 
 -- file explorer (oil is also on `-` for parent-dir)
 map("n", "<Leader>e", "<Cmd>Oil<CR>", { desc = "Oil (parent dir)" })
+
+-- color picker (Lib.colors)
+vim.keymap.set("n", "<Leader>uc", function() vim.cmd("ColorPick") end, { desc = "Color picker" })

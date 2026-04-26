@@ -79,16 +79,6 @@ return {
     opts = {},
   },
 
-  -- Color picker: :CccPick / :CccConvert / :CccHighlighterToggle
-  {
-    "uga-rosa/ccc.nvim",
-    name = "ccc.nvim",
-    cmd  = { "CccPick", "CccConvert", "CccHighlighterEnable", "CccHighlighterDisable", "CccHighlighterToggle" },
-    keys = { { "<Leader>uc", "<Cmd>CccPick<CR>", desc = "Color picker" } },
-    opts = {},
-  },
-
-
   -- nvim-ufo: modern folding with preview (zp) and LSP/treesitter providers
   {
     "kevinhwang91/nvim-ufo",
