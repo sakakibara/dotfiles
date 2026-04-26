@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+# dotfiles — chezmoi wrapper with status snapshot.
+#
+# `dotfiles` (no args) or `dotfiles info` prints a snapshot of the
+# deployment: source dir, git state, chezmoi drift, theme, tool versions.
+# Any other invocation forwards to `chezmoi` via `exec`. Some subcommands
+# (currently `cd`) are overridden by shell-function wrappers in dot_zfunc/
+# and dot_config/fish/functions/ to operate on the calling shell directly.
+
+set -euo pipefail
+
+# ANSI color helpers — only when stdout is a TTY.
+if [[ -t 1 ]]; then
+  C_DIM=$'\033[2m'
+  C_BOLD=$'\033[1m'
+  C_RESET=$'\033[0m'
+else
+  C_DIM=""
+  C_BOLD=""
+  C_RESET=""
+fi
+
+_row() {
+  printf '%s%-7s%s %s\n' "$C_BOLD" "$1" "$C_RESET" "$2"
+}
+
+_version_of() {
+  local out
+  out=$("$1" --version 2>&1 | head -n1) || return 1
+  printf '%s' "$out" | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -n1
+}
+
+cmd_info() {
+  local source_dir=""
+  if command -v chezmoi >/dev/null 2>&1; then
+    source_dir=$(chezmoi source-path 2>/dev/null || true)
+  fi
+  [[ -n "$source_dir" ]] && _row "Repo:" "$source_dir"
+
+  if [[ -n "$source_dir" && -d "$source_dir/.git" ]]; then
+    local branch ahead behind
+    branch=$(git -C "$source_dir" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "?")
+    ahead=$(git -C "$source_dir" rev-list --count "@{u}..HEAD" 2>/dev/null || echo 0)
+    behind=$(git -C "$source_dir" rev-list --count "HEAD..@{u}" 2>/dev/null || echo 0)
+    _row "Branch:" "$branch (ahead $ahead, behind $behind)"
+  fi
+
+  if command -v chezmoi >/dev/null 2>&1; then
+    local status_out drift
+    status_out=$(chezmoi status 2>/dev/null || true)
+    if [[ -z "$status_out" ]]; then
+      drift="none"
+    else
+      local count
+      count=$(printf '%s\n' "$status_out" | wc -l | tr -d ' ')
+      drift="$count file(s)"
+    fi
+    _row "Drift:" "$drift"
+  fi
+
+  if command -v theme >/dev/null 2>&1; then
+    _row "Theme:" "$(theme get 2>/dev/null || echo "?")"
+  fi
+
+  local tools=(chezmoi nvim fish zsh mise brew hive theme starship)
+  local versions=()
+  for t in "${tools[@]}"; do
+    command -v "$t" >/dev/null 2>&1 || continue
+    local v
+    v=$(_version_of "$t" 2>/dev/null || echo "")
+    if [[ -n "$v" ]]; then
+      versions+=("$t $v")
+    else
+      versions+=("$t")
+    fi
+  done
+  if (( ${#versions[@]} > 0 )); then
+    _row "Tools:" "${C_DIM}${versions[*]}${C_RESET}"
+  fi
+}
+
+cmd_help() {
+  cat <<EOF
+dotfiles — chezmoi wrapper with status snapshot
+
+Usage:
+  dotfiles            Print info snapshot (default)
+  dotfiles info       Same as default
+  dotfiles <cmd>      Forward to chezmoi (e.g. dotfiles apply, dotfiles diff)
+  dotfiles --help     Show this help
+
+Shell-function overrides (active in zsh and fish):
+  dotfiles cd         cd current shell to chezmoi source dir
+  dotfiles apply      Re-source shell rc file on successful apply
+
+For chezmoi-specific help: chezmoi --help
+EOF
+}
+
+case "${1:-}" in
+  ""|info)
+    shift 2>/dev/null || true
+    cmd_info "$@"
+    ;;
+  -h|--help)
+    cmd_help
+    ;;
+  help)
+    if [[ $# -eq 1 ]]; then cmd_help; else exec chezmoi "$@"; fi
+    ;;
+  *)
+    exec chezmoi "$@"
+    ;;
+esac

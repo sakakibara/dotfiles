@@ -1,0 +1,17 @@
+#!/usr/bin/env zsh
+# Wrapper around the `dotfiles` binary that overrides two cases where the
+# calling shell's state matters:
+#   - `cd`: chezmoi cd opens a subshell; this changes the parent shell's pwd.
+#   - `apply` success: re-source ~/.zshrc so config changes land without
+#     needing `exec zsh`.
+case "${1:-}" in
+  cd)
+    builtin cd "$(chezmoi source-path)"
+    ;;
+  *)
+    command dotfiles "$@"
+    local rc=$?
+    [[ $rc -eq 0 && "${1:-}" == "apply" ]] && source "${HOME}/.zshrc"
+    return $rc
+    ;;
+esac
