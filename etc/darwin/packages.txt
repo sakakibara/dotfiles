@@ -45,6 +45,7 @@ librsvg
 bash
 fish
 go
+powershell
 zsh
 pnpm
 
@@ -102,7 +103,6 @@ cask:microsoft-auto-update
 cask:microsoft-office
 cask:movist-pro
 cask:orbstack
-cask:powershell
 cask:scroll-reverser
 cask:steam
 cask:tableplus
