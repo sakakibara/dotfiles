@@ -8,6 +8,10 @@ local M = {}
 M.MAX_LINE_LEN    = 1000
 M.MAX_VIEWPORT_KB = 256
 
+-- Filetypes that may use the regex fallback when no TS query is available.
+-- Keyed by filetype name (string → true). Default: empty (opt-in only).
+M._regex_filetypes = {}
+
 -- TS queries keyed by *parser language name* (not filetype). Each query
 -- produces @color-candidate captures whose text is run through P.parse_all.
 M._queries = {
@@ -126,7 +130,20 @@ function M.detect(buf, top, bot)
   for _, l in ipairs(lines) do total = total + #l end
   if total > M.MAX_VIEWPORT_KB * 1024 then return {} end
 
-  return ts_detect(buf, top, bot) or regex_detect(buf, top, bot)
+  local ts_result = ts_detect(buf, top, bot)
+  if ts_result then return ts_result end
+
+  -- TS unavailable. Regex fallback runs when either:
+  --   (a) this ft has an authored TS query (parser unavailable in this env), OR
+  --   (b) the ft is explicitly whitelisted in _regex_filetypes
+  -- Without this gate the regex would scan arbitrary code files (C, Rust, Go,
+  -- Lua…) and produce false positives on identifier substrings, URL fragments,
+  -- hex-shaped tokens, etc.
+  local ft = vim.bo[buf].filetype
+  local lang = M._ft_to_lang[ft] or ft
+  if not M._queries[lang] and not M._regex_filetypes[ft] then return {} end
+
+  return regex_detect(buf, top, bot)
 end
 
 return M

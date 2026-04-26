@@ -10,11 +10,12 @@ local function R()  return require("lib.colors.render")   end
 local function TW() return require("lib.colors.tailwind") end
 
 local DEFAULTS = {
-  enabled     = true,
-  exclude_ft  = { "bigfile" },
-  exclude_bt  = { "terminal", "prompt", "quickfix" },
-  tailwind    = { project_scan = true },
-  debounce_ms = 16,
+  enabled         = true,
+  exclude_ft      = { "bigfile" },
+  exclude_bt      = { "terminal", "prompt", "quickfix" },
+  tailwind        = { project_scan = true },
+  debounce_ms     = 16,
+  regex_filetypes = {},   -- opt-in for regex fallback (TS-less filetypes get no detection)
 }
 
 M._opts    = DEFAULTS
@@ -72,6 +73,12 @@ end
 
 function M.setup(opts)
   M._opts = vim.tbl_deep_extend("force", DEFAULTS, opts or {})
+
+  -- Reset and populate the regex-fallback ft set
+  D()._regex_filetypes = {}
+  for _, ft in ipairs(M._opts.regex_filetypes or {}) do
+    D()._regex_filetypes[ft] = true
+  end
 
   if M._opts.tailwind and M._opts.tailwind.project_scan then
     pcall(TW().scan_project)
