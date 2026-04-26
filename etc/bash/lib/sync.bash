@@ -69,24 +69,17 @@ sync::_query_installed_linux() {
 }
 
 sync::_query_installed_darwin() {
-  # Taps
-  local t
-  while IFS= read -r t; do
-    [[ -z "$t" ]] && continue
-    printf 'tap\t%s\n' "$t"
-  done < <(brew tap 2>/dev/null)
-  # Formulae installed on user request (skips deps pulled in transitively)
-  local f
-  while IFS= read -r f; do
-    [[ -z "$f" ]] && continue
-    printf 'brew\t%s\n' "$f"
-  done < <(brew leaves --installed-on-request 2>/dev/null)
-  # Casks
-  local c
-  while IFS= read -r c; do
-    [[ -z "$c" ]] && continue
-    printf 'cask\t%s\n' "$c"
-  done < <(brew list --cask 2>/dev/null)
+  # Three brew calls in parallel — each spawns Ruby (~200-500ms), and they
+  # don't share state, so wall time = max(taps, leaves, casks) instead of
+  # the sum. Each producer prefixes its lines with kind+TAB and skips
+  # empties; outputs interleave on the outer pipe but every line is
+  # self-describing, and the consumer doesn't care about order.
+  {
+    brew tap                           2>/dev/null | awk 'NF { print "tap\t"  $0 }' &
+    brew leaves --installed-on-request 2>/dev/null | awk 'NF { print "brew\t" $0 }' &
+    brew list --cask                   2>/dev/null | awk 'NF { print "cask\t" $0 }' &
+    wait
+  }
 }
 
 # Compute the diff between currently-installed and tracked. Outputs
