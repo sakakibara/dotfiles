@@ -13,7 +13,7 @@ umask 022
 # https://wiki.archlinux.org/index.php/XDG_user_directories
 
 # Set directory for cache of eval commands
-export ZSH_EVALCACHE_DIR=${ZSH_EVALCACHE_DIR:-"${HOME}/.zsh-evalcache"}
+export ZSH_EVALCACHE_DIR=${ZSH_EVALCACHE_DIR:-"${XDG_CACHE_HOME:-$HOME/.cache}/zsh-eval"}
 
 # Set custom zsh functions directory to fpath
 fpath=(${HOME}/.zfunc ${fpath})

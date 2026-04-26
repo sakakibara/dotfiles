@@ -1,5 +1,9 @@
 function _evalcache
-    test -z "$FISH_EVALCACHE_DIR"; and set -gx FISH_EVALCACHE_DIR $HOME/.fish-evalcache
+    if test -z "$FISH_EVALCACHE_DIR"
+        set -l _cache $XDG_CACHE_HOME
+        test -z "$_cache"; and set _cache $HOME/.cache
+        set -gx FISH_EVALCACHE_DIR $_cache/fish-eval
+    end
     set -f cmdHash nohash
     set -f data $argv
     set -f name

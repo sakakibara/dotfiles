@@ -3,9 +3,13 @@
 # dirs  755 drwxr-xr-x (777 minus 022)
 umask 022
 
-# Set directory for cache of eval commands
+# Set directory for cache of eval commands.
+# XDG_CACHE_HOME isn't set yet at this point (it gets set further down), so
+# resolve the fallback inline.
 if not set -q FISH_EVALCACHE_DIR
-    set -gx FISH_EVALCACHE_DIR $HOME/.fish-evalcache
+    set -l _cache $XDG_CACHE_HOME
+    test -z "$_cache"; and set _cache $HOME/.cache
+    set -gx FISH_EVALCACHE_DIR $_cache/fish-eval
 end
 
 _evalcache osname init
