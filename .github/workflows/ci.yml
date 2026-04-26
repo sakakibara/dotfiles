@@ -141,6 +141,20 @@ jobs:
             exit 1
           }
           Write-Host "theme.ps1 parses cleanly (TODO: port etc/tests/theme.sh to PowerShell)"
+      - name: Parse-check dotfiles.ps1
+        shell: pwsh
+        run: |
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile(
+            "dot_local/bin/dotfiles.ps1", [ref]$null, [ref]$errors)
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Host $_ }
+            exit 1
+          }
+          Write-Host "dotfiles.ps1 parses cleanly"
+      - name: pick.ps1 (parse + non-interactive paths)
+        shell: pwsh
+        run: pwsh -NoProfile -File etc/tests/pick_ps1.ps1
 
   validate-packages-fedora:
     name: Validate packages (Fedora)
