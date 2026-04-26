@@ -81,7 +81,10 @@ function M.setup(opts)
   end
 
   if M._opts.tailwind and M._opts.tailwind.project_scan then
-    pcall(TW().scan_project)
+    -- Defer scan_project: even with directory-level pruning, monorepos with
+    -- hundreds of CSS files take measurable wall time. Scheduling lets nvim
+    -- finish startup, then the @theme overlay populates within a tick or two.
+    vim.schedule(function() pcall(TW().scan_project) end)
   end
 
   local grp = vim.api.nvim_create_augroup("Lib.colors", { clear = true })

@@ -87,16 +87,39 @@ function M.scan_file(path)
   M._overlay_by_file[path] = owned
 end
 
--- Scan all *.css files under the given root (default: cwd). Skips common
--- vendored / build directories.
+-- Directories pruned from the project @theme scan. Walking these can dominate
+-- startup in monorepos (node_modules alone often holds hundreds of CSS files
+-- nobody cares about for theme resolution).
+local PRUNE = { node_modules = true, [".git"] = true, dist = true, build = true,
+                [".next"] = true, ["target"] = true, [".venv"] = true }
+
+-- Recursive directory walk that prunes the PRUNE set at directory entry,
+-- avoiding the cost of fnmatch on already-walked paths. Returns CSS file
+-- paths under root.
+local function walk_css(root, out)
+  out = out or {}
+  local fd = vim.uv.fs_scandir(root)
+  if not fd then return out end
+  while true do
+    local name, t = vim.uv.fs_scandir_next(fd)
+    if not name then break end
+    if t == "directory" then
+      if not PRUNE[name] then
+        walk_css(root .. "/" .. name, out)
+      end
+    elseif t == "file" and name:sub(-4) == ".css" then
+      out[#out + 1] = root .. "/" .. name
+    end
+  end
+  return out
+end
+
+-- Scan all *.css files under the given root (default: cwd). Prunes vendored /
+-- build directories at directory level so we don't pay for walking them.
 function M.scan_project(root)
   root = root or vim.fn.getcwd()
-  local files = vim.fn.globpath(root, "**/*.css", false, true)
-  for _, f in ipairs(files) do
-    if not (f:match("/node_modules/") or f:match("/%.git/")
-            or f:match("/dist/") or f:match("/build/")) then
-      pcall(M.scan_file, f)
-    end
+  for _, f in ipairs(walk_css(root)) do
+    pcall(M.scan_file, f)
   end
 end
 
