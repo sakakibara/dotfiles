@@ -18,5 +18,6 @@ dofile(vim.fn.getcwd() .. "/tests/lib/colors/color_spec.lua")
 dofile(vim.fn.getcwd() .. "/tests/lib/colors/parse_spec.lua")
 dofile(vim.fn.getcwd() .. "/tests/lib/colors/tailwind_spec.lua")
 dofile(vim.fn.getcwd() .. "/tests/lib/colors/detect_spec.lua")
+dofile(vim.fn.getcwd() .. "/tests/lib/colors/render_spec.lua")
 
 require("tests.helpers").report_and_exit()
