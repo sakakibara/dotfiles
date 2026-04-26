@@ -137,6 +137,62 @@ add_detector("oklab%([^)]+%)", function(match)
   return C.from_oklab(L, a, b, alpha)
 end)
 
+-- lab() — CSS CIELAB. L is 0..100 or %, a and b are signed numbers.
+add_detector("lab%([^)]+%)", function(match)
+  local inner = match:gsub("^lab%(", ""):gsub("%)$", "")
+  inner = inner:gsub("/", " ")
+  local toks = {}
+  for tok in inner:gmatch("%S+") do table.insert(toks, tok) end
+  if #toks < 3 or #toks > 4 then return nil end
+
+  local L
+  local l_pct = toks[1]:match("^([%d%.]+)%%$")
+  if l_pct then L = tonumber(l_pct) else L = tonumber(toks[1]) end
+
+  local a = tonumber(toks[2])
+  local b = tonumber(toks[3])
+
+  local alpha
+  if toks[4] then
+    local pct = toks[4]:match("^([%d%.]+)%%$")
+    alpha = pct and (tonumber(pct) / 100) or tonumber(toks[4])
+  end
+
+  if not L or not a or not b then return nil end
+  return C.from_lab(L, a, b, alpha)
+end)
+
+-- lch() — CSS CIELCH. L is 0..100 or %, C is 0..150-ish, h is angle.
+add_detector("lch%([^)]+%)", function(match)
+  local inner = match:gsub("^lch%(", ""):gsub("%)$", "")
+  inner = inner:gsub("/", " ")
+  local toks = {}
+  for tok in inner:gmatch("%S+") do table.insert(toks, tok) end
+  if #toks < 3 or #toks > 4 then return nil end
+
+  local L
+  local l_pct = toks[1]:match("^([%d%.]+)%%$")
+  if l_pct then L = tonumber(l_pct) else L = tonumber(toks[1]) end
+
+  local Cval = tonumber(toks[2])
+
+  local h_num, unit = toks[3]:match("^(%-?[%d%.]+)(%a*)$")
+  if not h_num then return nil end
+  local h = tonumber(h_num)
+  if unit == "rad" then h = math.deg(h)
+  elseif unit == "turn" then h = h * 360
+  end
+
+  local alpha
+  if toks[4] then
+    local pct = toks[4]:match("^([%d%.]+)%%$")
+    alpha = pct and (tonumber(pct) / 100) or tonumber(toks[4])
+  end
+
+  if not L or not Cval or not h then return nil end
+  return C.from_lch(L, Cval, h, alpha)
+end)
+
 -- CSS named colors. Use Lua frontier patterns (%f[%a] / %f[^%a]) to require
 -- letter boundaries on both sides, so that "red" inside "border-radius" is
 -- not matched.

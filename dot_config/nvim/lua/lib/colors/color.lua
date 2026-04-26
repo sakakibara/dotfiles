@@ -132,6 +132,69 @@ local function oklab_to_linear_srgb(L, a, b)
    -0.0041960863  * l - 0.7034186147  * m + 1.7076147010 * s
 end
 
+-- CIE Lab / Lch math (D50 reference white, per CSS Color Module Level 4)
+-- Reference: https://www.w3.org/TR/css-color-4/#color-conversion-code
+
+-- D50 white point (CSS uses D50 for lab/lch)
+local D50 = { 0.96422, 1.0, 0.82521 }
+
+-- Bradford chromatic adaptation matrix: D50 → D65
+local D50_to_D65 = {
+  {  0.9554734527042182, -0.0230985368742614,  0.0632593086610217 },
+  { -0.0283697069632081,  1.0099954580058226,  0.0210413531719399 },
+  {  0.0123140016883199, -0.0205076964334779,  1.3303659366080753 },
+}
+
+-- D65 linear sRGB matrix from CIE XYZ
+local XYZ_D65_to_linear_sRGB = {
+  {  3.2409699419045226, -1.5373831775700935, -0.4986107602930034 },
+  { -0.9692436362808796,  1.8759675015077202,  0.0415550574071756 },
+  {  0.0556300796969936, -0.2039769588889765,  1.0569715142428786 },
+}
+
+local function mat3_mul(M, v)
+  return
+    M[1][1]*v[1] + M[1][2]*v[2] + M[1][3]*v[3],
+    M[2][1]*v[1] + M[2][2]*v[2] + M[2][3]*v[3],
+    M[3][1]*v[1] + M[3][2]*v[2] + M[3][3]*v[3]
+end
+
+-- Lab (D50) → CIE XYZ (D50)
+local function lab_to_xyz_d50(L, a, b)
+  local fy = (L + 16) / 116
+  local fx = a / 500 + fy
+  local fz = fy - b / 200
+  local function finv(t)
+    local t3 = t * t * t
+    if t3 > 216/24389 then return t3 end
+    return (116 * t - 16) / 903.3
+  end
+  return finv(fx) * D50[1], finv(fy) * D50[2], finv(fz) * D50[3]
+end
+
+function M.from_lab(L, a, b, alpha)
+  local x, y, z = lab_to_xyz_d50(L, a, b)
+  local x65, y65, z65 = mat3_mul(D50_to_D65, { x, y, z })
+  local lr, lg, lb = mat3_mul(XYZ_D65_to_linear_sRGB, { x65, y65, z65 })
+  return {
+    r = clamp(linear_to_srgb(lr), 0, 1),
+    g = clamp(linear_to_srgb(lg), 0, 1),
+    b = clamp(linear_to_srgb(lb), 0, 1),
+    a = alpha or 1,
+    space = "srgb",
+    source = { fmt = "lab" },
+  }
+end
+
+function M.from_lch(L, C, h, alpha)
+  local rad = math.rad(h)
+  local a = C * math.cos(rad)
+  local b = C * math.sin(rad)
+  local c = M.from_lab(L, a, b, alpha)
+  c.source = { fmt = "lch" }
+  return c
+end
+
 function M.from_oklab(L, a, b, alpha)
   local lr, lg, lb = oklab_to_linear_srgb(L, a, b)
   return {

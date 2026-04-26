@@ -120,6 +120,42 @@ T.describe("lib.colors.color oklab conversion", function()
   end)
 end)
 
+T.describe("lib.colors.color CIELAB conversion", function()
+  T.it("from_lab(0, 0, 0) is black", function()
+    local c = C.from_lab(0, 0, 0)
+    T.truthy(c.r < 0.01 and c.g < 0.01 and c.b < 0.01,
+      string.format("expected black, got (%.3f, %.3f, %.3f)", c.r, c.g, c.b))
+  end)
+
+  T.it("from_lab(100, 0, 0) is approximately white", function()
+    local c = C.from_lab(100, 0, 0)
+    T.truthy(math.abs(c.r - 1) < 0.02 and math.abs(c.g - 1) < 0.02 and math.abs(c.b - 1) < 0.02,
+      string.format("expected white, got (%.3f, %.3f, %.3f)", c.r, c.g, c.b))
+  end)
+
+  T.it("from_lab produces non-grey for non-zero a/b", function()
+    local c = C.from_lab(50, 60, 0)  -- pinkish-red direction
+    T.truthy(c.r > c.g, "expected r > g for positive a")
+  end)
+end)
+
+T.describe("lib.colors.color CIELCH conversion", function()
+  T.it("from_lch(0, 0, 0) is black", function()
+    local c = C.from_lch(0, 0, 0)
+    T.truthy(c.r < 0.01 and c.g < 0.01 and c.b < 0.01)
+  end)
+
+  T.it("from_lch(50, 60, 30) round-trips through lab", function()
+    local rad = math.rad(30)
+    local a, b = 60 * math.cos(rad), 60 * math.sin(rad)
+    local c1 = C.from_lab(50, a, b)
+    local c2 = C.from_lch(50, 60, 30)
+    T.truthy(math.abs(c1.r - c2.r) < 1e-6)
+    T.truthy(math.abs(c1.g - c2.g) < 1e-6)
+    T.truthy(math.abs(c1.b - c2.b) < 1e-6)
+  end)
+end)
+
 T.describe("lib.colors.color contrast_text", function()
   T.it("returns black for light colors", function()
     T.eq(C.contrast_text({ r = 1, g = 1, b = 1, a = 1 }), "#000000")
