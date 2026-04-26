@@ -243,11 +243,15 @@ function M.from_oklch(L, C, h, alpha)
     b = clamp(linear_to_srgb(lb), 0, 1),
     a = alpha or 1,
     space = "srgb",
-    source = { fmt = "oklch" },
+    source = { fmt = "oklch", L = L, C = C, h = h },
   }
 end
 
 function M.to_oklch(c)
+  -- Return stored OKLCH params when present to avoid gamut-clamp hue drift.
+  if c.source and c.source.fmt == "oklch" and c.source.h then
+    return c.source.L, c.source.C, c.source.h
+  end
   local lr = srgb_to_linear(c.r)
   local lg = srgb_to_linear(c.g)
   local lb = srgb_to_linear(c.b)
