@@ -123,9 +123,30 @@ add_detector("%f[%a][%a]+%f[^%a]", function(match)
   return c
 end)
 
+-- Tailwind utility class. Detector matches conservatively (any "word-dash-stop"
+-- token); resolve_class/resolve filter to actual palette entries, so non-color
+-- classes like "border-radius-4" produce nil and are dropped.
+local TW = require("lib.colors.tailwind")
+add_detector("[%w%-]+%-%d+", function(match)
+  return TW.resolve_class(match) or TW.resolve(match)
+end)
+
+-- Tailwind arbitrary values: bg-[#abc], bg-[oklch(...)], etc. The bracketed
+-- inner value is a complete color literal in some other format (underscores
+-- stand in for spaces in the source). Strip the prefix + brackets, then
+-- re-parse the inner.
+add_detector("[%w%-]+%-%[[^%]]+%]", function(match)
+  local inner = match:match("%[([^%]]+)%]")
+  if not inner then return nil end
+  inner = inner:gsub("_", " ")
+  local results = M.parse_all(inner)
+  if #results == 0 then return nil end
+  return results[1].color
+end)
+
 -- Scan str for all literals; return list of {range, color}.
 function M.parse_all(str)
-  local results = {}
+  local raw = {}
   for _, d in ipairs(detectors) do
     local pos = 1
     while pos <= #str do
@@ -134,12 +155,27 @@ function M.parse_all(str)
       local match = str:sub(s, e)
       local color = d.to_color(match)
       if color then
-        table.insert(results, { range = { col_s = s - 1, col_e = e }, color = color })
+        table.insert(raw, { range = { col_s = s - 1, col_e = e }, color = color })
       end
       pos = e + 1
     end
   end
-  table.sort(results, function(a, b) return a.range.col_s < b.range.col_s end)
+  -- Sort by start position; for ties prefer longer spans (larger col_e first).
+  table.sort(raw, function(a, b)
+    if a.range.col_s ~= b.range.col_s then return a.range.col_s < b.range.col_s end
+    return a.range.col_e > b.range.col_e
+  end)
+  -- Remove overlapping entries: keep whichever was sorted first (longest span
+  -- at each position). A result overlaps the accepted set if its start falls
+  -- before the end of the last accepted entry.
+  local results = {}
+  local frontier = -1
+  for _, r in ipairs(raw) do
+    if r.range.col_s >= frontier then
+      table.insert(results, r)
+      frontier = r.range.col_e
+    end
+  end
   return results
 end
 
