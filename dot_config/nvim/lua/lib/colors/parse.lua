@@ -19,6 +19,35 @@ add_detector("#%x+", function(match)
   return C.from_hex(match)
 end)
 
+-- rgb()/rgba() — legacy comma and modern space syntax, with optional / alpha
+add_detector("rgba?%([^)]+%)", function(match)
+  local inner = match:gsub("^rgba?%(", ""):gsub("%)$", "")
+  inner = inner:gsub(",", " "):gsub("/", " ")
+  local nums = {}
+  for tok in inner:gmatch("%S+") do
+    local pct = tok:match("^(%-?%d+%.?%d*)%%$")
+    if pct then
+      table.insert(nums, tonumber(pct) / 100 * 255)
+    else
+      local n = tonumber(tok)
+      if n then table.insert(nums, n) end
+    end
+  end
+  if #nums < 3 or #nums > 4 then return nil end
+  local a = nums[4]
+  if a then
+    if a > 1 then a = a / 255 end
+  end
+  return {
+    r = nums[1] / 255,
+    g = nums[2] / 255,
+    b = nums[3] / 255,
+    a = a or 1,
+    space = "srgb",
+    source = { fmt = "rgb" },
+  }
+end)
+
 -- Scan str for all literals; return list of {range, color}.
 function M.parse_all(str)
   local results = {}
