@@ -112,4 +112,54 @@ function M.toggle_expand(state)
   render(state)
 end
 
+-- Adjust the active component by `delta`. Units are RGB-byte for rgb,
+-- degrees for HSL hue / oklch hue, percent-points for HSL S/L, and
+-- 0.01-units for oklch L/C.
+function M.adjust(state, delta)
+  local space = state.space
+  local s = state.slider
+  if space == "rgb" then
+    local v = { state.color.r, state.color.g, state.color.b }
+    local raw = math.floor(v[s] * 255 + 0.5) + delta
+    v[s] = math.max(0, math.min(255, raw)) / 255
+    state.color = {
+      r = v[1], g = v[2], b = v[3], a = state.color.a or 1,
+      space = "srgb", source = state.color.source,
+    }
+  elseif space == "hsl" then
+    local h, sat, l = C.to_hsl(state.color)
+    if s == 1 then
+      h = (h + delta) % 360
+    elseif s == 2 then
+      sat = math.max(0, math.min(1, sat + delta / 100))
+    else
+      l = math.max(0, math.min(1, l + delta / 100))
+    end
+    state.color = C.from_hsl(h, sat, l, state.color.a)
+  else
+    local L, Cval, h = C.to_oklch(state.color)
+    if s == 1 then
+      L = math.max(0, math.min(1, L + delta / 100))
+    elseif s == 2 then
+      Cval = math.max(0, math.min(0.4, Cval + delta / 100))
+    else
+      h = (h + delta) % 360
+    end
+    state.color = C.from_oklch(L, Cval, h, state.color.a)
+  end
+  render(state)
+end
+
+function M.cycle_slider(state)
+  state.slider = (state.slider % 3) + 1
+  render(state)
+end
+
+function M.cycle_space(state)
+  local order = { rgb = "hsl", hsl = "oklch", oklch = "rgb" }
+  state.space = order[state.space]
+  state.slider = 1
+  render(state)
+end
+
 return M
