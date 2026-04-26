@@ -5,7 +5,10 @@
 # files and a final summary.
 #
 # Item syntax
-#   [+|~]name[=label][~reason][|hash]
+#   [+|~]name[=label][~reason][|hash]   regular row
+#   ==Section title                      header / group row
+#
+#   Regular rows
 #     +     required (always selected, can't toggle)
 #     ~     disabled (greyed, can't toggle, optionally with ~reason text)
 #     name  bash function or command to run when selected
@@ -14,6 +17,11 @@
 #           differs from the last-saved hash are pre-checked and shown
 #           with a `*` "changed" marker. Items with a hash that have
 #           never been recorded are also pre-checked (treated as new).
+#
+#   Header rows (==title)
+#     Non-selectable label that visually groups the items that follow.
+#     Cursor navigation skips over headers. Headers are hidden while a
+#     filter is active so the visible list stays compact.
 #
 # Env
 #   DOTFILES_PICK_SCOPE   scope key for last-selection memory (default: "default")
@@ -70,6 +78,14 @@ pick::_parse_item() {
   _pick_state="normal"
   _pick_reason=""
   _pick_hash=""
+
+  # Header row — `==Section title`. No name, no toggling.
+  if [[ "$spec" == ==* ]]; then
+    _pick_state="header"
+    _pick_label="${spec#==}"
+    _pick_name=""
+    return 0
+  fi
 
   case "$spec" in
     +*) _pick_state="required"; spec="${spec#+}" ;;
@@ -322,17 +338,44 @@ pick::_recompute_visible() {
   _pick_visible=()
   local i
   for ((i=0; i<_pick_n; i++)); do
+    # Headers are hidden under an active filter (no item to match against).
+    if [[ "${_pick_states[i]}" == "header" ]]; then
+      [[ -z "$_pick_filter" ]] && _pick_visible+=("$i")
+      continue
+    fi
     if pick::_matches_filter "${_pick_labels[i]}" "$_pick_filter"; then
       _pick_visible+=("$i")
     fi
   done
-  # Clamp cursor to visible range.
+  # Clamp cursor to visible range and skip headers if it landed on one.
   local nv=${#_pick_visible[@]}
   if (( nv == 0 )); then
     cursor=0
-  elif (( cursor >= nv )); then
-    cursor=$((nv - 1))
+    return
   fi
+  (( cursor >= nv )) && cursor=$((nv - 1))
+  if [[ "${_pick_states[${_pick_visible[cursor]}]}" == "header" ]]; then
+    local s
+    s=$(pick::_seek_selectable "$cursor" 1)
+    [[ -z "$s" ]] && s=$(pick::_seek_selectable "$cursor" -1)
+    [[ -n "$s" ]] && cursor="$s"
+  fi
+}
+
+# Search _pick_visible for the next/previous selectable index from $1 in
+# direction $2 (1 forward, -1 backward). Prints the index, or nothing if
+# none. Headers are skipped.
+pick::_seek_selectable() {
+  local from="$1" dir="$2"
+  local nv=${#_pick_visible[@]} i="$from"
+  while true; do
+    i=$((i + dir))
+    if (( i < 0 || i >= nv )); then return 1; fi
+    local item_idx="${_pick_visible[i]}"
+    [[ "${_pick_states[item_idx]}" == "header" ]] && continue
+    printf '%d' "$i"
+    return 0
+  done
 }
 
 pick::_render() {
@@ -357,6 +400,12 @@ pick::_render() {
     local reason="${_pick_reasons[i]}"
     local mark prefix
     local is_selected=0
+
+    # Header row — bold cyan, no checkbox, no cursor highlight, blank line above.
+    if [[ "$state" == "header" ]]; then
+      printf '\n  \033[1;36m%s\033[0m\n' "$label"
+      continue
+    fi
 
     case "$state" in
       required)
@@ -639,6 +688,7 @@ pick::_run_selected() {
   local i ran=0 failed=0 skipped=0 selected=0 aborted=0
 
   for ((i=0; i<_pick_n; i++)); do
+    [[ "${_pick_states[i]}" == "header" ]] && continue
     dict::has pick_selected "${_pick_names[i]}" && selected=$((selected + 1))
   done
 
@@ -648,6 +698,7 @@ pick::_run_selected() {
   fi
 
   for ((i=0; i<_pick_n; i++)); do
+    [[ "${_pick_states[i]}" == "header" ]] && continue
     local nm="${_pick_names[i]}"
     local lbl="${_pick_labels[i]}"
     if ! dict::has pick_selected "$nm"; then
@@ -770,6 +821,13 @@ pick() {
   local _pick_visible=()
   pick::_recompute_visible
 
+  # If item 0 in _pick_visible is a header, jump cursor forward.
+  if (( ${#_pick_visible[@]} > 0 )) && \
+     [[ "${_pick_states[${_pick_visible[0]}]}" == "header" ]]; then
+    local seek
+    seek=$(pick::_seek_selectable -1 1) && cursor="$seek"
+  fi
+
   while true; do
     pick::_render "$cursor"
     local key
@@ -780,10 +838,12 @@ pick() {
 
     case "$key" in
       up)
-        (( cursor > 0 )) && cursor=$((cursor - 1))
+        local seek
+        seek=$(pick::_seek_selectable "$cursor" -1) && cursor="$seek"
         ;;
       down)
-        (( cursor < nv - 1 )) && cursor=$((cursor + 1))
+        local seek
+        seek=$(pick::_seek_selectable "$cursor" 1) && cursor="$seek"
         ;;
       space)
         if (( item_idx >= 0 )); then

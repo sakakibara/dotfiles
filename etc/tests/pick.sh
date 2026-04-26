@@ -467,6 +467,79 @@ case "$out" in
   *) _true "brew NOT in changed (unchanged hash)" 0 ;;
 esac
 
+_section "header parsing"
+pick::_parse_item "==System tools"
+_eq "header → state"  "header"        "$_pick_state"
+_eq "header → label"  "System tools"  "$_pick_label"
+_eq "header → name"   ""              "$_pick_name"
+
+_section "_recompute_visible: headers visible without filter, hidden with filter"
+out=$(
+  _pick_n=4
+  _pick_names=("" "brew" "" "mise")
+  _pick_labels=("System" "Brew" "Languages" "Mise")
+  _pick_states=(header normal header normal)
+  _pick_reasons=("" "" "" "")
+  _pick_visible=()
+  cursor=0
+
+  _pick_filter=""
+  pick::_recompute_visible
+  printf 'no-filter: %s\n' "$(printf '%s,' "${_pick_visible[@]}")"
+
+  _pick_filter="brew"
+  pick::_recompute_visible
+  printf 'filtered: %s\n' "$(printf '%s,' "${_pick_visible[@]}")"
+)
+case "$out" in
+  *"no-filter: 0,1,2,3,"*) _true "no filter → all 4 visible" 0 ;;
+  *) _eq "all 4 visible" "0,1,2,3," "$out" ;;
+esac
+case "$out" in
+  *"filtered: 1,"*) _true "filter='brew' → only brew visible (header dropped)" 0 ;;
+  *) _eq "filter→1," "match" "$out" ;;
+esac
+
+_section "cursor skips headers via _seek_selectable"
+out=$(
+  _pick_n=5
+  _pick_names=("" a "" b c)
+  _pick_labels=("Sec1" A "Sec2" B C)
+  _pick_states=(header normal header normal normal)
+  _pick_reasons=("" "" "" "" "")
+  _pick_visible=(0 1 2 3 4)
+
+  # forward from 1 → should land on 3 (skip header at 2)
+  printf 'fwd-from-1: %s\n' "$(pick::_seek_selectable 1 1)"
+  # backward from 3 → should land on 1 (skip header at 2)
+  printf 'back-from-3: %s\n' "$(pick::_seek_selectable 3 -1)"
+  # forward from 4 → none
+  printf 'fwd-from-4: %s\n' "$(pick::_seek_selectable 4 1 || echo none)"
+)
+case "$out" in
+  *"fwd-from-1: 3"*"back-from-3: 1"*"fwd-from-4: none"*) _true "navigation skips headers correctly" 0 ;;
+  *) _eq "expected 3 / 1 / none" "match" "$out" ;;
+esac
+
+_section "_recompute_visible: cursor stuck on header → jumps to next selectable"
+out=$(
+  _pick_n=3
+  _pick_names=("" a b)
+  _pick_labels=("Sec" A B)
+  _pick_states=(header normal normal)
+  _pick_reasons=("" "" "")
+  _pick_visible=()
+  cursor=0  # would land on header at idx 0
+
+  _pick_filter=""
+  pick::_recompute_visible
+  printf 'cursor=%d landed on=%s\n' "$cursor" "${_pick_states[${_pick_visible[cursor]}]}"
+)
+case "$out" in
+  *"landed on=normal"*) _true "cursor jumped past header to selectable" 0 ;;
+  *) _eq "cursor on selectable" "match" "$out" ;;
+esac
+
 _section "filter: case-insensitive substring match"
 pick::_matches_filter "Homebrew packages" "brew"; _true "lowercase filter matches mixed-case label" "$?"
 pick::_matches_filter "Homebrew packages" "BREW"; _true "uppercase filter matches" "$?"
