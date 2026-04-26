@@ -1,4 +1,7 @@
 {{- $default_profile := env "CHEZMOI_PROFILE" | default "personal" -}}
 [data]
-email = "{{ promptStringOnce . "email" "Email address" }}"
-profile = "{{ promptStringOnce . "profile" "Profile (personal/work)" $default_profile }}"
+email    = "{{ promptStringOnce . "email"    "Email address" }}"
+profile  = "{{ promptStringOnce . "profile"  "Profile (personal/work)"             $default_profile }}"
+locale   = "{{ promptStringOnce . "locale"   "Locale (e.g., en_US.UTF-8)"          "en_US.UTF-8" }}"
+nls_lang = "{{ promptStringOnce . "nls_lang" "Oracle NLS_LANG"                     "AMERICAN_AMERICA.AL32UTF8" }}"
+timezone = "{{ promptStringOnce . "timezone" "Timezone (e.g., Japan, US/Eastern)"  "Japan" }}"

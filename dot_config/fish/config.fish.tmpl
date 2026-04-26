@@ -50,12 +50,12 @@ if string match -q -- $OSNAME "darwin*"
     end
 end
 
-# Set default language to English UTF-8
-set -gx LANG en_US.UTF-8
-set -gx LC_ALL en_US.UTF-8
+# Set default language
+set -gx LANG {{ (index . "locale") | default "en_US.UTF-8" | quote }}
+set -gx LC_ALL {{ (index . "locale") | default "en_US.UTF-8" | quote }}
 
 # Set oracle language
-set -gx NLS_LANG AMERICAN_AMERICA.AL32UTF8
+set -gx NLS_LANG {{ (index . "nls_lang") | default "AMERICAN_AMERICA.AL32UTF8" | quote }}
 
 # Disable microsoft .NET telemetry
 set -gx DOTNET_CLI_TELEMETRY_OPTOUT 1
@@ -96,7 +96,7 @@ end
 set -gx VISUAL $EDITOR
 
 if set -q IS_WSL; or set -q WSL_DISTRO_NAME
-    set -gx TZ /usr/share/zoneinfo/Japan
+    set -gx TZ /usr/share/zoneinfo/{{ (index . "timezone") | default "Japan" }}
     set -gx DISPLAY ":0"
 end
 

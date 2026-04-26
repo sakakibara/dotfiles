@@ -50,12 +50,12 @@ if [[ "$OSTYPE" == darwin* ]]; then
   export XDG_PROJECTS_DIR=${XDG_PROJECTS_DIR:-$HOME/Projects}
 fi
 
-# Set default language to English UTF-8
-export LANG=en_US.UTF-8
-export LC_ALL=en_US.UTF-8
+# Set default language
+export LANG={{ (index . "locale") | default "en_US.UTF-8" | quote }}
+export LC_ALL={{ (index . "locale") | default "en_US.UTF-8" | quote }}
 
 # Set oracle language
-export NLS_LANG=AMERICAN_AMERICA.AL32UTF8
+export NLS_LANG={{ (index . "nls_lang") | default "AMERICAN_AMERICA.AL32UTF8" | quote }}
 
 # Disable microsoft .NET telemetry
 export DOTNET_CLI_TELEMETRY_OPTOUT=1
@@ -104,7 +104,7 @@ fi
 export VISUAL="${EDITOR}"
 
 if [[ -n "${IS_WSL}" || -n "${WSL_DISTRO_NAME}" ]]; then
-  export TZ=/usr/share/zoneinfo/Japan
+  export TZ=/usr/share/zoneinfo/{{ (index . "timezone") | default "Japan" }}
   export DISPLAY=:0
 fi
 
