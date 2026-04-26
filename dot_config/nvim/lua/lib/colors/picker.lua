@@ -40,10 +40,9 @@ end
 local function ensure_swatch_hl(color)
   local hex = C.to_hex({ r = color.r, g = color.g, b = color.b, a = 1 })
   local short = hex:sub(2)  -- strip "#"
-  vim.api.nvim_set_hl(0, "LibColorsPickerSwatch_" .. short, {
-    bg = hex,
-    fg = C.contrast_text(color),
-  })
+  -- Block characters (U+2588) fill the cell entirely with FG, so we must set
+  -- fg = the color (not bg). bg is invisible behind a full-block glyph.
+  vim.api.nvim_set_hl(0, "LibColorsPickerSwatch_" .. short, { fg = hex })
   return short
 end
 
@@ -146,6 +145,12 @@ local function render(state)
     if cur.width ~= want_w or cur.height ~= want_h then
       vim.api.nvim_win_set_config(state.win, { width = want_w, height = want_h })
     end
+    -- Move cursor to the active slider line so the user has a clear positional
+    -- indicator beyond the ▸ marker. Slider lines start at row 3 (0-indexed)
+    -- in compact mode (header, swatch, blank, then slider1/2/3). Expanded
+    -- mode is read-only, so park cursor at row 0 there.
+    local row = state.mode == "compact" and (3 + state.slider - 1) or 0
+    pcall(vim.api.nvim_win_set_cursor, state.win, { row + 1, 0 })
   end
 end
 
