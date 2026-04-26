@@ -328,6 +328,49 @@ _section "empty selection is a clean no-op"
 )
 _eq "empty selection exits 0" "0" "$?"
 
+# ---------- multibyte / Unicode handling ----------
+_section "char width: ASCII = 1, CJK = 2, control = 0"
+_eq "ASCII 'a'"   "1" "$(pick::_char_width 'a')"
+_eq "ASCII space" "1" "$(pick::_char_width ' ')"
+_eq "Greek α"     "1" "$(pick::_char_width 'α')"
+_eq "Cyrillic П"  "1" "$(pick::_char_width 'П')"
+_eq "Hiragana あ" "2" "$(pick::_char_width 'あ')"
+_eq "Kanji 日"    "2" "$(pick::_char_width '日')"
+_eq "Hangul 한"   "2" "$(pick::_char_width '한')"
+_eq "Fullwidth Ａ" "2" "$(pick::_char_width 'Ａ')"
+
+_section "string width: mixed ASCII + CJK"
+_eq "'hello'"        "5" "$(pick::_str_width 'hello')"
+_eq "'あいう'"       "6" "$(pick::_str_width 'あいう')"
+_eq "'a日b'"         "4" "$(pick::_str_width 'a日b')"
+_eq "'Привет' (6 single-width)" "6" "$(pick::_str_width 'Привет')"
+
+_section "trunc: ASCII"
+_eq "fits"           "hello"     "$(pick::_trunc 'hello' 10)"
+_eq "exact fit"      "hello"     "$(pick::_trunc 'hello' 5)"
+_eq "trunc to 4"     "hel…"      "$(pick::_trunc 'hello world' 4)"
+
+_section "trunc: CJK widths"
+# 'あいうえお' = 5 chars × 2 cols = 10 cols
+_eq "fits at 10"   "あいうえお" "$(pick::_trunc 'あいうえお' 10)"
+# Budget 7: room for 3 CJK chars (6 cols) + … (1 col) = 7
+_eq "trunc to 7"   "あいう…"    "$(pick::_trunc 'あいうえお' 7)"
+# Budget 6: room for 2 CJK chars (4 cols) + … = 5; next char would push to 7. Hmm
+# Actually with budget 6 and reserve 1 for …: budget-1 = 5. We can fit chars
+# while cur+w <= 5. After 2 chars cur=4, +2 = 6 > 5, truncate. Output: 2 chars + …
+_eq "trunc to 6"   "あい…"      "$(pick::_trunc 'あいうえお' 6)"
+
+_section "trunc: mixed"
+_eq "'a日b' fits" "a日b" "$(pick::_trunc 'a日b' 4)"
+# 'foo日bar' = 1+1+1+2+1+1+1 = 8 cols; budget 5 → reserve … (1), budget for content = 4
+# After 'foo' cur=3, next is '日' (w=2), 3+2=5 > 4, truncate → 'foo…'
+_eq "'foo日bar' to 5" "foo…" "$(pick::_trunc 'foo日bar' 5)"
+
+_section "case folding (already works in tr): mixed Greek/Cyrillic via _matches_filter"
+pick::_matches_filter "Πρόγραμμα" "πρόγρα"; _true "Greek case-insensitive substring" "$?"
+pick::_matches_filter "Привет" "пРи";       _true "Cyrillic case-insensitive substring" "$?"
+pick::_matches_filter "Кошка" "ZIG";        _false "non-matching Cyrillic"            "$?"
+
 # ---------- safe filename helper ----------
 _section "safe filename"
 _eq "double-colon → dash" "step--ok" "$(pick::_safe_name 'step::ok')"

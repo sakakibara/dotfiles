@@ -107,21 +107,142 @@ pick::_cols() {
   printf '%d' "$c"
 }
 
-# Visible-length-aware truncation. Counts bytes (good enough for ASCII
-# labels — UTF-8 wide chars are an edge we don't optimize for here).
-pick::_trunc() {
-  local s="$1" max="$2"
-  if (( ${#s} <= max )); then
-    printf '%s' "$s"
-  else
-    printf '%s…' "${s:0:max-1}"
+# Print decimal Unicode codepoint of the first character of $1. Decodes
+# UTF-8 byte-by-byte so it works on bash 3.2 (where `printf '%d' "'X"`
+# returns the byte value, not the codepoint, even with a UTF-8 locale).
+pick::_codepoint() {
+  [[ -z "$1" ]] && return
+  local LC_ALL=C
+  local s="$1"
+  local b1 b2 b3 b4
+  printf -v b1 '%d' "'${s:0:1}"
+  (( b1 < 0 )) && b1=$((b1 + 256))
+  if (( b1 < 128 )); then
+    printf '%d' "$b1"; return
   fi
+  printf -v b2 '%d' "'${s:1:1}"
+  (( b2 < 0 )) && b2=$((b2 + 256))
+  if (( b1 < 224 )); then
+    printf '%d' "$(( (b1 & 0x1F) << 6 | (b2 & 0x3F) ))"
+    return
+  fi
+  printf -v b3 '%d' "'${s:2:1}"
+  (( b3 < 0 )) && b3=$((b3 + 256))
+  if (( b1 < 240 )); then
+    printf '%d' "$(( (b1 & 0x0F) << 12 | (b2 & 0x3F) << 6 | (b3 & 0x3F) ))"
+    return
+  fi
+  printf -v b4 '%d' "'${s:3:1}"
+  (( b4 < 0 )) && b4=$((b4 + 256))
+  printf '%d' "$(( (b1 & 0x07) << 18 | (b2 & 0x3F) << 12 | (b3 & 0x3F) << 6 | (b4 & 0x3F) ))"
+}
+
+# Visible column width (0, 1, or 2) of a single character. CJK Wide /
+# Fullwidth ranges per Unicode East Asian Width = W or F (subset that
+# matters for terminal rendering — Hangul, CJK ideographs, fullwidth
+# punctuation/letters, and a couple of higher-plane CJK extensions).
+pick::_char_width() {
+  local ch="$1"
+  [[ -z "$ch" ]] && { printf '0'; return; }
+  local cp
+  cp=$(pick::_codepoint "$ch")
+  if (( cp < 32 || cp == 127 )); then printf '0'; return; fi
+  if (( cp >= 0x1100  && cp <= 0x115F  )) || \
+     (( cp >= 0x2E80  && cp <= 0x9FFF  )) || \
+     (( cp >= 0xA000  && cp <= 0xA4CF  )) || \
+     (( cp >= 0xAC00  && cp <= 0xD7A3  )) || \
+     (( cp >= 0xF900  && cp <= 0xFAFF  )) || \
+     (( cp >= 0xFE30  && cp <= 0xFE4F  )) || \
+     (( cp >= 0xFF00  && cp <= 0xFF60  )) || \
+     (( cp >= 0xFFE0  && cp <= 0xFFE6  )) || \
+     (( cp >= 0x20000 && cp <= 0x2FFFD )) || \
+     (( cp >= 0x30000 && cp <= 0x3FFFD )); then
+    printf '2'
+  else
+    printf '1'
+  fi
+}
+
+# Visible column width of an entire string, summing per-character widths.
+pick::_str_width() {
+  local LC_ALL=en_US.UTF-8
+  local s="$1" total=0 i len ch w
+  len=${#s}
+  for ((i=0; i<len; i++)); do
+    ch="${s:i:1}"
+    w=$(pick::_char_width "$ch")
+    total=$((total + w))
+  done
+  printf '%d' "$total"
+}
+
+# Width-aware truncation: shortens $1 so its visible column count is at
+# most $2, appending … if shortened. If the string already fits, returns
+# it unchanged (no ellipsis).
+pick::_trunc() {
+  local LC_ALL=en_US.UTF-8
+  local s="$1" max="$2"
+  local total
+  total=$(pick::_str_width "$s")
+  if (( total <= max )); then
+    printf '%s' "$s"
+    return
+  fi
+  # Truncation needed — reserve 1 col for …, so content budget = max - 1.
+  local cur=0 i len ch w out=""
+  len=${#s}
+  for ((i=0; i<len; i++)); do
+    ch="${s:i:1}"
+    w=$(pick::_char_width "$ch")
+    if (( cur + w > max - 1 )); then
+      printf '%s…' "$out"
+      return
+    fi
+    out+="$ch"
+    cur=$((cur + w))
+  done
+  printf '%s…' "$out"
 }
 
 pick::_tui_open() {
   printf '\033[?1049h'  # alt screen
   printf '\033[?25l'    # hide cursor
   stty -echo -icanon time 0 min 1 2>/dev/null || true
+}
+
+# Read one input event for filter input mode. Multi-byte UTF-8 sequences
+# are reassembled atomically so the filter never holds an incomplete
+# sequence between renders. Result globals:
+#   _pick_input_kind  "esc" | "enter" | "backspace" | "char"
+#   _pick_input_data  the character (1-4 bytes) when kind=char, else ""
+pick::_read_input_event() {
+  _pick_input_data=""
+  local b1
+  IFS= read -rsn 1 b1 || { _pick_input_kind="esc"; return 1; }
+  case "$b1" in
+    $'\x1b')         _pick_input_kind="esc";       return 0 ;;
+    $'\n'|$'\r')     _pick_input_kind="enter";     return 0 ;;
+    $'\x7f'|$'\x08') _pick_input_kind="backspace"; return 0 ;;
+  esac
+  _pick_input_data="$b1"
+  # Decode UTF-8 leading byte. LC_ALL=C forces byte-level interpretation,
+  # so printf '%d' returns 0..255.
+  local cp_byte
+  cp_byte=$(LC_ALL=C printf '%d' "'$b1")
+  local cont=0
+  if   (( cp_byte >= 240 )); then cont=3   # 11110xxx (4-byte char)
+  elif (( cp_byte >= 224 )); then cont=2   # 1110xxxx (3-byte char)
+  elif (( cp_byte >= 192 )); then cont=1   # 110xxxxx (2-byte char)
+  fi
+  while (( cont > 0 )); do
+    local bn
+    if IFS= read -rsn 1 -t 0.05 bn; then
+      _pick_input_data+="$bn"
+    fi
+    cont=$((cont - 1))
+  done
+  _pick_input_kind="char"
+  return 0
 }
 
 pick::_tui_close() {
@@ -281,13 +402,16 @@ pick::_render() {
       change=$'\033[1;33m*\033[0m'
     fi
 
-    # Compose; truncation is approximate (treats ANSI as zero width by
-    # operating on the visible text only, then re-applying styles wraps
-    # the truncated text).
+    # Compose; truncation operates on visible (un-styled) text and uses
+    # column width (CJK Wide chars count 2). We re-apply styling only when
+    # the line fits — truncated lines render plain so we don't have to
+    # split ANSI sequences mid-string.
     local visible="${label}"
     [[ "$state" == "disabled" && -n "$reason" ]] && visible="${visible} (${reason})"
     local budget=$((cols - 7))   # 2 prefix + 3 mark + 1 change + 1 spacer
-    if (( ${#visible} > budget )); then
+    local vwidth
+    vwidth=$(pick::_str_width "$visible")
+    if (( vwidth > budget )); then
       visible=$(pick::_trunc "$visible" "$budget")
       printf '%s%s%s %s\n' "$prefix" "$mark" "$change" "$visible"
     else
@@ -695,28 +819,18 @@ pick() {
         done
         ;;
       search)
-        # Enter filter input mode. Live-update _pick_filter on each keystroke.
-        local ch
+        # Filter input mode. UTF-8 multi-byte sequences are reassembled
+        # atomically by pick::_read_input_event so the filter never holds
+        # an incomplete byte sequence between renders.
+        local _pick_input_kind _pick_input_data
         while true; do
           pick::_render "$cursor"
-          IFS= read -rsn 1 ch || break
-          case "$ch" in
-            $'\x1b')        # Esc: clear filter, exit input mode
-              _pick_filter=""
-              pick::_recompute_visible
-              break
-              ;;
-            $'\n'|$'\r')    # Enter: keep filter, exit input mode
-              break
-              ;;
-            $'\x7f'|$'\x08') # Backspace
-              _pick_filter="${_pick_filter%?}"
-              pick::_recompute_visible
-              ;;
-            *)
-              _pick_filter+="$ch"
-              pick::_recompute_visible
-              ;;
+          pick::_read_input_event || break
+          case "$_pick_input_kind" in
+            esc)       _pick_filter=""; pick::_recompute_visible; break ;;
+            enter)     break ;;
+            backspace) _pick_filter="${_pick_filter%?}"; pick::_recompute_visible ;;
+            char)      _pick_filter+="$_pick_input_data"; pick::_recompute_visible ;;
           esac
         done
         ;;
