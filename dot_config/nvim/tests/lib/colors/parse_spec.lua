@@ -193,6 +193,42 @@ T.describe("lib.colors.parse color()", function()
   end)
 end)
 
+T.describe("lib.colors.parse color-mix", function()
+  T.it("parses color-mix(in oklch, red, blue) as 50/50", function()
+    local r = P.parse_all("c: color-mix(in oklch, red, blue);")
+    T.eq(#r, 1)
+    T.truthy(r[1].color.source.fmt == "color-mix")
+    -- 50/50 of red+blue in oklch should be a purple-ish color
+    -- (not a strict assertion on RGB, just sanity check)
+    T.truthy(r[1].color.r > 0 and r[1].color.b > 0)
+  end)
+
+  T.it("parses color-mix(in srgb, red 25%, blue) as 25/75", function()
+    local r = P.parse_all("c: color-mix(in srgb, red 25%, blue);")
+    T.eq(#r, 1)
+    -- 25% red + 75% blue in srgb: r ≈ 0.25, g = 0, b ≈ 0.75
+    T.truthy(math.abs(r[1].color.r - 0.25) < 0.05, "r ~0.25, got " .. r[1].color.r)
+    T.truthy(math.abs(r[1].color.b - 0.75) < 0.05, "b ~0.75, got " .. r[1].color.b)
+  end)
+
+  T.it("parses color-mix in oklab", function()
+    local r = P.parse_all("c: color-mix(in oklab, #ff0000, #0000ff);")
+    T.eq(#r, 1)
+  end)
+
+  T.it("returns nil for unknown interpolation space", function()
+    local r = P.parse_all("c: color-mix(in rec2020, red, blue);")
+    T.eq(#r, 0)
+  end)
+
+  T.it("color-mix(in oklch, red 0%, blue 100%) is just blue", function()
+    local r = P.parse_all("c: color-mix(in oklch, red 0%, blue 100%);")
+    T.eq(#r, 1)
+    T.truthy(r[1].color.b > 0.5, "expected blue dominant, got b=" .. r[1].color.b)
+    T.truthy(r[1].color.r < 0.3, "expected r small, got r=" .. r[1].color.r)
+  end)
+end)
+
 T.describe("lib.colors.parse tailwind classes", function()
   T.it("parses bg-red-500 as the Tailwind palette color", function()
     local r = P.parse_all([[<div class="bg-red-500">]])

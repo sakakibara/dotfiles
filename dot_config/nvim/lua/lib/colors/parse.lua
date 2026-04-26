@@ -224,6 +224,118 @@ add_detector("color%([^)]+%)", function(match)
   return C.from_p3(r, g, b, alpha)
 end)
 
+-- color-mix(in SPACE, c1 [PCT], c2 [PCT]) — interpolate two colors in the
+-- given color space. Supported: srgb, oklch, oklab. Other spaces → nil.
+local function _shortest_hue_lerp(h1, h2, t)
+  -- CSS default: shortest path on the hue circle.
+  local diff = h2 - h1
+  if diff > 180 then diff = diff - 360
+  elseif diff < -180 then diff = diff + 360
+  end
+  return (h1 + t * diff) % 360
+end
+
+add_detector("color%-mix%([^)]+%)", function(match)
+  local inner = match:gsub("^color%-mix%(", ""):gsub("%)$", "")
+
+  -- Split on commas (top-level) — but the colors themselves may contain
+  -- commas (rgb(a, b, c)). For simplicity we leverage the fact that within
+  -- color-mix the colors are space-separated functional notations like
+  -- oklch(...) or hex/named. Parens-aware comma split:
+  local parts = {}
+  local depth = 0
+  local cur = ""
+  for i = 1, #inner do
+    local ch = inner:sub(i, i)
+    if ch == "(" then depth = depth + 1; cur = cur .. ch
+    elseif ch == ")" then depth = depth - 1; cur = cur .. ch
+    elseif ch == "," and depth == 0 then
+      table.insert(parts, cur)
+      cur = ""
+    else cur = cur .. ch
+    end
+  end
+  if cur ~= "" then table.insert(parts, cur) end
+  if #parts ~= 3 then return nil end
+
+  -- Trim each part
+  local function trim(s) return s:match("^%s*(.-)%s*$") end
+  local in_clause = trim(parts[1])
+  local c1_clause = trim(parts[2])
+  local c2_clause = trim(parts[3])
+
+  -- Parse "in <space>"
+  local space = in_clause:match("^in%s+([%w%-]+)$")
+  if not space then return nil end
+  -- Unsupported space: consume the range so inner named colors don't leak through.
+  if space ~= "srgb" and space ~= "oklch" and space ~= "oklab" then return M._BLOCKED end
+
+  -- Each color clause is "<color>" or "<color> <pct>%"
+  local function parse_clause(s)
+    -- Try "<color> N%" first (greedy match on color + trailing percent)
+    local color_str, pct = s:match("^(.+)%s+([%d%.]+)%%$")
+    if color_str then
+      local results = M.parse_all(color_str)
+      if #results == 0 then return nil end
+      return results[1].color, tonumber(pct)
+    end
+    -- No percent given
+    local results = M.parse_all(s)
+    if #results == 0 then return nil end
+    return results[1].color, nil
+  end
+
+  local c1, p1 = parse_clause(c1_clause)
+  local c2, p2 = parse_clause(c2_clause)
+  if not c1 or not c2 then return nil end
+
+  -- Normalize percentages: defaults are 50/50; if only one is given, the
+  -- other = 100 - that. If both, normalize so they sum to 100.
+  if not p1 and not p2 then p1, p2 = 50, 50
+  elseif p1 and not p2 then p2 = 100 - p1
+  elseif p2 and not p1 then p1 = 100 - p2
+  else
+    local sum = p1 + p2
+    if sum > 0 then p1, p2 = p1 / sum * 100, p2 / sum * 100 end
+  end
+  local t = p2 / 100  -- fraction of c2
+
+  local mixed
+  if space == "srgb" then
+    mixed = {
+      r = c1.r * (1 - t) + c2.r * t,
+      g = c1.g * (1 - t) + c2.g * t,
+      b = c1.b * (1 - t) + c2.b * t,
+      a = (c1.a or 1) * (1 - t) + (c2.a or 1) * t,
+      space = "srgb",
+      source = { fmt = "color-mix" },
+    }
+  elseif space == "oklab" then
+    -- Convert each to OKLab via oklch (oklab is the cartesian form).
+    local L1, Ch1, h1 = C.to_oklch(c1)
+    local a1 = Ch1 * math.cos(math.rad(h1))
+    local b1 = Ch1 * math.sin(math.rad(h1))
+    local L2, Ch2, h2 = C.to_oklch(c2)
+    local a2 = Ch2 * math.cos(math.rad(h2))
+    local b2 = Ch2 * math.sin(math.rad(h2))
+    local Lm = L1 * (1 - t) + L2 * t
+    local am = a1 * (1 - t) + a2 * t
+    local bm = b1 * (1 - t) + b2 * t
+    mixed = C.from_oklab(Lm, am, bm, (c1.a or 1) * (1 - t) + (c2.a or 1) * t)
+    mixed.source = { fmt = "color-mix" }
+  else  -- oklch
+    local L1, Ch1, h1 = C.to_oklch(c1)
+    local L2, Ch2, h2 = C.to_oklch(c2)
+    local Lm = L1 * (1 - t) + L2 * t
+    local Cm = Ch1 * (1 - t) + Ch2 * t
+    local hm = _shortest_hue_lerp(h1, h2, t)
+    mixed = C.from_oklch(Lm, Cm, hm, (c1.a or 1) * (1 - t) + (c2.a or 1) * t)
+    mixed.source = { fmt = "color-mix" }
+  end
+
+  return mixed
+end)
+
 -- CSS named colors. Use Lua frontier patterns (%f[%a] / %f[^%a]) to require
 -- letter boundaries on both sides, so that "red" inside "border-radius" is
 -- not matched.
@@ -256,6 +368,11 @@ add_detector("[%w%-]+%-%[[^%]]+%]", function(match)
   return results[1].color
 end)
 
+-- Sentinel returned by detectors that want to consume a range without
+-- producing a visible color (e.g. color-mix with an unsupported space).
+-- parse_all uses it for overlap suppression only; it is not included in output.
+M._BLOCKED = {}
+
 -- Scan str for all literals; return list of {range, color}.
 function M.parse_all(str)
   local raw = {}
@@ -267,7 +384,8 @@ function M.parse_all(str)
       local match = str:sub(s, e)
       local color = d.to_color(match)
       if color then
-        table.insert(raw, { range = { col_s = s - 1, col_e = e }, color = color })
+        -- _BLOCKED entries participate in overlap suppression but are not emitted.
+        table.insert(raw, { range = { col_s = s - 1, col_e = e }, color = color, _blocked = (color == M._BLOCKED) })
       end
       pos = e + 1
     end
@@ -284,7 +402,7 @@ function M.parse_all(str)
   local frontier = -1
   for _, r in ipairs(raw) do
     if r.range.col_s >= frontier then
-      table.insert(results, r)
+      if not r._blocked then table.insert(results, r) end
       frontier = r.range.col_e
     end
   end
