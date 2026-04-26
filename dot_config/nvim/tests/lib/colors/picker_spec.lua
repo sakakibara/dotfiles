@@ -162,6 +162,18 @@ T.describe("lib.colors.picker expanded mode", function()
   end)
 end)
 
+T.describe("lib.colors.picker yank", function()
+  T.it("y copies current hex to + register", function()
+    local s = P.open({ initial = C.from_hex("#abcdef") })
+    vim.fn.setreg("+", "")  -- clear
+    vim.api.nvim_buf_call(s.buf, function()
+      vim.api.nvim_feedkeys("y", "x", false)
+    end)
+    T.eq(vim.fn.getreg("+"), "#abcdef")
+    P.close(s)
+  end)
+end)
+
 T.describe("lib.colors.picker syntax preservation", function()
   T.it("preserves rgba(R, G, B, A) commas on commit", function()
     P._recents = {}

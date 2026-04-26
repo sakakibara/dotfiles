@@ -50,34 +50,57 @@ local function default_color()
   return C.from_hex("#ffffff")
 end
 
+local function slider_bar(value, vmax, width)
+  width = width or 20
+  local pos = math.floor((value / vmax) * (width - 1) + 0.5)
+  pos = math.max(0, math.min(width - 1, pos))
+  local out = {}
+  for i = 0, width - 1 do
+    out[#out + 1] = (i == pos) and "●" or "━"
+  end
+  return table.concat(out)
+end
+
+local function space_label(state)
+  if state.space == "rgb"   then return "[rgb] hsl oklch" end
+  if state.space == "hsl"   then return "rgb [hsl] oklch" end
+  return "rgb hsl [oklch]"
+end
+
 -- Render the compact view as a list of lines. Live swatch coloring lands
--- in Task 5 via an extmark applied on top of line index 1.
+-- via an extmark applied on top of line index 1.
 local function compact_lines(state)
-  local hex = C.to_hex({ r = state.color.r, g = state.color.g, b = state.color.b, a = 1 })
+  local hex  = C.to_hex({ r = state.color.r, g = state.color.g, b = state.color.b, a = 1 })
+  local mark = function(idx) return state.slider == idx and "▸" or " " end
+
   local lines = {
-    " " .. hex,
-    string.rep("█", 28),
-    "",
+    "  " .. hex,                                       -- 0: header
+    "  " .. string.rep("█", 32),                       -- 1: swatch
+    "",                                                -- 2: blank
   }
-  -- Active-slider indicator: ▸ on the line whose component is being adjusted.
-  local function mark(idx) return state.slider == idx and "▸ " or "  " end
+
   if state.space == "rgb" then
-    table.insert(lines, string.format("%sR %3d", mark(1), math.floor(state.color.r * 255 + 0.5)))
-    table.insert(lines, string.format("%sG %3d", mark(2), math.floor(state.color.g * 255 + 0.5)))
-    table.insert(lines, string.format("%sB %3d", mark(3), math.floor(state.color.b * 255 + 0.5)))
+    local r = math.floor(state.color.r * 255 + 0.5)
+    local g = math.floor(state.color.g * 255 + 0.5)
+    local b = math.floor(state.color.b * 255 + 0.5)
+    table.insert(lines, string.format("%s R %s %3d", mark(1), slider_bar(r, 255), r))
+    table.insert(lines, string.format("%s G %s %3d", mark(2), slider_bar(g, 255), g))
+    table.insert(lines, string.format("%s B %s %3d", mark(3), slider_bar(b, 255), b))
   elseif state.space == "hsl" then
     local h, s, l = C.to_hsl(state.color)
-    table.insert(lines, string.format("%sH %3d", mark(1), math.floor(h)))
-    table.insert(lines, string.format("%sS %3d", mark(2), math.floor(s * 100)))
-    table.insert(lines, string.format("%sL %3d", mark(3), math.floor(l * 100)))
+    local hi, si, li = math.floor(h), math.floor(s * 100), math.floor(l * 100)
+    table.insert(lines, string.format("%s H %s %3d", mark(1), slider_bar(hi, 360), hi))
+    table.insert(lines, string.format("%s S %s %3d", mark(2), slider_bar(si, 100), si))
+    table.insert(lines, string.format("%s L %s %3d", mark(3), slider_bar(li, 100), li))
   else
     local L, Cval, h = C.to_oklch(state.color)
-    table.insert(lines, string.format("%sL %.2f", mark(1), L))
-    table.insert(lines, string.format("%sC %.2f", mark(2), Cval))
-    table.insert(lines, string.format("%sH %3d",  mark(3), math.floor(h)))
+    table.insert(lines, string.format("%s L %s %.2f", mark(1), slider_bar(L * 100, 100), L))
+    table.insert(lines, string.format("%s C %s %.2f", mark(2), slider_bar(Cval * 250, 100), Cval))
+    table.insert(lines, string.format("%s H %s %3d",  mark(3), slider_bar(h, 360),         math.floor(h)))
   end
-  table.insert(lines, "")
-  table.insert(lines, "[" .. state.space .. "] <Tab> cycle  <CR> commit  <Esc> cancel  <C-e> expand")
+
+  table.insert(lines, "")                              -- blank
+  table.insert(lines, "  " .. space_label(state) .. "  Tab cycle  y yank  ⏎ commit  ⎋ cancel")
   return lines
 end
 
@@ -134,6 +157,16 @@ local function render(state)
     end_col  = #lines[2],
     hl_group = "LibColorsPickerSwatch_" .. short,
   })
+  -- Active slider row — bold highlight so the active component stands out.
+  if state.mode == "compact" then
+    local active_row = 3 + (state.slider - 1)  -- 0-indexed buffer row
+    vim.api.nvim_set_hl(0, "LibColorsPickerActive", { bold = true })
+    vim.api.nvim_buf_set_extmark(state.buf, M.ns, active_row, 0, {
+      end_row  = active_row,
+      end_col  = #lines[active_row + 1],  -- lua 1-indexed
+      hl_group = "LibColorsPickerActive",
+    })
+  end
   vim.bo[state.buf].modifiable = false
 
   if state.win and vim.api.nvim_win_is_valid(state.win) then
@@ -141,7 +174,7 @@ local function render(state)
     -- current window, so `relative = "cursor"` would re-anchor to the
     -- picker's own cursor and drift on every keypress.
     local cur = vim.api.nvim_win_get_config(state.win)
-    local want_w, want_h = (state.mode == "expanded") and 52 or 32, (state.mode == "expanded") and 18 or 9
+    local want_w, want_h = (state.mode == "expanded") and 52 or 38, (state.mode == "expanded") and 18 or 9
     if cur.width ~= want_w or cur.height ~= want_h then
       vim.api.nvim_win_set_config(state.win, { width = want_w, height = want_h })
     end
@@ -176,7 +209,7 @@ function M.open(opts)
     relative  = "cursor",
     row       = 1,
     col       = 0,
-    width     = 32,
+    width     = 38,
     height    = 9,
     style     = "minimal",
     border    = "rounded",
@@ -195,6 +228,12 @@ function M.open(opts)
   map("L",     function() M.adjust(state,  20) end)
   map("j",     function() M.cycle_slider(state) end)
   map("k",     function() state.slider = ((state.slider - 2) % 3) + 1; render(state) end)
+  map("y",     function()
+    local hex = C.to_hex({ r = state.color.r, g = state.color.g, b = state.color.b, a = 1 })
+    vim.fn.setreg("+", hex)
+    vim.fn.setreg("\"", hex)
+    vim.notify("Yanked " .. hex, vim.log.levels.INFO)
+  end)
   map("<Tab>", function() M.cycle_space(state) end)
   map("<C-e>", function() M.toggle_expand(state) end)
   map("<CR>",  function() M.commit(state) end)
