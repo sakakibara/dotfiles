@@ -2,10 +2,10 @@
 
 import msg
 
-# Detect the distro family. Returns one of: fedora, debian, arch, unknown.
+# Detect the distro family. Returns one of: fedora, debian, arch, suse, unknown.
 # Maps RHEL-family (Fedora/Rocky/Alma/CentOS) → fedora, Debian-family
 # (Debian/Ubuntu/Mint/Pop) → debian, Arch-family (Arch/Manjaro/Endeavour) →
-# arch.
+# arch, SUSE-family (openSUSE/SLES) → suse.
 #
 # Detection order (first that yields an ID wins):
 #   1. /etc/os-release — modern standard, has ID + ID_LIKE.
@@ -36,6 +36,7 @@ linux::detect_distro() {
     *fedora*|*rhel*|*centos*|*rocky*|*alma*|*amzn*) echo fedora ;;
     *debian*|*ubuntu*|*mint*|*pop*|*elementary*)   echo debian ;;
     *arch*|*manjaro*|*endeavour*|*garuda*)         echo arch   ;;
+    *opensuse*|*sles*|*suse*)                       echo suse   ;;
     *) echo unknown ;;
   esac
 }
@@ -83,6 +84,11 @@ linux::install_packages() {
     arch)
       # shellcheck disable=SC2086
       sudo pacman -Syu --needed --noconfirm $pkgs
+      ;;
+    suse)
+      sudo zypper --non-interactive refresh
+      # shellcheck disable=SC2086
+      sudo zypper --non-interactive install $pkgs
       ;;
     *)
       msg::error "unsupported distro: $distro"

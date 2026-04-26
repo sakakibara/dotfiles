@@ -7,7 +7,7 @@
 
 set -uo pipefail
 
-distro="${1:?missing distro arg (fedora|debian|arch)}"
+distro="${1:?missing distro arg (fedora|debian|arch|suse)}"
 file="etc/linux/packages-${distro}.txt"
 [[ -f "$file" ]] || { echo "no $file" >&2; exit 1; }
 
@@ -32,6 +32,12 @@ while IFS= read -r line; do
     arch)
       if ! pacman -Si "$pkg" >/dev/null 2>&1; then
         echo "FAIL: $pkg not in Arch repos"
+        fails=$((fails + 1))
+      fi
+      ;;
+    suse)
+      if ! zypper --non-interactive info "$pkg" 2>/dev/null | grep -q '^Repository'; then
+        echo "FAIL: $pkg not in openSUSE repos"
         fails=$((fails + 1))
       fi
       ;;

@@ -1,0 +1,35 @@
+# Native packages for openSUSE Leap/Tumbleweed (and SLES). Best-effort —
+# CI validates against opensuse/tumbleweed:latest. Some tools (gh, lazygit,
+# etc.) may need extras.bash if not in default zypper repos.
+#
+# CLI tools and shells
+bash
+bat
+fd
+ffmpeg-4
+fish
+fzf
+gawk
+gh
+git
+gnupg
+ImageMagick
+jq
+neovim
+ripgrep
+tree
+wget
+yt-dlp
+zoxide
+zsh
+
+# Build tools (devel_basis pattern; equivalents to base-devel/build-essential)
+autoconf
+automake
+bison
+cmake
+gcc
+gcc-c++
+make
+pkgconf-pkg-config
+re2c
