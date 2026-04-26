@@ -676,14 +676,64 @@ vim.api.nvim_create_user_command("PackClean", function()
     notify("vim.pack.del not available", vim.log.levels.ERROR); return
   end
   local installed = vim.pack.get() or {}
-  local to_remove = {}
+  local orphans = {}
   for _, info in ipairs(installed) do
-    if not M._specs[info.spec.name] then to_remove[#to_remove + 1] = info.spec.name end
+    if not M._specs[info.spec.name] then orphans[#orphans + 1] = info end
   end
-  if #to_remove == 0 then print("Nothing to clean"); return end
-  vim.pack.del(to_remove)
-  print("Removed: " .. table.concat(to_remove, ", "))
-end, { desc = "Remove plugins not in spec" })
+  if #orphans == 0 then print("Nothing to clean"); return end
+
+  -- Preview buffer mirroring vim.pack.update()'s UX: list orphans, `:w` to
+  -- delete, close to cancel. Removing a `## name` header line opts that
+  -- plugin out (kept on disk).
+  local lines = {
+    "# Clean ───────────────────────────────────────────────────────────────",
+    "",
+    "# Plugins not in any active spec — `:w` deletes them, close (:bd!)",
+    "# cancels. Remove a ## header to keep that plugin on disk.",
+    "",
+  }
+  for _, info in ipairs(orphans) do
+    table.insert(lines, "## " .. info.spec.name)
+    table.insert(lines, "Path:    " .. (info.path or ""))
+    table.insert(lines, "Source:  " .. (info.spec.src or ""))
+    table.insert(lines, "")
+  end
+
+  local buf = vim.api.nvim_create_buf(false, true)
+  vim.bo[buf].buftype  = "acwrite"
+  vim.bo[buf].swapfile = false
+  vim.api.nvim_buf_set_name(buf, "PackClean://orphans")
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+  vim.bo[buf].modified = false
+
+  vim.api.nvim_create_autocmd("BufWriteCmd", {
+    buffer = buf,
+    callback = function()
+      local content = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+      local kept = {}
+      for _, line in ipairs(content) do
+        local name = line:match("^## (.+)$")
+        if name then kept[name] = true end
+      end
+      local to_remove = {}
+      for _, info in ipairs(orphans) do
+        if kept[info.spec.name] then to_remove[#to_remove + 1] = info.spec.name end
+      end
+      if #to_remove == 0 then
+        print("Nothing to remove")
+      else
+        vim.pack.del(to_remove)
+        print("Removed: " .. table.concat(to_remove, ", "))
+      end
+      vim.bo[buf].modified = false
+      vim.cmd("bdelete!")
+    end,
+  })
+
+  vim.cmd("split | buffer " .. buf)
+  vim.notify(":w to apply  ·  close (:bd!) to cancel", vim.log.levels.INFO,
+    { title = "PackClean" })
+end, { desc = "Remove plugins not in spec (preview + :w to confirm)" })
 
 vim.api.nvim_create_user_command("PackSync", function()
   vim.cmd("PackUpdate")
