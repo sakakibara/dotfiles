@@ -13,8 +13,10 @@ local function add_detector(pattern, to_color)
   table.insert(detectors, { pattern = pattern, to_color = to_color })
 end
 
--- Hex: #rgb, #rrggbb, #rrggbbaa
-add_detector("#%x+", function(match)
+-- Hex: #rgb, #rrggbb, #rrggbbaa. The %f[%W%z] frontier requires the next
+-- character to be non-word or end-of-string, so e.g. `#define` (where `def`
+-- is hex but is part of the longer C identifier) is correctly skipped.
+add_detector("#%x+%f[%W%z]", function(match)
   local n = #match - 1
   if n ~= 3 and n ~= 6 and n ~= 8 then return nil end
   return C.from_hex(match)

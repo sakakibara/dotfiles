@@ -248,3 +248,30 @@ T.describe("lib.colors.parse tailwind classes", function()
     T.eq(r[1].color.source.fmt, "oklch")
   end)
 end)
+
+T.describe("lib.colors.parse hex word boundary", function()
+  T.it("does NOT match #define as #def", function()
+    local r = P.parse_all("#define MAX_DEPTH 64")
+    T.eq(#r, 0, "#define should not be parsed as #def, got " .. #r .. " result(s)")
+  end)
+
+  T.it("does NOT match #abcg as #abc", function()
+    -- Trailing 'g' makes this an identifier, not a hex color
+    local r = P.parse_all("var x = #abcgxxx;")
+    T.eq(#r, 0)
+  end)
+
+  T.it("DOES match #abc when followed by punctuation", function()
+    T.eq(#P.parse_all("color: #abc;"), 1)
+    T.eq(#P.parse_all("color: #abc,"), 1)
+    T.eq(#P.parse_all("color: #abc)"), 1)
+  end)
+
+  T.it("DOES match #abc at end of string", function()
+    T.eq(#P.parse_all("color: #abc"), 1)
+  end)
+
+  T.it("DOES match #abc followed by whitespace", function()
+    T.eq(#P.parse_all("color: #abc xyz"), 1)
+  end)
+end)
