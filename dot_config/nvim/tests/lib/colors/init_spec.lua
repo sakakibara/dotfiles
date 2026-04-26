@@ -68,3 +68,50 @@ T.describe("lib.colors :ColorsToggle command", function()
     T.truthy(cmds.ColorsToggle, ":ColorsToggle not registered")
   end)
 end)
+
+T.describe("lib.colors toggle correctness", function()
+  T.it("M.toggle(0) flips state for the current buffer", function()
+    package.loaded["lib.colors"] = nil
+    require("lib").init()
+    Lib.colors.setup({})
+
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_set_current_buf(buf)
+    -- Pre-condition: not yet toggled, _enabled[buf] is nil (treated as enabled)
+    Lib.colors.toggle(0)
+    -- After toggle, _enabled keyed by the actual buffer handle should be false
+    T.eq(Lib.colors._enabled[buf], false, "toggle(0) didn't flip _enabled[" .. buf .. "]")
+    vim.api.nvim_buf_delete(buf, { force = true })
+  end)
+
+  T.it(":ColorsToggle global disables rendering for tracked buffers", function()
+    package.loaded["lib.colors.render"] = nil
+    package.loaded["lib.colors"] = nil
+    require("lib").init()
+    Lib.colors.setup({})
+
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "color: #ff0000;" })
+    vim.bo[buf].filetype = "css"
+    vim.api.nvim_set_current_buf(buf)
+    vim.api.nvim_exec_autocmds("BufReadPost", { buffer = buf })
+    vim.wait(80, function()
+      local R = require("lib.colors.render")
+      return R._state[buf] and next(R._state[buf].by_key) ~= nil
+    end)
+
+    -- Sanity check: a mark exists
+    local R = require("lib.colors.render")
+    local marks_before = vim.api.nvim_buf_get_extmarks(buf, R.ns, 0, -1, {})
+    T.truthy(#marks_before >= 1, "expected mark before toggle, got " .. #marks_before)
+
+    -- Run :ColorsToggle global
+    vim.cmd("ColorsToggle global")
+    vim.wait(80)
+
+    local marks_after = vim.api.nvim_buf_get_extmarks(buf, R.ns, 0, -1, {})
+    T.eq(#marks_after, 0, "expected 0 marks after global toggle, got " .. #marks_after)
+
+    vim.api.nvim_buf_delete(buf, { force = true })
+  end)
+end)

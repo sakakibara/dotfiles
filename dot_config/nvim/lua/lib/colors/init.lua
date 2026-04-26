@@ -23,6 +23,7 @@ M._enabled = {}   -- per-buffer toggle override
 
 local function is_excluded(buf)
   if not vim.api.nvim_buf_is_valid(buf) then return true end
+  if not M._opts.enabled then return true end
   local bt = vim.bo[buf].buftype
   for _, x in ipairs(M._opts.exclude_bt) do
     if bt == x then return true end
@@ -120,7 +121,8 @@ function M.setup(opts)
 end
 
 function M.toggle(buf)
-  buf = buf or vim.api.nvim_get_current_buf()
+  if not buf or buf == 0 then buf = vim.api.nvim_get_current_buf() end
+  -- Default state is "enabled" (nil); first toggle should flip to false.
   M._enabled[buf] = not (M._enabled[buf] ~= false)
   redraw(buf)
 end
