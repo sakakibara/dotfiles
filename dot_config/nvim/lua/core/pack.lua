@@ -656,20 +656,107 @@ vim.api.nvim_create_user_command("PackStatus", function()
   for _, l in ipairs(M._status_lines()) do print(l) end
 end, { desc = "List registered plugin specs" })
 
-vim.api.nvim_create_user_command("PackUpdate", function(opts)
-  if not (vim.pack and vim.pack.update) then
-    notify("vim.pack.update not available", vim.log.levels.ERROR); return
+-- Async pre-fetch: vim.pack.update() blocks on its internal `:wait()` for the
+-- duration of all git fetches (parallel internally, but main thread waits).
+-- Instead, we spawn `git fetch` ourselves via vim.system (libuv-async, doesn't
+-- block input), wait via callbacks, then call vim.pack.update with offline=true
+-- to open the preview instantly without re-fetching.
+local function pack_update_async(names)
+  if not (vim.pack and vim.pack.update and vim.pack.get) then
+    notify("vim.pack not available", vim.log.levels.ERROR); return
   end
-  local args = opts.fargs
-  local names = #args > 0 and args or nil
-  vim.pack.update(names)
-  -- vim.pack opens a preview buffer; convention is `:w` to apply, close to
-  -- cancel. Not discoverable without docs, so surface the hint.
-  vim.notify(":w to apply  ·  close (:bd!) to cancel", vim.log.levels.INFO,
-    { title = "PackUpdate" })
-  -- nvim-pack-lock.json is written by vim.pack.update itself; no extra
-  -- refresh needed here.
-end, { nargs = "*", desc = "Update plugin(s)" })
+  local installed = vim.pack.get() or {}
+  local targets = {}
+  for _, info in ipairs(installed) do
+    if not names then
+      targets[#targets + 1] = { name = info.spec.name, path = info.path }
+    else
+      for _, n in ipairs(names) do
+        if info.spec.name == n then
+          targets[#targets + 1] = { name = info.spec.name, path = info.path }
+          break
+        end
+      end
+    end
+  end
+  if #targets == 0 then
+    notify("Nothing to update", vim.log.levels.WARN); return
+  end
+
+  local total, done, failures = #targets, 0, {}
+  -- Persistent notification handle so subsequent updates replace the line
+  -- in-place instead of stacking N progress toasts.
+  local notif_id = nil
+  local function progress(msg, level)
+    notif_id = vim.notify(msg, level or vim.log.levels.INFO,
+      { title = "PackUpdate", id = notif_id, replace = notif_id })
+  end
+  progress(string.format("Fetching 0/%d…", total))
+
+  local function on_done(target, ok)
+    done = done + 1
+    if not ok then table.insert(failures, target.name) end
+    if done < total then
+      progress(string.format("Fetching %d/%d…", done, total))
+    else
+      if #failures > 0 then
+        progress("Fetch failed for: " .. table.concat(failures, ", "),
+          vim.log.levels.WARN)
+      end
+      -- Open the preview buffer with already-fetched results
+      vim.pack.update(names, { offline = true })
+      vim.notify(":w / <CR> apply  ·  q / close cancel",
+        vim.log.levels.INFO, { title = "PackUpdate" })
+    end
+  end
+
+  -- Spawn parallel git fetches; main thread stays responsive throughout.
+  for _, target in ipairs(targets) do
+    vim.system(
+      { "git", "-C", target.path, "fetch", "--quiet", "--tags", "--force",
+        "--recurse-submodules=yes", "origin" },
+      { text = true },
+      vim.schedule_wrap(function(result)
+        on_done(target, result and result.code == 0)
+      end)
+    )
+  end
+end
+
+vim.api.nvim_create_user_command("PackUpdate", function(opts)
+  pack_update_async(#opts.fargs > 0 and opts.fargs or nil)
+end, {
+  nargs = "*",
+  complete = function(arglead)
+    local out = {}
+    for name in pairs(M._specs) do
+      if name:lower():find(arglead:lower(), 1, true) then
+        out[#out + 1] = name
+      end
+    end
+    table.sort(out)
+    return out
+  end,
+  desc = "Update plugin(s) — async fetch, preview when ready",
+})
+
+-- Add q / <CR> keymaps to vim.pack's preview buffer (filetype = nvim-pack)
+-- alongside the default `:w`/close convention. q closes without applying;
+-- <CR> applies (just calls :write under the hood).
+vim.api.nvim_create_autocmd("FileType", {
+  group    = vim.api.nvim_create_augroup("core.pack.confirm_keys", { clear = true }),
+  pattern  = "nvim-pack",
+  callback = function(args)
+    local buf = args.buf
+    vim.keymap.set("n", "q", function()
+      vim.bo[buf].modified = false
+      pcall(vim.cmd, "bdelete")
+    end, { buffer = buf, desc = "Cancel" })
+    vim.keymap.set("n", "<CR>", function()
+      pcall(vim.cmd, "write")
+    end, { buffer = buf, desc = "Apply" })
+  end,
+})
 
 vim.api.nvim_create_user_command("PackClean", function()
   if not (vim.pack and vim.pack.get and vim.pack.del) then
@@ -705,6 +792,8 @@ vim.api.nvim_create_user_command("PackClean", function()
   vim.api.nvim_buf_set_name(buf, "PackClean://orphans")
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
   vim.bo[buf].modified = false
+  -- Inherit nvim-pack's highlighting + the q/<CR> keymaps we add to that ft.
+  vim.bo[buf].filetype = "nvim-pack"
 
   vim.api.nvim_create_autocmd("BufWriteCmd", {
     buffer = buf,
