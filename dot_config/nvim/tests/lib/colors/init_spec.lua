@@ -8,3 +8,53 @@ T.describe("lib.colors", function()
     T.truthy(type(Lib.colors.setup) == "function", "Lib.colors.setup missing")
   end)
 end)
+
+T.describe("lib.colors.setup", function()
+  local C = require("lib.colors.color")
+
+  T.it("setup() then BufReadPost triggers detection on a CSS buf", function()
+    package.loaded["lib.colors.render"] = nil
+    package.loaded["lib.colors"] = nil
+    require("lib").init()
+    Lib.colors.setup({})
+
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "color: #ff0000;" })
+    vim.bo[buf].filetype = "css"
+    vim.api.nvim_set_current_buf(buf)
+    vim.api.nvim_exec_autocmds("BufReadPost", { buffer = buf })
+
+    -- Debouncer is 16ms; wait synchronously for it to fire.
+    vim.wait(80, function()
+      local R = require("lib.colors.render")
+      return R._state[buf] and next(R._state[buf].by_key) ~= nil
+    end)
+
+    local R = require("lib.colors.render")
+    local marks = vim.api.nvim_buf_get_extmarks(buf, R.ns, 0, -1, {})
+    T.truthy(#marks >= 1, "expected at least 1 mark, got " .. #marks)
+
+    vim.api.nvim_buf_delete(buf, { force = true })
+  end)
+
+  T.it("setup() respects exclude_ft", function()
+    package.loaded["lib.colors.render"] = nil
+    package.loaded["lib.colors"] = nil
+    require("lib").init()
+    Lib.colors.setup({ exclude_ft = { "bigfile" } })
+
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "color: #ff0000;" })
+    vim.bo[buf].filetype = "bigfile"
+    vim.api.nvim_set_current_buf(buf)
+    vim.api.nvim_exec_autocmds("BufReadPost", { buffer = buf })
+
+    vim.wait(80)
+
+    local R = require("lib.colors.render")
+    local marks = vim.api.nvim_buf_get_extmarks(buf, R.ns, 0, -1, {})
+    T.eq(#marks, 0, "expected 0 marks for excluded ft, got " .. #marks)
+
+    vim.api.nvim_buf_delete(buf, { force = true })
+  end)
+end)
