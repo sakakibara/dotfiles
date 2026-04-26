@@ -1,9 +1,12 @@
 {{ if eq .chezmoi.os "darwin" -}}
 #!/usr/bin/env bash
-# Hash trigger — chezmoi re-runs this script whenever the comment hash below
-# changes, which is whenever packages.txt or the blacklist changes.
-# packages.txt hash: {{ include "etc/darwin/packages.txt" | sha256sum }}
+# Hash trigger — chezmoi re-runs this script whenever any of the comment
+# hashes below changes (packages list, blacklist, or the brew/packages
+# library code that processes them).
+# packages.txt hash: {{ include "etc/darwin/packages.txt"      | sha256sum }}
 # blacklist hash:    {{ include "etc/darwin/packages-blacklist.txt" | sha256sum }}
+# brew.bash hash:    {{ include "etc/bash/lib/brew.bash"       | sha256sum }}
+# packages.bash hash:{{ include "etc/bash/lib/packages.bash"   | sha256sum }}
 source {{ joinPath .chezmoi.sourceDir "etc" "bash" "lib" "init.bash" | quote }}
 
 # Bake the profile into the env so brew::setup doesn't need to spawn chezmoi.
