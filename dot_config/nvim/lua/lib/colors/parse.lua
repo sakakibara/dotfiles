@@ -24,8 +24,10 @@ end)
 
 -- rgb()/rgba() — legacy comma and modern space syntax, with optional / alpha
 add_detector("rgba?%([^)]+%)", function(match)
-  local inner = match:gsub("^rgba?%(", ""):gsub("%)$", "")
-  inner = inner:gsub(",", " "):gsub("/", " ")
+  local fn_name   = match:match("^(rgba?)%(") or "rgb"   -- "rgb" or "rgba"
+  local inner_raw = match:gsub("^rgba?%(", ""):gsub("%)$", "")
+  local has_commas = inner_raw:find(",") ~= nil
+  local inner = inner_raw:gsub(",", " "):gsub("/", " ")
   local nums = {}
   for tok in inner:gmatch("%S+") do
     local pct = tok:match("^(%-?%d+%.?%d*)%%$")
@@ -47,14 +49,21 @@ add_detector("rgba?%([^)]+%)", function(match)
     b = nums[3] / 255,
     a = a or 1,
     space = "srgb",
-    source = { fmt = "rgb" },
+    source = {
+      fmt        = "rgb",
+      fn_name    = fn_name,         -- preserve "rgb" vs "rgba"
+      commas     = has_commas,      -- preserve comma vs space syntax
+      with_alpha = a ~= nil,        -- whether the source had explicit alpha
+    },
   }
 end)
 
 -- hsl()/hsla() — h in deg/rad/turn (or unitless = deg), s and l in %
 add_detector("hsla?%([^)]+%)", function(match)
-  local inner = match:gsub("^hsla?%(", ""):gsub("%)$", "")
-  inner = inner:gsub(",", " "):gsub("/", " ")
+  local fn_name   = match:match("^(hsla?)%(") or "hsl"   -- "hsl" or "hsla"
+  local inner_raw = match:gsub("^hsla?%(", ""):gsub("%)$", "")
+  local has_commas = inner_raw:find(",") ~= nil
+  local inner = inner_raw:gsub(",", " "):gsub("/", " ")
   local toks = {}
   for tok in inner:gmatch("%S+") do table.insert(toks, tok) end
   if #toks < 3 or #toks > 4 then return nil end
@@ -80,7 +89,12 @@ add_detector("hsla?%([^)]+%)", function(match)
   end
 
   local c = C.from_hsl(h, s, l, a)
-  c.source = { fmt = "hsl" }
+  c.source = {
+    fmt        = "hsl",
+    fn_name    = fn_name,         -- preserve "hsl" vs "hsla"
+    commas     = has_commas,      -- preserve comma vs space syntax
+    with_alpha = a ~= nil,        -- whether the source had explicit alpha
+  }
   return c
 end)
 

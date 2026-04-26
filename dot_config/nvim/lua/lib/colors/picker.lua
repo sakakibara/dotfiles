@@ -161,6 +161,7 @@ function M.open(opts)
   local state = {
     color      = color,
     source_fmt = color.source and color.source.fmt or "hex",
+    source     = vim.deepcopy(color.source or { fmt = "hex" }),
     mode       = "compact",
     space      = "rgb",
     slider     = 1,
@@ -207,14 +208,41 @@ function M.commit(state)
     local fmt = state.source_fmt or "hex"
     local text
     if fmt == "rgb" then
-      text = string.format("rgb(%d %d %d)",
-        math.floor(state.color.r * 255 + 0.5),
-        math.floor(state.color.g * 255 + 0.5),
-        math.floor(state.color.b * 255 + 0.5))
+      local src       = state.source or {}
+      local fn        = src.fn_name or (src.with_alpha and "rgba" or "rgb")
+      local sep       = src.commas and ", " or " "
+      local r = math.floor(state.color.r * 255 + 0.5)
+      local g = math.floor(state.color.g * 255 + 0.5)
+      local b = math.floor(state.color.b * 255 + 0.5)
+      local a = state.color.a or 1
+      if src.with_alpha then
+        if src.commas then
+          text = string.format("%s(%d, %d, %d, %s)", fn, r, g, b,
+            a == 1 and "1" or string.format("%.2f", a))
+        else
+          text = string.format("%s(%d %d %d / %s)", fn, r, g, b,
+            a == 1 and "1" or string.format("%.2f", a))
+        end
+      else
+        text = string.format("%s(%d%s%d%s%d)", fn, r, sep, g, sep, b)
+      end
     elseif fmt == "hsl" then
       local h, s, l = C.to_hsl(state.color)
-      text = string.format("hsl(%d %d%% %d%%)",
-        math.floor(h), math.floor(s * 100), math.floor(l * 100))
+      local src = state.source or {}
+      local fn = src.fn_name or (src.with_alpha and "hsla" or "hsl")
+      local sep = src.commas and ", " or " "
+      local hi, si, li = math.floor(h), math.floor(s * 100), math.floor(l * 100)
+      if src.with_alpha then
+        local a = state.color.a or 1
+        local a_str = a == 1 and "1" or string.format("%.2f", a)
+        if src.commas then
+          text = string.format("%s(%d, %d%%, %d%%, %s)", fn, hi, si, li, a_str)
+        else
+          text = string.format("%s(%d %d%% %d%% / %s)", fn, hi, si, li, a_str)
+        end
+      else
+        text = string.format("%s(%d%s%d%%%s%d%%)", fn, hi, sep, si, sep, li)
+      end
     elseif fmt == "oklch" then
       local L, Cval, h = C.to_oklch(state.color)
       text = string.format("oklch(%.3f %.3f %.1f)", L, Cval, h)

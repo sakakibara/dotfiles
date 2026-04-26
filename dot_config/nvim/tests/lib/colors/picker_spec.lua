@@ -162,6 +162,38 @@ T.describe("lib.colors.picker expanded mode", function()
   end)
 end)
 
+T.describe("lib.colors.picker syntax preservation", function()
+  T.it("preserves rgba(R, G, B, A) commas on commit", function()
+    P._recents = {}
+    local src = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(src, 0, -1, false, { "c: rgba(255, 0, 0, 0.5);" })
+    local hit = require("lib.colors.parse").parse("c: rgba(255, 0, 0, 0.5);", 5)
+    T.truthy(hit)
+    local s = P.open({ initial = hit.color,
+                       anchor  = { buf = src, lnum = 0, col_s = hit.range.col_s, col_e = hit.range.col_e } })
+    P.commit(s)
+    local line = vim.api.nvim_buf_get_lines(src, 0, 1, false)[1]
+    T.truthy(line:match("rgba%(.*,.*,.*,.*%)"),
+      "expected rgba(...) with commas, got: " .. line)
+    vim.api.nvim_buf_delete(src, { force = true })
+  end)
+
+  T.it("preserves rgb(R G B) modern syntax on commit", function()
+    P._recents = {}
+    local src = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(src, 0, -1, false, { "c: rgb(255 0 0);" })
+    local hit = require("lib.colors.parse").parse("c: rgb(255 0 0);", 5)
+    local s = P.open({ initial = hit.color,
+                       anchor  = { buf = src, lnum = 0, col_s = hit.range.col_s, col_e = hit.range.col_e } })
+    P.commit(s)
+    local line = vim.api.nvim_buf_get_lines(src, 0, 1, false)[1]
+    T.truthy(line:match("rgb%(%d+ %d+ %d+%)"),
+      "expected modern rgb(R G B), got: " .. line)
+    T.truthy(not line:match("rgba"), "expected rgb not rgba")
+    vim.api.nvim_buf_delete(src, { force = true })
+  end)
+end)
+
 T.describe("lib.colors.picker recents", function()
   T.it("commit pushes color hex to recents (LRU front)", function()
     P._recents_path = vim.fn.tempname() .. ".json"
