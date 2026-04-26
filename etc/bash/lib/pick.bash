@@ -216,7 +216,7 @@ pick::_str_width() {
 
 # Subshell-free: writes to the dynamic-scoped `_pick_width`.
 pick::_str_width_v() {
-  local LC_ALL=en_US.UTF-8
+  local LC_ALL=C.UTF-8
   local s="$1" total=0 i len ch _pick_cp _pick_w
   len=${#s}
   for ((i=0; i<len; i++)); do
@@ -239,7 +239,7 @@ pick::_trunc() {
 
 # Subshell-free: writes to the dynamic-scoped `_pick_trunc`.
 pick::_trunc_v() {
-  local LC_ALL=en_US.UTF-8
+  local LC_ALL=C.UTF-8
   local s="$1" max="$2"
   local _pick_width
   pick::_str_width_v "$s"
@@ -374,8 +374,8 @@ pick::_matches_filter() {
   # Pin LC_ALL on tr so case folding works for Greek / Cyrillic / etc.
   # regardless of the caller's locale (CI runners often default to C).
   local lc_label lc_filter
-  lc_label=$(printf '%s' "$label"  | LC_ALL=en_US.UTF-8 tr '[:upper:]' '[:lower:]')
-  lc_filter=$(printf '%s' "$filter" | LC_ALL=en_US.UTF-8 tr '[:upper:]' '[:lower:]')
+  lc_label=$(printf '%s' "$label"  | LC_ALL=C.UTF-8 tr '[:upper:]' '[:lower:]')
+  lc_filter=$(printf '%s' "$filter" | LC_ALL=C.UTF-8 tr '[:upper:]' '[:lower:]')
   [[ "$lc_label" == *"$lc_filter"* ]]
 }
 
