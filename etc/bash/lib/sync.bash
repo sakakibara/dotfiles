@@ -180,26 +180,79 @@ sync::_fetch_descriptions_darwin() {
   )
 }
 
-# Fetch a one-line description for each pkg-kind item via the distro's
-# package manager. Single-package query per item — slower than darwin's
-# batched `brew desc`, but the untracked subset is usually small.
+# Fetch one-line descriptions for every pkg-kind item in a SINGLE batched
+# call to the distro's package manager. Each tool returns multi-package
+# output as RFC822-style stanzas keyed by Name/Package; the awk pulls
+# (name, description) pairs out of the merged stream. LC_ALL=C forces the
+# field labels to English so the regexes match on every locale; `seen`
+# emits each name at most once (apt-cache returns one stanza per
+# package version).
+#
+# Quoting `:` in awk regexes: the field name regex stops at the first
+# colon, then we substitute the literal "Key:[ws]*" prefix off so the
+# value can contain colons of its own (the prior per-package `-F': *'`
+# split was lossy on values like "A tool: with colon").
 sync::_fetch_descriptions_linux() {
   local distro
   distro=$(linux::detect_distro 2>/dev/null || echo unknown)
+
+  local names=()
   local i n=${#_sync_items[@]}
   for ((i=0; i<n; i++)); do
     local kind name
     IFS=$'\t' read -r kind name <<< "${_sync_items[i]}"
-    [[ "$kind" == "pkg" ]] || continue
-    local d=""
-    case "$distro" in
-      fedora) d=$(dnf info "$name" 2>/dev/null | awk -F': *' '/^Summary/ {print $2; exit}') ;;
-      debian) d=$(apt-cache show "$name" 2>/dev/null | awk -F': *' '/^Description-en|^Description:/ {print $2; exit}') ;;
-      arch)   d=$(pacman -Si "$name" 2>/dev/null | awk -F': *' '/^Description/ {print $2; exit}') ;;
-      suse)   d=$(zypper --non-interactive info "$name" 2>/dev/null | awk -F': *' '/^Summary/ {print $2; exit}') ;;
-    esac
-    [[ -n "$d" ]] && _sync_desc_map::put "pkg:$name" "$d"
+    [[ "$kind" == "pkg" ]] && names+=("$name")
   done
+  (( ${#names[@]} > 0 )) || return 0
+
+  local awk_dnf='
+    /^Name[[:space:]]*:/ {
+      v = $0; sub(/^Name[[:space:]]*:[[:space:]]*/, "", v); name = v
+    }
+    /^Summary[[:space:]]*:/ {
+      if (name && !(name in seen)) {
+        v = $0; sub(/^Summary[[:space:]]*:[[:space:]]*/, "", v)
+        print name "\t" v
+        seen[name] = 1
+      }
+    }'
+  local awk_apt='
+    /^Package[[:space:]]*:/ {
+      v = $0; sub(/^Package[[:space:]]*:[[:space:]]*/, "", v); name = v
+    }
+    /^Description(-en)?[[:space:]]*:/ {
+      if (name && !(name in seen)) {
+        v = $0; sub(/^Description(-en)?[[:space:]]*:[[:space:]]*/, "", v)
+        print name "\t" v
+        seen[name] = 1
+      }
+    }'
+  local awk_pacman='
+    /^Name[[:space:]]*:/ {
+      v = $0; sub(/^Name[[:space:]]*:[[:space:]]*/, "", v); name = v
+    }
+    /^Description[[:space:]]*:/ {
+      if (name && !(name in seen)) {
+        v = $0; sub(/^Description[[:space:]]*:[[:space:]]*/, "", v)
+        print name "\t" v
+        seen[name] = 1
+      }
+    }'
+  local awk_zypper="$awk_dnf"  # Name + Summary, same shape as dnf
+
+  local pairs=""
+  case "$distro" in
+    fedora) pairs=$(LC_ALL=C dnf       info "${names[@]}" 2>/dev/null | awk "$awk_dnf"   ) ;;
+    debian) pairs=$(LC_ALL=C apt-cache show "${names[@]}" 2>/dev/null | awk "$awk_apt"   ) ;;
+    arch)   pairs=$(LC_ALL=C pacman    -Si  "${names[@]}" 2>/dev/null | awk "$awk_pacman") ;;
+    suse)   pairs=$(LC_ALL=C zypper --non-interactive info "${names[@]}" 2>/dev/null | awk "$awk_zypper") ;;
+  esac
+
+  [[ -z "$pairs" ]] && return 0
+  local nm desc
+  while IFS=$'\t' read -r nm desc; do
+    [[ -n "$nm" ]] && _sync_desc_map::put "pkg:$nm" "$desc"
+  done <<< "$pairs"
 }
 
 sync::_fetch_descriptions() {

@@ -169,5 +169,71 @@ missing=$(sync::compute_missing "$TMP/linux-pkgs.txt" linux pkg work | tr '\t' =
 # slack is @work and not installed → missing.
 _eq "work missing: ripgrep + slack" "pkg=ripgrep=,pkg=slack=work," "$missing"
 
+# ---------- _fetch_descriptions_linux parser ----------
+# Verify each distro's batched parser against realistic synthetic output.
+# These guard against silent regressions if the awk patterns drift, and
+# document the exact format shape each tool emits. Descriptions with
+# embedded colons are part of the fixtures because the prior per-package
+# parser (`-F': *'`) truncated them lossily.
+_section "_fetch_descriptions_linux parsers"
+
+# Stub the distro detection so the parser branch is selectable per-test.
+linux::detect_distro() { printf '%s' "$DISTRO_OVERRIDE"; }
+
+_verify_parser() {
+  local distro="$1" sample="$2" expect_foo="$3" expect_bar="$4"
+  DISTRO_OVERRIDE="$distro"
+  _sync_items=("pkg"$'\t'"foo" "pkg"$'\t'"bar")
+  _sync_desc_map::clear
+  case "$distro" in
+    fedora) dnf()       { printf '%s\n' "$sample"; }; export -f dnf       ;;
+    debian) apt-cache() { printf '%s\n' "$sample"; }; export -f apt-cache ;;
+    arch)   pacman()    { printf '%s\n' "$sample"; }; export -f pacman    ;;
+    suse)   zypper()    { printf '%s\n' "$sample"; }; export -f zypper    ;;
+  esac
+  sync::_fetch_descriptions_linux
+  _eq "$distro foo desc" "$expect_foo" "$(_sync_desc_map::get pkg:foo 2>/dev/null || echo)"
+  _eq "$distro bar desc (with colon)" "$expect_bar" "$(_sync_desc_map::get pkg:bar 2>/dev/null || echo)"
+}
+
+_verify_parser fedora \
+"Available Packages
+Name         : foo
+Version      : 1.0
+Summary      : the foo tool
+URL          : https://foo
+
+Name         : bar
+Summary      : the bar daemon: with colon" \
+  "the foo tool" "the bar daemon: with colon"
+
+_verify_parser debian \
+"Package: foo
+Version: 1.0
+Description-en: the foo tool
+
+Package: bar
+Description: the bar daemon: with colon" \
+  "the foo tool" "the bar daemon: with colon"
+
+_verify_parser arch \
+"Name            : foo
+Version         : 1.0
+Description     : the foo tool
+
+Name            : bar
+Description     : the bar daemon: with colon" \
+  "the foo tool" "the bar daemon: with colon"
+
+_verify_parser suse \
+"Information for package foo:
+Name        : foo
+Summary     : the foo tool
+
+Information for package bar:
+Name        : bar
+Summary     : the bar daemon: with colon" \
+  "the foo tool" "the bar daemon: with colon"
+
 printf '\n%d passed, %d failed\n' "$passes" "$fails"
 exit "$((fails > 0 ? 1 : 0))"
