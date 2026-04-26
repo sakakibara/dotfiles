@@ -12,7 +12,7 @@ fzf
 gawk
 gh
 git
-gnupg
+gpg2
 ImageMagick
 jq
 neovim
