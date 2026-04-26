@@ -138,6 +138,30 @@ T.describe("lib.colors.picker commit", function()
   end)
 end)
 
+T.describe("lib.colors.picker expanded mode", function()
+  T.it("expanded mode shows nearest tailwind + named labels", function()
+    local s = P.open({ initial = C.from_hex("#ef4444") })
+    P.toggle_expand(s)
+    local lines = vim.api.nvim_buf_get_lines(s.buf, 0, -1, false)
+    local joined = table.concat(lines, "\n")
+    T.truthy(joined:find("Tailwind"), "expected Tailwind label in expanded view")
+    T.truthy(joined:find("Named"),    "expected Named label")
+    P.close(s)
+  end)
+
+  T.it("expanded mode shows recents list when present", function()
+    P._recents = { "#abcdef", "#123456" }
+    local s = P.open({ initial = C.from_hex("#ff0000") })
+    P.toggle_expand(s)
+    local lines = vim.api.nvim_buf_get_lines(s.buf, 0, -1, false)
+    local joined = table.concat(lines, "\n")
+    T.truthy(joined:find("Recents") or joined:find("#abcdef"),
+      "expected recents in expanded view")
+    P.close(s)
+    P._recents = {}
+  end)
+end)
+
 T.describe("lib.colors.picker recents", function()
   T.it("commit pushes color hex to recents (LRU front)", function()
     P._recents_path = vim.fn.tempname() .. ".json"

@@ -1,6 +1,7 @@
 -- lua/lib/colors/picker.lua
 -- Floating-window color picker. State machine: closed → compact → expanded.
 local C = require("lib.colors.color")
+local H = require("lib.colors.harmony")
 local M = {}
 
 M.ns = vim.api.nvim_create_namespace("lib.colors.picker")
@@ -79,9 +80,50 @@ local function compact_lines(state)
   return lines
 end
 
+local function expanded_lines(state)
+  local hex = C.to_hex({ r = state.color.r, g = state.color.g, b = state.color.b, a = 1 })
+  local h, sat, l = C.to_hsl(state.color)
+  local L, Cval, hh = C.to_oklch(state.color)
+
+  local lines = {
+    "  " .. hex,
+    string.rep("█", 50),
+    "",
+    string.format("  hex     %s", hex),
+    string.format("  rgb     rgb(%d %d %d)",
+      math.floor(state.color.r * 255 + 0.5),
+      math.floor(state.color.g * 255 + 0.5),
+      math.floor(state.color.b * 255 + 0.5)),
+    string.format("  hsl     hsl(%d %d%% %d%%)", math.floor(h), math.floor(sat * 100), math.floor(l * 100)),
+    string.format("  oklch   oklch(%.3f %.3f %.1f)", L, Cval, hh),
+    "",
+    "  ── Suggest ───────────────────────────────",
+  }
+
+  local tw_name = H.nearest_tailwind(state.color)
+  local nm_name = H.nearest_named(state.color)
+  table.insert(lines, "  Tailwind  " .. (tw_name or "—"))
+  table.insert(lines, "  Named     " .. (nm_name or "—"))
+
+  if #M._recents > 0 then
+    local r = {}
+    for i = 1, math.min(5, #M._recents) do r[#r + 1] = M._recents[i] end
+    table.insert(lines, "  Recents   " .. table.concat(r, "  "))
+  end
+
+  local comp = H.complementary(state.color)
+  local tri_a, tri_b = H.triad(state.color)
+  local function hexof(c) return C.to_hex({ r = c.r, g = c.g, b = c.b, a = 1 }) end
+  table.insert(lines, "  Comp      " .. hexof(comp))
+  table.insert(lines, "  Triad     " .. hexof(tri_a) .. "  " .. hexof(tri_b))
+  table.insert(lines, "")
+  table.insert(lines, "  <C-e> compact  <CR> commit  <Esc> cancel")
+  return lines
+end
+
 local function render(state)
   if not state.buf or not vim.api.nvim_buf_is_valid(state.buf) then return end
-  local lines = state.mode == "compact" and compact_lines(state) or compact_lines(state)
+  local lines = state.mode == "compact" and compact_lines(state) or expanded_lines(state)
   vim.bo[state.buf].modifiable = true
   vim.api.nvim_buf_set_lines(state.buf, 0, -1, false, lines)
   vim.api.nvim_buf_clear_namespace(state.buf, M.ns, 0, -1)
@@ -92,6 +134,14 @@ local function render(state)
     hl_group = "LibColorsPickerSwatch_" .. short,
   })
   vim.bo[state.buf].modifiable = false
+
+  if state.win and vim.api.nvim_win_is_valid(state.win) then
+    if state.mode == "expanded" then
+      vim.api.nvim_win_set_config(state.win, { relative = "cursor", row = 1, col = 0, width = 52, height = 18 })
+    else
+      vim.api.nvim_win_set_config(state.win, { relative = "cursor", row = 1, col = 0, width = 32, height = 9  })
+    end
+  end
 end
 
 function M.open(opts)
