@@ -87,7 +87,7 @@ cask:1password
 cask:alfred
 cask:anytype
 cask:chatgpt
-cask:discord
+cask:discord @personal
 cask:fantastical
 cask:figma
 cask:firefox
