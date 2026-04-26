@@ -1,31 +1,21 @@
 -- lua/config/plugins/lang/elixir.lua
-if vim.fn.executable("elixir") == 0 then return {} end
-
-Lib.mason.add("elixir-ls")
 -- credo not in mason registry; user installs via `mix archive.install hex credo`.
+local linters = {}
+if vim.fn.executable("credo") == 1 then linters.elixir = { "credo" } end
 
-Lib.plugin.on_load("nvim-treesitter", function()
-  require("nvim-treesitter").install({ "elixir", "heex", "eex" })
-end)
-
-Lib.plugin.on_load("nvim-lspconfig", function()
-  vim.lsp.config("elixirls", { capabilities = Lib.lsp.capabilities() })
-  Lib.lsp.enable("elixirls")
-end)
-
-Lib.plugin.on_load("nvim-lint", function()
-  if vim.fn.executable("credo") == 1 then
-    require("lint").linters_by_ft.elixir = { "credo" }
-  end
-end)
-
-Lib.neotest.add("neotest-elixir", function() return require("neotest-elixir") end)
-
-return {
-  {
-    "jfpedroza/neotest-elixir",
-    name = "neotest-elixir",
-    ft = "elixir",
-    dependencies = { "neotest" },
+return Lib.lang.setup({
+  cmd = "elixir",
+  mason = { "elixir-ls" },
+  parsers = { "elixir", "heex", "eex" },
+  servers = { elixirls = {} },
+  linters = linters,
+  neotest = { ["neotest-elixir"] = function() return require("neotest-elixir") end },
+  plugins = {
+    {
+      "jfpedroza/neotest-elixir",
+      name = "neotest-elixir",
+      ft = "elixir",
+      dependencies = { "neotest" },
+    },
   },
-}
+})
