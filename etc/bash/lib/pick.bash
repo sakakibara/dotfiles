@@ -5,11 +5,15 @@
 # files and a final summary.
 #
 # Item syntax
-#   [+|~]name[=label][~reason]
+#   [+|~]name[=label][~reason][|hash]
 #     +     required (always selected, can't toggle)
 #     ~     disabled (greyed, can't toggle, optionally with ~reason text)
 #     name  bash function or command to run when selected
 #     label human-readable text shown in the menu (default: name)
+#     hash  optional content hash; when set, items whose current hash
+#           differs from the last-saved hash are pre-checked and shown
+#           with a `*` "changed" marker. Items with a hash that have
+#           never been recorded are also pre-checked (treated as new).
 #
 # Env
 #   DOTFILES_PICK_SCOPE   scope key for last-selection memory (default: "default")
@@ -65,11 +69,19 @@ pick::_parse_item() {
   local spec="$1"
   _pick_state="normal"
   _pick_reason=""
+  _pick_hash=""
 
   case "$spec" in
     +*) _pick_state="required"; spec="${spec#+}" ;;
     \~*) _pick_state="disabled"; spec="${spec#\~}" ;;
   esac
+
+  # Hash trailer first (`|hash`, last segment) — it's defined last in the
+  # syntax so we strip it before the inner separators.
+  if [[ "$spec" == *"|"* ]]; then
+    _pick_hash="${spec##*|}"
+    spec="${spec%|*}"
+  fi
 
   # split off ~reason if present
   if [[ "$spec" == *"~"* ]]; then
@@ -228,17 +240,23 @@ pick::_render() {
       reason_suffix=$' \033[2m('"$reason"$')\033[0m'
     fi
 
+    # Changed/new marker (yellow `*` after the mark).
+    local change=' '
+    if dict::has pick_changed "$name"; then
+      change=$'\033[1;33m*\033[0m'
+    fi
+
     # Compose; truncation is approximate (treats ANSI as zero width by
     # operating on the visible text only, then re-applying styles wraps
     # the truncated text).
     local visible="${label}"
     [[ "$state" == "disabled" && -n "$reason" ]] && visible="${visible} (${reason})"
-    local budget=$((cols - 6))   # 2 prefix + 3 mark + 1 spacer
+    local budget=$((cols - 7))   # 2 prefix + 3 mark + 1 change + 1 spacer
     if (( ${#visible} > budget )); then
       visible=$(pick::_trunc "$visible" "$budget")
-      printf '%s%s%s\n' "$prefix" "$mark" "$visible"
+      printf '%s%s%s %s\n' "$prefix" "$mark" "$change" "$visible"
     else
-      printf '%s%s%s%s\n' "$prefix" "$mark" "$styled_label" "$reason_suffix"
+      printf '%s%s%s %s%s\n' "$prefix" "$mark" "$change" "$styled_label" "$reason_suffix"
     fi
   done
 
@@ -336,15 +354,23 @@ pick::_resolve_noninteractive() {
 
 pick::_load_last_selection() {
   # Reads the last-selection file (if any) into a fresh dict
-  # `pick_last_selection`.
+  # `pick_last_selection`. Each line is `name<TAB>hash` (hash may be empty).
+  # Legacy plain-name lines (no TAB) are read as name with empty hash.
   dict::clear pick_last_selection
   local file
   file="$(pick::_state_file)"
   [[ -r "$file" ]] || return 0
-  local line
+  local line name hash
   while IFS= read -r line; do
     [[ -z "$line" ]] && continue
-    dict::set pick_last_selection "$line" 1
+    if [[ "$line" == *$'\t'* ]]; then
+      name="${line%%$'\t'*}"
+      hash="${line#*$'\t'}"
+    else
+      name="$line"
+      hash=""
+    fi
+    dict::set pick_last_selection "$name" "$hash"
   done < "$file"
   return 0
 }
@@ -360,7 +386,7 @@ pick::_save_selection() {
     local nm="${_pick_names[i]}"
     [[ "${_pick_states[i]}" == "disabled" ]] && continue
     if dict::has pick_selected "$nm"; then
-      printf '%s\n' "$nm" >> "$file"
+      printf '%s\t%s\n' "$nm" "${_pick_hashes[i]:-}" >> "$file"
     fi
   done
   return 0
@@ -507,8 +533,8 @@ pick::_run_selected() {
 
 pick() {
   local _pick_n=0
-  local _pick_names=() _pick_labels=() _pick_states=() _pick_reasons=()
-  local _pick_state _pick_name _pick_label _pick_reason
+  local _pick_names=() _pick_labels=() _pick_states=() _pick_reasons=() _pick_hashes=()
+  local _pick_state _pick_name _pick_label _pick_reason _pick_hash
 
   local item
   for item in "$@"; do
@@ -517,23 +543,47 @@ pick() {
     _pick_labels+=("$_pick_label")
     _pick_states+=("$_pick_state")
     _pick_reasons+=("$_pick_reason")
+    _pick_hashes+=("$_pick_hash")
     _pick_n=$((_pick_n + 1))
   done
 
   (( _pick_n > 0 )) || return 0
 
-  # Build initial selection: required + last-run picks.
+  # Build initial selection from required + last-run picks + hash diffs.
+  # `pick_changed` tracks items whose current hash differs from the recorded
+  # one (or items with a hash that have never been recorded). Such items
+  # are pre-selected and shown with a `*` marker in the render.
   dict::clear pick_selected
+  dict::clear pick_changed
   pick::_load_last_selection
 
   local i
   for ((i=0; i<_pick_n; i++)); do
     local s="${_pick_states[i]}"
     local nm="${_pick_names[i]}"
+    local cur_hash="${_pick_hashes[i]}"
+
     if [[ "$s" == "required" ]]; then
       dict::set pick_selected "$nm" 1
-    elif [[ "$s" == "normal" ]] && dict::has pick_last_selection "$nm"; then
+      continue
+    fi
+    [[ "$s" == "normal" ]] || continue
+
+    if dict::has pick_last_selection "$nm"; then
+      # Previously selected. If the current hash differs, mark as changed
+      # and force-pre-check; otherwise inherit the prior selection.
+      local last_hash
+      last_hash="$(dict::get pick_last_selection "$nm")"
+      if [[ -n "$cur_hash" && "$cur_hash" != "$last_hash" ]]; then
+        dict::set pick_selected "$nm" 1
+        dict::set pick_changed   "$nm" 1
+      else
+        dict::set pick_selected "$nm" 1
+      fi
+    elif [[ -n "$cur_hash" ]]; then
+      # New hashed item — never seen before. Pre-check + mark.
       dict::set pick_selected "$nm" 1
+      dict::set pick_changed   "$nm" 1
     fi
   done
 

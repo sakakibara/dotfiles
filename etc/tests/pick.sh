@@ -64,6 +64,21 @@ pick::_parse_item "name=label-with-=-equals"
 _eq "= splits on first only — name"  "name"               "$_pick_name"
 _eq "= splits on first only — label" "label-with-=-equals" "$_pick_label"
 
+pick::_parse_item "brew::setup=Brew|abc123"
+_eq "hash extracted"          "abc123"      "$_pick_hash"
+_eq "label without hash tail" "Brew"        "$_pick_label"
+_eq "name with hash"          "brew::setup" "$_pick_name"
+
+pick::_parse_item "~name=label~missing dep|deadbeef"
+_eq "hash with reason — state"  "disabled"     "$_pick_state"
+_eq "hash with reason — name"   "name"         "$_pick_name"
+_eq "hash with reason — label"  "label"        "$_pick_label"
+_eq "hash with reason — reason" "missing dep"  "$_pick_reason"
+_eq "hash with reason — hash"   "deadbeef"     "$_pick_hash"
+
+pick::_parse_item "noHash=label"
+_eq "absent hash → empty" "" "$_pick_hash"
+
 # ---------- non-interactive resolution ----------
 _section "DOTFILES_PICK=all selects every non-disabled item"
 (
@@ -192,7 +207,9 @@ _section "save & load round-trip"
 file="$XDG_STATE_HOME/dotfiles/pick/install.tsv"
 _eq "state file exists" "yes" "$(test -f "$file" && echo yes)"
 contents=$(cat "$file" 2>/dev/null | tr '\n' ',')
-_eq "state file contents" "brew,hive," "$contents"
+# Format: name<TAB>hash per line. With hashless items, hash is empty so
+# every line ends in <TAB> before the newline.
+_eq "state file contents" $'brew\t,hive\t,' "$contents"
 
 # Now load
 (
@@ -315,6 +332,110 @@ _eq "empty selection exits 0" "0" "$?"
 _section "safe filename"
 _eq "double-colon → dash" "step--ok" "$(pick::_safe_name 'step::ok')"
 _eq "slash → dash"        "a-b-c"    "$(pick::_safe_name 'a/b/c')"
+
+# ---------- hash diff ----------
+_section "hash diff: state file persists name<TAB>hash"
+(
+  export DOTFILES_PICK_SCOPE="hash-test"
+  _pick_n=2
+  _pick_names=(brew mise)
+  _pick_labels=(Brew Mise)
+  _pick_states=(normal normal)
+  _pick_reasons=("" "")
+  _pick_hashes=("hash-brew-1" "hash-mise-1")
+  dict::clear pick_selected
+  dict::set pick_selected brew 1
+  dict::set pick_selected mise 1
+  pick::_save_selection
+)
+file="$XDG_STATE_HOME/dotfiles/pick/hash-test.tsv"
+contents=$(cat "$file" | tr '\n' ',')
+_eq "state file has name<TAB>hash lines" "brew	hash-brew-1,mise	hash-mise-1," "$contents"
+
+_section "hash diff: previously-selected unchanged → preserved selection"
+(
+  export DOTFILES_PICK_SCOPE="hash-test"
+  dict::clear pick_last_selection
+  pick::_load_last_selection
+  # both keys present with hashes
+  dict::has pick_last_selection brew && \
+    dict::has pick_last_selection mise && \
+    [[ "$(dict::get pick_last_selection brew)" == "hash-brew-1" ]]
+  exit $?
+)
+_true "loaded both keys with hashes" "$?"
+
+_section "hash diff: changed hash → marked changed and pre-selected"
+(
+  export DOTFILES_PICK_SCOPE="hash-test"
+  pick \
+    "brew=Brew|hash-brew-1" \
+    "mise=Mise|hash-mise-2" \
+    "+req=Required" \
+    "fresh=Fresh|new-hash" \
+    "noHash=NoHash" </dev/null >/dev/null 2>&1 <<<"" || true
+)
+# Re-load state — examine pick_changed dict by re-running the initial-pick
+# logic in a sub-shell that doesn't actually run anything (DOTFILES_PICK=none
+# would force-clear non-required, so we exercise via a custom path).
+out=$(
+  export DOTFILES_PICK_SCOPE="hash-test"
+  dict::clear pick_last_selection
+  pick::_load_last_selection
+  # Manually reproduce the initial-selection logic to inspect pick_changed.
+  _pick_n=4
+  _pick_names=(brew mise fresh noHash)
+  _pick_labels=(Brew Mise Fresh NoHash)
+  _pick_states=(normal normal normal normal)
+  _pick_reasons=("" "" "" "")
+  _pick_hashes=("hash-brew-1" "hash-mise-2" "totally-new" "")
+
+  dict::clear pick_selected
+  dict::clear pick_changed
+  for ((i=0; i<_pick_n; i++)); do
+    nm="${_pick_names[i]}"; cur_hash="${_pick_hashes[i]}"
+    if dict::has pick_last_selection "$nm"; then
+      last_hash="$(dict::get pick_last_selection "$nm")"
+      if [[ -n "$cur_hash" && "$cur_hash" != "$last_hash" ]]; then
+        dict::set pick_selected "$nm" 1
+        dict::set pick_changed "$nm" 1
+      else
+        dict::set pick_selected "$nm" 1
+      fi
+    elif [[ -n "$cur_hash" ]]; then
+      dict::set pick_selected "$nm" 1
+      dict::set pick_changed "$nm" 1
+    fi
+  done
+
+  printf 'selected=%s\n' "$(dict::keys pick_selected | tr '\n' ',')"
+  printf 'changed=%s\n'  "$(dict::keys pick_changed  | tr '\n' ',')"
+)
+case "$out" in
+  *"selected=brew,mise,fresh,"*) _true "selected: brew (kept), mise (re-selected), fresh (new)" 0 ;;
+  *) _eq "expected selected=brew,mise,fresh,…" "match" "$out" ;;
+esac
+case "$out" in
+  *"changed=mise,fresh,"*) _true "changed: mise (hash differs) + fresh (new)" 0 ;;
+  *) _eq "expected changed=mise,fresh,…" "match" "$out" ;;
+esac
+case "$out" in
+  *"changed=brew,"*|*"changed=brew,"*",fresh,"*) _eq "brew should NOT be in changed" "true" "$out" ;;
+  *) _true "brew NOT in changed (unchanged hash)" 0 ;;
+esac
+
+_section "hash diff: legacy hashless state file still loads"
+out=$(
+  export DOTFILES_PICK_SCOPE="legacy-hash-test"
+  mkdir -p "$XDG_STATE_HOME/dotfiles/pick"
+  printf 'brew\nmise\n' > "$XDG_STATE_HOME/dotfiles/pick/legacy-hash-test.tsv"
+  dict::clear pick_last_selection
+  pick::_load_last_selection
+  brew_h=$(dict::get pick_last_selection brew)
+  mise_h=$(dict::get pick_last_selection mise)
+  printf 'brew=%q,mise=%q' "$brew_h" "$mise_h"
+)
+_eq "legacy file → empty hashes" "brew='',mise=''" "$out"
 
 printf '\n%d passed, %d failed\n' "$passes" "$fails"
 exit "$((fails > 0 ? 1 : 0))"
