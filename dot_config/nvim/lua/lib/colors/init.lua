@@ -153,15 +153,16 @@ function M.pick(initial)
   local row, col = unpack(vim.api.nvim_win_get_cursor(0))
   local line = vim.api.nvim_buf_get_lines(0, row - 1, row, false)[1] or ""
   local hit = parse.parse(line, col)
+  local buf = vim.api.nvim_get_current_buf()
   local opts = { initial = initial }
   if hit then
+    -- Replace existing literal in place
     opts.initial = hit.color
-    opts.anchor  = {
-      buf   = vim.api.nvim_get_current_buf(),
-      lnum  = row - 1,
-      col_s = hit.range.col_s,
-      col_e = hit.range.col_e,
-    }
+    opts.anchor  = { buf = buf, lnum = row - 1,
+                     col_s = hit.range.col_s, col_e = hit.range.col_e }
+  else
+    -- Insert at cursor (zero-width range; nvim_buf_set_text with start==end inserts)
+    opts.anchor  = { buf = buf, lnum = row - 1, col_s = col, col_e = col }
   end
   return picker.open(opts)
 end
