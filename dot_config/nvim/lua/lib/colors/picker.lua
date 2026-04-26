@@ -136,10 +136,13 @@ local function render(state)
   vim.bo[state.buf].modifiable = false
 
   if state.win and vim.api.nvim_win_is_valid(state.win) then
-    if state.mode == "expanded" then
-      vim.api.nvim_win_set_config(state.win, { relative = "cursor", row = 1, col = 0, width = 52, height = 18 })
-    else
-      vim.api.nvim_win_set_config(state.win, { relative = "cursor", row = 1, col = 0, width = 32, height = 9  })
+    -- Resize only — DO NOT re-pass `relative`/`row`/`col`. The picker IS the
+    -- current window, so `relative = "cursor"` would re-anchor to the
+    -- picker's own cursor and drift on every keypress.
+    local cur = vim.api.nvim_win_get_config(state.win)
+    local want_w, want_h = (state.mode == "expanded") and 52 or 32, (state.mode == "expanded") and 18 or 9
+    if cur.width ~= want_w or cur.height ~= want_h then
+      vim.api.nvim_win_set_config(state.win, { width = want_w, height = want_h })
     end
   end
 end
