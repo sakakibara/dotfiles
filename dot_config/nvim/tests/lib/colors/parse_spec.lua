@@ -116,6 +116,28 @@ T.describe("lib.colors.parse named", function()
   end)
 end)
 
+T.describe("lib.colors.parse oklab", function()
+  T.it("parses oklab(0.74 0.1 0.12)", function()
+    local r = P.parse_all("c: oklab(0.74 0.1 0.12);")
+    T.eq(#r, 1)
+    T.truthy(r[1].color.source.fmt == "oklab")
+    -- Should produce a non-grey srgb color
+    T.truthy(r[1].color.r ~= r[1].color.g or r[1].color.g ~= r[1].color.b,
+      "expected chromatic, got grey")
+  end)
+
+  T.it("parses oklab with percent lightness", function()
+    local r = P.parse_all("c: oklab(74% 0.1 0.12);")
+    T.eq(#r, 1)
+  end)
+
+  T.it("parses oklab with / alpha", function()
+    local r = P.parse_all("c: oklab(0.5 0.05 0.05 / 0.5);")
+    T.eq(#r, 1)
+    T.truthy(math.abs(r[1].color.a - 0.5) < 0.01)
+  end)
+end)
+
 T.describe("lib.colors.parse tailwind classes", function()
   T.it("parses bg-red-500 as the Tailwind palette color", function()
     local r = P.parse_all([[<div class="bg-red-500">]])

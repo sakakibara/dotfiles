@@ -95,6 +95,31 @@ T.describe("lib.colors.color oklch conversion", function()
   end)
 end)
 
+T.describe("lib.colors.color oklab conversion", function()
+  T.it("from_oklab(0, 0, 0) is black", function()
+    local c = C.from_oklab(0, 0, 0)
+    T.truthy(math.abs(c.r) < 0.01 and math.abs(c.g) < 0.01 and math.abs(c.b) < 0.01,
+      string.format("expected black, got (%.3f, %.3f, %.3f)", c.r, c.g, c.b))
+  end)
+
+  T.it("from_oklab(1, 0, 0) is white", function()
+    local c = C.from_oklab(1, 0, 0)
+    T.truthy(math.abs(c.r - 1) < 0.01 and math.abs(c.g - 1) < 0.01 and math.abs(c.b - 1) < 0.01)
+  end)
+
+  T.it("from_oklab and from_oklch agree on a chromatic color", function()
+    -- For OKLCH (L, C, h), the equivalent OKLab is (L, C*cos(h), C*sin(h)).
+    local L, Chroma, h = 0.74, 0.16, 50
+    local rad = math.rad(h)
+    local a, b = Chroma * math.cos(rad), Chroma * math.sin(rad)
+    local c1 = C.from_oklab(L, a, b)
+    local c2 = C.from_oklch(L, Chroma, h)
+    T.truthy(math.abs(c1.r - c2.r) < 1e-6)
+    T.truthy(math.abs(c1.g - c2.g) < 1e-6)
+    T.truthy(math.abs(c1.b - c2.b) < 1e-6)
+  end)
+end)
+
 T.describe("lib.colors.color contrast_text", function()
   T.it("returns black for light colors", function()
     T.eq(C.contrast_text({ r = 1, g = 1, b = 1, a = 1 }), "#000000")

@@ -132,6 +132,18 @@ local function oklab_to_linear_srgb(L, a, b)
    -0.0041960863  * l - 0.7034186147  * m + 1.7076147010 * s
 end
 
+function M.from_oklab(L, a, b, alpha)
+  local lr, lg, lb = oklab_to_linear_srgb(L, a, b)
+  return {
+    r = clamp(linear_to_srgb(lr), 0, 1),
+    g = clamp(linear_to_srgb(lg), 0, 1),
+    b = clamp(linear_to_srgb(lb), 0, 1),
+    a = alpha or 1,
+    space = "srgb",
+    source = { fmt = "oklab" },
+  }
+end
+
 function M.from_oklch(L, C, h, alpha)
   local rad = math.rad(h)
   local a = C * math.cos(rad)
