@@ -10,7 +10,7 @@ complete -c dotfiles -f -n '__fish_use_subcommand' -a upgrade  -d 'Upgrade chezm
 complete -c dotfiles -f -n '__fish_use_subcommand' -a help     -d 'Show help'
 
 # Per-subcommand argument completions.
-
+#
 # `dotfiles install` — step names recognized by cmd_install on the current OS.
 complete -c dotfiles -f -n '__fish_seen_subcommand_from install' \
   -a 'all none brew mise hive linux extras' \
@@ -37,5 +37,24 @@ complete -c dotfiles -f -n '__fish_seen_subcommand_from upgrade' \
   -a '--all' \
   -d 'upgrade every managed tool'
 
-# Inherit chezmoi's completions for any other subcommand and its flags.
-complete -c dotfiles -w chezmoi
+# Wrap chezmoi for top-level discovery (so `dotfiles <TAB>` lists both ours
+# and chezmoi's subcommands) and for any subcommand we don't own (so
+# `dotfiles apply <TAB>` etc. get chezmoi's argument completion).
+#
+# Critically, we do NOT wrap chezmoi when the user is inside one of our
+# owned subcommands — that's what was leaking chezmoi's path-completion
+# (current-directory files) into `dotfiles edit <TAB>`.
+function __dotfiles_should_wrap_chezmoi
+  set -l tokens (commandline -opc)
+  set -l owned info install sync save edit profile doctor upgrade help
+  # Skip token[1] (the command itself); look at the first non-flag arg.
+  for tok in $tokens[2..-1]
+    string match -q -- '-*' $tok; and continue
+    contains -- $tok $owned; and return 1
+    return 0
+  end
+  # No subcommand picked yet — top-level: wrap so chezmoi's commands appear.
+  return 0
+end
+
+complete -c dotfiles -n '__dotfiles_should_wrap_chezmoi' -w chezmoi
