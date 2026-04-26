@@ -48,6 +48,39 @@ add_detector("rgba?%([^)]+%)", function(match)
   }
 end)
 
+-- hsl()/hsla() — h in deg/rad/turn (or unitless = deg), s and l in %
+add_detector("hsla?%([^)]+%)", function(match)
+  local inner = match:gsub("^hsla?%(", ""):gsub("%)$", "")
+  inner = inner:gsub(",", " "):gsub("/", " ")
+  local toks = {}
+  for tok in inner:gmatch("%S+") do table.insert(toks, tok) end
+  if #toks < 3 or #toks > 4 then return nil end
+
+  local h_str = toks[1]
+  local h_num, unit = h_str:match("^(%-?[%d%.]+)(%a*)$")
+  if not h_num then return nil end
+  local h = tonumber(h_num)
+  if unit == "rad" then h = math.deg(h)
+  elseif unit == "turn" then h = h * 360
+  end
+
+  local s_pct = toks[2]:match("^(%-?[%d%.]+)%%$")
+  local l_pct = toks[3]:match("^(%-?[%d%.]+)%%$")
+  if not s_pct or not l_pct then return nil end
+  local s = tonumber(s_pct) / 100
+  local l = tonumber(l_pct) / 100
+
+  local a
+  if toks[4] then
+    local pct = toks[4]:match("^(%-?[%d%.]+)%%$")
+    a = pct and (tonumber(pct) / 100) or tonumber(toks[4])
+  end
+
+  local c = C.from_hsl(h, s, l, a)
+  c.source = { fmt = "hsl" }
+  return c
+end)
+
 -- Scan str for all literals; return list of {range, color}.
 function M.parse_all(str)
   local results = {}
