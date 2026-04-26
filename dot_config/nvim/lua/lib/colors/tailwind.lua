@@ -154,20 +154,27 @@ function M.scan_project(root, sync)
     return
   end
   if vim.fn.executable("rg") == 1 then
+    -- --files-with-matches narrows to files that actually contain @theme.
+    -- For projects without any @theme blocks (most), this returns nothing
+    -- and we don't open a single file. exit code 1 = "no matches" (not an
+    -- error), code 0 = some matches, code 2 = real error.
     vim.system(
-      { "rg", "--files", "--type", "css" },
+      { "rg", "--files-with-matches", "@theme", "--type", "css" },
       { cwd = root, text = true },
       vim.schedule_wrap(function(result)
-        if result.code ~= 0 or not result.stdout then
-          -- rg failed; fall back to native walk
-          scan_files_chunked(walk_css(root))
+        if result.code == 0 and result.stdout and result.stdout ~= "" then
+          local files = {}
+          for line in result.stdout:gmatch("[^\n]+") do
+            files[#files + 1] = root .. "/" .. line
+          end
+          scan_files_chunked(files)
+        elseif result.code == 1 then
+          -- No matches — overlay stays empty, we're done.
           return
+        else
+          -- Real error — fall back to native walk.
+          scan_files_chunked(walk_css(root))
         end
-        local files = {}
-        for line in result.stdout:gmatch("[^\n]+") do
-          files[#files + 1] = root .. "/" .. line
-        end
-        scan_files_chunked(files)
       end)
     )
     return
