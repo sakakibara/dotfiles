@@ -66,7 +66,7 @@ vim.g.root_lsp_ignore = { "copilot" }
 -- sensible defaults not already set by Neovim 0.12
 opt.number = true
 opt.relativenumber = true
-opt.signcolumn = "yes"
+opt.signcolumn = "auto"
 opt.termguicolors = true
 opt.updatetime = 200
 opt.timeoutlen = 300
