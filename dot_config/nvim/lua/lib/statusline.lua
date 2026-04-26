@@ -46,16 +46,24 @@ local function shade(hex, delta)
 end
 
 local function derive_palette()
-  -- Backgrounds: use Folded.bg for the raised statusline pane (lighter than
-  -- window bg, matches heirline/lualine convention and gives visual lift).
   local bg_end   = get("Normal", "bg", "#000000")
-  local bg_a     = get("Folded", "bg", nil) or get("PmenuSel", "bg", nil) or get("Visual", "bg", bg_end)
+  -- Recessed (darker than Normal.bg) bar — modern minimal look. Catppuccin
+  -- mocha sets StatusLine.bg to mantle (#181825), which is darker than
+  -- Normal.bg (base #1e1e2e) and gives crisp contrast for all fg colors.
+  local bg_a     = get("StatusLine", "bg", nil) or get("Folded", "bg", nil) or bg_end
   -- Slightly different tint for alternating groups (lighter by 12 rgb units)
   local bg_b     = shade(bg_a, 12)
-  -- Main fg comes from Normal, not Folded (Folded.fg is the fold arrow color)
-  local fg       = get("StatusLine", "fg", nil) or get("Normal", "fg", "#ffffff")
+  -- Main fg comes from Normal, not StatusLine (StatusLine.fg is often dimmed)
+  local fg       = get("Normal", "fg", "#ffffff")
   local fg_bold  = get("Normal", "fg", "#ffffff")
-  local fg_dim   = get("NonText", "fg", nil) or get("Comment", "fg", fg)
+  -- fg_dim must clear WCAG AA on bg_a. NonText/Comment in catppuccin mocha
+  -- is overlay0 (#6c7086) which fails AA on mantle (~4.0:1). Use overlay1
+  -- (#7f849c) via Comment if it's brighter, or upshade NonText.
+  local fg_dim   = get("LineNr", "fg", nil) or get("NonText", "fg", nil) or get("Comment", "fg", fg)
+  -- Path cwd specifically: bumped further for clear legibility (was the
+  -- "current dir hard to see" complaint). Pmenu.fg is overlay2 in mocha
+  -- (#9399b2); Conceal.fg is overlay1 (#7f849c) — use Pmenu first.
+  local fg_path_cwd = get("Pmenu", "fg", nil) or get("Conceal", "fg", nil) or fg_dim
 
   -- Semantic source groups — every theme defines these
   local red      = get("DiagnosticError", "fg", nil) or get("Error",       "fg", "#ff5555")
@@ -73,6 +81,7 @@ local function derive_palette()
 
   palette = {
     bg_end = bg_end, bg_mid = bg_a, fg = fg, fg_bold = fg_bold, fg_dim = fg_dim,
+    fg_path_cwd = fg_path_cwd,
     red = red, yellow = yellow, green = green, blue = blue,
     purple = purple, orange = orange, cyan = cyan,
     info = info, hint = hint,
@@ -115,7 +124,7 @@ local function define_highlights()
   -- File-path zones (cwd / relative-dir / basename), mirroring the old
   -- heirline split: dim gray cwd, themed-accent relative dir, bright
   -- bold basename (orange when modified, red when readonly).
-  hl("StslPathCwd",   { fg = p.fg_dim,   bg = p.bg_mid, italic = true })
+  hl("StslPathCwd",   { fg = p.fg_path_cwd, bg = p.bg_mid, italic = true })
   hl("StslPathRel",   { fg = p.blue,     bg = p.bg_mid })
   hl("StslPathFile",  { fg = p.fg_bold,  bg = p.bg_mid, bold = true })
   hl("StslPathMod",   { fg = p.orange,   bg = p.bg_mid, bold = true, italic = true })
