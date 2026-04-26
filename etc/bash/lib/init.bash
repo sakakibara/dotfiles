@@ -37,7 +37,9 @@ import() {
     name="${arg//[^0-9A-Za-z_]/}"
     imported="__imported_${name}"
 
-    if [[ -z "${!imported}" ]]; then
+    # `declare -p` returns 0 when the var is set, non-zero otherwise. Beats
+    # `[[ -z "${!var}" ]]` which errors under `set -u` if var is unset.
+    if ! declare -p "${imported}" >/dev/null 2>&1; then
       # shellcheck disable=SC2229
       read -r "${imported}" <<<1
       #shellcheck disable=SC1090

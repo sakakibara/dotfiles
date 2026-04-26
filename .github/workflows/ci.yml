@@ -98,6 +98,18 @@ jobs:
       - uses: actions/checkout@v5
       - run: bash etc/tests/theme.sh
 
+  bash-lib-tests:
+    name: Bash lib tests (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: dict polyfill
+        run: bash etc/tests/dict.sh
+
   theme-tests-pwsh:
     name: Theme tests (Windows / pwsh)
     runs-on: windows-latest
