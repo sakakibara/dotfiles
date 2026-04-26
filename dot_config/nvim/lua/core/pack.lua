@@ -656,123 +656,8 @@ vim.api.nvim_create_user_command("PackStatus", function()
   for _, l in ipairs(M._status_lines()) do print(l) end
 end, { desc = "List registered plugin specs" })
 
--- Bottom-right progress float (fidget-style). Single line, no border.
--- We render directly instead of routing through vim.notify because the
--- notify pipeline (init.lua → noice → snacks.notifier) doesn't honor
--- `id`/`replace` reliably under rapid updates and ends up stacking toasts.
-local BAR_W = 16
-local SPINNER = { "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏" }
-
-local function progress_open(title, width)
-  local buf = vim.api.nvim_create_buf(false, true)
-  vim.bo[buf].buftype, vim.bo[buf].bufhidden = "nofile", "wipe"
-  local row = vim.o.lines - vim.o.cmdheight - 2
-  local col = vim.o.columns - width - 2
-  local win = vim.api.nvim_open_win(buf, false, {
-    relative = "editor", row = row, col = col,
-    width = width, height = 1,
-    style = "minimal", focusable = false, noautocmd = true, zindex = 60,
-  })
-  vim.wo[win].winhl = "Normal:NormalFloat"
-  return { buf = buf, win = win, title = title, width = width, frame = 1 }
-end
-
-local function progress_render(state, done, total)
-  if not vim.api.nvim_win_is_valid(state.win) then return end
-  local pct    = total > 0 and done / total or 0
-  local filled = math.floor(pct * BAR_W + 0.5)
-  local bar    = string.rep("█", filled) .. string.rep("░", BAR_W - filled)
-  local spin   = done >= total and "✓" or SPINNER[state.frame]
-  state.frame  = (state.frame % #SPINNER) + 1
-  local line   = string.format(" %s %s  %s  %d/%d ",
-    spin, state.title, bar, done, total)
-  local pad    = state.width - vim.fn.strdisplaywidth(line)
-  if pad > 0 then line = line .. string.rep(" ", pad) end
-  vim.api.nvim_buf_set_lines(state.buf, 0, -1, false, { line })
-end
-
-local function progress_close(state)
-  if state and vim.api.nvim_win_is_valid(state.win) then
-    vim.api.nvim_win_close(state.win, true)
-  end
-end
-
--- Async pre-fetch: vim.pack.update() blocks on its internal `:wait()` for the
--- duration of all git fetches (parallel internally, but main thread waits).
--- Instead, we spawn `git fetch` ourselves via vim.system (libuv-async, doesn't
--- block input), wait via callbacks, then call vim.pack.update with offline=true
--- to open the preview instantly without re-fetching.
-local function pack_update_async(names)
-  if not (vim.pack and vim.pack.update and vim.pack.get) then
-    notify("vim.pack not available", vim.log.levels.ERROR); return
-  end
-  local installed = vim.pack.get() or {}
-  local targets = {}
-  for _, info in ipairs(installed) do
-    if not names then
-      targets[#targets + 1] = { name = info.spec.name, path = info.path }
-    else
-      for _, n in ipairs(names) do
-        if info.spec.name == n then
-          targets[#targets + 1] = { name = info.spec.name, path = info.path }
-          break
-        end
-      end
-    end
-  end
-  if #targets == 0 then
-    notify("Nothing to update", vim.log.levels.WARN); return
-  end
-
-  local total, done, failures = #targets, 0, {}
-  local widget = progress_open("PackUpdate", 40)
-  progress_render(widget, 0, total)
-
-  local function on_done(target, ok)
-    done = done + 1
-    if not ok then table.insert(failures, target.name) end
-    progress_render(widget, done, total)
-    if done >= total then
-      progress_close(widget)
-      if #failures > 0 then
-        notify("Fetch failed for: " .. table.concat(failures, ", "),
-          vim.log.levels.WARN)
-      end
-      -- vim.pack.update(offline=true) still runs git log/diff per plugin
-      -- synchronously to build the preview, so defer it via vim.schedule
-      -- to let pending input/redraws drain before the freeze.
-      vim.schedule(function()
-        vim.pack.update(names, { offline = true })
-        notify(":w to apply  ·  :bd! to cancel", vim.log.levels.INFO)
-      end)
-    end
-  end
-
-  -- Worker-pool: cap concurrent fetches so we don't fire 30+ git processes
-  -- (each negotiating SSH/HTTPS) at once. That thrashes the network and
-  -- starves the main loop of scheduling slots, which manifests as the
-  -- editor freezing while typing during a background update.
-  local CONCURRENCY = 4
-  local next_idx = 0
-  local function spawn_next()
-    next_idx = next_idx + 1
-    local target = targets[next_idx]
-    if not target then return end
-    vim.system(
-      { "git", "-C", target.path, "fetch", "--quiet", "--tags", "--force",
-        "--recurse-submodules=yes", "origin" },
-      { text = true },
-      vim.schedule_wrap(function(result)
-        on_done(target, result and result.code == 0)
-        spawn_next()
-      end)
-    )
-  end
-  for _ = 1, math.min(CONCURRENCY, total) do spawn_next() end
-end
-
 vim.api.nvim_create_user_command("PackUpdate", function(opts)
-  pack_update_async(#opts.fargs > 0 and opts.fargs or nil)
+  vim.pack.update(#opts.fargs > 0 and opts.fargs or nil)
 end, {
   nargs = "*",
   complete = function(arglead)
@@ -785,75 +670,21 @@ end, {
     table.sort(out)
     return out
   end,
-  desc = "Update plugin(s) — async fetch, preview when ready",
+  desc = "Update plugin(s) via vim.pack.update",
 })
-
 
 vim.api.nvim_create_user_command("PackClean", function()
   if not (vim.pack and vim.pack.get and vim.pack.del) then
     notify("vim.pack.del not available", vim.log.levels.ERROR); return
   end
-  local installed = vim.pack.get() or {}
   local orphans = {}
-  for _, info in ipairs(installed) do
-    if not M._specs[info.spec.name] then orphans[#orphans + 1] = info end
+  for _, info in ipairs(vim.pack.get() or {}) do
+    if not M._specs[info.spec.name] then orphans[#orphans + 1] = info.spec.name end
   end
   if #orphans == 0 then print("Nothing to clean"); return end
-
-  -- Preview buffer mirroring vim.pack.update()'s UX: list orphans, `:w` to
-  -- delete, close to cancel. Removing a `## name` header line opts that
-  -- plugin out (kept on disk).
-  local lines = {
-    "# Clean ───────────────────────────────────────────────────────────────",
-    "",
-    "# Plugins not in any active spec — `:w` deletes them, close (:bd!)",
-    "# cancels. Remove a ## header to keep that plugin on disk.",
-    "",
-  }
-  for _, info in ipairs(orphans) do
-    table.insert(lines, "## " .. info.spec.name)
-    table.insert(lines, "Path:    " .. (info.path or ""))
-    table.insert(lines, "Source:  " .. (info.spec.src or ""))
-    table.insert(lines, "")
-  end
-
-  local buf = vim.api.nvim_create_buf(false, true)
-  vim.bo[buf].buftype  = "acwrite"
-  vim.bo[buf].swapfile = false
-  vim.api.nvim_buf_set_name(buf, "PackClean://orphans")
-  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
-  vim.bo[buf].modified = false
-  -- Inherit nvim-pack's highlighting + the q/<CR> keymaps we add to that ft.
-  vim.bo[buf].filetype = "nvim-pack"
-
-  vim.api.nvim_create_autocmd("BufWriteCmd", {
-    buffer = buf,
-    callback = function()
-      local content = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
-      local kept = {}
-      for _, line in ipairs(content) do
-        local name = line:match("^## (.+)$")
-        if name then kept[name] = true end
-      end
-      local to_remove = {}
-      for _, info in ipairs(orphans) do
-        if kept[info.spec.name] then to_remove[#to_remove + 1] = info.spec.name end
-      end
-      if #to_remove == 0 then
-        print("Nothing to remove")
-      else
-        vim.pack.del(to_remove)
-        print("Removed: " .. table.concat(to_remove, ", "))
-      end
-      vim.bo[buf].modified = false
-      vim.cmd("bdelete!")
-    end,
-  })
-
-  vim.cmd("split | buffer " .. buf)
-  vim.notify(":w to apply  ·  close (:bd!) to cancel", vim.log.levels.INFO,
-    { title = "PackClean" })
-end, { desc = "Remove plugins not in spec (preview + :w to confirm)" })
+  vim.pack.del(orphans)
+  print("Removed: " .. table.concat(orphans, ", "))
+end, { desc = "Remove plugins not in spec" })
 
 vim.api.nvim_create_user_command("PackSync", function()
   vim.cmd("PackUpdate")
