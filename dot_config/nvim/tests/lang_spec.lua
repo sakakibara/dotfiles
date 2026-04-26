@@ -212,6 +212,61 @@ T.describe("lib.lang.setup", function()
     end)
   end)
 
+  T.it("parsers_setup runs before install inside the nvim-treesitter on_load", function()
+    local order = {}
+    with_mocks(function(rec, lang)
+      lang.setup({
+        parsers = { "nu" },
+        parsers_setup = function() order[#order + 1] = "setup" end,
+      })
+      -- Stub require("nvim-treesitter") so .install() can be observed.
+      local prev_ts = package.loaded["nvim-treesitter"]
+      package.loaded["nvim-treesitter"] = {
+        install = function(p)
+          order[#order + 1] = "install"
+          T.eq(p, { "nu" })
+        end,
+      }
+      rec:drive("nvim-treesitter")
+      package.loaded["nvim-treesitter"] = prev_ts
+      T.eq(order, { "setup", "install" })
+    end)
+  end)
+
+  T.it("parsers_setup runs even when no parsers list is provided", function()
+    local fired = false
+    with_mocks(function(rec, lang)
+      lang.setup({ parsers_setup = function() fired = true end })
+      local prev_ts = package.loaded["nvim-treesitter"]
+      package.loaded["nvim-treesitter"] = {
+        install = function() error("install should not be called without parsers") end,
+      }
+      rec:drive("nvim-treesitter")
+      package.loaded["nvim-treesitter"] = prev_ts
+      T.truthy(fired, "parsers_setup should fire")
+    end)
+  end)
+
+  T.it("server cfg can be a function evaluated lazily inside lspconfig on_load", function()
+    with_mocks(function(rec, lang)
+      local resolved_at_eval_time = false
+      lang.setup({
+        servers = {
+          srv = function()
+            resolved_at_eval_time = true
+            return { settings = { dynamic = "ok" }, _enable = { cmd = "x" } }
+          end,
+        },
+      })
+      T.eq(resolved_at_eval_time, false, "server fn should not run at setup time")
+      rec:drive("nvim-lspconfig")
+      T.eq(resolved_at_eval_time, true, "server fn should run inside on_load")
+      T.eq(rec.lsp_cfg[1].cfg.settings, { dynamic = "ok" })
+      T.eq(rec.lsp_cfg[1].cfg._enable, nil)
+      T.eq(rec.lsp_enable, { { name = "srv", opts = { cmd = "x" } } })
+    end)
+  end)
+
   T.it("linters register linters_by_ft via nvim-lint on_load", function()
     with_mocks(function(rec, lang)
       lang.setup({

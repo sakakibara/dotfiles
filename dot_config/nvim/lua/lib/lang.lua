@@ -13,10 +13,18 @@ local M = {}
 --   cmd        string                    — executable name; if missing, return early
 --   mason      {string,...}              — mason-tool-installer ensure_installed entries
 --   parsers    {string,...}              — nvim-treesitter parsers to install
+--   parsers_setup function()             — extra ts work (e.g. registering a custom
+--                                          parser, disabling a highlight) ran inside
+--                                          the nvim-treesitter on_load BEFORE install
 --   servers    { [name] = config }       — vim.lsp.config + Lib.lsp.enable per server.
 --                                          Capabilities are deep-merged with
---                                          Lib.lsp.capabilities(). Two helper-only
---                                          fields, stripped before vim.lsp.config:
+--                                          Lib.lsp.capabilities(). config may also be
+--                                          a function() that returns the table — used
+--                                          when the config needs to look at modules
+--                                          loaded by nvim-lspconfig itself
+--                                          (lspconfig.configs.*, schemastore, ...).
+--                                          Two helper-only fields, stripped before
+--                                          vim.lsp.config:
 --                                            _enable    { cmd = "binary" } passed to
 --                                                       Lib.lsp.enable as a hint for
 --                                                       servers with function `cmd`.
@@ -48,10 +56,14 @@ function M.setup(spec)
     end
   end
 
-  if spec.parsers and #spec.parsers > 0 then
+  if (spec.parsers and #spec.parsers > 0) or spec.parsers_setup then
     local parsers = spec.parsers
+    local parsers_setup = spec.parsers_setup
     Lib.plugin.on_load("nvim-treesitter", function()
-      require("nvim-treesitter").install(parsers)
+      if parsers_setup then parsers_setup() end
+      if parsers and #parsers > 0 then
+        require("nvim-treesitter").install(parsers)
+      end
     end)
   end
 
@@ -59,6 +71,7 @@ function M.setup(spec)
     local servers = spec.servers
     Lib.plugin.on_load("nvim-lspconfig", function()
       for name, cfg in pairs(servers) do
+        if type(cfg) == "function" then cfg = cfg() end
         cfg = cfg or {}
         local enable_opts = cfg._enable
         local on_attach_cb = cfg._on_attach
