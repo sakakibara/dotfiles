@@ -35,3 +35,20 @@ T.describe("lib.colors.detect regex fallback", function()
     vim.api.nvim_buf_delete(buf, { force = true })
   end)
 end)
+
+T.describe("lib.colors.detect TS dispatch", function()
+  T.it("uses TS for CSS buffers", function()
+    local buf = make_buf({
+      ".btn {",
+      "  color: #ff0000;",
+      "  /* #00ff00 — should be skipped (inside a comment) */",
+      "}",
+    })
+    vim.bo[buf].filetype = "css"
+    local results = D.detect(buf, 0, 3)
+    -- TS query should exclude the comment
+    T.eq(#results, 1, "expected 1 (excluding comment), got " .. #results)
+    T.eq(results[1].lnum, 1)
+    vim.api.nvim_buf_delete(buf, { force = true })
+  end)
+end)
