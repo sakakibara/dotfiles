@@ -1,0 +1,110 @@
+# macOS packages — formulae (bare names), casks (cask: prefix), and taps
+# (tap: prefix). Profile gating: trailing ` @profile1,profile2` restricts a
+# line to the named chezmoi profiles. Lines without a profile annotation
+# apply everywhere. Versioned formulae (`openssl@3`) keep `@` in the name —
+# the profile suffix requires a literal SPACE before the @.
+#
+# Companion: etc/darwin/packages-blacklist.txt (same syntax, prevents
+# `dotfiles sync` from re-adding entries you've explicitly opted out of).
+
+# ── Taps
+tap:homebrew/services
+tap:microsoft/git
+
+# ── Build / compile-time
+autoconf
+automake
+bison
+cmake
+gettext
+gmp
+icu4c@76
+krb5
+libedit
+libiconv
+libpng
+libsodium
+libxml2
+libyaml
+libzip
+openssl@3
+pkgconf
+re2c
+readline
+zlib
+
+# ── Image / media libs
+freetype
+gd
+imagemagick
+jpeg
+jpeg-xl
+librsvg
+
+# ── Languages / runtimes / shells
+bash
+fish
+go
+zsh
+pnpm
+
+# ── CLI tools
+aspell
+bat
+cmigemo
+coreutils
+curl
+difftastic
+fd
+ffmpeg
+fzf
+gawk
+gh
+gibo
+git
+gnupg
+jq
+lazydocker
+lazygit
+neovim
+nnn
+protobuf
+ripgrep
+starship
+tealdeer
+tree
+typos-cli
+usage
+vivid
+wget
+yt-dlp
+zk
+zoxide
+
+# ── Casks (GUI apps)
+cask:1password
+cask:alfred
+cask:anytype
+cask:chatgpt
+cask:discord
+cask:fantastical
+cask:figma
+cask:firefox
+cask:flutter
+cask:ghostty
+cask:google-chrome
+cask:httpie
+cask:iterm2
+cask:karabiner-elements
+cask:licecap
+cask:logi-options+
+cask:microsoft-auto-update
+cask:microsoft-office
+cask:movist-pro
+cask:orbstack
+cask:powershell
+cask:scroll-reverser
+cask:steam
+cask:tableplus
+cask:todoist
+cask:zen-browser

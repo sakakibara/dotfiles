@@ -111,6 +111,8 @@ jobs:
         run: bash etc/tests/dict.sh
       - name: pick (interactive runner)
         run: bash etc/tests/pick.sh
+      - name: packages (parser)
+        run: bash etc/tests/packages.sh
 
   theme-tests-pwsh:
     name: Theme tests (Windows / pwsh)
