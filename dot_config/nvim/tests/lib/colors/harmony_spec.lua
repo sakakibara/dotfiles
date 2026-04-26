@@ -28,3 +28,19 @@ T.describe("lib.colors.harmony", function()
     T.truthy(math.abs(hb - 130) < 1, "hb ~130, got " .. hb)
   end)
 end)
+
+T.describe("lib.colors.harmony nearest", function()
+  T.it("nearest_tailwind returns red-NNN for a red-ish color", function()
+    local c = C.from_hex("#ef4444")  -- close to v4 red-500
+    local name, dist = H.nearest_tailwind(c)
+    T.truthy(name == "red-500" or name:match("^red%-"),
+      "expected red-NNN, got " .. tostring(name))
+    T.truthy(dist < 0.05, "expected small distance, got " .. tostring(dist))
+  end)
+
+  T.it("nearest_named returns 'red' for #ff0000", function()
+    local c = C.from_hex("#ff0000")
+    local name = H.nearest_named(c)
+    T.eq(name, "red")
+  end)
+end)
