@@ -56,10 +56,10 @@ local function derive_palette()
   -- Main fg comes from Normal, not StatusLine (StatusLine.fg is often dimmed)
   local fg       = get("Normal", "fg", "#ffffff")
   local fg_bold  = get("Normal", "fg", "#ffffff")
-  -- fg_dim must clear WCAG AA on bg_a. NonText/Comment in catppuccin mocha
-  -- is overlay0 (#6c7086) which fails AA on mantle (~4.0:1). Use overlay1
-  -- (#7f849c) via Comment if it's brighter, or upshade NonText.
-  local fg_dim   = get("LineNr", "fg", nil) or get("NonText", "fg", nil) or get("Comment", "fg", fg)
+  -- fg_dim must clear WCAG AA (4.5:1) on bg_a. LineNr (#45475a / surface1)
+  -- and NonText (#6c7086 / overlay0) both fail on mantle (~1.9:1 and ~4.0:1).
+  -- Conceal.fg is overlay1 (#7f849c) which gives ~5.3:1 on mantle — PASS.
+  local fg_dim   = get("Conceal", "fg", nil) or get("Comment", "fg", nil) or get("NonText", "fg", fg)
   -- Path cwd specifically: bumped further for clear legibility (was the
   -- "current dir hard to see" complaint). Pmenu.fg is overlay2 in mocha
   -- (#9399b2); Conceal.fg is overlay1 (#7f849c) — use Pmenu first.
@@ -93,7 +93,9 @@ local function define_highlights()
   derive_palette()
   local p = palette
 
-  hl("StslNc",        { fg = p.fg_dim, bg = p.bg_end })
+  -- fg_dim (#7f849c / overlay1) is 4.44:1 on bg_end — just below WCAG AA.
+  -- Use fg_path_cwd (#9399b2 / overlay2) for the inactive bar to clear 4.5:1.
+  hl("StslNc",        { fg = p.fg_path_cwd, bg = p.bg_end })
   hl("Stsl",          { fg = p.fg, bg = p.bg_mid })
   hl("StslDim",       { fg = p.fg_dim, bg = p.bg_mid })
   hl("StslBold",      { fg = p.fg, bg = p.bg_mid, bold = true })
