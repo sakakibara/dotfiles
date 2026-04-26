@@ -76,6 +76,41 @@ au({ "BufReadPre", "BufNewFile" }, {
   callback = function() vim.opt_local.fixeol = false end,
 })
 
+-- Bigfile guardrails. snacks.bigfile registers a vim.filetype.add `[".*"]`
+-- pattern at BufReadPre time, but in this loader's startup order it doesn't
+-- always run before filetype detection on the first file (saw ft="" on a
+-- 4MB *.panic dump with a 1.8MB single line — nvim froze rendering wrap
+-- points across the line). We pre-empt at BufReadPre by stat'ing the file
+-- on disk: if it's over the snacks default threshold we set ft=bigfile
+-- ourselves and apply the same disables the plugin would have. The
+-- treesitter FileType handler (lua/config/plugins/treesitter.lua:43)
+-- already gates on this filetype, so no double-arming there.
+local BIGFILE_BYTES = 1.5 * 1024 * 1024
+au("BufReadPre", {
+  group = grp,
+  callback = function(args)
+    if not args.file or args.file == "" then return end
+    local size = vim.fn.getfsize(args.file)
+    -- -2 means "too large for vim's number" — definitely bigfile.
+    if not (size == -2 or size > BIGFILE_BYTES) then return end
+    local buf = args.buf
+    vim.bo[buf].syntax     = ""
+    vim.bo[buf].synmaxcol  = 200
+    vim.bo[buf].swapfile   = false
+    vim.bo[buf].undolevels = -1
+    vim.bo[buf].filetype   = "bigfile"
+    vim.api.nvim_buf_call(buf, function()
+      vim.opt_local.wrap         = false
+      vim.opt_local.cursorline   = false
+      vim.opt_local.foldmethod   = "manual"
+      vim.opt_local.conceallevel = 0
+      vim.opt_local.statuscolumn = ""
+    end)
+    if vim.fn.exists(":NoMatchParen") ~= 0 then vim.cmd("NoMatchParen") end
+    vim.b[buf].minianimate_disable = true
+  end,
+})
+
 -- highlight yank
 au("TextYankPost", {
   group = grp,
