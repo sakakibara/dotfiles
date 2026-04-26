@@ -705,7 +705,7 @@ local function pack_update_async(names)
       end
       -- Open the preview buffer with already-fetched results
       vim.pack.update(names, { offline = true })
-      vim.notify(":w / <CR> apply  ·  q / close cancel",
+      vim.notify(":w to apply  ·  :bd! to cancel",
         vim.log.levels.INFO, { title = "PackUpdate" })
     end
   end
@@ -740,23 +740,6 @@ end, {
   desc = "Update plugin(s) — async fetch, preview when ready",
 })
 
--- Add q / <CR> keymaps to vim.pack's preview buffer (filetype = nvim-pack)
--- alongside the default `:w`/close convention. q closes without applying;
--- <CR> applies (just calls :write under the hood).
-vim.api.nvim_create_autocmd("FileType", {
-  group    = vim.api.nvim_create_augroup("core.pack.confirm_keys", { clear = true }),
-  pattern  = "nvim-pack",
-  callback = function(args)
-    local buf = args.buf
-    vim.keymap.set("n", "q", function()
-      vim.bo[buf].modified = false
-      pcall(vim.cmd, "bdelete")
-    end, { buffer = buf, desc = "Cancel" })
-    vim.keymap.set("n", "<CR>", function()
-      pcall(vim.cmd, "write")
-    end, { buffer = buf, desc = "Apply" })
-  end,
-})
 
 vim.api.nvim_create_user_command("PackClean", function()
   if not (vim.pack and vim.pack.get and vim.pack.del) then
