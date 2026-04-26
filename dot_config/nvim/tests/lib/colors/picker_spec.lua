@@ -137,3 +137,44 @@ T.describe("lib.colors.picker commit", function()
     vim.api.nvim_buf_delete(src, { force = true })
   end)
 end)
+
+T.describe("lib.colors.picker recents", function()
+  T.it("commit pushes color hex to recents (LRU front)", function()
+    P._recents_path = vim.fn.tempname() .. ".json"
+    P._recents      = {}
+    local src = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(src, 0, -1, false, { "x: #aabbcc;" })
+    local hit = require("lib.colors.parse").parse("x: #aabbcc;", 5)
+    local s = P.open({
+      initial = hit.color,
+      anchor  = { buf = src, lnum = 0, col_s = hit.range.col_s, col_e = hit.range.col_e },
+    })
+    P.commit(s)
+    T.eq(P._recents[1], "#aabbcc")
+    os.remove(P._recents_path)
+    vim.api.nvim_buf_delete(src, { force = true })
+  end)
+
+  T.it("recents capped at RECENTS_MAX, LRU eviction", function()
+    P._recents_path = vim.fn.tempname() .. ".json"
+    P._recents      = {}
+    for i = 1, 40 do
+      P._recents_push(string.format("#%06x", i))
+    end
+    T.eq(#P._recents, P.RECENTS_MAX)
+    T.eq(P._recents[1], string.format("#%06x", 40))
+    os.remove(P._recents_path)
+  end)
+
+  T.it("re-pushing existing hex moves it to front (no duplication)", function()
+    P._recents_path = vim.fn.tempname() .. ".json"
+    P._recents      = {}
+    P._recents_push("#000001")
+    P._recents_push("#000002")
+    P._recents_push("#000001")  -- re-push
+    T.eq(P._recents[1], "#000001")
+    T.eq(P._recents[2], "#000002")
+    T.eq(#P._recents, 2)
+    os.remove(P._recents_path)
+  end)
+end)

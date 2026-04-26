@@ -5,6 +5,37 @@ local M = {}
 
 M.ns = vim.api.nvim_create_namespace("lib.colors.picker")
 
+M._recents      = {}
+M._recents_path = vim.fn.stdpath("state") .. "/lib-colors-recents.json"
+M.RECENTS_MAX   = 32
+
+function M._recents_load()
+  local fd = io.open(M._recents_path, "r")
+  if not fd then return end
+  local content = fd:read("*a")
+  fd:close()
+  local ok, data = pcall(vim.json.decode, content)
+  if ok and type(data) == "table" then M._recents = data end
+end
+
+function M._recents_save()
+  vim.fn.mkdir(vim.fn.fnamemodify(M._recents_path, ":h"), "p")
+  local fd = io.open(M._recents_path, "w")
+  if not fd then return end
+  fd:write(vim.json.encode(M._recents))
+  fd:close()
+end
+
+function M._recents_push(hex)
+  for i = #M._recents, 1, -1 do
+    if M._recents[i] == hex then table.remove(M._recents, i) end
+  end
+  table.insert(M._recents, 1, hex)
+  while #M._recents > M.RECENTS_MAX do
+    table.remove(M._recents)
+  end
+end
+
 local function ensure_swatch_hl(color)
   local hex = C.to_hex({ r = color.r, g = color.g, b = color.b, a = 1 })
   local short = hex:sub(2)  -- strip "#"
@@ -64,6 +95,7 @@ local function render(state)
 end
 
 function M.open(opts)
+  if #M._recents == 0 then M._recents_load() end
   opts = opts or {}
   local color = opts.initial or default_color()
   local state = {
@@ -134,6 +166,10 @@ function M.commit(state)
     end
     vim.api.nvim_buf_set_text(a.buf, a.lnum, a.col_s, a.lnum, a.col_e, { text })
   end
+  -- Push committed hex into recents
+  local hex = C.to_hex({ r = state.color.r, g = state.color.g, b = state.color.b, a = 1 })
+  M._recents_push(hex)
+  M._recents_save()
   M.close(state)
 end
 
