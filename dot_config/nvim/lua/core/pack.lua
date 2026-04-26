@@ -738,22 +738,37 @@ local function pack_update_async(names)
         notify("Fetch failed for: " .. table.concat(failures, ", "),
           vim.log.levels.WARN)
       end
-      vim.pack.update(names, { offline = true })
-      notify(":w to apply  ·  :bd! to cancel", vim.log.levels.INFO)
+      -- vim.pack.update(offline=true) still runs git log/diff per plugin
+      -- synchronously to build the preview, so defer it via vim.schedule
+      -- to let pending input/redraws drain before the freeze.
+      vim.schedule(function()
+        vim.pack.update(names, { offline = true })
+        notify(":w to apply  ·  :bd! to cancel", vim.log.levels.INFO)
+      end)
     end
   end
 
-  -- Spawn parallel git fetches; main thread stays responsive throughout.
-  for _, target in ipairs(targets) do
+  -- Worker-pool: cap concurrent fetches so we don't fire 30+ git processes
+  -- (each negotiating SSH/HTTPS) at once. That thrashes the network and
+  -- starves the main loop of scheduling slots, which manifests as the
+  -- editor freezing while typing during a background update.
+  local CONCURRENCY = 4
+  local next_idx = 0
+  local function spawn_next()
+    next_idx = next_idx + 1
+    local target = targets[next_idx]
+    if not target then return end
     vim.system(
       { "git", "-C", target.path, "fetch", "--quiet", "--tags", "--force",
         "--recurse-submodules=yes", "origin" },
       { text = true },
       vim.schedule_wrap(function(result)
         on_done(target, result and result.code == 0)
+        spawn_next()
       end)
     )
   end
+  for _ = 1, math.min(CONCURRENCY, total) do spawn_next() end
 end
 
 vim.api.nvim_create_user_command("PackUpdate", function(opts)
