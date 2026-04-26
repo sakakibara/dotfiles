@@ -45,3 +45,29 @@ T.describe("lib.colors.tailwind project @theme scan", function()
     TW._overlay = {}
   end)
 end)
+
+T.describe("lib.colors.tailwind overlay file-scope tracking", function()
+  T.it("scan_file removes stale entries on re-scan", function()
+    TW._overlay = {}
+    TW._overlay_by_file = {}
+    local fixture = vim.fn.tempname() .. ".css"
+
+    -- Initial: write file with two declarations, scan
+    local f = io.open(fixture, "w")
+    f:write("@theme {\n  --color-x: #ff0000;\n  --color-y: #00ff00;\n}\n")
+    f:close()
+    TW.scan_file(fixture)
+    T.truthy(TW._overlay["x"], "x should be in overlay")
+    T.truthy(TW._overlay["y"], "y should be in overlay")
+
+    -- Rewrite without `y` and re-scan; `y` should be removed from overlay
+    f = io.open(fixture, "w")
+    f:write("@theme {\n  --color-x: #ff0000;\n}\n")
+    f:close()
+    TW.scan_file(fixture)
+    T.truthy(TW._overlay["x"], "x should still be in overlay")
+    T.eq(TW._overlay["y"], nil, "y should be removed from overlay")
+
+    os.remove(fixture)
+  end)
+end)

@@ -9,6 +9,9 @@ local M       = {}
 -- the built-in palette.
 M._overlay = {}
 
+-- Per-file index of names written to _overlay: { [path] = { name, ... } }
+M._overlay_by_file = {}
+
 -- Resolve a palette class name (e.g. "red-500") to a Color. Project overlay
 -- takes precedence over the built-in palette.
 function M.resolve(name)
@@ -57,15 +60,31 @@ function M.scan_file(path)
   if not fd then return end
   local content = fd:read("*a")
   fd:close()
+
+  -- Harvest the new names + their values for this file
+  local new_keys = {}
   for body in content:gmatch("@theme%s*{(.-)}") do
     for name, value in body:gmatch("%-%-color%-([%w%-]+)%s*:%s*([^;]+);") do
       local results = parse().parse_all(value)
       if #results > 0 then
         local L, Cval, h = color().to_oklch(results[1].color)
-        M._overlay[name] = { L, Cval, h }
+        new_keys[name] = { L, Cval, h }
       end
     end
   end
+
+  -- Drop any keys from this file's previous scan that aren't in the new set
+  for _, name in ipairs(M._overlay_by_file[path] or {}) do
+    if not new_keys[name] then M._overlay[name] = nil end
+  end
+
+  -- Apply the new set + record the keys we own from this file
+  local owned = {}
+  for name, triple in pairs(new_keys) do
+    M._overlay[name] = triple
+    table.insert(owned, name)
+  end
+  M._overlay_by_file[path] = owned
 end
 
 -- Scan all *.css files under the given root (default: cwd). Skips common
