@@ -14,10 +14,13 @@ _check() {
   fi
 }
 
-_check_lua() {
-  local file="$1"
-  if ! luac -p "$file" 2>&1; then
-    printf 'FAIL: %s (luac -p)\n' "$file" >&2
+_check_lua_batch() {
+  # Single Lua-interpreter invocation for all files at once — much faster
+  # than spawning the interpreter per file. lua-check.lua tallies its own
+  # failures and exits non-zero if any. We only know "did it succeed or
+  # not" here, but the per-file FAIL lines go to stderr.
+  local interp="$1"; shift
+  if ! "$interp" etc/ci/lua-check.lua "$@"; then
     fails=$((fails + 1))
   fi
 }
@@ -76,14 +79,44 @@ else
   echo "skip: fish not on PATH" >&2
 fi
 
-# Lua files (excluding *.tmpl which are checked post-render).
-if command -v luac >/dev/null 2>&1; then
-  while IFS= read -r -d '' f; do _check_lua "$f"; done < <(
-    find . -type f -name '*.lua' \
-      -not -path './.git/*' -not -name '*.tmpl' -print0 2>/dev/null
+# Lua files. Different consumers in this repo use different Lua runtimes:
+#   - dot_config/nvim/**/*.lua  → LuaJIT (~Lua 5.1 + extensions)
+#   - dot_config/wezterm/*.lua  → Lua 5.4 (wezterm bundles mlua/Lua 5.4)
+# Using the wrong parser produces false positives (LuaJIT rejects `<close>`,
+# Lua 5.4 rejects some LuaJIT extensions) — pick the right one per location.
+
+# nvim's lua → luajit
+if command -v luajit >/dev/null 2>&1; then
+  mapfile -d '' -t _luajit_files < <(
+    find dot_config/nvim -type f -name '*.lua' -not -name '*.tmpl' -print0 2>/dev/null
   )
+  if [[ ${#_luajit_files[@]} -gt 0 ]]; then
+    _check_lua_batch luajit "${_luajit_files[@]}"
+  fi
 else
-  echo "skip: luac not on PATH" >&2
+  echo "skip: luajit not on PATH (nvim lua files)" >&2
+fi
+
+# Everything else (wezterm.lua + any future Lua-5.4 consumer) → lua5.4
+_lua54=""
+for _cmd in lua5.4 lua; do
+  if command -v "$_cmd" >/dev/null 2>&1 && "$_cmd" -v 2>&1 | grep -q 'Lua 5\.4'; then
+    _lua54="$_cmd"
+    break
+  fi
+done
+if [[ -n "$_lua54" ]]; then
+  mapfile -d '' -t _lua54_files < <(
+    find . -type f -name '*.lua' \
+      -not -path './dot_config/nvim/*' \
+      -not -path './.git/*' \
+      -not -name '*.tmpl' -print0 2>/dev/null
+  )
+  if [[ ${#_lua54_files[@]} -gt 0 ]]; then
+    _check_lua_batch "$_lua54" "${_lua54_files[@]}"
+  fi
+else
+  echo "skip: Lua 5.4 not on PATH (wezterm + other lua files)" >&2
 fi
 
 # TOML files (non-templated; rendered .toml.tmpl handled by render.sh).

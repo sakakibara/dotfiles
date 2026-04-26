@@ -30,9 +30,15 @@ _render() {
           || { printf 'FAIL syntax (post-render): %s (toml)\n' "$file" >&2; fails=$((fails + 1)); }
         ;;
       lua)
-        # luac -p reads a file path; pipe via process substitution to a fifo
-        echo "$out" | luac -p - 2>&1 \
-          || { printf 'FAIL syntax (post-render): %s (lua)\n' "$file" >&2; fails=$((fails + 1)); }
+        # Use luajit (nvim's runtime). Write to a temp file since
+        # lua-check.lua takes file paths.
+        local _tmp; _tmp=$(mktemp -t render-lua.XXXXXX.lua 2>/dev/null || mktemp)
+        printf '%s' "$out" > "$_tmp"
+        if ! luajit etc/ci/lua-check.lua "$_tmp" 2>&1; then
+          printf 'FAIL syntax (post-render): %s (lua)\n' "$file" >&2
+          fails=$((fails + 1))
+        fi
+        rm -f "$_tmp"
         ;;
     esac
   fi
