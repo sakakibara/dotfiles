@@ -129,6 +129,10 @@ function M.setup(opts)
     end,
   })
 
+  vim.api.nvim_create_user_command("ColorPick", function() M.pick() end, {
+    desc = "Open Lib.colors picker on color under cursor",
+  })
+
   vim.api.nvim_create_user_command("ColorsToggle", function(cmd)
     if cmd.fargs[1] == "global" then
       M._opts.enabled = not M._opts.enabled
@@ -141,6 +145,25 @@ function M.setup(opts)
     nargs    = "?",
     complete = function() return { "global" } end,
   })
+end
+
+function M.pick(initial)
+  local picker = require("lib.colors.picker")
+  local parse  = require("lib.colors.parse")
+  local row, col = unpack(vim.api.nvim_win_get_cursor(0))
+  local line = vim.api.nvim_buf_get_lines(0, row - 1, row, false)[1] or ""
+  local hit = parse.parse(line, col)
+  local opts = { initial = initial }
+  if hit then
+    opts.initial = hit.color
+    opts.anchor  = {
+      buf   = vim.api.nvim_get_current_buf(),
+      lnum  = row - 1,
+      col_s = hit.range.col_s,
+      col_e = hit.range.col_e,
+    }
+  end
+  return picker.open(opts)
 end
 
 function M.toggle(buf)

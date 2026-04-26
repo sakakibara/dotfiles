@@ -135,6 +135,34 @@ T.describe("lib.colors toggle correctness", function()
   end)
 end)
 
+T.describe("lib.colors :ColorPick command", function()
+  T.it("registers :ColorPick after setup()", function()
+    package.loaded["lib.colors"] = nil
+    require("lib").init()
+    Lib.colors.setup({})
+    local cmds = vim.api.nvim_get_commands({})
+    T.truthy(cmds.ColorPick, ":ColorPick not registered")
+  end)
+
+  T.it("Lib.colors.pick() opens the picker on cursor literal", function()
+    package.loaded["lib.colors"] = nil
+    _G.Lib = nil
+    require("lib").init()
+    Lib.colors.setup({})
+    local src = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(src, 0, -1, false, { "color: #ff0000;" })
+    vim.api.nvim_set_current_buf(src)
+    vim.api.nvim_win_set_cursor(0, { 1, 9 })
+    local state = Lib.colors.pick()
+    T.truthy(state, "expected picker state")
+    T.truthy(state.anchor, "expected anchor for cursor literal")
+    T.eq(state.anchor.col_s, 7)
+    T.eq(state.anchor.col_e, 14)
+    require("lib.colors.picker").close(state)
+    vim.api.nvim_buf_delete(src, { force = true })
+  end)
+end)
+
 T.describe("lib.colors DirChanged rescans project", function()
   T.it("clears _overlay on DirChanged", function()
     package.loaded["lib.colors"] = nil
