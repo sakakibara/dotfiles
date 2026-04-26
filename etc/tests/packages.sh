@@ -128,6 +128,23 @@ empty_bl=$(packages::filtered "$TMP/packages.txt" work brew "$TMP/no-blacklist.t
 _eq "no blacklist file → all 7 work entries pass through" "7" "$empty_bl"
 
 # ---------- current_profile ----------
+_section "skipped_for_profile: lists entries that DON'T apply to current profile"
+cat > "$TMP/skip-test.txt" <<'EOF'
+git
+slack @work
+obsidian @personal
+cask:figma @work,personal
+EOF
+out=$(packages::skipped_for_profile "$TMP/skip-test.txt" personal pkg | tr '\t' = | tr '\n' '|')
+_eq "personal: slack is profile-skipped" "pkg=slack=work|" "$out"
+
+out=$(packages::skipped_for_profile "$TMP/skip-test.txt" work pkg | tr '\t' = | tr '\n' '|')
+_eq "work: obsidian is profile-skipped" "pkg=obsidian=personal|" "$out"
+
+out=$(packages::skipped_for_profile "$TMP/skip-test.txt" other pkg | tr '\t' = | tr '\n' '|')
+_eq "other (unknown profile): all gated entries skipped" \
+    "pkg=slack=work|pkg=obsidian=personal|cask=figma=work,personal|" "$out"
+
 _section "current_profile: env var wins"
 DOTFILES_PROFILE=test-profile out=$(packages::current_profile)
 _eq "DOTFILES_PROFILE wins" "test-profile" "$out"

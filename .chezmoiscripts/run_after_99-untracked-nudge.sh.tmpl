@@ -1,0 +1,39 @@
+{{ if or (eq .chezmoi.os "darwin") (eq .chezmoi.os "linux") -}}
+#!/usr/bin/env bash
+# Gentle apply-time nudge: counts installed-but-untracked packages and
+# prints a one-liner if the count is > 0. Cheap-to-skip if package
+# manager isn't available (fresh box mid-install). Intentionally a
+# `run_after_` script (not `run_once`) so the count refreshes every apply.
+source {{ joinPath .chezmoi.sourceDir "etc" "bash" "lib" "init.bash" | quote }}
+export DOTFILES_PROFILE={{ (index . "profile") | default "personal" | quote }}
+export CHEZMOI_SOURCE_DIR={{ .chezmoi.sourceDir | quote }}
+
+import sync packages
+
+# Detect OS + the right files.
+case "$(uname -s)" in
+  Darwin)
+    pkg_file="$CHEZMOI_SOURCE_DIR/etc/darwin/packages.txt"
+    blacklist="$CHEZMOI_SOURCE_DIR/etc/darwin/packages-blacklist.txt"
+    default_kind=brew
+    os=darwin
+    ;;
+  Linux)
+    distro=$(linux::detect_distro 2>/dev/null || echo unknown)
+    [[ "$distro" == "unknown" ]] && exit 0
+    pkg_file="$CHEZMOI_SOURCE_DIR/etc/linux/packages-${distro}.txt"
+    blacklist="$CHEZMOI_SOURCE_DIR/etc/linux/packages-blacklist.txt"
+    default_kind=pkg
+    os=linux
+    ;;
+  *) exit 0 ;;
+esac
+
+[[ -r "$pkg_file" ]] || exit 0
+
+count=$(sync::compute_untracked "$pkg_file" "$blacklist" "$os" "$default_kind" 2>/dev/null | wc -l | tr -d ' ')
+if (( count > 0 )); then
+  printf '\033[2m  %d untracked package(s) — run \`dotfiles sync\` to review.\033[0m\n' "$count" >&2
+fi
+exit 0
+{{ end -}}

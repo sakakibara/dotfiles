@@ -79,4 +79,17 @@ brew::setup() {
   if (( ${#casks[@]} > 0 )); then
     brew install --cask "${casks[@]}"
   fi
+
+  # Symmetry: list profile-skipped entries so the user knows why something
+  # they expected isn't installing.
+  local skipped
+  skipped=$(packages::skipped_for_profile "$file" "$profile" brew)
+  if [[ -n "$skipped" ]]; then
+    msg::heading "Skipped (other profile):"
+    local k n p
+    while IFS=$'\t' read -r k n p; do
+      [[ -z "$n" ]] && continue
+      msg::arrow "${k}:${n} \033[2m@${p}\033[0m"
+    done <<<"$skipped"
+  fi
 }

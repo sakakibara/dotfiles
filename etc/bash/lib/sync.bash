@@ -500,8 +500,32 @@ sync::run() {
   if (( ${#_sync_items[@]} == 0 )); then
     msg::success "Everything installed is already tracked. Nothing to sync."
   else
-    sync::review || return $?
-    sync::apply "$pkg_file" "$blacklist_file" "$default_kind"
+    # First-run bootstrap: packages.txt is essentially empty AND many items
+    # are installed. Per-item review on a 200-package list is hostile —
+    # offer a single-key bulk import instead.
+    local tracked_count
+    tracked_count=$(packages::all "$pkg_file" "$default_kind" 2>/dev/null | wc -l | tr -d ' ')
+    if (( ${#_sync_items[@]} >= 20 && tracked_count == 0 )) && [[ -t 0 && -t 1 ]]; then
+      msg::heading "Bootstrap mode"
+      msg::arrow "${#_sync_items[@]} packages installed, packages.txt is empty."
+      printf '  Bulk-import all as global entries (no profile annotation)? [y/N] '
+      local ans=''
+      IFS= read -rn1 ans </dev/tty 2>/dev/null || ans=n
+      printf '\n'
+      if [[ "$ans" == "y" || "$ans" == "Y" ]]; then
+        _sync_actions=()
+        local i
+        for ((i=0; i<${#_sync_items[@]}; i++)); do _sync_actions[i]="add"; done
+        sync::apply "$pkg_file" "$blacklist_file" "$default_kind"
+        msg::arrow "Re-run \`dotfiles sync\` later to refine (profile-gate or blacklist individual entries)."
+      else
+        sync::review || return $?
+        sync::apply "$pkg_file" "$blacklist_file" "$default_kind"
+      fi
+    else
+      sync::review || return $?
+      sync::apply "$pkg_file" "$blacklist_file" "$default_kind"
+    fi
   fi
 
   # Stale-entry honesty: list tracked-but-not-installed for the current profile.

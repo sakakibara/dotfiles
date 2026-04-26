@@ -97,6 +97,18 @@ linux::install_packages() {
       return 1
       ;;
   esac
+
+  # Symmetry: list profile-skipped entries.
+  local skipped
+  skipped=$(packages::skipped_for_profile "$file" "$profile" pkg)
+  if [[ -n "$skipped" ]]; then
+    msg::heading "Skipped (other profile):"
+    local k n p
+    while IFS=$'\t' read -r k n p; do
+      [[ -z "$n" ]] && continue
+      msg::arrow "${k}:${n} \033[2m@${p}\033[0m"
+    done <<<"$skipped"
+  fi
 }
 
 linux::setup() {

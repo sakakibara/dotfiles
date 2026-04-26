@@ -106,6 +106,27 @@ packages::applies_to() {
 # anywhere" regardless of which profile the entry happens to apply to.
 #
 # Args: FILE [DEFAULT_KIND]
+# Yield entries from FILE that DON'T apply to PROFILE — i.e. the
+# profile-gated items skipped on this machine. Output: kind<TAB>name<TAB>profiles
+# (profiles = comma-separated). Used by install paths to be honest about
+# what was filtered out.
+#
+# Args: FILE PROFILE [DEFAULT_KIND]
+packages::skipped_for_profile() {
+  local file="$1" profile="$2" default_kind="${3:-pkg}"
+  [[ -r "$file" ]] || return 0
+  local _pkg_kind _pkg_name _pkg_profiles
+  local line
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    packages::parse "$line" || continue
+    packages::applies_to "$profile" && continue
+    local k="${_pkg_kind:-$default_kind}"
+    local IFS=','
+    local profs="${_pkg_profiles[*]}"
+    printf '%s\t%s\t%s\n' "$k" "$_pkg_name" "$profs"
+  done < "$file"
+}
+
 packages::all() {
   local file="$1" default_kind="${2:-pkg}"
   [[ -r "$file" ]] || return 1
