@@ -30,9 +30,9 @@ sh -c "$(wget -qO- get.chezmoi.io/lb)" -- init --apply sakakibara
 
 ## After install
 
-`chezmoi apply` runs a set of per-step `run_once_` scripts after the file deploy. Each is hash-triggered against its own input — the brew script only re-fires when the Brewfile changes, the mise script only when its config template changes, and so on:
+`chezmoi apply` runs a set of per-step `run_once_` scripts after the file deploy. Each is hash-triggered against its own input — the brew script only re-fires when `etc/darwin/packages.txt` changes, the mise script only when its config template changes, and so on:
 
-- **`install-1-brew.sh.tmpl`** (macOS) / **`install-1-linux-packages.sh.tmpl`** (Linux): native package install via Brewfile or `etc/linux/packages-*.txt` (auto-detects fedora/debian/arch/suse).
+- **`install-1-brew.sh.tmpl`** (macOS) / **`install-1-linux-packages.sh.tmpl`** (Linux): native package install via `etc/darwin/packages.txt` or `etc/linux/packages-*.txt` (auto-detects fedora/debian/arch/suse).
 - **`install-2-mise.sh.tmpl`**: language toolchains via mise.
 - **`install-3-extras.sh.tmpl`** (Linux): bucket-3 tools not in distro repos (starship, gh, lazygit, lazydocker, cargo-installed Rust tools).
 - **`install-4-hive.sh.tmpl`**: workspace symlink layout via hive.
