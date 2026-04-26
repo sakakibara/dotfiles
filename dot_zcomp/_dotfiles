@@ -6,7 +6,6 @@ _dotfiles() {
     'info:Print info snapshot'
     'install:Run install steps (interactive menu by default)'
     'sync:Review untracked packages'
-    'save:Re-add drifted target files'
     'edit:Fuzzy-find a managed file and edit it'
     'profile:Print or switch the active profile'
     'doctor:Health-check the setup'
@@ -31,7 +30,7 @@ _dotfiles() {
     install)
       _values 'install step' all none brew mise hive linux extras
       ;;
-    edit|save)
+    edit)
       local -a managed
       managed=("${(@f)$(chezmoi managed 2>/dev/null)}")
       _describe 'managed file' managed

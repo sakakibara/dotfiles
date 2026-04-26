@@ -96,7 +96,6 @@ Usage:
   dotfiles install all      Run every install step non-interactively
   dotfiles install <names>  Run only the named steps (e.g. brew mise)
   dotfiles sync             Review untracked packages and add/blacklist them
-  dotfiles save [path]      Re-add drifted target files into the source dir
   dotfiles edit <pattern>   Fuzzy-find a managed file and edit via chezmoi
   dotfiles profile [name]   Print or switch the active chezmoi profile
   dotfiles doctor           Health-check the dotfiles + chezmoi setup
@@ -418,117 +417,6 @@ _upgrade_all() {
   return "$fails"
 }
 
-cmd_save() {
-  case "${1:-}" in
-    -h|--help)
-      cat <<'EOF'
-dotfiles save — re-add changed target files into the chezmoi source dir.
-
-Use this when something OTHER than your editor (an app, a `theme set`,
-the OS) wrote into a managed file. For your own edits, prefer
-`chezmoi edit <path>` — it skips the drift round-trip entirely.
-
-Usage:
-  dotfiles save              Inspect every drifted file and re-add the safe ones
-  dotfiles save <path>       Re-add a specific path
-
-Behavior per drifted file:
-  • non-templated → `chezmoi re-add` runs
-  • templated     → SKIPPED (re-add would clobber the template); use
-                    `chezmoi edit` to edit the source instead
-  • untracked     → SKIPPED with a hint to `chezmoi add <path>`
-EOF
-      return 0
-      ;;
-  esac
-
-  command -v chezmoi >/dev/null 2>&1 || {
-    printf 'dotfiles save: chezmoi not on PATH\n' >&2
-    return 1
-  }
-
-  if [[ -n "${1:-}" ]]; then
-    _save_one "$1"
-    return $?
-  fi
-
-  local status_out
-  status_out=$(chezmoi status 2>/dev/null || true)
-  if [[ -z "$status_out" ]]; then
-    printf 'no drift — source is up to date\n'
-    return 0
-  fi
-
-  local added=0 skipped=0 templated=0
-  local target_root
-  target_root=$(chezmoi target-path 2>/dev/null || echo "$HOME")
-
-  while IFS= read -r line; do
-    [[ -z "$line" ]] && continue
-    # `chezmoi status` short format: "XY path" (2 status cols + space).
-    local code="${line:0:2}"
-    local rel="${line:3}"
-    local path="$target_root/$rel"
-
-    case "$code" in
-      ' M'|' A'|' R')
-        # Target diverged from rendered source — candidate for re-add.
-        local src
-        src=$(chezmoi source-path "$path" 2>/dev/null) || src=""
-        if [[ "$src" == *.tmpl ]]; then
-          printf '  %s%s%s  templated → use `chezmoi edit %s`\n' "$C_DIM" "$rel" "$C_RESET" "$path"
-          templated=$((templated + 1))
-          continue
-        fi
-        chezmoi re-add "$path" >/dev/null 2>&1
-        printf '  %sre-added%s  %s\n' "$C_BOLD" "$C_RESET" "$rel"
-        added=$((added + 1))
-        ;;
-      ' D')
-        printf '  %s%s%s  target was deleted (run `chezmoi apply` to restore, or `chezmoi remove`)\n' "$C_DIM" "$rel" "$C_RESET"
-        skipped=$((skipped + 1))
-        ;;
-      *)
-        # Anything else (M*, A*, D*) means SOURCE changed — apply territory, not re-add.
-        printf '  %s%s%s  source change pending → `chezmoi apply`\n' "$C_DIM" "$rel" "$C_RESET"
-        skipped=$((skipped + 1))
-        ;;
-    esac
-  done <<<"$status_out"
-
-  printf '\n%d re-added, %d skipped (templated), %d skipped (other)\n' \
-    "$added" "$templated" "$skipped"
-}
-
-# Re-add a single path. Refuses templated files and unmanaged paths.
-_save_one() {
-  local path="$1"
-  # Resolve to absolute (chezmoi source-path needs that for accurate matching).
-  if [[ "$path" != /* ]]; then
-    path="$(cd "$(dirname "$path")" 2>/dev/null && pwd)/$(basename "$path")"
-  fi
-
-  local src
-  src=$(chezmoi source-path "$path" 2>/dev/null) || {
-    printf '%s is not managed by chezmoi.\n' "$path"
-    printf 'to start managing it: chezmoi add %s\n' "$path"
-    return 1
-  }
-
-  if [[ "$src" == *.tmpl ]]; then
-    printf '%s is templated — re-add would clobber the template.\n' "$path"
-    printf 'edit the source directly: chezmoi edit %s\n' "$path"
-    return 1
-  fi
-
-  if chezmoi re-add "$path" >/dev/null 2>&1; then
-    printf 're-added: %s\n' "$path"
-  else
-    printf 'chezmoi re-add failed for %s\n' "$path" >&2
-    return 1
-  fi
-}
-
 cmd_install() {
   case "${1:-}" in
     -h|--help)
@@ -682,10 +570,6 @@ case "${1:-}" in
   sync)
     shift
     cmd_sync "$@"
-    ;;
-  save)
-    shift
-    cmd_save "$@"
     ;;
   edit)
     shift

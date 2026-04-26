@@ -36,12 +36,12 @@ _section() { printf '\n%s\n' "$1"; }
 
 _section "top-level help lists every custom subcommand"
 out=$(bash "$BIN" --help 2>&1)
-for cmd in info install sync save edit profile doctor upgrade; do
+for cmd in info install sync edit profile doctor upgrade; do
   _match "help mentions $cmd" "dotfiles $cmd" "$out"
 done
 
 _section "each subcommand --help works and mentions the command name"
-for cmd in install sync save edit profile doctor upgrade; do
+for cmd in install sync edit profile doctor upgrade; do
   out=$(bash "$BIN" "$cmd" --help 2>&1)
   _match "$cmd --help shows subject" "dotfiles $cmd" "$out"
   # Help text is non-empty (>50 bytes worth of useful prose).
@@ -94,11 +94,6 @@ _section "upgrade with unknown flag rejects"
 out=$(bash "$BIN" upgrade --bogus 2>&1); rc=$?
 _match "upgrade unknown flag error" "unknown flag" "$out"
 [[ $rc -ne 0 ]] && passes=$((passes+1)) || { printf '  ✗ upgrade --bogus should exit non-zero\n'; fails=$((fails+1)); }
-
-_section "save --help describes the templated/non-templated split"
-out=$(bash "$BIN" save --help 2>&1)
-_match "save --help mentions templated"     "templated"   "$out"
-_match "save --help mentions chezmoi edit"  "chezmoi edit" "$out"
 
 _section "doctor --help describes what's checked"
 out=$(bash "$BIN" doctor --help 2>&1)

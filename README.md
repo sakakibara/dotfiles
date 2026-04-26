@@ -51,7 +51,6 @@ dotfiles install                  # menu (pre-checks items whose hash changed)
 dotfiles install all              # run every step non-interactively
 dotfiles install brew mise        # run only the named steps
 dotfiles sync                     # review installed-but-untracked packages
-dotfiles save [path]              # re-add drifted target files into source
 
 # Editing
 dotfiles edit <pattern>           # fuzzy-find a managed file and open it via chezmoi edit
@@ -68,7 +67,7 @@ dotfiles upgrade --all            # chezmoi + sources + brew + mise + hive
 
 Per-step install output lands in `~/.local/state/dotfiles/pick/logs/`; a TSV run history lives at `~/.local/state/dotfiles/pick/run-log.tsv`.
 
-Daily edit gesture: `dotfiles edit <pattern>` (or `chezmoi edit <path>` directly) — both open the *source* template, save-applies, no drift round-trip. Use `dotfiles save` only when something OTHER than your editor (an app, the OS) wrote into a managed file.
+Daily edit gesture: `dotfiles edit <pattern>` (or `chezmoi edit <path>` directly) — both open the *source* template, save-applies, no drift round-trip. When something OTHER than your editor (an app, the OS) writes into a managed file, run `chezmoi re-add <path>` to capture the drift back into source.
 
 ## Theme system
 

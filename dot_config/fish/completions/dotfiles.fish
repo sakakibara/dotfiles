@@ -2,7 +2,6 @@
 complete -c dotfiles -f -n '__fish_use_subcommand' -a info     -d 'Print info snapshot'
 complete -c dotfiles -f -n '__fish_use_subcommand' -a install  -d 'Run install steps (interactive menu by default)'
 complete -c dotfiles -f -n '__fish_use_subcommand' -a sync     -d 'Review untracked packages'
-complete -c dotfiles -f -n '__fish_use_subcommand' -a save     -d 'Re-add drifted target files'
 complete -c dotfiles -f -n '__fish_use_subcommand' -a edit     -d 'Fuzzy-find a managed file and edit it'
 complete -c dotfiles -f -n '__fish_use_subcommand' -a profile  -d 'Print or switch the active profile'
 complete -c dotfiles -f -n '__fish_use_subcommand' -a doctor   -d 'Health-check the setup'
@@ -19,11 +18,6 @@ complete -c dotfiles -f -n '__fish_seen_subcommand_from install' \
 # `dotfiles edit <pattern>` — every managed path. fish performs substring
 # matching, so the user can type any fragment of the path.
 complete -c dotfiles -f -n '__fish_seen_subcommand_from edit' \
-  -a '(chezmoi managed 2>/dev/null)' \
-  -d 'managed file'
-
-# `dotfiles save [path]` — same set of managed paths.
-complete -c dotfiles -f -n '__fish_seen_subcommand_from save' \
   -a '(chezmoi managed 2>/dev/null)' \
   -d 'managed file'
 
@@ -46,7 +40,7 @@ complete -c dotfiles -f -n '__fish_seen_subcommand_from upgrade' \
 # (current-directory files) into `dotfiles edit <TAB>`.
 function __dotfiles_should_wrap_chezmoi
   set -l tokens (commandline -opc)
-  set -l owned info install sync save edit profile doctor upgrade help
+  set -l owned info install sync edit profile doctor upgrade help
   # Skip token[1] (the command itself); look at the first non-flag arg.
   for tok in $tokens[2..-1]
     string match -q -- '-*' $tok; and continue
