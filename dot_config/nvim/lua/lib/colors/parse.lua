@@ -81,6 +81,36 @@ add_detector("hsla?%([^)]+%)", function(match)
   return c
 end)
 
+-- oklch()
+add_detector("oklch%([^)]+%)", function(match)
+  local inner = match:gsub("^oklch%(", ""):gsub("%)$", "")
+  inner = inner:gsub("/", " ")
+  local toks = {}
+  for tok in inner:gmatch("%S+") do table.insert(toks, tok) end
+  if #toks < 3 or #toks > 4 then return nil end
+
+  local L
+  local l_pct = toks[1]:match("^([%d%.]+)%%$")
+  if l_pct then L = tonumber(l_pct) / 100 else L = tonumber(toks[1]) end
+
+  local Cval = tonumber(toks[2])
+  local h_num, unit = toks[3]:match("^(%-?[%d%.]+)(%a*)$")
+  if not h_num then return nil end
+  local h = tonumber(h_num)
+  if unit == "rad" then h = math.deg(h)
+  elseif unit == "turn" then h = h * 360
+  end
+
+  local a
+  if toks[4] then
+    local pct = toks[4]:match("^([%d%.]+)%%$")
+    a = pct and (tonumber(pct) / 100) or tonumber(toks[4])
+  end
+
+  if not L or not Cval or not h then return nil end
+  return C.from_oklch(L, Cval, h, a)
+end)
+
 -- Scan str for all literals; return list of {range, color}.
 function M.parse_all(str)
   local results = {}
