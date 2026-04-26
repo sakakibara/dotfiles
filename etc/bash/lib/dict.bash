@@ -21,6 +21,20 @@
 #   <name> must match [a-zA-Z_][a-zA-Z0-9_]+ (variable-name safe).
 #   keys may contain anything except literal TAB.
 
+# Internal: validate a dict name. Names flow into `eval` via the
+# `__dict_<name>` variable construction in the helpers below, so an
+# unvalidated name is a code-execution sink. The constraint is documented
+# at the top of this file; this function enforces it. Validation lives at
+# the public API boundary (dict::set/get/has/...) — internal _dict::_*
+# helpers trust their callers and skip the check, keeping the inner-loop
+# hot path (dict::has/get linear scans) free of redundant regex matches.
+_dict::_check_name() {
+  if [[ ! "$1" =~ ^[a-zA-Z_][a-zA-Z0-9_]+$ ]]; then
+    printf 'dict: invalid name: %s\n' "$1" >&2
+    return 2
+  fi
+}
+
 # Internal: print the length of dict <name>'s backing array. Returns 0 for
 # an unset/never-set dict (avoids `set -u` errors on first access).
 _dict::_len() {
@@ -43,6 +57,7 @@ _dict::_assign() {
 }
 
 dict::set() {
+  _dict::_check_name "$1" || return $?
   local name="$1" key="$2" val="$3"
   local n i entry
   n="$(_dict::_len "$name")"
@@ -57,6 +72,7 @@ dict::set() {
 }
 
 dict::get() {
+  _dict::_check_name "$1" || return $?
   local name="$1" key="$2"
   local n i entry
   n="$(_dict::_len "$name")"
@@ -71,6 +87,7 @@ dict::get() {
 }
 
 dict::has() {
+  _dict::_check_name "$1" || return $?
   local name="$1" key="$2"
   local n i entry
   n="$(_dict::_len "$name")"
@@ -82,6 +99,7 @@ dict::has() {
 }
 
 dict::del() {
+  _dict::_check_name "$1" || return $?
   local name="$1" key="$2"
   local n i entry
   local kept=()
@@ -104,6 +122,7 @@ dict::del() {
 }
 
 dict::keys() {
+  _dict::_check_name "$1" || return $?
   local name="$1"
   local n i entry
   n="$(_dict::_len "$name")"
@@ -114,9 +133,11 @@ dict::keys() {
 }
 
 dict::size() {
+  _dict::_check_name "$1" || return $?
   _dict::_len "$1"
 }
 
 dict::clear() {
+  _dict::_check_name "$1" || return $?
   unset "__dict_$1"
 }
