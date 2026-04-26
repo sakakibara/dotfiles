@@ -16,12 +16,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - name: Install zsh + fish (Linux)
+      - name: Install zsh + fish + lua (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y zsh fish
-      - name: Install fish (macOS)
+        run: sudo apt-get update && sudo apt-get install -y zsh fish lua5.4
+      - name: Install fish + lua (macOS)
         if: runner.os == 'macOS'
-        run: brew install fish
+        run: brew install fish lua
       - run: bash etc/ci/syntax.sh
 
   syntax-powershell:
@@ -52,8 +52,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install zsh + fish
-        run: sudo apt-get update && sudo apt-get install -y zsh fish
+      - name: Install zsh + fish + lua
+        run: sudo apt-get update && sudo apt-get install -y zsh fish lua5.4
       - name: Install chezmoi
         run: |
           sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
@@ -74,6 +74,18 @@ jobs:
         run: |
           cd dot_config/nvim
           nvim --headless -l tests/run.lua
+      - name: Smoke-load actual config (cold start with plugin install)
+        run: |
+          # Point nvim at the chezmoi-source nvim config and verify it cold-
+          # starts cleanly. Catches "init.lua references a removed plugin"
+          # / "lib/X.lua has a typo" style regressions that the unit tests
+          # miss. Plugin install pulls from upstream; transient flakes will
+          # fail here.
+          export XDG_CONFIG_HOME="$PWD/dot_config"
+          export XDG_DATA_HOME="$PWD/.ci-nvim-data"
+          export XDG_CACHE_HOME="$PWD/.ci-nvim-cache"
+          export XDG_STATE_HOME="$PWD/.ci-nvim-state"
+          nvim --headless +q
 
   theme-tests-bash:
     name: Theme tests (${{ matrix.os }})

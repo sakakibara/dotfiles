@@ -10,7 +10,7 @@ set -uo pipefail
 fails=0
 
 _render() {
-  local file="$1" expected_shell="${2:-}"
+  local file="$1" type="${2:-}"
   local out
   # No --init: regular templates need .chezmoidata/ loaded, which --init mode
   # bypasses. Templates with promptString*-driven values rely on index+default
@@ -20,11 +20,21 @@ _render() {
     fails=$((fails + 1))
     return
   fi
-  if [[ -n "$expected_shell" ]]; then
-    if ! "$expected_shell" -n <<<"$out" 2>&1; then
-      printf 'FAIL syntax (post-render): %s\n' "$file" >&2
-      fails=$((fails + 1))
-    fi
+  if [[ -n "$type" ]]; then
+    case "$type" in
+      bash|zsh|fish)
+        "$type" -n <<<"$out" 2>&1 || { printf 'FAIL syntax (post-render): %s (%s)\n' "$file" "$type" >&2; fails=$((fails + 1)); }
+        ;;
+      toml)
+        python3 -c 'import sys, tomllib; tomllib.loads(sys.stdin.read())' <<<"$out" 2>&1 \
+          || { printf 'FAIL syntax (post-render): %s (toml)\n' "$file" >&2; fails=$((fails + 1)); }
+        ;;
+      lua)
+        # luac -p reads a file path; pipe via process substitution to a fifo
+        echo "$out" | luac -p - 2>&1 \
+          || { printf 'FAIL syntax (post-render): %s (lua)\n' "$file" >&2; fails=$((fails + 1)); }
+        ;;
+    esac
   fi
 }
 
@@ -46,13 +56,15 @@ _render dot_config/fish/conf.d/abbreviations.fish.tmpl       fish
 _render .chezmoiscripts/run_once_install-packages.sh.tmpl    bash
 _render .chezmoiscripts/run_once_setup-theme.sh.tmpl         bash
 
-# Non-shell templates (render only; no native syntax check we care about)
+# Non-shell templates with format-specific post-render checks
+_render dot_config/starship.toml.tmpl                        toml
+_render dot_config/mise/config.toml.tmpl                     toml
+_render dot_config/hive/config.toml.tmpl                     toml
+_render dot_config/nvim/lua/lib/role.lua.tmpl                lua
+
+# Render-only (no clean format syntax we check yet — gitconfig/zabbr custom)
 _render dot_zabbr.tmpl
 _render dot_gitconfig.tmpl
-_render dot_config/starship.toml.tmpl
-_render dot_config/mise/config.toml.tmpl
-_render dot_config/hive/config.toml.tmpl
-_render dot_config/nvim/lua/lib/role.lua.tmpl
 _render_init .chezmoi.toml.tmpl
 
 # Windows-specific (PowerShell .tmpl rendering still works on Linux)
