@@ -2,7 +2,7 @@
 
 BASH_MSG_FIRST=1
 
-msg::blankline() { if [[ -z "${BASH_MSG_FIRST}" ]]; then echo ''; else unset BASH_MSG_FIRST; fi; }
+msg::blankline() { if [[ -z "${BASH_MSG_FIRST:-}" ]]; then echo ''; else unset BASH_MSG_FIRST; fi; }
 msg::heading() {
   msg::blankline
   echo -e "\\033[1m$*\\033[0m"

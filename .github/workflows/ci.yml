@@ -109,6 +109,8 @@ jobs:
       - uses: actions/checkout@v5
       - name: dict polyfill
         run: bash etc/tests/dict.sh
+      - name: pick (interactive runner)
+        run: bash etc/tests/pick.sh
 
   theme-tests-pwsh:
     name: Theme tests (Windows / pwsh)
