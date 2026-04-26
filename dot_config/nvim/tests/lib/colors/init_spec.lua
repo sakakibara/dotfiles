@@ -69,6 +69,25 @@ T.describe("lib.colors :ColorsToggle command", function()
   end)
 end)
 
+T.describe("lib.colors.schedule timer reuse", function()
+  T.it("reuses the same uv_timer across rapid schedule() calls", function()
+    package.loaded["lib.colors"] = nil
+    _G.Lib = nil
+    require("lib").init()
+    Lib.colors.setup({})
+
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_set_current_buf(buf)
+    -- Trigger schedule many times in a row
+    for _ = 1, 50 do vim.api.nvim_exec_autocmds("TextChanged", { buffer = buf }) end
+    -- All 50 should have ended up reusing the SAME timer handle
+    local timer_count = 0
+    for _ in pairs(Lib.colors._timers) do timer_count = timer_count + 1 end
+    T.eq(timer_count, 1, "expected 1 timer entry, got " .. timer_count)
+    vim.api.nvim_buf_delete(buf, { force = true })
+  end)
+end)
+
 T.describe("lib.colors toggle correctness", function()
   T.it("M.toggle(0) flips state for the current buffer", function()
     package.loaded["lib.colors"] = nil

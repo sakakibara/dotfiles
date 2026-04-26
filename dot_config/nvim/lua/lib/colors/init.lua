@@ -59,9 +59,12 @@ end
 
 local function schedule(buf)
   local t = M._timers[buf]
-  if t then t:stop() end
-  t = vim.uv.new_timer()
-  M._timers[buf] = t
+  if not t then
+    t = vim.uv.new_timer()
+    M._timers[buf] = t
+  else
+    t:stop()
+  end
   t:start(M._opts.debounce_ms, 0, vim.schedule_wrap(function()
     if vim.api.nvim_buf_is_valid(buf) then redraw(buf) end
   end))
