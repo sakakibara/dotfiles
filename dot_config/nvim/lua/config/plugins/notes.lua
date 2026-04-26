@@ -1,6 +1,10 @@
 -- lua/config/plugins/notes.lua
--- Zettelkasten note-taking via the `zk` CLI (https://github.com/zk-org/zk).
--- Requires ZK_NOTEBOOK_DIR in the environment.
+-- Note-taking plugins:
+--   zk-nvim   — Zettelkasten via the `zk` CLI. Requires ZK_NOTEBOOK_DIR.
+--   organ.nvim — unified org-mode + org-roam (personal project, private repo).
+--                Pulls over HTTPS via vim.pack, so a working git credential
+--                for github.com is required (e.g. `gh auth login`). Bundled
+--                tree-sitter grammar is built on install/update via `build`.
 
 return {
   {
@@ -54,5 +58,16 @@ return {
       },
     },
     config = function(_, opts) require("zk").setup(opts) end,
+  },
+
+  {
+    "sakakibara/organ.nvim",
+    name  = "organ.nvim",
+    ft    = "org",
+    build = "make -C grammar",
+    opts  = {
+      org_dir = vim.fn.expand("~/org"),
+    },
+    config = function(_, opts) require("organ").setup(opts) end,
   },
 }
