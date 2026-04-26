@@ -84,17 +84,134 @@ cmd_help() {
 dotfiles — chezmoi wrapper with status snapshot
 
 Usage:
-  dotfiles            Print info snapshot (default)
-  dotfiles info       Same as default
-  dotfiles <cmd>      Forward to chezmoi (e.g. dotfiles apply, dotfiles diff)
-  dotfiles --help     Show this help
+  dotfiles                  Print info snapshot (default)
+  dotfiles info             Same as default
+  dotfiles install          Interactive menu to (re)run install steps
+  dotfiles install all      Run every install step non-interactively
+  dotfiles install <names>  Run only the named steps (e.g. brew mise)
+  dotfiles <cmd>            Forward to chezmoi (e.g. dotfiles apply, dotfiles diff)
+  dotfiles --help           Show this help
 
 Shell-function overrides (active in zsh and fish):
-  dotfiles cd         cd current shell to chezmoi source dir
-  dotfiles apply      Re-source shell rc file on successful apply
+  dotfiles cd               cd current shell to chezmoi source dir
+  dotfiles apply            Re-source shell rc file on successful apply
 
 For chezmoi-specific help: chezmoi --help
 EOF
+}
+
+# Hash a single file with sha256. Empty output for missing files.
+_hash_file() {
+  local f="$1"
+  [[ -r "$f" ]] || { printf ''; return; }
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$f" | awk '{print $1}'
+  else
+    shasum -a 256 "$f" 2>/dev/null | awk '{print $1}'
+  fi
+}
+
+cmd_install() {
+  case "${1:-}" in
+    -h|--help)
+      cat <<'EOF'
+dotfiles install — interactive multi-select runner for install steps.
+
+Usage:
+  dotfiles install                  Open the menu (pre-checks items whose
+                                    inputs have changed since the last run)
+  dotfiles install all              Run every step non-interactively
+  dotfiles install none             Run only required steps (skip everything else)
+  dotfiles install <name> <name>…   Run the named steps (e.g. brew mise)
+
+Inside the menu:
+  ↑/↓ navigate · ←/→ jump column · space toggle · a/n select all/none
+  / filter · enter run · q/esc cancel · ? help
+EOF
+      return 0
+      ;;
+  esac
+
+  local os
+  case "$(uname -s)" in
+    Darwin) os=darwin ;;
+    Linux)  os=linux  ;;
+    *) printf 'dotfiles install: unsupported OS %s\n' "$(uname -s)" >&2; return 1 ;;
+  esac
+
+  local source_dir
+  source_dir=$(chezmoi source-path 2>/dev/null) || {
+    printf 'dotfiles install: chezmoi not found on PATH\n' >&2
+    return 1
+  }
+  if [[ ! -r "$source_dir/etc/bash/lib/init.bash" ]]; then
+    printf 'dotfiles install: source dir lacks expected lib (%s)\n' "$source_dir" >&2
+    return 1
+  fi
+
+  # The lib functions weren't written for `set -euo pipefail`. Relax for
+  # the duration of this command.
+  set +e +u +o pipefail
+
+  # shellcheck disable=SC1091
+  source "$source_dir/etc/bash/lib/init.bash"
+  case "$os" in
+    darwin) import unix darwin brew mise hive pick ;;
+    linux)  import unix linux mise extras hive pick ;;
+  esac
+
+  unix::keep_sudo
+
+  # Translate positional args into DOTFILES_PICK so a non-interactive call
+  # (e.g. `dotfiles install brew mise`) skips the menu and runs immediately.
+  if (( $# > 0 )); then
+    case "$1" in
+      all|none) export DOTFILES_PICK="$1" ;;
+      *)
+        local IFS=','
+        export DOTFILES_PICK="$*"
+        ;;
+    esac
+  fi
+
+  local mise_h hive_h
+  mise_h=$(_hash_file "$source_dir/dot_config/mise/config.toml.tmpl")
+  hive_h=$(_hash_file "$source_dir/dot_config/hive/config.toml.tmpl")
+
+  local items=()
+  case "$os" in
+    darwin)
+      darwin::require_clt || return 1
+      local brew_h
+      brew_h=$(_hash_file "$source_dir/etc/darwin/Brewfile")
+      items=(
+        "==Packages"
+        "brew::setup=Homebrew packages & casks|$brew_h"
+        "==Toolchains"
+        "mise::setup=Language toolchains via mise|$mise_h"
+        "==Workspace"
+        "hive::setup=Workspace symlinks (hive)|$hive_h"
+      )
+      ;;
+    linux)
+      local distro pkg_file linux_h extras_h
+      distro=$(linux::distro 2>/dev/null || echo unknown)
+      pkg_file="$source_dir/etc/linux/packages-${distro}.txt"
+      linux_h=$(_hash_file "$pkg_file")
+      extras_h=$(_hash_file "$source_dir/etc/bash/lib/extras.bash")
+      items=(
+        "==Packages"
+        "linux::setup=System packages (${distro})|$linux_h"
+        "extras::setup=Bucket-3 tools (starship, gh, lazygit, …)|$extras_h"
+        "==Toolchains"
+        "mise::setup=Language toolchains via mise|$mise_h"
+        "==Workspace"
+        "hive::setup=Workspace symlinks (hive)|$hive_h"
+      )
+      ;;
+  esac
+
+  DOTFILES_PICK_SCOPE="install" pick "${items[@]}"
 }
 
 case "${1:-}" in
@@ -104,6 +221,10 @@ case "${1:-}" in
     ;;
   -h|--help)
     cmd_help
+    ;;
+  install)
+    shift
+    cmd_install "$@"
     ;;
   help)
     if [[ $# -eq 1 ]]; then cmd_help; else exec chezmoi "$@"; fi

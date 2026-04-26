@@ -30,12 +30,23 @@ sh -c "$(wget -qO- get.chezmoi.io/lb)" -- init --apply sakakibara
 
 ## After install
 
-`chezmoi apply` runs two `run_once_` scripts after the initial file deploy:
+`chezmoi apply` runs a set of per-step `run_once_` scripts after the file deploy. Each is hash-triggered against its own input — the brew script only re-fires when the Brewfile changes, the mise script only when its config template changes, and so on:
 
-- **`run_once_install-packages.sh.tmpl`** (macOS only): prompts to set up Homebrew + the `etc/darwin/Brewfile`, mise (per `dot_config/mise/config.toml.tmpl`), and hive.
+- **`install-1-brew.sh.tmpl`** (macOS) / **`install-1-linux-packages.sh.tmpl`** (Linux): native package install via Brewfile or `etc/linux/packages-*.txt` (auto-detects fedora/debian/arch/suse).
+- **`install-2-mise.sh.tmpl`**: language toolchains via mise.
+- **`install-3-extras.sh.tmpl`** (Linux): bucket-3 tools not in distro repos (starship, gh, lazygit, lazydocker, cargo-installed Rust tools).
+- **`install-4-hive.sh.tmpl`**: workspace symlink layout via hive.
 - **`run_once_setup-theme.sh.tmpl`** (macOS / Linux / WSL) and the `windows/` PowerShell counterpart: downloads theme assets referenced by manifests under `~/.config/dotfiles/themes/`, verifies their sha256, and seeds `~/.local/state/dotfiles/theme` with the manifest's default. After this, `theme set <family>/<variant>` switches everything (kitty, wezterm, tmux, nvim, fish colors, fzf, vivid) at once.
 
-Both scripts are idempotent. Re-running is a no-op once their work is done; chezmoi only fires them again if their content hash changes.
+To re-run install steps on demand outside `chezmoi apply` — useful when reconfiguring or troubleshooting — use the interactive picker:
+
+```sh
+dotfiles install                  # menu (pre-checks items whose hash changed)
+dotfiles install all              # run everything non-interactively
+dotfiles install brew mise        # run only the named steps
+```
+
+Per-step output lands in `~/.local/state/dotfiles/pick/logs/`; a TSV run history lives at `~/.local/state/dotfiles/pick/run-log.tsv`.
 
 ## Theme system
 
