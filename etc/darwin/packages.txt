@@ -99,7 +99,7 @@ cask:karabiner-elements
 cask:licecap
 cask:logi-options+
 cask:microsoft-auto-update
-cask:microsoft-office
+cask:microsoft-office @personal
 cask:movist-pro @personal
 cask:orbstack
 cask:scroll-reverser
