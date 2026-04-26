@@ -75,7 +75,7 @@ local function compact_lines(state)
 
   local lines = {
     "  " .. hex,                                       -- 0: header
-    "  " .. string.rep("█", 32),                       -- 1: swatch
+    "  " .. string.rep("█", 34),                       -- 1: swatch (34 blocks → symmetric 2-cell margin in 38-col window)
     "",                                                -- 2: blank
   }
 
@@ -83,24 +83,26 @@ local function compact_lines(state)
     local r = math.floor(state.color.r * 255 + 0.5)
     local g = math.floor(state.color.g * 255 + 0.5)
     local b = math.floor(state.color.b * 255 + 0.5)
-    table.insert(lines, string.format("%s R %s %3d", mark(1), slider_bar(r, 255), r))
-    table.insert(lines, string.format("%s G %s %3d", mark(2), slider_bar(g, 255), g))
-    table.insert(lines, string.format("%s B %s %3d", mark(3), slider_bar(b, 255), b))
+    table.insert(lines, string.format("  %s R %s %3d", mark(1), slider_bar(r, 255), r))
+    table.insert(lines, string.format("  %s G %s %3d", mark(2), slider_bar(g, 255), g))
+    table.insert(lines, string.format("  %s B %s %3d", mark(3), slider_bar(b, 255), b))
   elseif state.space == "hsl" then
     local h, s, l = C.to_hsl(state.color)
     local hi, si, li = math.floor(h), math.floor(s * 100), math.floor(l * 100)
-    table.insert(lines, string.format("%s H %s %3d", mark(1), slider_bar(hi, 360), hi))
-    table.insert(lines, string.format("%s S %s %3d", mark(2), slider_bar(si, 100), si))
-    table.insert(lines, string.format("%s L %s %3d", mark(3), slider_bar(li, 100), li))
+    table.insert(lines, string.format("  %s H %s %3d", mark(1), slider_bar(hi, 360), hi))
+    table.insert(lines, string.format("  %s S %s %3d", mark(2), slider_bar(si, 100), si))
+    table.insert(lines, string.format("  %s L %s %3d", mark(3), slider_bar(li, 100), li))
   else
     local L, Cval, h = C.to_oklch(state.color)
-    table.insert(lines, string.format("%s L %s %.2f", mark(1), slider_bar(L * 100, 100), L))
-    table.insert(lines, string.format("%s C %s %.2f", mark(2), slider_bar(Cval * 250, 100), Cval))
-    table.insert(lines, string.format("%s H %s %3d",  mark(3), slider_bar(h, 360),         math.floor(h)))
+    table.insert(lines, string.format("  %s L %s %.2f", mark(1), slider_bar(L * 100, 100), L))
+    table.insert(lines, string.format("  %s C %s %.2f", mark(2), slider_bar(Cval * 250, 100), Cval))
+    table.insert(lines, string.format("  %s H %s %3d",  mark(3), slider_bar(h, 360),         math.floor(h)))
   end
 
   table.insert(lines, "")                              -- blank
-  table.insert(lines, "  " .. space_label(state) .. "  Tab cycle  y yank  ⏎ commit  ⎋ cancel")
+  -- Footer with key hints. Keys are highlighted via extmark in render() so
+  -- they stand out from their description words.
+  table.insert(lines, "  " .. space_label(state) .. "   Tab y ⏎ ⎋")
   return lines
 end
 
@@ -166,6 +168,38 @@ local function render(state)
       end_col  = #lines[active_row + 1],  -- lua 1-indexed
       hl_group = "LibColorsPickerActive",
     })
+    -- Key hint footer: bold + accent so keys stand out from the space label
+    vim.api.nvim_set_hl(0, "LibColorsPickerKey", { fg = "#f5c2e7", bold = true })
+    local footer_idx = #lines - 1
+    local footer_str = lines[#lines]
+    local key_start = footer_str:find("Tab")
+    if key_start then
+      vim.api.nvim_buf_set_extmark(state.buf, M.ns, footer_idx, key_start - 1, {
+        end_row  = footer_idx,
+        end_col  = #footer_str,
+        hl_group = "LibColorsPickerKey",
+      })
+    end
+    -- Color channel labels in their respective hues
+    local label_palette = {
+      rgb   = { ["R"] = "#f38ba8", ["G"] = "#a6e3a1", ["B"] = "#89b4fa" },
+      hsl   = { ["H"] = "#cba6f7", ["S"] = "#f9e2af", ["L"] = "#cdd6f4" },
+      oklch = { ["L"] = "#cdd6f4", ["C"] = "#f9e2af", ["H"] = "#cba6f7" },
+    }
+    local space_labels = state.space == "rgb" and {"R","G","B"}
+                      or state.space == "hsl" and {"H","S","L"}
+                      or {"L","C","H"}
+    for i, label in ipairs(space_labels) do
+      local fg = label_palette[state.space][label]
+      vim.api.nvim_set_hl(0, "LibColorsPickerLabel_" .. label, { fg = fg, bold = true })
+      local row = 3 + (i - 1)  -- slider rows start at buffer row 3
+      -- Label char is at byte 4 in the line: "  " (2) + mark (1) + " " (1)
+      vim.api.nvim_buf_set_extmark(state.buf, M.ns, row, 4, {
+        end_row  = row,
+        end_col  = 5,
+        hl_group = "LibColorsPickerLabel_" .. label,
+      })
+    end
   end
   vim.bo[state.buf].modifiable = false
 
@@ -238,6 +272,7 @@ function M.open(opts)
   map("<C-e>", function() M.toggle_expand(state) end)
   map("<CR>",  function() M.commit(state) end)
   map("<Esc>", function() M.close(state) end)
+  map("q",     function() M.close(state) end)
   return state
 end
 
