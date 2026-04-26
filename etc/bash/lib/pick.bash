@@ -143,29 +143,37 @@ pick::_rows() {
 # returns the byte value, not the codepoint, even with a UTF-8 locale).
 pick::_codepoint() {
   [[ -z "$1" ]] && return
+  local _pick_cp
+  pick::_codepoint_v "$1"
+  printf '%d' "$_pick_cp"
+}
+
+# Subshell-free variant — writes to the dynamic-scoped `_pick_cp` instead
+# of stdout so callers can read it without forking. Hot path used by the
+# render loops.
+pick::_codepoint_v() {
+  if [[ -z "$1" ]]; then _pick_cp=0; return; fi
   local LC_ALL=C
   local s="$1"
   local b1 b2 b3 b4
   printf -v b1 '%d' "'${s:0:1}"
   (( b1 < 0 )) && b1=$((b1 + 256))
-  if (( b1 < 128 )); then
-    printf '%d' "$b1"; return
-  fi
+  if (( b1 < 128 )); then _pick_cp=$b1; return; fi
   printf -v b2 '%d' "'${s:1:1}"
   (( b2 < 0 )) && b2=$((b2 + 256))
   if (( b1 < 224 )); then
-    printf '%d' "$(( (b1 & 0x1F) << 6 | (b2 & 0x3F) ))"
+    _pick_cp=$(( (b1 & 0x1F) << 6 | (b2 & 0x3F) ))
     return
   fi
   printf -v b3 '%d' "'${s:2:1}"
   (( b3 < 0 )) && b3=$((b3 + 256))
   if (( b1 < 240 )); then
-    printf '%d' "$(( (b1 & 0x0F) << 12 | (b2 & 0x3F) << 6 | (b3 & 0x3F) ))"
+    _pick_cp=$(( (b1 & 0x0F) << 12 | (b2 & 0x3F) << 6 | (b3 & 0x3F) ))
     return
   fi
   printf -v b4 '%d' "'${s:3:1}"
   (( b4 < 0 )) && b4=$((b4 + 256))
-  printf '%d' "$(( (b1 & 0x07) << 18 | (b2 & 0x3F) << 12 | (b3 & 0x3F) << 6 | (b4 & 0x3F) ))"
+  _pick_cp=$(( (b1 & 0x07) << 18 | (b2 & 0x3F) << 12 | (b3 & 0x3F) << 6 | (b4 & 0x3F) ))
 }
 
 # Visible column width (0, 1, or 2) of a single character. CJK Wide /
@@ -173,11 +181,16 @@ pick::_codepoint() {
 # matters for terminal rendering — Hangul, CJK ideographs, fullwidth
 # punctuation/letters, and a couple of higher-plane CJK extensions).
 pick::_char_width() {
-  local ch="$1"
-  [[ -z "$ch" ]] && { printf '0'; return; }
-  local cp
-  cp=$(pick::_codepoint "$ch")
-  if (( cp < 32 || cp == 127 )); then printf '0'; return; fi
+  local _pick_cp
+  pick::_codepoint_v "$1"
+  pick::_cp_width_v "$_pick_cp"
+  printf '%d' "$_pick_w"
+}
+
+# Subshell-free: given a codepoint in $1, set _pick_w to its visible width.
+pick::_cp_width_v() {
+  local cp="$1"
+  if (( cp < 32 || cp == 127 )); then _pick_w=0; return; fi
   if (( cp >= 0x1100  && cp <= 0x115F  )) || \
      (( cp >= 0x2E80  && cp <= 0x9FFF  )) || \
      (( cp >= 0xA000  && cp <= 0xA4CF  )) || \
@@ -188,51 +201,66 @@ pick::_char_width() {
      (( cp >= 0xFFE0  && cp <= 0xFFE6  )) || \
      (( cp >= 0x20000 && cp <= 0x2FFFD )) || \
      (( cp >= 0x30000 && cp <= 0x3FFFD )); then
-    printf '2'
+    _pick_w=2
   else
-    printf '1'
+    _pick_w=1
   fi
 }
 
 # Visible column width of an entire string, summing per-character widths.
 pick::_str_width() {
+  local _pick_width
+  pick::_str_width_v "$1"
+  printf '%d' "$_pick_width"
+}
+
+# Subshell-free: writes to the dynamic-scoped `_pick_width`.
+pick::_str_width_v() {
   local LC_ALL=en_US.UTF-8
-  local s="$1" total=0 i len ch w
+  local s="$1" total=0 i len ch _pick_cp _pick_w
   len=${#s}
   for ((i=0; i<len; i++)); do
     ch="${s:i:1}"
-    w=$(pick::_char_width "$ch")
-    total=$((total + w))
+    pick::_codepoint_v "$ch"
+    pick::_cp_width_v "$_pick_cp"
+    total=$((total + _pick_w))
   done
-  printf '%d' "$total"
+  _pick_width=$total
 }
 
 # Width-aware truncation: shortens $1 so its visible column count is at
 # most $2, appending … if shortened. If the string already fits, returns
 # it unchanged (no ellipsis).
 pick::_trunc() {
+  local _pick_trunc
+  pick::_trunc_v "$1" "$2"
+  printf '%s' "$_pick_trunc"
+}
+
+# Subshell-free: writes to the dynamic-scoped `_pick_trunc`.
+pick::_trunc_v() {
   local LC_ALL=en_US.UTF-8
   local s="$1" max="$2"
-  local total
-  total=$(pick::_str_width "$s")
-  if (( total <= max )); then
-    printf '%s' "$s"
+  local _pick_width
+  pick::_str_width_v "$s"
+  if (( _pick_width <= max )); then
+    _pick_trunc="$s"
     return
   fi
-  # Truncation needed — reserve 1 col for …, so content budget = max - 1.
-  local cur=0 i len ch w out=""
+  local cur=0 i len ch _pick_cp _pick_w out=""
   len=${#s}
   for ((i=0; i<len; i++)); do
     ch="${s:i:1}"
-    w=$(pick::_char_width "$ch")
-    if (( cur + w > max - 1 )); then
-      printf '%s…' "$out"
+    pick::_codepoint_v "$ch"
+    pick::_cp_width_v "$_pick_cp"
+    if (( cur + _pick_w > max - 1 )); then
+      _pick_trunc="${out}…"
       return
     fi
     out+="$ch"
-    cur=$((cur + w))
+    cur=$((cur + _pick_w))
   done
-  printf '%s…' "$out"
+  _pick_trunc="${out}…"
 }
 
 pick::_tui_open() {
@@ -494,13 +522,13 @@ pick::_render_item() {
 
   local visible="${label}${plain_reason}"
   local visible_budget=$((budget - 7))   # 2 prefix + 3 mark + 1 change + 1 spacer
-  local vwidth
-  vwidth=$(pick::_str_width "$visible")
-  if (( vwidth > visible_budget )); then
-    local trunc
-    trunc=$(pick::_trunc "$visible" "$visible_budget")
-    _render_styled="${prefix}${mark}${change} ${trunc}"
-    _render_plain="${plain_prefix}${plain_mark}${plain_change} ${trunc}"
+  local _pick_width
+  pick::_str_width_v "$visible"
+  if (( _pick_width > visible_budget )); then
+    local _pick_trunc
+    pick::_trunc_v "$visible" "$visible_budget"
+    _render_styled="${prefix}${mark}${change} ${_pick_trunc}"
+    _render_plain="${plain_prefix}${plain_mark}${plain_change} ${_pick_trunc}"
   else
     _render_styled="${prefix}${mark}${change} ${styled_label}${reason_suffix}"
     _render_plain="${plain_prefix}${plain_mark}${plain_change} ${label}${plain_reason}"
@@ -576,9 +604,10 @@ pick::_render() {
     done
     local r
     for ((r=0; r<col_size; r++)); do
-      local lp="${left_plain[r]}" left_w pad
-      left_w=$(pick::_str_width "$lp")
-      pad=$((col_w - left_w))
+      local lp="${left_plain[r]}" pad
+      local _pick_width
+      pick::_str_width_v "$lp"
+      pad=$((col_w - _pick_width))
       (( pad < 1 )) && pad=1
       if (( r < ${#right_buf[@]} )); then
         printf '%s%*s%s\n' "${left_buf[r]}" "$pad" "" "${right_buf[r]}"

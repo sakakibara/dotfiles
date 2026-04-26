@@ -222,21 +222,29 @@ sync::_fetch_descriptions() {
 # Pad an action label to ACTION_LABEL_WIDTH columns, accounting for visible
 # width (for CJK if anyone ever puts a multi-byte profile name).
 sync::_action_label() {
+  local _sync_action_str
+  sync::_action_label_v "$1"
+  printf '%s' "$_sync_action_str"
+}
+
+# Subshell-free: writes the styled `[ … action … ]` block (centered) to
+# the dynamic-scoped `_sync_action_str`.
+sync::_action_label_v() {
   local action="$1"
   local label color
   case "$action" in
-    skip)  label='skip';   color='\033[2m' ;;
+    skip)  label='skip';   color='\033[2m'    ;;
     add)   label='add';    color='\033[1;32m' ;;
     @*)    label="$action"; color='\033[1;36m' ;;
     block) label='block';  color='\033[1;31m' ;;
-    *)     label="$action"; color='' ;;
+    *)     label="$action"; color=''           ;;
   esac
-  local total=10 w
-  w=$(pick::_str_width "$label")
-  local pad=$((total - w))
+  local total=10 _pick_width
+  pick::_str_width_v "$label"
+  local pad=$((total - _pick_width))
   (( pad < 0 )) && pad=0
   local pl=$((pad / 2)) pr=$((pad - pad / 2))
-  printf '%b[%*s%s%*s]\033[0m' "$color" "$pl" "" "$label" "$pr" ""
+  printf -v _sync_action_str '%b[%*s%s%*s]\033[0m' "$color" "$pl" "" "$label" "$pr" ""
 }
 
 sync::_render() {
@@ -281,6 +289,7 @@ sync::_render() {
     [[ "${_sync_actions[i]}" != "skip" ]] && pending=$((pending + 1))
   done
 
+  local _sync_action_str
   for ((i=_sync_offset; i<end; i++)); do
     local action="${_sync_actions[i]}"
 
@@ -295,14 +304,13 @@ sync::_render() {
       marker='  '
     fi
 
-    local action_str
-    action_str=$(sync::_action_label "$action")
+    sync::_action_label_v "$action"
 
     local desc="${_sync_desc[i]:-}"
     if [[ -n "$desc" ]]; then
-      printf '%s%b %s \033[2m— %s\033[0m\n' "$marker" "$action_str" "$display" "$desc"
+      printf '%s%b %s \033[2m— %s\033[0m\n' "$marker" "$_sync_action_str" "$display" "$desc"
     else
-      printf '%s%b %s\n' "$marker" "$action_str" "$display"
+      printf '%s%b %s\n' "$marker" "$_sync_action_str" "$display"
     fi
   done
 
