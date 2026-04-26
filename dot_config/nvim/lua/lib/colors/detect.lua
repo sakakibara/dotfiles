@@ -8,8 +8,8 @@ local M = {}
 M.MAX_LINE_LEN    = 1000
 M.MAX_VIEWPORT_KB = 256
 
--- TS queries indexed by filetype. Each query produces @color-candidate
--- captures whose text is run through P.parse_all.
+-- TS queries keyed by *parser language name* (not filetype). Each query
+-- produces @color-candidate captures whose text is run through P.parse_all.
 M._queries = {
   css = [[
     ; CSS color values and call expressions. Comments are sibling nodes and
@@ -18,6 +18,34 @@ M._queries = {
     (color_value) @color-candidate
     (call_expression) @color-candidate
   ]],
+
+  -- JSX/TSX className attribute strings (and `class=`). String contents are
+  -- captured verbatim; parse_all extracts Tailwind classes from those.
+  -- Parser "javascript" handles javascriptreact ft; "tsx" handles typescriptreact.
+  javascript = [[
+    (jsx_attribute
+      (property_identifier) @attr (#match? @attr "^class(Name)?$")
+      (string (string_fragment) @color-candidate))
+  ]],
+  tsx = [[
+    (jsx_attribute
+      (property_identifier) @attr (#match? @attr "^class(Name)?$")
+      (string (string_fragment) @color-candidate))
+  ]],
+  html = [[
+    (attribute
+      (attribute_name) @attr (#eq? @attr "class")
+      (quoted_attribute_value (attribute_value) @color-candidate))
+  ]],
+}
+
+-- Filetypes whose treesitter parser language differs from the ft name.
+-- Mirrors nvim-treesitter's registration (parsers.lua) so we don't depend on
+-- the plugin being loaded at query-parse time.
+M._ft_to_lang = {
+  javascriptreact = "javascript",
+  jsx             = "javascript",
+  typescriptreact = "tsx",
 }
 
 -- Per-ft "tried" flag so we don't repeatedly attempt to load a missing parser.
@@ -26,7 +54,9 @@ M._ts_disabled = {}
 local function ts_detect(buf, top, bot)
   local ft = vim.bo[buf].filetype
   if M._ts_disabled[ft] then return nil end
-  local query_str = M._queries[ft]
+  -- Resolve filetype → parser language (e.g. "javascriptreact" → "javascript").
+  local lang = M._ft_to_lang[ft] or vim.treesitter.language.get_lang(ft) or ft
+  local query_str = M._queries[lang]
   if not query_str then return nil end
 
   local ok, parser = pcall(vim.treesitter.get_parser, buf, ft)
@@ -36,7 +66,7 @@ local function ts_detect(buf, top, bot)
   end
 
   local q
-  ok, q = pcall(vim.treesitter.query.parse, ft, query_str)
+  ok, q = pcall(vim.treesitter.query.parse, lang, query_str)
   if not ok then
     vim.notify_once(
       "lib.colors: TS query failed for ft=" .. ft .. "; falling back to regex",

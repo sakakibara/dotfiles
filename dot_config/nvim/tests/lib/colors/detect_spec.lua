@@ -52,3 +52,16 @@ T.describe("lib.colors.detect TS dispatch", function()
     vim.api.nvim_buf_delete(buf, { force = true })
   end)
 end)
+
+T.describe("lib.colors.detect JSX class attributes", function()
+  T.it("detects bg-red-500 inside className", function()
+    local buf = make_buf({
+      [[<div className="bg-red-500 p-4">hi</div>]],
+    })
+    vim.bo[buf].filetype = "javascriptreact"
+    local results = D.detect(buf, 0, 0)
+    T.eq(#results, 1)
+    T.eq(results[1].color.source.tailwind_class, "red-500")
+    vim.api.nvim_buf_delete(buf, { force = true })
+  end)
+end)
