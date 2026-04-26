@@ -114,13 +114,65 @@ local function walk_css(root, out)
   return out
 end
 
--- Scan all *.css files under the given root (default: cwd). Prunes vendored /
--- build directories at directory level so we don't pay for walking them.
-function M.scan_project(root)
-  root = root or vim.fn.getcwd()
-  for _, f in ipairs(walk_css(root)) do
-    pcall(M.scan_file, f)
+-- How much wall time we let scan_project occupy the main thread per chunk.
+-- 1ms is below human perception even for 144Hz displays (6.9ms frame budget),
+-- and we yield via vim.defer_fn(0) between chunks so input/render is never
+-- blocked.
+local CHUNK_BUDGET_MS = 1
+
+-- Iterate `files` in cooperative chunks; never blocks the main thread for
+-- more than CHUNK_BUDGET_MS at a time.
+local function scan_files_chunked(files)
+  local i = 1
+  local function chunk()
+    local start = vim.uv.hrtime()
+    while i <= #files do
+      pcall(M.scan_file, files[i])
+      i = i + 1
+      if (vim.uv.hrtime() - start) / 1e6 >= CHUNK_BUDGET_MS then break end
+    end
+    if i <= #files then
+      vim.defer_fn(chunk, 0)
+    end
   end
+  vim.defer_fn(chunk, 0)
+end
+
+-- Scan all *.css/*.scss files under the given root (default: cwd). Two
+-- progressive enhancements:
+--   1. If `rg` is on PATH, use `rg --files --type css` to enumerate files —
+--      async via vim.system, respects .gitignore (so node_modules is auto-
+--      skipped without our explicit prune list), and faster on large trees
+--      than the native walk. Includes .scss too via rg's built-in type.
+--   2. Otherwise fall back to the native vim.uv walk with directory pruning.
+-- Both paths feed the same cooperative chunked file processor.
+-- `sync = true` forces the synchronous walk + processing (used by tests).
+function M.scan_project(root, sync)
+  root = root or vim.fn.getcwd()
+  if sync then
+    for _, f in ipairs(walk_css(root)) do pcall(M.scan_file, f) end
+    return
+  end
+  if vim.fn.executable("rg") == 1 then
+    vim.system(
+      { "rg", "--files", "--type", "css" },
+      { cwd = root, text = true },
+      vim.schedule_wrap(function(result)
+        if result.code ~= 0 or not result.stdout then
+          -- rg failed; fall back to native walk
+          scan_files_chunked(walk_css(root))
+          return
+        end
+        local files = {}
+        for line in result.stdout:gmatch("[^\n]+") do
+          files[#files + 1] = root .. "/" .. line
+        end
+        scan_files_chunked(files)
+      end)
+    )
+    return
+  end
+  scan_files_chunked(walk_css(root))
 end
 
 return M
