@@ -35,6 +35,12 @@ return {
         group = vim.api.nvim_create_augroup("Lib.treesitter.highlight", { clear = true }),
         callback = function(args)
           local bufnr = args.buf
+          -- snacks.bigfile retags huge buffers as ft=bigfile and sets
+          -- foldmethod=manual etc. Without this gate we'd override that
+          -- and re-arm vim.treesitter.foldexpr() on a parser-less buffer,
+          -- which evaluates on every fold event and freezes the editor
+          -- on multi-MB files (panic logs, minified bundles).
+          if vim.bo[bufnr].filetype == "bigfile" then return end
           -- vim.treesitter.start handles its own parser availability check
           pcall(vim.treesitter.start, bufnr)
           -- Enable tree-sitter folds
