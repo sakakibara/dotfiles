@@ -76,15 +76,18 @@ jobs:
           nvim --headless -l tests/run.lua
       - name: Smoke-load actual config (cold start with plugin install)
         run: |
-          # Point nvim at the chezmoi-source nvim config and verify it cold-
-          # starts cleanly. Catches "init.lua references a removed plugin"
-          # / "lib/X.lua has a typo" style regressions that the unit tests
-          # miss. Plugin install pulls from upstream; transient flakes will
-          # fail here.
-          export XDG_CONFIG_HOME="$PWD/dot_config"
-          export XDG_DATA_HOME="$PWD/.ci-nvim-data"
-          export XDG_CACHE_HOME="$PWD/.ci-nvim-cache"
-          export XDG_STATE_HOME="$PWD/.ci-nvim-state"
+          # Point nvim at a *copy* of the chezmoi-source nvim config so
+          # vim.pack's lockfile (and any other side-effect writes) land in
+          # a throwaway dir, not the repo. Catches "init.lua references a
+          # removed plugin" / "lib/X.lua has a typo" style regressions
+          # that the unit tests miss. Plugin install pulls from upstream;
+          # transient flakes will fail here.
+          SMOKE_DIR=$(mktemp -d)
+          cp -r dot_config "$SMOKE_DIR/"
+          export XDG_CONFIG_HOME="$SMOKE_DIR/dot_config"
+          export XDG_DATA_HOME="$SMOKE_DIR/data"
+          export XDG_CACHE_HOME="$SMOKE_DIR/cache"
+          export XDG_STATE_HOME="$SMOKE_DIR/state"
           nvim --headless +q
 
   theme-tests-bash:
