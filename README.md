@@ -30,7 +30,7 @@ sh -c "$(wget -qO- get.chezmoi.io/lb)" -- init --apply sakakibara
 
 ## After install
 
-`chezmoi apply` runs a set of per-step `run_once_` scripts after the file deploy. Each is hash-triggered against its own input — the brew script only re-fires when `etc/darwin/packages.txt` changes, the mise script only when its config template changes, and so on:
+`chezmoi apply` runs a set of per-step `run_once_` scripts after the file deploy. Each is hash-triggered against its own inputs — the brew script re-fires when `etc/darwin/packages.txt`, the blacklist, or the bash libraries it sources change; the mise script when its config template changes; and so on:
 
 - **`install-1-brew.sh.tmpl`** (macOS) / **`install-1-linux-packages.sh.tmpl`** (Linux): native package install via `etc/darwin/packages.txt` or `etc/linux/packages-*.txt` (auto-detects fedora/debian/arch/suse).
 - **`install-2-mise.sh.tmpl`**: language toolchains via mise.
@@ -62,7 +62,8 @@ dotfiles doctor                   # health-check chezmoi, packages, theme, mise,
 
 # Upgrades
 dotfiles upgrade                  # chezmoi binary self-update
-dotfiles upgrade --all            # chezmoi + sources + brew + mise + hive
+dotfiles upgrade --all            # chezmoi + sources + brew (macOS) + mise + hive
+                                  # (Linux distro packages are skipped — run `sudo dnf upgrade` / `apt upgrade` manually)
 ```
 
 Per-step install output lands in `~/.local/state/dotfiles/pick/logs/`; a TSV run history lives at `~/.local/state/dotfiles/pick/run-log.tsv`.
