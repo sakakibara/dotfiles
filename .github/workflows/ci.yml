@@ -141,3 +141,13 @@ jobs:
       - uses: actions/checkout@v5
       - run: pacman -Syu --noconfirm
       - run: bash etc/ci/validate-packages.sh arch
+
+  validate-packages-suse:
+    name: Validate packages (openSUSE)
+    runs-on: ubuntu-latest
+    container: opensuse/tumbleweed:latest
+    steps:
+      - run: zypper --non-interactive install -y bash git tar
+      - uses: actions/checkout@v5
+      - run: zypper --non-interactive refresh
+      - run: bash etc/ci/validate-packages.sh suse
