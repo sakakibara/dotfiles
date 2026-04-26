@@ -38,7 +38,23 @@
 #
 # Exit code: number of failed steps (0 on full success, 130 on user cancel).
 
-import msg dict
+import msg store
+
+# ---------- selection storage ----------
+#
+# Three small containers back the selection state. We use store (which
+# code-generates per-instance helpers at module load) instead of a generic
+# polyfill because the inner-loop scans during pick render need to be
+# eval-free — at ~30 items × ~30 has-checks per render, an eval-based
+# polyfill is ~300× slower than direct array iteration.
+#
+#   pick_selected   set: members of the current selection
+#   pick_changed    set: items whose hash differs from the recorded one
+#   pick_last       map: prior-run selection (key=name, value=hash)
+
+store::set pick_selected
+store::set pick_changed
+store::map pick_last
 
 # ---------- state paths ----------
 
@@ -497,7 +513,7 @@ pick::_render_item() {
     required) mark=$'\033[1;32m🔒\033[0m '; plain_mark='🔒 ' ;;
     disabled) mark=$'\033[2m·\033[0m  ';     plain_mark='·  ' ;;
     *)
-      if dict::has pick_selected "$name"; then
+      if pick_selected::has "$name"; then
         mark=$'\033[1;32m✔\033[0m  '; plain_mark='✔  '
       else
         mark='   ';                   plain_mark='   '
@@ -513,7 +529,7 @@ pick::_render_item() {
   fi
 
   local change plain_change
-  if dict::has pick_changed "$name"; then
+  if pick_changed::has "$name"; then
     change=$'\033[1;33m*\033[0m'; plain_change='*'
   else
     change=' ';                   plain_change=' '
@@ -569,7 +585,7 @@ pick::_render() {
   local i
   for ((i=0; i<_pick_n; i++)); do
     [[ "${_pick_states[i]}" == "header" ]] && continue
-    dict::has pick_selected "${_pick_names[i]}" && selected_count=$((selected_count + 1))
+    pick_selected::has "${_pick_names[i]}" && selected_count=$((selected_count + 1))
   done
 
   # Decide single- vs two-column layout based on body lines available
@@ -674,7 +690,7 @@ pick::_resolve_noninteractive() {
   local i
   for ((i=0; i<_pick_n; i++)); do
     if [[ "${_pick_states[i]}" == "required" ]]; then
-      dict::set pick_selected "${_pick_names[i]}" 1
+      pick_selected::add "${_pick_names[i]}"
     fi
   done
 
@@ -682,14 +698,14 @@ pick::_resolve_noninteractive() {
     all)
       for ((i=0; i<_pick_n; i++)); do
         if [[ "${_pick_states[i]}" == "normal" ]]; then
-          dict::set pick_selected "${_pick_names[i]}" 1
+          pick_selected::add "${_pick_names[i]}"
         fi
       done
       ;;
     none|"")
       for ((i=0; i<_pick_n; i++)); do
         if [[ "${_pick_states[i]}" == "normal" ]]; then
-          dict::del pick_selected "${_pick_names[i]}"
+          pick_selected::del "${_pick_names[i]}"
         fi
       done
       ;;
@@ -697,7 +713,7 @@ pick::_resolve_noninteractive() {
       # Comma-separated whitelist. Clear normals first, then add the named.
       for ((i=0; i<_pick_n; i++)); do
         if [[ "${_pick_states[i]}" == "normal" ]]; then
-          dict::del pick_selected "${_pick_names[i]}"
+          pick_selected::del "${_pick_names[i]}"
         fi
       done
       local IFS=','
@@ -716,7 +732,7 @@ pick::_resolve_noninteractive() {
             if [[ "${_pick_states[j]}" == "disabled" ]]; then
               msg::error "pick: '$p' is disabled, skipping"
             else
-              dict::set pick_selected "$p" 1
+              pick_selected::add "$p"
             fi
             break
           fi
@@ -734,7 +750,7 @@ pick::_load_last_selection() {
   # Reads the last-selection file (if any) into a fresh dict
   # `pick_last_selection`. Each line is `name<TAB>hash` (hash may be empty).
   # Legacy plain-name lines (no TAB) are read as name with empty hash.
-  dict::clear pick_last_selection
+  pick_last::clear
   local file
   file="$(pick::_state_file)"
   [[ -r "$file" ]] || return 0
@@ -748,7 +764,7 @@ pick::_load_last_selection() {
       name="$line"
       hash=""
     fi
-    dict::set pick_last_selection "$name" "$hash"
+    pick_last::put "$name" "$hash"
   done < "$file"
   return 0
 }
@@ -763,7 +779,7 @@ pick::_save_selection() {
   for ((i=0; i<_pick_n; i++)); do
     local nm="${_pick_names[i]}"
     [[ "${_pick_states[i]}" == "disabled" ]] && continue
-    if dict::has pick_selected "$nm"; then
+    if pick_selected::has "$nm"; then
       printf '%s\t%s\n' "$nm" "${_pick_hashes[i]:-}" >> "$file"
     fi
   done
@@ -852,7 +868,7 @@ pick::_run_selected() {
 
   for ((i=0; i<_pick_n; i++)); do
     [[ "${_pick_states[i]}" == "header" ]] && continue
-    dict::has pick_selected "${_pick_names[i]}" && selected=$((selected + 1))
+    pick_selected::has "${_pick_names[i]}" && selected=$((selected + 1))
   done
 
   if (( selected == 0 )); then
@@ -864,7 +880,7 @@ pick::_run_selected() {
     [[ "${_pick_states[i]}" == "header" ]] && continue
     local nm="${_pick_names[i]}"
     local lbl="${_pick_labels[i]}"
-    if ! dict::has pick_selected "$nm"; then
+    if ! pick_selected::has "$nm"; then
       skipped=$((skipped + 1))
       continue
     fi
@@ -933,8 +949,8 @@ pick() {
   # `pick_changed` tracks items whose current hash differs from the recorded
   # one (or items with a hash that have never been recorded). Such items
   # are pre-selected and shown with a `*` marker in the render.
-  dict::clear pick_selected
-  dict::clear pick_changed
+  pick_selected::clear
+  pick_changed::clear
   pick::_load_last_selection
 
   local i
@@ -944,26 +960,26 @@ pick() {
     local cur_hash="${_pick_hashes[i]}"
 
     if [[ "$s" == "required" ]]; then
-      dict::set pick_selected "$nm" 1
+      pick_selected::add "$nm"
       continue
     fi
     [[ "$s" == "normal" ]] || continue
 
-    if dict::has pick_last_selection "$nm"; then
+    if pick_last::has "$nm"; then
       # Previously selected. If the current hash differs, mark as changed
       # and force-pre-check; otherwise inherit the prior selection.
       local last_hash
-      last_hash="$(dict::get pick_last_selection "$nm")"
+      last_hash="$(pick_last::get "$nm")"
       if [[ -n "$cur_hash" && "$cur_hash" != "$last_hash" ]]; then
-        dict::set pick_selected "$nm" 1
-        dict::set pick_changed   "$nm" 1
+        pick_selected::add "$nm"
+        pick_changed::add   "$nm"
       else
-        dict::set pick_selected "$nm" 1
+        pick_selected::add "$nm"
       fi
     elif [[ -n "$cur_hash" ]]; then
       # New hashed item — never seen before. Pre-check + mark.
-      dict::set pick_selected "$nm" 1
-      dict::set pick_changed   "$nm" 1
+      pick_selected::add "$nm"
+      pick_changed::add   "$nm"
     fi
   done
 
@@ -1019,10 +1035,10 @@ pick() {
           local s="${_pick_states[item_idx]}"
           local nm="${_pick_names[item_idx]}"
           if [[ "$s" == "normal" ]]; then
-            if dict::has pick_selected "$nm"; then
-              dict::del pick_selected "$nm"
+            if pick_selected::has "$nm"; then
+              pick_selected::del "$nm"
             else
-              dict::set pick_selected "$nm" 1
+              pick_selected::add "$nm"
             fi
           fi
         fi
@@ -1033,7 +1049,7 @@ pick() {
         for v in "${_pick_visible[@]:-}"; do
           [[ -z "$v" ]] && continue
           if [[ "${_pick_states[v]}" == "normal" ]]; then
-            dict::set pick_selected "${_pick_names[v]}" 1
+            pick_selected::add "${_pick_names[v]}"
           fi
         done
         ;;
@@ -1043,7 +1059,7 @@ pick() {
         for v in "${_pick_visible[@]:-}"; do
           [[ -z "$v" ]] && continue
           if [[ "${_pick_states[v]}" == "normal" ]]; then
-            dict::del pick_selected "${_pick_names[v]}"
+            pick_selected::del "${_pick_names[v]}"
           fi
         done
         ;;

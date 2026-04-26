@@ -17,7 +17,15 @@
 #
 # Reuses pick's terminal primitives (alt-screen, key reader, width helpers).
 
-import msg dict packages pick linux
+import msg store packages pick linux
+
+# Sets / map populated each `sync::_collect_*` pass, used to filter the
+# installed-but-untracked list. Defined once at module load (eval-free
+# at call time).
+store::set _sync_tracked
+store::set _sync_blacklisted
+store::set _sync_installed
+store::map _sync_desc_map
 
 # ---------- query installed (OS-dispatched) ----------
 
@@ -87,27 +95,27 @@ sync::_query_installed_darwin() {
 sync::compute_untracked() {
   local pkg_file="$1" blacklist_file="$2" os="$3" default_kind="$4"
 
-  dict::clear _sync_tracked
-  dict::clear _sync_blacklisted
+  _sync_tracked::clear
+  _sync_blacklisted::clear
 
   if [[ -r "$pkg_file" ]]; then
     local kind name
     while IFS=$'\t' read -r kind name; do
-      dict::set _sync_tracked "${kind}:${name}" 1
+      _sync_tracked::add "${kind}:${name}"
     done < <(packages::all "$pkg_file" "$default_kind")
   fi
 
   if [[ -r "$blacklist_file" ]]; then
     local kind name
     while IFS=$'\t' read -r kind name; do
-      dict::set _sync_blacklisted "${kind}:${name}" 1
+      _sync_blacklisted::add "${kind}:${name}"
     done < <(packages::all "$blacklist_file" "$default_kind")
   fi
 
   local kind name
   while IFS=$'\t' read -r kind name; do
-    dict::has _sync_tracked     "${kind}:${name}" && continue
-    dict::has _sync_blacklisted "${kind}:${name}" && continue
+    _sync_tracked::has     "${kind}:${name}" && continue
+    _sync_blacklisted::has "${kind}:${name}" && continue
     printf '%s\t%s\n' "$kind" "$name"
   done < <(sync::_query_installed "$os")
 }
@@ -121,10 +129,10 @@ sync::compute_missing() {
   local pkg_file="$1" os="$2" default_kind="$3" profile="$4"
   [[ -r "$pkg_file" ]] || return 0
 
-  dict::clear _sync_installed
+  _sync_installed::clear
   local kind name
   while IFS=$'\t' read -r kind name; do
-    dict::set _sync_installed "${kind}:${name}" 1
+    _sync_installed::add "${kind}:${name}"
   done < <(sync::_query_installed "$os")
 
   local _pkg_kind _pkg_name _pkg_profiles
@@ -133,7 +141,7 @@ sync::compute_missing() {
     packages::parse "$line" || continue
     packages::applies_to "$profile" || continue
     local k="${_pkg_kind:-$default_kind}"
-    dict::has _sync_installed "${k}:${_pkg_name}" && continue
+    _sync_installed::has "${k}:${_pkg_name}" && continue
     local profile_str=""
     if (( ${#_pkg_profiles[@]} > 0 )); then
       local IFS=','
@@ -165,7 +173,7 @@ sync::_fetch_descriptions_darwin() {
     while IFS= read -r line; do
       [[ "$line" == *": "* ]] || continue
       nm="${line%%: *}"; desc="${line#*: }"
-      dict::set _sync_desc_map "brew:$nm" "$desc"
+      _sync_desc_map::put "brew:$nm" "$desc"
     done < <(brew desc "${brews[@]}" 2>/dev/null)
   fi
   if (( ${#casks[@]} > 0 )); then
@@ -173,7 +181,7 @@ sync::_fetch_descriptions_darwin() {
     while IFS= read -r line; do
       [[ "$line" == *": "* ]] || continue
       nm="${line%%: *}"; desc="${line#*: }"
-      dict::set _sync_desc_map "cask:$nm" "$desc"
+      _sync_desc_map::put "cask:$nm" "$desc"
     done < <(brew desc --cask "${casks[@]}" 2>/dev/null)
   fi
 }
@@ -196,12 +204,12 @@ sync::_fetch_descriptions_linux() {
       arch)   d=$(pacman -Si "$name" 2>/dev/null | awk -F': *' '/^Description/ {print $2; exit}') ;;
       suse)   d=$(zypper --non-interactive info "$name" 2>/dev/null | awk -F': *' '/^Summary/ {print $2; exit}') ;;
     esac
-    [[ -n "$d" ]] && dict::set _sync_desc_map "pkg:$name" "$d"
+    [[ -n "$d" ]] && _sync_desc_map::put "pkg:$name" "$d"
   done
 }
 
 sync::_fetch_descriptions() {
-  dict::clear _sync_desc_map
+  _sync_desc_map::clear
   case "$(uname -s)" in
     Darwin) sync::_fetch_descriptions_darwin ;;
     Linux)  sync::_fetch_descriptions_linux  ;;
@@ -212,7 +220,7 @@ sync::_fetch_descriptions() {
   for ((i=0; i<n; i++)); do
     local kind name d
     IFS=$'\t' read -r kind name <<< "${_sync_items[i]}"
-    d=$(dict::get _sync_desc_map "${kind}:${name}" 2>/dev/null || echo "")
+    d=$(_sync_desc_map::get "${kind}:${name}" 2>/dev/null || echo "")
     _sync_desc[i]="$d"
   done
 }

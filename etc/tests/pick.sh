@@ -87,7 +87,7 @@ _section "DOTFILES_PICK=all selects every non-disabled item"
   _pick_labels=(A B C)
   _pick_states=(normal disabled normal)
   _pick_reasons=("" "missing" "")
-  dict::clear pick_selected
+  pick_selected::clear
   DOTFILES_PICK=all pick::_resolve_noninteractive
   rc=$?
   exit "$rc"
@@ -101,9 +101,9 @@ keys=$(
   _pick_labels=(A B C)
   _pick_states=(normal disabled normal)
   _pick_reasons=("" "missing" "")
-  dict::clear pick_selected
+  pick_selected::clear
   DOTFILES_PICK=all pick::_resolve_noninteractive >/dev/null 2>&1
-  dict::keys pick_selected | tr '\n' ',' | sort -t, -k1
+  printf "%s\n" "${pick_selected[@]:-}" | tr '\n' ',' | sort -t, -k1
 )
 _eq "all selects normals only (a,c — b disabled)" "a,c," "$keys"
 
@@ -114,9 +114,9 @@ keys=$(
   _pick_labels=(R O D)
   _pick_states=(required normal disabled)
   _pick_reasons=("" "" "")
-  dict::clear pick_selected
+  pick_selected::clear
   DOTFILES_PICK=none pick::_resolve_noninteractive >/dev/null 2>&1
-  dict::keys pick_selected | tr '\n' ','
+  printf "%s\n" "${pick_selected[@]:-}" | tr '\n' ','
 )
 _eq "none → required only" "req," "$keys"
 
@@ -127,9 +127,9 @@ keys=$(
   _pick_labels=(A B C D)
   _pick_states=(normal normal normal normal)
   _pick_reasons=("" "" "" "")
-  dict::clear pick_selected
+  pick_selected::clear
   DOTFILES_PICK="a,c" pick::_resolve_noninteractive >/dev/null 2>&1
-  dict::keys pick_selected | tr '\n' ','
+  printf "%s\n" "${pick_selected[@]:-}" | tr '\n' ','
 )
 _eq "list = a,c" "a,c," "$keys"
 
@@ -140,9 +140,9 @@ keys=$(
   _pick_labels=(A B C)
   _pick_states=(normal normal normal)
   _pick_reasons=("" "" "")
-  dict::clear pick_selected
+  pick_selected::clear
   DOTFILES_PICK=" a , b " pick::_resolve_noninteractive >/dev/null 2>&1
-  dict::keys pick_selected | tr '\n' ','
+  printf "%s\n" "${pick_selected[@]:-}" | tr '\n' ','
 )
 _eq "spaces around items stripped" "a,b," "$keys"
 
@@ -153,7 +153,7 @@ out=$(
   _pick_labels=(A B)
   _pick_states=(normal normal)
   _pick_reasons=("" "")
-  dict::clear pick_selected
+  pick_selected::clear
   DOTFILES_PICK="a,bogus" pick::_resolve_noninteractive 2>&1 >/dev/null
 )
 case "$out" in
@@ -168,7 +168,7 @@ out=$(
   _pick_labels=(A B)
   _pick_states=(normal disabled)
   _pick_reasons=("" "missing dep")
-  dict::clear pick_selected
+  pick_selected::clear
   DOTFILES_PICK="a,b" pick::_resolve_noninteractive 2>&1 >/dev/null
 )
 case "$out" in
@@ -183,7 +183,7 @@ _section "no DOTFILES_PICK + no tty → loud error (exit 2)"
   _pick_labels=(Only)
   _pick_states=(normal)
   _pick_reasons=("")
-  dict::clear pick_selected
+  pick_selected::clear
   unset DOTFILES_PICK
   pick::_resolve_noninteractive </dev/null >/dev/null 2>&1
   exit $?
@@ -199,9 +199,9 @@ _section "save & load round-trip"
   _pick_labels=(Brew Mise Hive)
   _pick_states=(normal normal normal)
   _pick_reasons=("" "" "")
-  dict::clear pick_selected
-  dict::set pick_selected brew 1
-  dict::set pick_selected hive 1
+  pick_selected::clear
+  pick_selected::add brew
+  pick_selected::add hive
   pick::_save_selection
 )
 file="$XDG_STATE_HOME/dotfiles/pick/install.tsv"
@@ -214,11 +214,11 @@ _eq "state file contents" $'brew\t,hive\t,' "$contents"
 # Now load
 (
   export DOTFILES_PICK_SCOPE="install"
-  dict::clear pick_last_selection
+  pick_last::clear
   pick::_load_last_selection
-  dict::has pick_last_selection brew && dict::has pick_last_selection hive
+  pick_last::has brew && pick_last::has hive
   rc=$?
-  dict::has pick_last_selection mise
+  pick_last::has mise
   rc2=$?
   exit "$(( rc + rc2 * 10 ))"
 )
@@ -239,9 +239,9 @@ step::fail() { echo "fail output" >&2; return 7; }
   _pick_labels=("OK step" "Failing step")
   _pick_states=(normal normal)
   _pick_reasons=("" "")
-  dict::clear pick_selected
-  dict::set pick_selected "step::ok" 1
-  dict::set pick_selected "step::fail" 1
+  pick_selected::clear
+  pick_selected::add "step::ok"
+  pick_selected::add "step::fail"
   pick::_run_selected >/dev/null 2>&1
   exit $?
 )
@@ -280,8 +280,8 @@ step::counter() { _attempt_count=$((${_attempt_count:-0}+1)); return 9; }
   _pick_labels=("Counter")
   _pick_states=(normal)
   _pick_reasons=("")
-  dict::clear pick_selected
-  dict::set pick_selected "step::counter" 1
+  pick_selected::clear
+  pick_selected::add "step::counter"
   pick::_run_selected </dev/null >/dev/null 2>&1
   rc=$?
   exit "$(( rc * 100 + _attempt_count ))"
@@ -299,10 +299,10 @@ out=$(
   _pick_labels=("First" "Bad" "After")
   _pick_states=(normal normal normal)
   _pick_reasons=("" "" "")
-  dict::clear pick_selected
-  dict::set pick_selected "step::ok2" 1
-  dict::set pick_selected "step::bad" 1
-  dict::set pick_selected "step::after" 1
+  pick_selected::clear
+  pick_selected::add "step::ok2"
+  pick_selected::add "step::bad"
+  pick_selected::add "step::after"
   # Pipe 'a' as stdin; pick::_failure_prompt reads from /dev/tty so we need
   # to exercise the non-tty branch (auto-skip) instead. So this asserts
   # that without a tty, we *don't* abort but skip — which is the safe
@@ -322,7 +322,7 @@ _section "empty selection is a clean no-op"
   _pick_labels=("OK")
   _pick_states=(normal)
   _pick_reasons=("")
-  dict::clear pick_selected
+  pick_selected::clear
   pick::_run_selected >/dev/null 2>&1
   exit $?
 )
@@ -386,9 +386,9 @@ _section "hash diff: state file persists name<TAB>hash"
   _pick_states=(normal normal)
   _pick_reasons=("" "")
   _pick_hashes=("hash-brew-1" "hash-mise-1")
-  dict::clear pick_selected
-  dict::set pick_selected brew 1
-  dict::set pick_selected mise 1
+  pick_selected::clear
+  pick_selected::add brew
+  pick_selected::add mise
   pick::_save_selection
 )
 file="$XDG_STATE_HOME/dotfiles/pick/hash-test.tsv"
@@ -398,12 +398,12 @@ _eq "state file has name<TAB>hash lines" "brew	hash-brew-1,mise	hash-mise-1," "$
 _section "hash diff: previously-selected unchanged → preserved selection"
 (
   export DOTFILES_PICK_SCOPE="hash-test"
-  dict::clear pick_last_selection
+  pick_last::clear
   pick::_load_last_selection
   # both keys present with hashes
-  dict::has pick_last_selection brew && \
-    dict::has pick_last_selection mise && \
-    [[ "$(dict::get pick_last_selection brew)" == "hash-brew-1" ]]
+  pick_last::has brew && \
+    pick_last::has mise && \
+    [[ "$(pick_last::get brew)" == "hash-brew-1" ]]
   exit $?
 )
 _true "loaded both keys with hashes" "$?"
@@ -423,7 +423,7 @@ _section "hash diff: changed hash → marked changed and pre-selected"
 # would force-clear non-required, so we exercise via a custom path).
 out=$(
   export DOTFILES_PICK_SCOPE="hash-test"
-  dict::clear pick_last_selection
+  pick_last::clear
   pick::_load_last_selection
   # Manually reproduce the initial-selection logic to inspect pick_changed.
   _pick_n=4
@@ -433,26 +433,26 @@ out=$(
   _pick_reasons=("" "" "" "")
   _pick_hashes=("hash-brew-1" "hash-mise-2" "totally-new" "")
 
-  dict::clear pick_selected
-  dict::clear pick_changed
+  pick_selected::clear
+  pick_changed::clear
   for ((i=0; i<_pick_n; i++)); do
     nm="${_pick_names[i]}"; cur_hash="${_pick_hashes[i]}"
-    if dict::has pick_last_selection "$nm"; then
-      last_hash="$(dict::get pick_last_selection "$nm")"
+    if pick_last::has "$nm"; then
+      last_hash="$(pick_last::get "$nm")"
       if [[ -n "$cur_hash" && "$cur_hash" != "$last_hash" ]]; then
-        dict::set pick_selected "$nm" 1
-        dict::set pick_changed "$nm" 1
+        pick_selected::add "$nm"
+        pick_changed::add "$nm"
       else
-        dict::set pick_selected "$nm" 1
+        pick_selected::add "$nm"
       fi
     elif [[ -n "$cur_hash" ]]; then
-      dict::set pick_selected "$nm" 1
-      dict::set pick_changed "$nm" 1
+      pick_selected::add "$nm"
+      pick_changed::add "$nm"
     fi
   done
 
-  printf 'selected=%s\n' "$(dict::keys pick_selected | tr '\n' ',')"
-  printf 'changed=%s\n'  "$(dict::keys pick_changed  | tr '\n' ',')"
+  printf 'selected=%s\n' "$(printf "%s\n" "${pick_selected[@]:-}" | tr '\n' ',')"
+  printf 'changed=%s\n'  "$(printf "%s\n" "${pick_changed[@]:-}"  | tr '\n' ',')"
 )
 case "$out" in
   *"selected=brew,mise,fresh,"*) _true "selected: brew (kept), mise (re-selected), fresh (new)" 0 ;;
@@ -655,10 +655,10 @@ out=$(
   export DOTFILES_PICK_SCOPE="legacy-hash-test"
   mkdir -p "$XDG_STATE_HOME/dotfiles/pick"
   printf 'brew\nmise\n' > "$XDG_STATE_HOME/dotfiles/pick/legacy-hash-test.tsv"
-  dict::clear pick_last_selection
+  pick_last::clear
   pick::_load_last_selection
-  brew_h=$(dict::get pick_last_selection brew)
-  mise_h=$(dict::get pick_last_selection mise)
+  brew_h=$(pick_last::get brew)
+  mise_h=$(pick_last::get mise)
   printf 'brew=%q,mise=%q' "$brew_h" "$mise_h"
 )
 _eq "legacy file → empty hashes" "brew='',mise=''" "$out"

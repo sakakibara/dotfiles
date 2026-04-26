@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 
-import msg packages dict
+import msg packages store
+
+# Sets of installed formula / cask names — populated each `brew::setup` and
+# probed to filter out already-installed packages from the install list.
+store::set _brew_installed_f
+store::set _brew_installed_c
 
 brew::install() {
   msg::heading "Installing homebrew"
@@ -75,28 +80,28 @@ brew::setup() {
   # otherwise trigger upgrades on already-installed items — which surprises
   # the user during a routine apply. `brew upgrade` stays a deliberate
   # gesture (run manually when you want fresh versions).
-  dict::clear _brew_installed_f
+  _brew_installed_f::clear
   local line
   while IFS= read -r line; do
     [[ -z "$line" ]] && continue
-    dict::set _brew_installed_f "$line" 1
+    _brew_installed_f::add "$line"
   done < <(brew list --formula -1 2>/dev/null)
 
-  dict::clear _brew_installed_c
+  _brew_installed_c::clear
   while IFS= read -r line; do
     [[ -z "$line" ]] && continue
-    dict::set _brew_installed_c "$line" 1
+    _brew_installed_c::add "$line"
   done < <(brew list --cask -1 2>/dev/null)
 
   local missing_brews=() missing_casks=()
   local p
   for p in "${brews[@]:-}"; do
     [[ -z "$p" ]] && continue
-    dict::has _brew_installed_f "$p" || missing_brews+=("$p")
+    _brew_installed_f::has "$p" || missing_brews+=("$p")
   done
   for p in "${casks[@]:-}"; do
     [[ -z "$p" ]] && continue
-    dict::has _brew_installed_c "$p" || missing_casks+=("$p")
+    _brew_installed_c::has "$p" || missing_casks+=("$p")
   done
 
   if (( ${#missing_brews[@]} > 0 )); then

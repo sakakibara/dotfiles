@@ -18,7 +18,11 @@
 #
 # Comments: `#` starts a comment. Blank lines and trailing whitespace ignored.
 
-import dict
+import store
+
+# Set of <kind>:<name> entries from the optional blacklist file passed to
+# packages::filtered. Defined once at load; cleared/repopulated each call.
+store::set _packages_blacklist
 
 # Resolve the current chezmoi profile. Priority:
 #   1. DOTFILES_PROFILE env var (baked by run_once templates, fastest)
@@ -149,14 +153,14 @@ packages::all() {
 packages::filtered() {
   local file="$1" profile="$2" default_kind="$3" blacklist_file="${4:-}"
 
-  dict::clear _packages_blacklist
+  _packages_blacklist::clear
   if [[ -n "$blacklist_file" && -r "$blacklist_file" ]]; then
     local _pkg_kind _pkg_name _pkg_profiles
     local bline
     while IFS= read -r bline || [[ -n "$bline" ]]; do
       packages::parse "$bline" || continue
       local k="${_pkg_kind:-$default_kind}"
-      dict::set _packages_blacklist "${k}:${_pkg_name}" 1
+      _packages_blacklist::add "${k}:${_pkg_name}"
     done < "$blacklist_file"
   fi
 
@@ -168,7 +172,7 @@ packages::filtered() {
     packages::parse "$line" || continue
     packages::applies_to "$profile" || continue
     local k="${_pkg_kind:-$default_kind}"
-    dict::has _packages_blacklist "${k}:${_pkg_name}" && continue
+    _packages_blacklist::has "${k}:${_pkg_name}" && continue
     printf '%s\t%s\n' "$k" "$_pkg_name"
   done < "$file"
 }

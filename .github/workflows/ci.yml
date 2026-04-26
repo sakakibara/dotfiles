@@ -114,8 +114,8 @@ jobs:
         run: |
           sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
           echo "$HOME/.local/bin" >> $GITHUB_PATH
-      - name: dict polyfill
-        run: bash etc/tests/dict.sh
+      - name: store (set + map containers)
+        run: bash etc/tests/store.sh
       - name: pick (interactive runner)
         run: bash etc/tests/pick.sh
       - name: packages (parser)
