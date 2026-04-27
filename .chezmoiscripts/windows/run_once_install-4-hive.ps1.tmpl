@@ -1,0 +1,60 @@
+{{ if eq .chezmoi.os "windows" -}}
+#!/usr/bin/env pwsh
+# Hash trigger — re-runs when the hive config template changes.
+# hive config hash: {{ include "dot_config/hive/config.toml.tmpl" | sha256sum }}
+
+$ErrorActionPreference = 'Stop'
+
+function _Heading([string]$msg) { Write-Host ''; Write-Host ('==> ' + $msg) }
+function _Arrow([string]$msg)   { Write-Host ('  -> ' + $msg) }
+
+$HiveRepo = 'sakakibara/hive'
+
+_Heading 'hive bootstrap'
+if (-not (Get-Command hive -ErrorAction SilentlyContinue)) {
+    _Arrow 'hive missing — fetching latest release from GitHub'
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    $api = "https://api.github.com/repos/$HiveRepo/releases/latest"
+    $rel = Invoke-RestMethod -Uri $api -ErrorAction Stop
+    $version = $rel.tag_name
+    if (-not $version) {
+        [Console]::Error.WriteLine('hive: could not determine latest release')
+        exit 1
+    }
+
+    $arch = (Get-CimInstance Win32_Processor).Architecture
+    # 9 = AMD64 / x64, 12 = ARM64. Map to hive's release naming.
+    $archStr = switch ($arch) { 9 { 'amd64' } 12 { 'arm64' } default { 'amd64' } }
+    $archive = "hive_windows_${archStr}.zip"
+    $url     = "https://github.com/$HiveRepo/releases/download/$version/$archive"
+
+    $tmp = Join-Path ([IO.Path]::GetTempPath()) ("hive-" + [Guid]::NewGuid())
+    [void](New-Item -ItemType Directory -Path $tmp -Force)
+    try {
+        $zip = Join-Path $tmp $archive
+        Invoke-WebRequest -Uri $url -OutFile $zip -ErrorAction Stop
+        Expand-Archive -Path $zip -DestinationPath $tmp -Force
+        $binDir = Join-Path $env:USERPROFILE '.local\bin'
+        if (-not (Test-Path -LiteralPath $binDir)) {
+            [void](New-Item -ItemType Directory -Path $binDir -Force)
+        }
+        $exe = Get-ChildItem -LiteralPath $tmp -Filter 'hive.exe' -Recurse | Select-Object -First 1
+        if (-not $exe) {
+            [Console]::Error.WriteLine('hive: hive.exe not found in release archive')
+            exit 1
+        }
+        Copy-Item -LiteralPath $exe.FullName -Destination (Join-Path $binDir 'hive.exe') -Force
+    } finally {
+        if (Test-Path -LiteralPath $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+
+    if (-not (Get-Command hive -ErrorAction SilentlyContinue)) {
+        [Console]::Error.WriteLine("hive: install completed but `hive` is not on PATH (expected at $binDir\hive.exe)")
+        exit 1
+    }
+}
+_Arrow 'hive is installed'
+
+_Heading 'hive setup (apply workspace layout)'
+& hive setup
+{{ end -}}

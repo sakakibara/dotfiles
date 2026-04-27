@@ -110,7 +110,7 @@ dotfiles — chezmoi wrapper with status snapshot
 Usage:
   dotfiles                  Print info snapshot (default)
   dotfiles info             Same as default
-  dotfiles install          Run install steps (PowerShell port pending — use chezmoi apply)
+  dotfiles install          Run install steps (interactive picker port pending — use chezmoi apply)
   dotfiles sync             Review untracked packages and add/blacklist them
   dotfiles edit <pattern>   Fuzzy-find a managed file and edit via chezmoi
   dotfiles profile [name]   Print or switch the active chezmoi profile

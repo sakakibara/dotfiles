@@ -1,0 +1,27 @@
+{{ if eq .chezmoi.os "windows" -}}
+#!/usr/bin/env pwsh
+# Hash trigger — re-runs when the mise config template changes.
+# mise config hash: {{ include "dot_config/mise/config.toml.tmpl" | sha256sum }}
+
+$ErrorActionPreference = 'Stop'
+
+function _Heading([string]$msg) { Write-Host ''; Write-Host ('==> ' + $msg) }
+function _Arrow([string]$msg)   { Write-Host ('  -> ' + $msg) }
+
+_Heading 'mise bootstrap'
+if (-not (Get-Command mise -ErrorAction SilentlyContinue)) {
+    _Arrow 'mise missing — installing via scoop (preferred) or winget'
+    if (Get-Command scoop -ErrorAction SilentlyContinue) {
+        & scoop install mise
+    } elseif (Get-Command winget -ErrorAction SilentlyContinue) {
+        & winget install --id jdx.mise --accept-package-agreements --accept-source-agreements
+    } else {
+        [Console]::Error.WriteLine('mise: no package manager found (scoop or winget required)')
+        exit 1
+    }
+}
+_Arrow 'mise is installed'
+
+_Heading 'mise install (apply config.toml)'
+& mise install
+{{ end -}}
