@@ -432,14 +432,34 @@ Inside the menu:
     exit $rc
 }
 
-function Cmd-Sync {
+function Cmd-Sync([string[]]$SyncArgs) {
+    if ($SyncArgs.Count -ge 1 -and ($SyncArgs[0] -in '-h', '--help')) {
+        @"
+dotfiles sync — review installed-but-untracked packages.
+
+Diffs scoop/winget's current state against etc/windows/packages.txt
+and offers a per-row TUI to assign one of these actions to each
+untracked entry:
+
+  skip   — leave it alone
+  add    — append plain `kind:name` to packages.txt (applies everywhere)
+  @prof  — append `kind:name @profile` (profile-gated)
+  block  — append to packages-blacklist.txt (sync won't surface again)
+
+Inside the menu:
+  ↑/↓ move · space cycle · a add · p add @personal · w add @work
+  b blacklist · s skip · enter apply · q cancel · ? help
+"@ | Write-Host
+        return
+    }
+
     # sync.ps1 lives next to dotfiles.ps1.
     $script = Join-Path $PSScriptRoot 'sync.ps1'
     if (-not (Test-Path -LiteralPath $script)) {
         [Console]::Error.WriteLine("dotfiles sync: $script not found")
         exit 1
     }
-    & $script
+    & $script @SyncArgs
     exit $LASTEXITCODE
 }
 
@@ -461,7 +481,7 @@ switch ($first) {
         }
     }
     'install'  { Cmd-Install $rest }
-    'sync'     { Cmd-Sync }
+    'sync'     { Cmd-Sync $rest }
     'edit'     { Cmd-Edit    $rest }
     'profile'  { Cmd-Profile $rest }
     'doctor'   { Cmd-Doctor  $rest }

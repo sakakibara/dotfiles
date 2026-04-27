@@ -161,6 +161,9 @@ jobs:
       - name: sync.ps1 (parsers + format + apply)
         shell: pwsh
         run: pwsh -NoProfile -File etc/tests/sync_ps1.ps1
+      - name: dotfiles.ps1 (wrapper smoke)
+        shell: pwsh
+        run: pwsh -NoProfile -File etc/tests/dotfiles_wrapper_ps1.ps1
       - name: Parse-check etc/powershell/lib/*.ps1
         shell: pwsh
         run: |
