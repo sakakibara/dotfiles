@@ -130,17 +130,9 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v5
-      - name: Parse-check theme.ps1 (no test harness yet)
+      - name: theme.ps1 (full suite via HttpListener)
         shell: pwsh
-        run: |
-          $errors = $null
-          [void][System.Management.Automation.Language.Parser]::ParseFile(
-            "dot_local/bin/theme.ps1", [ref]$null, [ref]$errors)
-          if ($errors.Count -gt 0) {
-            $errors | ForEach-Object { Write-Host $_ }
-            exit 1
-          }
-          Write-Host "theme.ps1 parses cleanly (TODO: port etc/tests/theme.sh to PowerShell)"
+        run: pwsh -NoProfile -File etc/tests/theme_ps1.ps1
       - name: Parse-check dotfiles.ps1
         shell: pwsh
         run: |
