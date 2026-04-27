@@ -333,13 +333,16 @@ local function install_all(specs)
     end
   end
   if #to_install > 0 then
-    Install.install_missing(to_install, {
+    local ok, err = pcall(Install.install_missing, to_install, {
       on_progress = function(done, total, last)
         if last and last.tag then
           vim.notify(("core.pack: installed %d/%d (%s)"):format(done, total, last.tag))
         end
       end,
     })
+    if not ok then
+      notify("core.pack: install failed: " .. tostring(err), vim.log.levels.ERROR)
+    end
   end
 end
 
@@ -376,6 +379,10 @@ function M.setup(cfg)
   end
 
   install_all(ordered)
+
+  -- Reproducibility: lockfile at $XDG_CONFIG_HOME/nvim/pack-lock.json,
+  -- written incrementally by core.pack.install on each install/update,
+  -- read by Install.update to diff plugin revisions.
 
   -- Apply the install-time colorscheme up-front so any subsequent code
   -- (custom chrome's apply_hl, etc.) samples themed highlights. Matches
