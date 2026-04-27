@@ -11,11 +11,8 @@ return {
     name = "nvim-treesitter",
     branch = "main",
     lazy = false,  -- main explicitly does NOT support lazy loading
-    -- (No `build`. Master branch used `:TSUpdate` as a build hook, but
-    -- main's `require("nvim-treesitter").install(...)` in `config` below
-    -- handles installation/upgrade asynchronously, so a build hook would
-    -- be redundant — and pack.lua runs build strings via `sh -c`, which
-    -- can't execute Ex commands.)
+    -- No `build`: `require("nvim-treesitter").install(...)` in config
+    -- below already handles install/update on every nvim launch.
     init = function()
       -- main branch compiles parsers on-demand and requires tree-sitter-cli
       -- (>= 0.26.1) on PATH. mason's registry has it.

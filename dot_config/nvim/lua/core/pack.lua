@@ -340,9 +340,51 @@ local function install_all(specs)
   end
 end
 
--- Run `build` command after vim.pack installs or updates a plugin. The build
--- runs synchronously in the plugin's install directory. Fires only on install
--- or update (not on regular load).
+-- Run `build` after vim.pack installs or updates a plugin. Three forms,
+-- matching lazy.nvim's accepted shapes:
+--
+--   build = "make -C grammar"   shell command — `sh -c` in plugin's dir
+--   build = ":TSUpdate"         vim Ex command — `:lcd <dir> | <cmd>`
+--   build = function(spec)      Lua callable — invoked with the spec
+--
+-- Build runs synchronously after install/update; failures notify but
+-- don't abort the rest of the install pass.
+local function run_build(spec, path)
+  local b = spec.build
+  if not b or b == "" then return end
+  notify(("core.pack: building %s..."):format(spec.name), vim.log.levels.INFO)
+
+  local ok, err
+  if type(b) == "function" then
+    ok, err = pcall(b, { name = spec.name, path = path, spec = spec })
+  elseif type(b) == "string" and b:sub(1, 1) == ":" then
+    -- Ex command. Run with `:lcd <path>` so the command sees the install
+    -- dir as its working directory, then restore via try/finally so a
+    -- bad command doesn't leave the wrong cwd behind.
+    local prev = vim.fn.getcwd()
+    ok, err = pcall(function()
+      vim.cmd.lcd({ path, mods = { silent = true } })
+      vim.cmd(b:sub(2))
+    end)
+    pcall(vim.cmd.lcd, { prev, mods = { silent = true } })
+  elseif type(b) == "string" then
+    local result = vim.system({ "sh", "-c", b }, { cwd = path, text = true }):wait()
+    ok  = (result.code == 0)
+    err = result.stderr or ""
+  else
+    notify(("core.pack: %s has unsupported build type %s"):format(spec.name, type(b)),
+      vim.log.levels.WARN)
+    return
+  end
+
+  if ok then
+    notify(("core.pack: build ok for %s"):format(spec.name), vim.log.levels.INFO)
+  else
+    notify(("core.pack: build failed for %s: %s"):format(spec.name, tostring(err)),
+      vim.log.levels.ERROR)
+  end
+end
+
 local function register_build_hooks()
   vim.api.nvim_create_autocmd("PackChanged", {
     group = vim.api.nvim_create_augroup("core.pack.build", { clear = true }),
@@ -350,14 +392,8 @@ local function register_build_hooks()
       local data = args.data
       if not data or (data.kind ~= "install" and data.kind ~= "update") then return end
       local spec = data.spec and M._specs[data.spec.name]
-      if not spec or type(spec.build) ~= "string" or spec.build == "" then return end
-      notify(("core.pack: building %s..."):format(spec.name), vim.log.levels.INFO)
-      local result = vim.system({ "sh", "-c", spec.build }, { cwd = data.path, text = true }):wait()
-      if result.code == 0 then
-        notify(("core.pack: build ok for %s"):format(spec.name), vim.log.levels.INFO)
-      else
-        notify(("core.pack: build failed for %s: %s"):format(spec.name, result.stderr or ""), vim.log.levels.ERROR)
-      end
+      if not spec then return end
+      run_build(spec, data.path)
     end,
   })
 end
