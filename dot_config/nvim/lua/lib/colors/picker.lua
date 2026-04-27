@@ -299,56 +299,9 @@ end
 
 function M.commit(state)
   if state.anchor and vim.api.nvim_buf_is_valid(state.anchor.buf) then
-    local a = state.anchor
-    local fmt = state.source_fmt or "hex"
-    local text
-    if fmt == "rgb" then
-      local src       = state.source or {}
-      local fn        = src.fn_name or (src.with_alpha and "rgba" or "rgb")
-      local sep       = src.commas and ", " or " "
-      local r = math.floor(state.color.r * 255 + 0.5)
-      local g = math.floor(state.color.g * 255 + 0.5)
-      local b = math.floor(state.color.b * 255 + 0.5)
-      local a = state.color.a or 1
-      if src.with_alpha then
-        if src.commas then
-          text = string.format("%s(%d, %d, %d, %s)", fn, r, g, b,
-            a == 1 and "1" or string.format("%.2f", a))
-        else
-          text = string.format("%s(%d %d %d / %s)", fn, r, g, b,
-            a == 1 and "1" or string.format("%.2f", a))
-        end
-      else
-        text = string.format("%s(%d%s%d%s%d)", fn, r, sep, g, sep, b)
-      end
-    elseif fmt == "hsl" then
-      local h, s, l = C.to_hsl(state.color)
-      local src = state.source or {}
-      local fn = src.fn_name or (src.with_alpha and "hsla" or "hsl")
-      local sep = src.commas and ", " or " "
-      local hi, si, li = math.floor(h), math.floor(s * 100), math.floor(l * 100)
-      if src.with_alpha then
-        local a = state.color.a or 1
-        local a_str = a == 1 and "1" or string.format("%.2f", a)
-        if src.commas then
-          text = string.format("%s(%d, %d%%, %d%%, %s)", fn, hi, si, li, a_str)
-        else
-          text = string.format("%s(%d %d%% %d%% / %s)", fn, hi, si, li, a_str)
-        end
-      else
-        text = string.format("%s(%d%s%d%%%s%d%%)", fn, hi, sep, si, sep, li)
-      end
-    elseif fmt == "oklch" then
-      local L, Cval, h = C.to_oklch(state.color)
-      text = string.format("oklch(%.3f %.3f %.1f)", L, Cval, h)
-    elseif fmt == "oklab" then
-      local L, Cval, h = C.to_oklch(state.color)
-      local av = Cval * math.cos(math.rad(h))
-      local bv = Cval * math.sin(math.rad(h))
-      text = string.format("oklab(%.3f %.3f %.3f)", L, av, bv)
-    else
-      text = C.to_hex(state.color)
-    end
+    local a    = state.anchor
+    local F    = require("lib.colors.format")
+    local text = F.format(state.color, state.source_fmt or "hex", state.source)
     vim.api.nvim_buf_set_text(a.buf, a.lnum, a.col_s, a.lnum, a.col_e, { text })
   end
   -- Push committed hex into recents

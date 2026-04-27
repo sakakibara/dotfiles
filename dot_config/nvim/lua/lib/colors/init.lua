@@ -148,6 +148,60 @@ function M.setup(opts)
     nargs    = "?",
     complete = function() return { "global" } end,
   })
+
+  local fmt_complete = function() return require("lib.colors.format").formats() end
+  vim.api.nvim_create_user_command("ColorConvert", function(cmd)
+    M.convert(cmd.fargs[1])
+  end, {
+    desc     = "Rewrite the color literal under the cursor in <fmt>",
+    nargs    = 1,
+    complete = fmt_complete,
+  })
+  vim.api.nvim_create_user_command("ColorYank", function(cmd)
+    M.yank(cmd.fargs[1])
+  end, {
+    desc     = "Yank the color under the cursor in <fmt> to the + register",
+    nargs    = 1,
+    complete = fmt_complete,
+  })
+end
+
+-- Find the color literal under the cursor and call `cb(text, hit)` on
+-- it. Reports a notify when nothing's under the cursor or `fmt` is bogus,
+-- and centralizes the "where am I, what's here" plumbing.
+local function with_color_under_cursor(fmt, cb)
+  local format = require("lib.colors.format")
+  if not format.is_format(fmt) then
+    vim.notify("Lib.colors: unknown format '" .. tostring(fmt) ..
+               "' (expected one of: " .. table.concat(format.formats(), ", ") .. ")",
+               vim.log.levels.ERROR)
+    return
+  end
+  local parse = require("lib.colors.parse")
+  local row, col = unpack(vim.api.nvim_win_get_cursor(0))
+  local line = vim.api.nvim_buf_get_lines(0, row - 1, row, false)[1] or ""
+  local hit  = parse.parse(line, col)
+  if not hit then
+    vim.notify("Lib.colors: no color literal under the cursor", vim.log.levels.WARN)
+    return
+  end
+  local text = format.format(hit.color, fmt, hit.color.source)
+  cb(text, hit, row)
+end
+
+function M.convert(fmt)
+  with_color_under_cursor(fmt, function(text, hit, row)
+    local buf = vim.api.nvim_get_current_buf()
+    vim.api.nvim_buf_set_text(buf, row - 1, hit.range.col_s, row - 1, hit.range.col_e, { text })
+  end)
+end
+
+function M.yank(fmt)
+  with_color_under_cursor(fmt, function(text)
+    vim.fn.setreg("+", text)
+    vim.fn.setreg('"', text)
+    vim.notify("Yanked " .. text, vim.log.levels.INFO)
+  end)
 end
 
 function M.pick(initial)

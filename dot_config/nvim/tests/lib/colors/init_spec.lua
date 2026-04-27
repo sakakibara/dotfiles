@@ -163,6 +163,72 @@ T.describe("lib.colors :ColorPick command", function()
   end)
 end)
 
+T.describe("lib.colors :ColorConvert / :ColorYank", function()
+  T.it("registers both commands after setup()", function()
+    package.loaded["lib.colors"] = nil
+    require("lib").init()
+    Lib.colors.setup({})
+    local cmds = vim.api.nvim_get_commands({})
+    T.truthy(cmds.ColorConvert, ":ColorConvert not registered")
+    T.truthy(cmds.ColorYank,    ":ColorYank not registered")
+  end)
+
+  T.it("convert(rgb) rewrites #ff0000 → rgb(255 0 0) inline", function()
+    package.loaded["lib.colors"] = nil
+    require("lib").init()
+    Lib.colors.setup({})
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "color: #ff0000;" })
+    vim.api.nvim_set_current_buf(buf)
+    vim.api.nvim_win_set_cursor(0, { 1, 9 })
+    Lib.colors.convert("rgb")
+    local line = vim.api.nvim_buf_get_lines(buf, 0, 1, false)[1]
+    T.eq(line, "color: rgb(255 0 0);")
+    vim.api.nvim_buf_delete(buf, { force = true })
+  end)
+
+  T.it("yank(hex) puts the hex in the + register", function()
+    package.loaded["lib.colors"] = nil
+    require("lib").init()
+    Lib.colors.setup({})
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "color: rgb(255 0 0);" })
+    vim.api.nvim_set_current_buf(buf)
+    vim.api.nvim_win_set_cursor(0, { 1, 9 })
+    Lib.colors.yank("hex")
+    T.eq(vim.fn.getreg("+"), "#ff0000")
+    vim.api.nvim_buf_delete(buf, { force = true })
+  end)
+
+  T.it("convert with no color under cursor is a no-op", function()
+    package.loaded["lib.colors"] = nil
+    require("lib").init()
+    Lib.colors.setup({})
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "no colors here" })
+    vim.api.nvim_set_current_buf(buf)
+    vim.api.nvim_win_set_cursor(0, { 1, 0 })
+    Lib.colors.convert("hex")
+    local line = vim.api.nvim_buf_get_lines(buf, 0, 1, false)[1]
+    T.eq(line, "no colors here")
+    vim.api.nvim_buf_delete(buf, { force = true })
+  end)
+
+  T.it("convert with bogus format reports error and leaves text alone", function()
+    package.loaded["lib.colors"] = nil
+    require("lib").init()
+    Lib.colors.setup({})
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "color: #ff0000;" })
+    vim.api.nvim_set_current_buf(buf)
+    vim.api.nvim_win_set_cursor(0, { 1, 9 })
+    Lib.colors.convert("bogus")
+    local line = vim.api.nvim_buf_get_lines(buf, 0, 1, false)[1]
+    T.eq(line, "color: #ff0000;")
+    vim.api.nvim_buf_delete(buf, { force = true })
+  end)
+end)
+
 T.describe("lib.colors DirChanged rescans project", function()
   T.it("clears _overlay on DirChanged", function()
     package.loaded["lib.colors"] = nil
