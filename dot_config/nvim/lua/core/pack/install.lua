@@ -78,6 +78,11 @@ function M.install_missing(specs, opts)
       if vim.fn.isdirectory(dir) == 1 and Git.is_repo(dir) then
         -- already installed; nothing to do
       else
+        -- Clean up any pre-existing non-repo dir (e.g., interrupted prior clone)
+        -- so `git clone` doesn't refuse a non-empty target.
+        if vim.fn.isdirectory(dir) == 1 then
+          vim.fn.delete(dir, "rf")
+        end
         pending[#pending + 1] = { spec = spec, dir = dir }
         pool:add({
           cmd = { "git", "clone", "--filter=blob:none", spec.src, dir },
@@ -90,6 +95,7 @@ function M.install_missing(specs, opts)
             end
             local rev, err = pin_to_version(spec, dir)
             if not rev then
+              vim.fn.delete(dir, "rf")
               notify(("core.pack: %s"):format(err), vim.log.levels.ERROR); return
             end
             Lock.set(spec.name, {
