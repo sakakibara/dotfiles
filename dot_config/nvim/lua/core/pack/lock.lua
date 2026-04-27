@@ -42,7 +42,11 @@ function M.write(data)
   local fd = assert(io.open(tmp, "w"))
   fd:write(payload)
   fd:close()
-  os.rename(tmp, p)
+  local ok, err = os.rename(tmp, p)
+  if not ok then
+    os.remove(tmp)
+    error("core.pack.lock: rename failed: " .. tostring(err))
+  end
 end
 
 function M.get(name)
