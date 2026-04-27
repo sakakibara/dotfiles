@@ -45,6 +45,24 @@ local function shade(hex, delta)
   return string.format("#%02x%02x%02x", r, g, b)
 end
 
+-- Powerline glyphs — declared up here (before derive_palette) so the
+-- function captures these locals as upvalues. derive_palette() rewrites
+-- SEP from the real glyphs to "" on a fresh boot when the bar bg matches
+-- Normal.bg (default colorscheme), and back to glyphs once a colorscheme
+-- gives StatusLine.bg a distinct value.
+local SEP = {
+  cap_l   = "",
+  cap_r   = "",
+  slant_r = "",
+  slant_l = "",
+}
+local SEP_GLYPHS = {
+  cap_l   = "\u{e0b6}",  -- rounded left
+  cap_r   = "\u{e0b4}",  -- rounded right
+  slant_r = "\u{e0b8}",  -- slant-right (mode→mid)
+  slant_l = "\u{e0ba}",  -- slant-left  (mid→mode on right side, unused)
+}
+
 local function derive_palette()
   local bg_end   = get("Normal", "bg", "#000000")
   -- Recessed (darker than Normal.bg) bar — modern minimal look. Catppuccin
@@ -153,25 +171,6 @@ end
 -- ============================================================================
 -- POWERLINE SYMBOLS
 -- ============================================================================
-
--- Powerline glyphs only render correctly when the bar has its own bg
--- distinct from Normal.bg — otherwise the slant triangle is between two
--- identical fills and shows up as a stray gray shape on a fresh boot
--- (default colorscheme, before catppuccin loads). derive_palette() rewrites
--- these to the real glyphs once it confirms a distinct bg, and resets them
--- to "" on every ColorScheme event so a switch back to default re-blanks.
-local SEP = {
-  cap_l   = "",
-  cap_r   = "",
-  slant_r = "",
-  slant_l = "",
-}
-local SEP_GLYPHS = {
-  cap_l   = "\u{e0b6}",  -- rounded left
-  cap_r   = "\u{e0b4}",  -- rounded right
-  slant_r = "\u{e0b8}",  -- slant-right (mode→mid)
-  slant_l = "\u{e0ba}",  -- slant-left  (mid→mode on right side, unused)
-}
 
 -- 6 levels of horizontal-bar glyphs (U+1FB76..U+1FB7B). Used as a 2-char
 -- scrollbar: picks one glyph for the cursor's vertical position in the
