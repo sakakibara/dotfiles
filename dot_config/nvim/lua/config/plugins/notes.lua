@@ -2,7 +2,7 @@
 -- Note-taking plugins:
 --   zk-nvim   — Zettelkasten via the `zk` CLI. Requires ZK_NOTEBOOK_DIR.
 --   organ.nvim — unified org-mode + org-roam (personal project, private repo).
---                Pulls over HTTPS via vim.pack, so a working git credential
+--                Pulls over HTTPS via core.pack, so a working git credential
 --                for github.com is required (e.g. `gh auth login`). Bundled
 --                tree-sitter grammar is built on install/update via `build`.
 
@@ -69,4 +69,5 @@ return {
     },
     config = function(_, opts) require("organ").setup(opts) end,
   },
+
 }
