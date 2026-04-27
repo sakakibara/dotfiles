@@ -52,8 +52,7 @@ local function normalize(spec)
 
   -- Convert glob-style version ("1.*", "^1.0", etc.) into vim.version.range().
   -- Exact refs (tags, branches, commits) pass through unchanged. If `branch`
-  -- is provided and `version` isn't, promote branch into version (vim.pack
-  -- uses the `version` field for branch/tag/commit refs).
+  -- is provided and `version` isn't, promote branch into version.
   local version = spec.version
   if version == nil and type(spec.branch) == "string" then
     version = spec.branch
@@ -240,7 +239,7 @@ end
 
 local function packadd(spec)
   if spec.dev then return end  -- dev plugins: assume on rtp already or skip for tests
-  -- Invariant: spec.name matches the vim.pack install directory under pack/core/opt/<name>.
+  -- Invariant: spec.name matches the install directory under pack/core/opt/<name>.
   require("core.profile").span("packadd:" .. spec.name, "packadd", function()
     local ok, err = pcall(vim.cmd, "packadd " .. spec.name)
     if not ok then
@@ -320,82 +319,28 @@ local function install_spec_stubs(spec)
 end
 
 local function install_all(specs)
-  -- Build vim.pack.add payload; skip dev plugins.
-  local add_list = {}
+  local Lock    = require("core.pack.lock")
+  local Install = require("core.pack.install")
+
+  -- One-shot migration from the old lockfile (no-op if our lockfile already populated).
+  Lock.migrate_from_vim_pack()
+
+  -- For specs already on disk, packadd; for those not, install in parallel.
+  local to_install = {}
   for _, s in ipairs(specs) do
-    if not s.dev then
-      add_list[#add_list + 1] = {
-        src = s.src, name = s.name, version = s.version,
-      }
+    if not s.dev and vim.fn.isdirectory(Install.install_dir(s.name)) == 0 then
+      to_install[#to_install + 1] = s
     end
   end
-  if #add_list > 0 and vim.pack and vim.pack.add then
-    -- load = no-op function: vim.pack installs plugins to disk but does NOT
-    -- add them to runtimepath. Without this, vim.pack calls :packadd! which
-    -- adds every plugin to rtp, and Neovim's post-init plugin-loading phase
-    -- then sources every plugin/ file in rtp — defeating lazy loading.
-    -- We take over rtp management via our own load_spec/packadd flow.
-    local ok, err = pcall(vim.pack.add, add_list, { confirm = false, load = function() end })
-    if not ok then notify("vim.pack.add: " .. err, vim.log.levels.ERROR) end
+  if #to_install > 0 then
+    Install.install_missing(to_install, {
+      on_progress = function(done, total, last)
+        if last and last.tag then
+          vim.notify(("core.pack: installed %d/%d (%s)"):format(done, total, last.tag))
+        end
+      end,
+    })
   end
-end
-
--- Run `build` after vim.pack installs or updates a plugin. Three forms,
--- matching lazy.nvim's accepted shapes:
---
---   build = "make -C grammar"   shell command — `sh -c` in plugin's dir
---   build = ":TSUpdate"         vim Ex command — `:lcd <dir> | <cmd>`
---   build = function(spec)      Lua callable — invoked with the spec
---
--- Build runs synchronously after install/update; failures notify but
--- don't abort the rest of the install pass.
-local function run_build(spec, path)
-  local b = spec.build
-  if not b or b == "" then return end
-  notify(("core.pack: building %s..."):format(spec.name), vim.log.levels.INFO)
-
-  local ok, err
-  if type(b) == "function" then
-    ok, err = pcall(b, { name = spec.name, path = path, spec = spec })
-  elseif type(b) == "string" and b:sub(1, 1) == ":" then
-    -- Ex command. Run with `:lcd <path>` so the command sees the install
-    -- dir as its working directory, then restore via try/finally so a
-    -- bad command doesn't leave the wrong cwd behind.
-    local prev = vim.fn.getcwd()
-    ok, err = pcall(function()
-      vim.cmd.lcd({ path, mods = { silent = true } })
-      vim.cmd(b:sub(2))
-    end)
-    pcall(vim.cmd.lcd, { prev, mods = { silent = true } })
-  elseif type(b) == "string" then
-    local result = vim.system({ "sh", "-c", b }, { cwd = path, text = true }):wait()
-    ok  = (result.code == 0)
-    err = result.stderr or ""
-  else
-    notify(("core.pack: %s has unsupported build type %s"):format(spec.name, type(b)),
-      vim.log.levels.WARN)
-    return
-  end
-
-  if ok then
-    notify(("core.pack: build ok for %s"):format(spec.name), vim.log.levels.INFO)
-  else
-    notify(("core.pack: build failed for %s: %s"):format(spec.name, tostring(err)),
-      vim.log.levels.ERROR)
-  end
-end
-
-local function register_build_hooks()
-  vim.api.nvim_create_autocmd("PackChanged", {
-    group = vim.api.nvim_create_augroup("core.pack.build", { clear = true }),
-    callback = function(args)
-      local data = args.data
-      if not data or (data.kind ~= "install" and data.kind ~= "update") then return end
-      local spec = data.spec and M._specs[data.spec.name]
-      if not spec then return end
-      run_build(spec, data.path)
-    end,
-  })
 end
 
 -- Idempotent-destructive: calling setup() again resets all registries and
@@ -430,13 +375,7 @@ function M.setup(cfg)
     end
   end
 
-  -- Register build hook BEFORE install_all so PackChanged fires fire during installs.
-  register_build_hooks()
   install_all(ordered)
-
-  -- Reproducibility is handled by Neovim's built-in vim.pack lockfile at
-  -- $XDG_CONFIG_HOME/nvim/nvim-pack-lock.json — auto-written on every
-  -- vim.pack.add / update, consulted on next boot.
 
   -- Apply the install-time colorscheme up-front so any subsequent code
   -- (custom chrome's apply_hl, etc.) samples themed highlights. Matches
@@ -693,33 +632,28 @@ vim.api.nvim_create_user_command("PackStatus", function()
 end, { desc = "List registered plugin specs" })
 
 vim.api.nvim_create_user_command("PackUpdate", function(opts)
-  vim.pack.update(#opts.fargs > 0 and opts.fargs or nil)
+  local Install = require("core.pack.install")
+  local specs = {}
+  for _, s in pairs(M._specs) do specs[#specs + 1] = s end
+  Install.update(specs, opts.fargs, { confirm = true })
 end, {
   nargs = "*",
   complete = function(arglead)
     local out = {}
     for name in pairs(M._specs) do
-      if name:lower():find(arglead:lower(), 1, true) then
-        out[#out + 1] = name
-      end
+      if name:lower():find(arglead:lower(), 1, true) then out[#out + 1] = name end
     end
     table.sort(out)
     return out
   end,
-  desc = "Update plugin(s) via vim.pack.update",
+  desc = "Update plugin(s) via core.pack.install",
 })
 
 vim.api.nvim_create_user_command("PackClean", function()
-  if not (vim.pack and vim.pack.get and vim.pack.del) then
-    notify("vim.pack.del not available", vim.log.levels.ERROR); return
-  end
-  local orphans = {}
-  for _, info in ipairs(vim.pack.get() or {}) do
-    if not M._specs[info.spec.name] then orphans[#orphans + 1] = info.spec.name end
-  end
-  if #orphans == 0 then print("Nothing to clean"); return end
-  vim.pack.del(orphans)
-  print("Removed: " .. table.concat(orphans, ", "))
+  local Install = require("core.pack.install")
+  local specs = {}
+  for _, s in pairs(M._specs) do specs[#specs + 1] = s end
+  Install.clean(specs, {})
 end, { desc = "Remove plugins not in spec" })
 
 vim.api.nvim_create_user_command("PackSync", function()
