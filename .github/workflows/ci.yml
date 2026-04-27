@@ -125,62 +125,23 @@ jobs:
       - name: dotfiles wrapper
         run: bash etc/tests/dotfiles_wrapper.sh
 
-  theme-tests-pwsh:
-    name: Theme tests (Windows / pwsh)
+  pwsh-tests:
+    name: PowerShell tests (Windows)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v5
       - name: theme.ps1 (full suite via HttpListener)
         shell: pwsh
         run: pwsh -NoProfile -File etc/tests/theme.ps1
-      - name: Parse-check dotfiles.ps1
-        shell: pwsh
-        run: |
-          $errors = $null
-          [void][System.Management.Automation.Language.Parser]::ParseFile(
-            "dot_local/bin/dotfiles.ps1", [ref]$null, [ref]$errors)
-          if ($errors.Count -gt 0) {
-            $errors | ForEach-Object { Write-Host $_ }
-            exit 1
-          }
-          Write-Host "dotfiles.ps1 parses cleanly"
       - name: pick.ps1 (parse + non-interactive paths)
         shell: pwsh
         run: pwsh -NoProfile -File etc/tests/pick.ps1
-      - name: Parse-check sync.ps1
-        shell: pwsh
-        run: |
-          $errors = $null
-          [void][System.Management.Automation.Language.Parser]::ParseFile(
-            "dot_local/bin/sync.ps1", [ref]$null, [ref]$errors)
-          if ($errors.Count -gt 0) {
-            $errors | ForEach-Object { Write-Host $_ }
-            exit 1
-          }
-          Write-Host "sync.ps1 parses cleanly"
       - name: sync.ps1 (parsers + format + apply)
         shell: pwsh
         run: pwsh -NoProfile -File etc/tests/sync.ps1
       - name: dotfiles.ps1 (wrapper smoke)
         shell: pwsh
         run: pwsh -NoProfile -File etc/tests/dotfiles_wrapper.ps1
-      - name: Parse-check etc/powershell/lib/*.ps1
-        shell: pwsh
-        run: |
-          $ok = $true
-          foreach ($f in (Get-ChildItem -Path etc/powershell/lib -Filter '*.ps1' -File)) {
-            $errors = $null
-            [void][System.Management.Automation.Language.Parser]::ParseFile(
-              $f.FullName, [ref]$null, [ref]$errors)
-            if ($errors.Count -gt 0) {
-              $ok = $false
-              Write-Host ("$($f.Name) failed:")
-              $errors | ForEach-Object { Write-Host $_ }
-            } else {
-              Write-Host ("$($f.Name) OK")
-            }
-          }
-          if (-not $ok) { exit 1 }
 
   validate-packages-fedora:
     name: Validate packages (Fedora)

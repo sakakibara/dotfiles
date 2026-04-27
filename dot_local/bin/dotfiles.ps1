@@ -408,9 +408,9 @@ Inside the menu:
     # functions when the user selects them.
     . (Join-Path $PSScriptRoot 'pick.ps1')
     $lib = Join-Path $sourceDir 'etc/powershell/lib'
-    . (Join-Path $lib 'scoop.ps1')
-    . (Join-Path $lib 'mise.ps1')
-    . (Join-Path $lib 'hive.ps1')
+    Import-Module (Join-Path $lib 'Scoop.psm1') -Force
+    Import-Module (Join-Path $lib 'Mise.psm1')  -Force
+    Import-Module (Join-Path $lib 'Hive.psm1')  -Force
 
     $env:CHEZMOI_SOURCE_DIR = $sourceDir
 

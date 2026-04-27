@@ -2,11 +2,11 @@
 #!/usr/bin/env pwsh
 # Hash trigger — re-runs when the hive config or the hive lib changes.
 # hive config hash: {{ include "dot_config/hive/config.toml.tmpl" | sha256sum }}
-# hive.ps1 hash:    {{ include "etc/powershell/lib/hive.ps1"     | sha256sum }}
+# Hive.psm1 hash:   {{ include "etc/powershell/lib/Hive.psm1"    | sha256sum }}
 
 $ErrorActionPreference = 'Stop'
 $env:CHEZMOI_SOURCE_DIR = '{{ .chezmoi.sourceDir }}'
 
-. (Join-Path $env:CHEZMOI_SOURCE_DIR 'etc/powershell/lib/hive.ps1')
+Import-Module (Join-Path $env:CHEZMOI_SOURCE_DIR 'etc/powershell/lib/Hive.psm1') -Force
 exit (Install-Hive)
 {{ end -}}

@@ -28,3 +28,5 @@ function Write-Success([string]$msg) {
 function Write-Failure([string]$msg) {
     [Console]::Error.WriteLine('  {0}✖{1} {2}' -f $Script:MsgRed, $Script:MsgReset, $msg)
 }
+
+Export-ModuleMember -Function Write-Heading, Write-Arrow, Write-Success, Write-Failure

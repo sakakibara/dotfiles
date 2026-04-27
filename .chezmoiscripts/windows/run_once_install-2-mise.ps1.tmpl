@@ -2,11 +2,11 @@
 #!/usr/bin/env pwsh
 # Hash trigger — re-runs when the mise config or the mise lib changes.
 # mise config hash: {{ include "dot_config/mise/config.toml.tmpl" | sha256sum }}
-# mise.ps1 hash:    {{ include "etc/powershell/lib/mise.ps1"     | sha256sum }}
+# Mise.psm1 hash:   {{ include "etc/powershell/lib/Mise.psm1"    | sha256sum }}
 
 $ErrorActionPreference = 'Stop'
 $env:CHEZMOI_SOURCE_DIR = '{{ .chezmoi.sourceDir }}'
 
-. (Join-Path $env:CHEZMOI_SOURCE_DIR 'etc/powershell/lib/mise.ps1')
+Import-Module (Join-Path $env:CHEZMOI_SOURCE_DIR 'etc/powershell/lib/Mise.psm1') -Force
 exit (Install-Mise)
 {{ end -}}

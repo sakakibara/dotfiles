@@ -2,7 +2,7 @@
 # Public entry: `Install-Hive`. Bootstraps hive from the GitHub release
 # archive, then runs `hive setup`.
 
-. (Join-Path $PSScriptRoot 'msg.ps1')
+Import-Module (Join-Path $PSScriptRoot 'Msg.psm1') -Force
 
 $Script:HiveRepo = 'sakakibara/hive'
 
@@ -68,3 +68,5 @@ function Install-Hive {
     & hive setup
     return $LASTEXITCODE
 }
+
+Export-ModuleMember -Function Install-Hive

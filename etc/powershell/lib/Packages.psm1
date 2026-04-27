@@ -60,3 +60,5 @@ function Read-PackagesFile([string]$file, [string]$default_kind, [string]$curren
     }
     return ,$out
 }
+
+Export-ModuleMember -Function Get-DotfilesProfile, ConvertFrom-PackagesLine, Test-PackageApplies, Read-PackagesFile

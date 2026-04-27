@@ -3,13 +3,13 @@
 # Hash trigger — re-runs whenever any of the comment hashes below change.
 # packages.txt hash:    {{ include "etc/windows/packages.txt"           | sha256sum }}
 # blacklist hash:       {{ include "etc/windows/packages-blacklist.txt" | sha256sum }}
-# scoop.ps1 hash:       {{ include "etc/powershell/lib/scoop.ps1"       | sha256sum }}
-# packages.ps1 hash:    {{ include "etc/powershell/lib/packages.ps1"    | sha256sum }}
+# Scoop.psm1 hash:      {{ include "etc/powershell/lib/Scoop.psm1"      | sha256sum }}
+# Packages.psm1 hash:   {{ include "etc/powershell/lib/Packages.psm1"   | sha256sum }}
 
 $ErrorActionPreference = 'Stop'
 $env:DOTFILES_PROFILE   = '{{ (index . "profile") | default "personal" }}'
 $env:CHEZMOI_SOURCE_DIR = '{{ .chezmoi.sourceDir }}'
 
-. (Join-Path $env:CHEZMOI_SOURCE_DIR 'etc/powershell/lib/scoop.ps1')
+Import-Module (Join-Path $env:CHEZMOI_SOURCE_DIR 'etc/powershell/lib/Scoop.psm1') -Force
 exit (Install-Scoop)
 {{ end -}}

@@ -2,7 +2,7 @@
 # Public entry: `Install-Mise`. Bootstraps mise via scoop (preferred) or
 # winget, then runs `mise install` to materialize the config.
 
-. (Join-Path $PSScriptRoot 'msg.ps1')
+Import-Module (Join-Path $PSScriptRoot 'Msg.psm1') -Force
 
 function Initialize-MiseBinary {
     Write-Heading 'Checking if mise is installed'
@@ -34,3 +34,5 @@ function Install-Mise {
     & mise install
     return $LASTEXITCODE
 }
+
+Export-ModuleMember -Function Install-Mise

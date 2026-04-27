@@ -6,8 +6,8 @@
 # Public entry: `Install-Scoop`. Internal helpers carry approved verbs
 # but aren't intended for outside callers.
 
-. (Join-Path $PSScriptRoot 'msg.ps1')
-. (Join-Path $PSScriptRoot 'packages.ps1')
+Import-Module (Join-Path $PSScriptRoot 'Msg.psm1')      -Force
+Import-Module (Join-Path $PSScriptRoot 'Packages.psm1') -Force
 
 # Bootstrap: install the scoop binary itself when missing. Returns $true
 # if scoop is reachable after the call.
@@ -134,3 +134,5 @@ function Install-Scoop {
     }
     return 0
 }
+
+Export-ModuleMember -Function Install-Scoop
