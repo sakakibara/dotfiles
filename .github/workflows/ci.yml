@@ -132,7 +132,7 @@ jobs:
       - uses: actions/checkout@v5
       - name: theme.ps1 (full suite via HttpListener)
         shell: pwsh
-        run: pwsh -NoProfile -File etc/tests/theme_ps1.ps1
+        run: pwsh -NoProfile -File etc/tests/theme.ps1
       - name: Parse-check dotfiles.ps1
         shell: pwsh
         run: |
@@ -146,7 +146,7 @@ jobs:
           Write-Host "dotfiles.ps1 parses cleanly"
       - name: pick.ps1 (parse + non-interactive paths)
         shell: pwsh
-        run: pwsh -NoProfile -File etc/tests/pick_ps1.ps1
+        run: pwsh -NoProfile -File etc/tests/pick.ps1
       - name: Parse-check sync.ps1
         shell: pwsh
         run: |
@@ -160,10 +160,10 @@ jobs:
           Write-Host "sync.ps1 parses cleanly"
       - name: sync.ps1 (parsers + format + apply)
         shell: pwsh
-        run: pwsh -NoProfile -File etc/tests/sync_ps1.ps1
+        run: pwsh -NoProfile -File etc/tests/sync.ps1
       - name: dotfiles.ps1 (wrapper smoke)
         shell: pwsh
-        run: pwsh -NoProfile -File etc/tests/dotfiles_wrapper_ps1.ps1
+        run: pwsh -NoProfile -File etc/tests/dotfiles_wrapper.ps1
       - name: Parse-check etc/powershell/lib/*.ps1
         shell: pwsh
         run: |
