@@ -22,9 +22,15 @@ T.describe("lib.colors.format", function()
          "rgba(255, 0, 0, 0.50)")
   end)
 
-  T.it("rgba modern uses slash-alpha syntax", function()
+  T.it("rgba modern uses slash-alpha syntax (fn defaults to rgba w/ alpha)", function()
     local color = C.from_hex("#ff0000"); color.a = 0.5
     T.eq(F.format(color, "rgb", { with_alpha = true }),
+         "rgba(255 0 0 / 0.50)")
+  end)
+
+  T.it("modern slash-alpha keeps fn=rgb when explicitly set", function()
+    local color = C.from_hex("#ff0000"); color.a = 0.5
+    T.eq(F.format(color, "rgb", { with_alpha = true, fn_name = "rgb" }),
          "rgb(255 0 0 / 0.50)")
   end)
 

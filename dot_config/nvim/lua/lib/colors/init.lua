@@ -51,11 +51,14 @@ end
 local function redraw(buf)
   if is_excluded(buf) then
     R().clear(buf)
+    require("lib.colors.contrast").clear(buf)
     return
   end
   local top, bot = viewport(buf)
   local detected = D().detect(buf, top, bot)
   R().apply(buf, detected)
+  local CT = require("lib.colors.contrast")
+  if CT.is_enabled(buf) then CT.render(buf, top, bot, detected) end
 end
 
 local function schedule(buf)
@@ -163,6 +166,12 @@ function M.setup(opts)
     desc     = "Yank the color under the cursor in <fmt> to the + register",
     nargs    = 1,
     complete = fmt_complete,
+  })
+  vim.api.nvim_create_user_command("ColorContrast", function()
+    local on = require("lib.colors.contrast").toggle(0)
+    vim.notify("Contrast hints " .. (on and "on" or "off"), vim.log.levels.INFO)
+  end, {
+    desc = "Toggle WCAG contrast ratio virt-text for the current buffer",
   })
 end
 

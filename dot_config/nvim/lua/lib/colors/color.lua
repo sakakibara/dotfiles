@@ -258,17 +258,37 @@ function M.to_oklch(c)
   return L, C, h
 end
 
--- WCAG relative luminance (linear sRGB weighted by CIE Y coefficients)
-local function relative_luminance(c)
+-- WCAG relative luminance (linear sRGB weighted by CIE Y coefficients).
+-- Exposed publicly so consumers (contrast.lua, picker swatch readability,
+-- ad-hoc scripts) don't have to re-derive it.
+function M.relative_luminance(c)
   local lr = srgb_to_linear(c.r)
   local lg = srgb_to_linear(c.g)
   local lb = srgb_to_linear(c.b)
   return 0.2126 * lr + 0.7152 * lg + 0.0722 * lb
 end
 
+-- WCAG contrast ratio between two colors (1:1 = same luminance, up to 21:1
+-- for white-on-black). Order-independent; the result is always >= 1.
+function M.contrast_ratio(c1, c2)
+  local L1 = M.relative_luminance(c1)
+  local L2 = M.relative_luminance(c2)
+  if L1 < L2 then L1, L2 = L2, L1 end
+  return (L1 + 0.05) / (L2 + 0.05)
+end
+
+-- Returns the highest WCAG level the ratio satisfies for normal text:
+-- "AAA" (>= 7), "AA" (>= 4.5), or "fail" (< 4.5). Large-text thresholds
+-- (3 / 4.5) are not a separate level here — callers can compute as needed.
+function M.contrast_level(ratio)
+  if ratio >= 7   then return "AAA"  end
+  if ratio >= 4.5 then return "AA"   end
+  return "fail"
+end
+
 -- Pick black or white text for a given background such that contrast is maximized.
 function M.contrast_text(bg)
-  local L = relative_luminance(bg)
+  local L = M.relative_luminance(bg)
   local on_black = (L + 0.05) / 0.05
   local on_white = 1.05 / (L + 0.05)
   return on_white > on_black and "#ffffff" or "#000000"
