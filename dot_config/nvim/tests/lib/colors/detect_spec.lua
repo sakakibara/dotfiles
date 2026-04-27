@@ -70,6 +70,44 @@ T.describe("lib.colors.detect JSX class attributes", function()
   end)
 end)
 
+T.describe("lib.colors.detect JSON string values", function()
+  T.it("detects #ff0000 inside a JSON string value", function()
+    local buf = make_buf({
+      [[{ "color": "#ff0000", "bg": "rgb(0, 255, 0)" }]],
+    })
+    vim.bo[buf].filetype = "json"
+    local results = D.detect(buf, 0, 0)
+    -- Two strings, two colors. (Keys are also strings — but "color"/"bg"
+    -- aren't valid colors so parse_all returns nothing for them.)
+    T.eq(#results, 2)
+  end)
+
+  T.it("ignores keys that aren't color literals", function()
+    local buf = make_buf({ [[{ "name": "alice" }]] })
+    vim.bo[buf].filetype = "json"
+    local results = D.detect(buf, 0, 0)
+    T.eq(#results, 0)
+    vim.api.nvim_buf_delete(buf, { force = true })
+  end)
+end)
+
+T.describe("lib.colors.detect YAML scalar values", function()
+  -- Note: bare hex (`color: #ff0000`) parses as a YAML comment, so colors
+  -- have to be quoted to survive as scalars. We test both quote flavors.
+  T.it("detects hex colors in double- and single-quoted scalars", function()
+    local buf = make_buf({
+      'theme:',
+      '  primary: "#ff0000"',
+      "  secondary: '#00ff00'",
+      '  bg: "rgb(0, 0, 255)"',
+    })
+    vim.bo[buf].filetype = "yaml"
+    local results = D.detect(buf, 0, 3)
+    T.truthy(#results >= 3, "expected ≥3 detections, got " .. #results)
+    vim.api.nvim_buf_delete(buf, { force = true })
+  end)
+end)
+
 T.describe("lib.colors.detect regex gate", function()
   T.it("does NOT run regex on a TS-less filetype by default", function()
     D._regex_filetypes = {}  -- explicit reset for test isolation

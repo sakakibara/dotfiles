@@ -41,6 +41,23 @@ M._queries = {
       (attribute_name) @attr (#eq? @attr "class")
       (quoted_attribute_value (attribute_value) @color-candidate))
   ]],
+
+  -- JSON: capture the inner text of every string. parse_all silently
+  -- no-ops on non-color text so over-capture is fine; the cost is one
+  -- regex run per string node.
+  json = [[
+    (string (string_content) @color-candidate)
+  ]],
+
+  -- YAML: scalar values come in three flavors. Patterns are independent;
+  -- a parse failure on any one node type disables detection for the
+  -- whole filetype, but these three are the standard tree-sitter-yaml
+  -- node names since the 0.5+ grammar.
+  yaml = [[
+    (plain_scalar)         @color-candidate
+    (double_quote_scalar)  @color-candidate
+    (single_quote_scalar)  @color-candidate
+  ]],
 }
 
 -- Filetypes whose treesitter parser language differs from the ft name.
