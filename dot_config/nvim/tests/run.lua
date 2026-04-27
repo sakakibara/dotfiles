@@ -24,5 +24,6 @@ dofile(vim.fn.getcwd() .. "/tests/lib/colors/picker_spec.lua")
 dofile(vim.fn.getcwd() .. "/tests/lib/colors/format_spec.lua")
 dofile(vim.fn.getcwd() .. "/tests/lib/colors/contrast_spec.lua")
 dofile(vim.fn.getcwd() .. "/tests/lib/colors/augends_spec.lua")
+dofile(vim.fn.getcwd() .. "/tests/lib/colors/gradient_spec.lua")
 
 require("tests.helpers").report_and_exit()

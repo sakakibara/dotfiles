@@ -52,6 +52,7 @@ local function redraw(buf)
   if is_excluded(buf) then
     R().clear(buf)
     require("lib.colors.contrast").clear(buf)
+    require("lib.colors.gradient").clear(buf)
     return
   end
   local top, bot = viewport(buf)
@@ -59,6 +60,8 @@ local function redraw(buf)
   R().apply(buf, detected)
   local CT = require("lib.colors.contrast")
   if CT.is_enabled(buf) then CT.render(buf, top, bot, detected) end
+  local GR = require("lib.colors.gradient")
+  if GR.is_enabled(buf) then GR.render(buf, top, bot) end
 end
 
 local function schedule(buf)
@@ -172,6 +175,12 @@ function M.setup(opts)
     vim.notify("Contrast hints " .. (on and "on" or "off"), vim.log.levels.INFO)
   end, {
     desc = "Toggle WCAG contrast ratio virt-text for the current buffer",
+  })
+  vim.api.nvim_create_user_command("ColorGradient", function()
+    local on = require("lib.colors.gradient").toggle(0)
+    vim.notify("Gradient swatches " .. (on and "on" or "off"), vim.log.levels.INFO)
+  end, {
+    desc = "Toggle multi-stop gradient swatch virt-text for the current buffer",
   })
 end
 
