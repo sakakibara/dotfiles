@@ -87,6 +87,15 @@ local function derive_palette()
     info = info, hint = hint,
     git_add = git_add, git_del = git_del, git_chg = git_chg,
   }
+
+  -- Wire (or unwire) the powerline separators based on whether the bar bg
+  -- is actually distinct from Normal.bg. Same colors on both sides → ugly
+  -- gray triangle, so we blank the separators in that case. Themes like
+  -- catppuccin set StatusLine.bg = mantle (≠ base), and pass.
+  local has_distinct_bg = bg_a ~= bg_end
+  for k, glyph in pairs(SEP_GLYPHS) do
+    SEP[k] = has_distinct_bg and glyph or ""
+  end
 end
 
 local function define_highlights()
@@ -145,11 +154,23 @@ end
 -- POWERLINE SYMBOLS
 -- ============================================================================
 
+-- Powerline glyphs only render correctly when the bar has its own bg
+-- distinct from Normal.bg — otherwise the slant triangle is between two
+-- identical fills and shows up as a stray gray shape on a fresh boot
+-- (default colorscheme, before catppuccin loads). derive_palette() rewrites
+-- these to the real glyphs once it confirms a distinct bg, and resets them
+-- to "" on every ColorScheme event so a switch back to default re-blanks.
 local SEP = {
-  cap_l    = "\u{e0b6}",  -- rounded left
-  cap_r    = "\u{e0b4}",  -- rounded right
-  slant_r  = "\u{e0b8}",  -- slant-right (mode→mid)
-  slant_l  = "\u{e0ba}",  -- slant-left  (mid→mode on right side, unused)
+  cap_l   = "",
+  cap_r   = "",
+  slant_r = "",
+  slant_l = "",
+}
+local SEP_GLYPHS = {
+  cap_l   = "\u{e0b6}",  -- rounded left
+  cap_r   = "\u{e0b4}",  -- rounded right
+  slant_r = "\u{e0b8}",  -- slant-right (mode→mid)
+  slant_l = "\u{e0ba}",  -- slant-left  (mid→mode on right side, unused)
 }
 
 -- 6 levels of horizontal-bar glyphs (U+1FB76..U+1FB7B). Used as a 2-char
