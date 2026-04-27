@@ -176,7 +176,8 @@ return {
       { "g<C-x>", function() return require("dial.map").dec_gvisual() end, mode = "v", expr = true, desc = "Dec sequence" },
     },
     config = function()
-      local augend = require("dial.augend")
+      local augend       = require("dial.augend")
+      local color_augend = require("lib.colors.augends")
       require("dial.config").augends:register_group({
         default = {
           augend.integer.alias.decimal,
@@ -187,6 +188,10 @@ return {
           augend.semver.alias.semver,
           augend.constant.new({ elements = { "and", "or" }, word = true,  cyclic = true }),
           augend.constant.new({ elements = { "&&",  "||" }, word = false, cyclic = true }),
+          -- Color channel bumping in OKLCH space (preserves source syntax).
+          color_augend.lightness({ step = 0.05 }),
+          color_augend.chroma   ({ step = 0.02 }),
+          color_augend.hue      ({ step = 5    }),
         },
       })
     end,
