@@ -5,6 +5,16 @@ local function default_concurrency()
   return 2 * (uv.available_parallelism and uv.available_parallelism() or 2)
 end
 
+local TIMEOUT_MS = 10 * 60 * 1000
+local POLL_MS = 25
+
+local function safe_call(label, fn, ...)
+  local ok, err = pcall(fn, ...)
+  if not ok then
+    vim.notify("core.pack.jobs: " .. label .. ": " .. tostring(err), vim.log.levels.ERROR)
+  end
+end
+
 local Pool = {}
 Pool.__index = Pool
 
@@ -24,7 +34,7 @@ function Pool:add(job)
 end
 
 local function start_job(self, job, on_progress, total, on_all_done)
-  if job.on_start then pcall(job.on_start, job) end
+  if job.on_start then safe_call("on_start", job.on_start, job) end
   self.inflight = self.inflight + 1
   vim.system(job.cmd, { cwd = job.cwd, text = true }, function(result)
     -- vim.system callback runs in libuv thread; schedule for main loop.
@@ -32,8 +42,8 @@ local function start_job(self, job, on_progress, total, on_all_done)
       self.inflight = self.inflight - 1
       self.done = self.done + 1
       result.tag = job.tag
-      if job.on_done then pcall(job.on_done, result) end
-      if on_progress then pcall(on_progress, self.done, total, result) end
+      if job.on_done then safe_call("on_done", job.on_done, result) end
+      if on_progress then safe_call("on_progress", on_progress, self.done, total, result) end
       if #self.queue > 0 then
         local next_job = table.remove(self.queue, 1)
         start_job(self, next_job, on_progress, total, on_all_done)
@@ -46,9 +56,8 @@ end
 
 function Pool:run(opts)
   opts = opts or {}
-  if #self.queue == 0 then return end
   local total = #self.queue
-  local finished = false
+  local finished = (total == 0)
   local function on_all_done() finished = true end
   -- Start up to `concurrency` jobs.
   local starting = math.min(self.concurrency, #self.queue)
@@ -57,7 +66,11 @@ function Pool:run(opts)
     start_job(self, job, opts.on_progress, total, on_all_done)
   end
   -- Block this coroutine until all settle.
-  vim.wait(10 * 60 * 1000, function() return finished end, 25)
+  local ok = vim.wait(TIMEOUT_MS, function() return finished end, POLL_MS)
+  if not ok then
+    vim.notify("core.pack.jobs: pool timed out after 10m (some jobs may not have completed)",
+      vim.log.levels.WARN)
+  end
 end
 
 return M
