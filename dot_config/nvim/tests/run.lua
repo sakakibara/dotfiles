@@ -12,6 +12,7 @@ dofile(vim.fn.getcwd() .. "/tests/format_spec.lua")
 dofile(vim.fn.getcwd() .. "/tests/lang_spec.lua")
 dofile(vim.fn.getcwd() .. "/tests/theme_spec.lua")
 dofile(vim.fn.getcwd() .. "/tests/chezmoi_spec.lua")
+dofile(vim.fn.getcwd() .. "/tests/pack/lock_spec.lua")
 
 dofile(vim.fn.getcwd() .. "/tests/lib/colors/init_spec.lua")
 dofile(vim.fn.getcwd() .. "/tests/lib/colors/color_spec.lua")
