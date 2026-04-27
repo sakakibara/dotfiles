@@ -1,27 +1,12 @@
 {{ if eq .chezmoi.os "windows" -}}
 #!/usr/bin/env pwsh
-# Hash trigger — re-runs when the mise config template changes.
+# Hash trigger — re-runs when the mise config or the mise lib changes.
 # mise config hash: {{ include "dot_config/mise/config.toml.tmpl" | sha256sum }}
+# mise.ps1 hash:    {{ include "etc/powershell/lib/mise.ps1"     | sha256sum }}
 
 $ErrorActionPreference = 'Stop'
+$env:CHEZMOI_SOURCE_DIR = '{{ .chezmoi.sourceDir }}'
 
-function _Heading([string]$msg) { Write-Host ''; Write-Host ('==> ' + $msg) }
-function _Arrow([string]$msg)   { Write-Host ('  -> ' + $msg) }
-
-_Heading 'mise bootstrap'
-if (-not (Get-Command mise -ErrorAction SilentlyContinue)) {
-    _Arrow 'mise missing — installing via scoop (preferred) or winget'
-    if (Get-Command scoop -ErrorAction SilentlyContinue) {
-        & scoop install mise
-    } elseif (Get-Command winget -ErrorAction SilentlyContinue) {
-        & winget install --id jdx.mise --accept-package-agreements --accept-source-agreements
-    } else {
-        [Console]::Error.WriteLine('mise: no package manager found (scoop or winget required)')
-        exit 1
-    }
-}
-_Arrow 'mise is installed'
-
-_Heading 'mise install (apply config.toml)'
-& mise install
+. (Join-Path $env:CHEZMOI_SOURCE_DIR 'etc/powershell/lib/mise.ps1')
+exit (Install-Mise)
 {{ end -}}

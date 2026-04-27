@@ -161,6 +161,23 @@ jobs:
       - name: sync.ps1 (parsers + format + apply)
         shell: pwsh
         run: pwsh -NoProfile -File etc/tests/sync_ps1.ps1
+      - name: Parse-check etc/powershell/lib/*.ps1
+        shell: pwsh
+        run: |
+          $ok = $true
+          foreach ($f in (Get-ChildItem -Path etc/powershell/lib -Filter '*.ps1' -File)) {
+            $errors = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile(
+              $f.FullName, [ref]$null, [ref]$errors)
+            if ($errors.Count -gt 0) {
+              $ok = $false
+              Write-Host ("$($f.Name) failed:")
+              $errors | ForEach-Object { Write-Host $_ }
+            } else {
+              Write-Host ("$($f.Name) OK")
+            }
+          }
+          if (-not $ok) { exit 1 }
 
   validate-packages-fedora:
     name: Validate packages (Fedora)

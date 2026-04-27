@@ -55,6 +55,14 @@ function _ChezmoiSourceDir {
     return ''
 }
 
+# SHA256 of $file's contents, or empty if unreadable. Used to seed pick's
+# hash-diff "changed" marker so the menu pre-checks steps whose inputs
+# have shifted since the last run.
+function _HashFile([string]$file) {
+    if (-not $file -or -not (Test-Path -LiteralPath $file)) { return '' }
+    return (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLower()
+}
+
 # ---------- info ----------
 function Cmd-Info {
     $sourceDir = _ChezmoiSourceDir
@@ -110,7 +118,9 @@ dotfiles — chezmoi wrapper with status snapshot
 Usage:
   dotfiles                  Print info snapshot (default)
   dotfiles info             Same as default
-  dotfiles install          Run install steps (interactive picker port pending — use chezmoi apply)
+  dotfiles install          Interactive menu to (re)run install steps
+  dotfiles install all      Run every install step non-interactively
+  dotfiles install <names>  Run only the named steps (e.g. Install-Scoop, Install-Mise)
   dotfiles sync             Review untracked packages and add/blacklist them
   dotfiles edit <pattern>   Fuzzy-find a managed file and edit via chezmoi
   dotfiles profile [name]   Print or switch the active chezmoi profile
@@ -351,22 +361,75 @@ function _UpgradeAll {
     }
 }
 
-# ---------- install / sync stubs ----------
-# These will be ported in later sessions (they require porting the
-# pick.bash interactive multi-select TUI and sync.bash review TUI to
-# PowerShell). Until then, point Windows users at the chezmoi paths
-# that work without our wrapper.
+function Cmd-Install([string[]]$InstallArgs) {
+    if ($InstallArgs.Count -ge 1 -and ($InstallArgs[0] -in '-h', '--help')) {
+        @"
+dotfiles install — interactive multi-select runner for install steps.
 
-function Cmd-Install-Stub {
-    @"
-dotfiles install: PowerShell port pending.
+Usage:
+  dotfiles install                  Open the menu (pre-checks items whose
+                                    inputs have changed since the last run)
+  dotfiles install all              Run every step non-interactively
+  dotfiles install none             Run only required steps (skip everything else)
+  dotfiles install <name> <name>…   Run the named steps (e.g. Install-Scoop Install-Mise)
 
-For now on Windows, run install steps via chezmoi directly:
-  chezmoi apply                   # runs every run_once_install-* script
-
-Each script is hash-triggered, so apply only re-fires the steps whose
-inputs (packages.txt, mise config, hive layout) actually changed.
+Inside the menu:
+  ↑/↓ navigate · space toggle · a/n select all/none
+  / filter · enter run · q/esc cancel · ? help
 "@ | Write-Host
+        return
+    }
+
+    if (-not (_Have chezmoi)) {
+        [Console]::Error.WriteLine('dotfiles install: chezmoi not on PATH')
+        exit 1
+    }
+    $sourceDir = _ChezmoiSourceDir
+    if (-not $sourceDir) {
+        [Console]::Error.WriteLine('dotfiles install: chezmoi source-path returned nothing')
+        exit 1
+    }
+
+    # Translate positional args into DOTFILES_PICK so non-interactive runs
+    # (`dotfiles install all`, `dotfiles install Install-Scoop Install-Mise`)
+    # skip the menu and execute immediately.
+    if ($InstallArgs.Count -gt 0) {
+        switch ($InstallArgs[0]) {
+            'all'   { $env:DOTFILES_PICK = 'all'  }
+            'none'  { $env:DOTFILES_PICK = 'none' }
+            default { $env:DOTFILES_PICK = ($InstallArgs -join ',') }
+        }
+    }
+
+    # Source pick.ps1 (the picker) + the per-tool libraries from the
+    # chezmoi source dir. This mirrors the bash `import unix darwin brew
+    # mise hive pick` pattern: each library defines `Tool::Install`,
+    # `Tool::Require`, `Tool::Setup` functions; pick invokes the *Setup
+    # functions when the user selects them.
+    . (Join-Path $PSScriptRoot 'pick.ps1')
+    $lib = Join-Path $sourceDir 'etc/powershell/lib'
+    . (Join-Path $lib 'scoop.ps1')
+    . (Join-Path $lib 'mise.ps1')
+    . (Join-Path $lib 'hive.ps1')
+
+    $env:CHEZMOI_SOURCE_DIR = $sourceDir
+
+    $scoopH = _HashFile (Join-Path $sourceDir 'etc/windows/packages.txt')
+    $miseH  = _HashFile (Join-Path $sourceDir 'dot_config/mise/config.toml.tmpl')
+    $hiveH  = _HashFile (Join-Path $sourceDir 'dot_config/hive/config.toml.tmpl')
+
+    $items = @(
+        '==Packages',
+        "Install-Scoop=Scoop apps & winget|$scoopH",
+        '==Toolchains',
+        "Install-Mise=Language toolchains via mise|$miseH",
+        '==Workspace',
+        "Install-Hive=Workspace symlinks (hive)|$hiveH"
+    )
+
+    $env:DOTFILES_PICK_SCOPE = 'install'
+    $rc = Invoke-Pick @items
+    exit $rc
 }
 
 function Cmd-Sync {
@@ -397,7 +460,7 @@ switch ($first) {
             exit $LASTEXITCODE
         }
     }
-    'install'  { Cmd-Install-Stub }
+    'install'  { Cmd-Install $rest }
     'sync'     { Cmd-Sync }
     'edit'     { Cmd-Edit    $rest }
     'profile'  { Cmd-Profile $rest }
