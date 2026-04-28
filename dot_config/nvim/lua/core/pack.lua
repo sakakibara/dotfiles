@@ -652,18 +652,16 @@ function M._structured_status()
   }
   local highlights = { { 0, 0, #lines[1], "Title" } }
 
-  local UI = require("core.pack.ui")
   for _, n in ipairs(names) do
     local s = M._specs[n]
     local state, glyph, glyph_hl
     if M._loaded[n] then
-      state, glyph, glyph_hl = "loaded", "●", "Special"
+      state, glyph, glyph_hl = "loaded", "*", "Special"
     elseif s.lazy then
-      state, glyph, glyph_hl = "lazy", "◐", "Identifier"
+      state, glyph, glyph_hl = "lazy", "~", "Identifier"
     else
-      state, glyph, glyph_hl = "pending", "◯", "Comment"
+      state, glyph, glyph_hl = "pending", ".", "Comment"
     end
-    glyph = UI.pad_glyph(glyph)
 
     local trigger = s.event and ("event=" .. vim.inspect(s.event):gsub("\n%s*", ""))
         or s.ft and ("ft=" .. vim.inspect(s.ft))
@@ -683,7 +681,7 @@ function M._structured_status()
     local line = ("  %s  %s  %s  %s  %s"):format(glyph, name_padded, state_padded, load_padded, trigger_truncated)
     local row = #lines
 
-    -- col offsets (byte-aware: ●/⚙/◯ are 3-byte UTF-8)
+    -- col offsets (glyph is always 1 cell wide)
     local col = 2
     table.insert(highlights, { row, col, col + #glyph, glyph_hl }); col = col + #glyph + 2
     table.insert(highlights, { row, col, col + #name_padded, "Identifier" }); col = col + #name_padded + 2
