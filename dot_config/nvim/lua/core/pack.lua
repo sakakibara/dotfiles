@@ -798,4 +798,64 @@ end, {
   desc = "Rollback lockfile to a previous snapshot (use :PackUpdate! after to apply)",
 })
 
+vim.api.nvim_create_user_command("PackLog", function(opts)
+  local Log = require("core.pack.log")
+  local UI = require("core.pack.ui")
+  local limit = tonumber(opts.fargs[1]) or 50
+  local entries = Log.list({ limit = limit })
+  if #entries == 0 then notify("core.pack: no log entries"); return end
+
+  local lines = { ("core.pack log — last %d entries"):format(#entries), "" }
+  local highlights = { { 0, 0, #lines[1], "Title" } }
+
+  -- Compute name column width: longest actual, floor 16, cap 40.
+  local name_max = 16
+  for _, e in ipairs(entries) do
+    local n = e.name or ""
+    if #n > name_max then name_max = #n end
+  end
+  if name_max > 40 then name_max = 40 end
+
+  local now = os.time()
+  for _, e in ipairs(entries) do
+    local age_s = now - (e.ts or now)
+    local ago
+    if age_s < 60        then ago = ("%ds ago"):format(age_s)
+    elseif age_s < 3600  then ago = ("%dm ago"):format(math.floor(age_s / 60))
+    elseif age_s < 86400 then ago = ("%dh ago"):format(math.floor(age_s / 3600))
+    else                       ago = ("%dd ago"):format(math.floor(age_s / 86400))
+    end
+
+    local ago_padded = ("%-9s"):format(ago)
+    local raw_name = e.name or ""
+    if #raw_name > name_max then raw_name = raw_name:sub(1, name_max - 1) .. "…" end
+    local name_padded = ("%-" .. name_max .. "s"):format(raw_name)
+    local range = e.from and e.to and ("%s..%s"):format(e.from:sub(1, 7), e.to:sub(1, 7)) or "(initial install)"
+    local count_str = e.count and ("%d commits"):format(e.count) or ""
+    local subject = e.subject or ""
+    if #subject > 60 then subject = subject:sub(1, 59) .. "…" end
+
+    local line = ("  %s  %s  %s  %s  %s"):format(ago_padded, name_padded, range, count_str, subject)
+    local row = #lines
+
+    local col = 2
+    table.insert(highlights, { row, col, col + #ago_padded, "DiagnosticHint" }); col = col + #ago_padded + 2
+    table.insert(highlights, { row, col, col + #name_padded, "Identifier" }); col = col + #name_padded + 2
+    table.insert(highlights, { row, col, col + #range, "Comment" }); col = col + #range + 2
+    table.insert(highlights, { row, col, col + #count_str, "Number" }); col = col + #count_str + 2
+    table.insert(highlights, { row, col, col + #subject, "Comment" })
+
+    lines[#lines + 1] = line
+  end
+
+  UI.status(lines, {
+    title = "core.pack: log",
+    highlights = highlights,
+    filetype = "PackLog",
+  })
+end, {
+  nargs = "?",
+  desc = "Show recent pack update log entries",
+})
+
 return M
