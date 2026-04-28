@@ -41,33 +41,90 @@ function M.dump()
 end
 
 local KIND_LABELS = { packadd = "load", config = "setup" }
+local BAR_WIDTH = 24
+local BAR_FILLED = "█"   -- U+2588 (3 bytes UTF-8)
+local BAR_EMPTY  = "░"   -- U+2591 (3 bytes UTF-8)
 
 function M._structured_report()
-  local sorted = vim.deepcopy(spans)
-  table.sort(sorted, function(a, b) return a.ms > b.ms end)
   local total_ms = (uv.hrtime() - (t0 or uv.hrtime())) / 1e6
+
+  -- Aggregate spans by plugin name (strip "kind:" prefix from name).
+  local agg = {}
+  local order = {}
+  for _, s in ipairs(spans) do
+    local name = s.name:gsub("^[^:]*:", "")
+    local entry = agg[name]
+    if not entry then
+      entry = { total_ms = 0, phases = {}, name = name }
+      agg[name] = entry
+      order[#order + 1] = name
+    end
+    entry.total_ms = entry.total_ms + s.ms
+    local label = KIND_LABELS[s.kind] or s.kind
+    entry.phases[label] = (entry.phases[label] or 0) + s.ms
+  end
+
+  -- Sort plugins by total_ms desc.
+  local sorted = {}
+  for _, name in ipairs(order) do sorted[#sorted + 1] = agg[name] end
+  table.sort(sorted, function(a, b) return a.total_ms > b.total_ms end)
+
+  -- Compute name column width: longest actual, floor 16, cap 40.
+  local name_max = 16
+  for _, e in ipairs(sorted) do name_max = math.max(name_max, #e.name) end
+  if name_max > 40 then name_max = 40 end
+
   local lines = {
-    ("core.pack profile — total startup %.2f ms"):format(total_ms),
+    ("core.pack profile — %d plugins, %.2f ms total"):format(#sorted, total_ms),
     "",
   }
   local highlights = { { 0, 0, #lines[1], "Title" } }
-  for _, s in ipairs(sorted) do
-    -- Strip the redundant "<kind>:" prefix from name (the kind column already shows it).
-    local clean_name = s.name:gsub("^[^:]*:", "")
-    -- Truncate to keep columns aligned for long plugin names.
-    if #clean_name > 30 then clean_name = clean_name:sub(1, 29) .. "…" end
-    local name_padded = ("%-30s"):format(clean_name)
-    local ms_str = ("%9.2f ms"):format(s.ms)
-    local kind_label = KIND_LABELS[s.kind] or s.kind
-    local kind_str = ("(%s)"):format(kind_label)
-    local line = ("  %s  %s  %s"):format(name_padded, ms_str, kind_str)
+
+  for _, e in ipairs(sorted) do
+    -- Truncate name if too long.
+    local name = e.name
+    if #name > name_max then name = name:sub(1, name_max - 1) .. "…" end
+    local name_padded = ("%-" .. name_max .. "s"):format(name)
+
+    -- Bar: filled segments proportional to share of total.
+    local share = (total_ms > 0) and (e.total_ms / total_ms) or 0
+    local filled = math.floor(share * BAR_WIDTH + 0.5)
+    if filled > BAR_WIDTH then filled = BAR_WIDTH end
+    local bar = BAR_FILLED:rep(filled) .. BAR_EMPTY:rep(BAR_WIDTH - filled)
+
+    local ms_str = ("%9.2f ms"):format(e.total_ms)
+    local pct_str = ("%5.1f%%"):format(share * 100)
+
+    -- Phase breakdown: "setup 120.34 + load 45.12" (sorted desc by ms).
+    local phase_parts = {}
+    for label, ms in pairs(e.phases) do
+      phase_parts[#phase_parts + 1] = { label = label, ms = ms }
+    end
+    table.sort(phase_parts, function(a, b) return a.ms > b.ms end)
+    local phase_strs = {}
+    for _, p in ipairs(phase_parts) do
+      phase_strs[#phase_strs + 1] = ("%s %.2f"):format(p.label, p.ms)
+    end
+    local phases = table.concat(phase_strs, " + ")
+
+    local line = ("  %s  %s  %s  %s  %s"):format(name_padded, bar, ms_str, pct_str, phases)
     local row = #lines
+
+    -- Byte-aware col offsets. Each bar character is 3 bytes UTF-8.
     local col = 2
     table.insert(highlights, { row, col, col + #name_padded, "Identifier" }); col = col + #name_padded + 2
+    -- Bar: filled portion = green, empty portion = dim.
+    local bar_filled_bytes = filled * 3
+    table.insert(highlights, { row, col, col + bar_filled_bytes, "DiagnosticOk" })
+    table.insert(highlights, { row, col + bar_filled_bytes, col + #bar, "Comment" })
+    col = col + #bar + 2
     table.insert(highlights, { row, col, col + #ms_str, "Number" }); col = col + #ms_str + 2
-    table.insert(highlights, { row, col, col + #kind_str, "Comment" })
+    table.insert(highlights, { row, col, col + #pct_str, "Type" }); col = col + #pct_str + 2
+    table.insert(highlights, { row, col, col + #phases, "Comment" })
+
     lines[#lines + 1] = line
   end
+
   return { lines = lines, highlights = highlights }
 end
 
