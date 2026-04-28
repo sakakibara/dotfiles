@@ -92,6 +92,8 @@ function M.update_review(pending, opts)
     vim.api.nvim_win_set_buf(win, buf)
     vim.wo[win].wrap = false
     vim.wo[win].cursorline = true
+    vim.wo[win].number = false
+    vim.wo[win].relativenumber = false
     vim.api.nvim_win_set_cursor(win, { 2, 0 })
   end
 
@@ -150,6 +152,12 @@ function M.update_review(pending, opts)
     map("<C-d>", function() view:toggle_expand(vim.api.nvim_win_get_cursor(win)[1]) end)
     map("<CR>",  function() view:apply(); view:close() end)
     map("q",     function() view:close() end)
+    -- Block edit-mode entry keys; the buffer is modifiable=false but the brief
+    -- modifiable window during re-render can let queued insert keys through if
+    -- the user was typing in another buffer when the review window opened.
+    for _, k in ipairs({ "i", "I", "A", "o", "O", "c", "C", "s", "S", "r", "R", "p", "P" }) do
+      vim.keymap.set("n", k, "<nop>", { buffer = buf, nowait = true, silent = true })
+    end
   end
 
   return view
@@ -174,6 +182,8 @@ function M.status(lines, opts)
     vim.api.nvim_win_set_buf(win, buf)
     vim.wo[win].wrap = false
     vim.wo[win].cursorline = true
+    vim.wo[win].number = false
+    vim.wo[win].relativenumber = false
     vim.keymap.set("n", "q", "<cmd>close<cr>", { buffer = buf, nowait = true, silent = true })
   end
 

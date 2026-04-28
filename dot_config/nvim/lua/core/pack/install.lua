@@ -365,6 +365,8 @@ function M.update(specs, names, opts)
                 }
               end
 
+              if fidget then fidget:close(); fidget = nil end
+
               local complete_fired = false
               local function fire_complete()
                 if complete_fired then return end
@@ -378,13 +380,11 @@ function M.update(specs, names, opts)
                   apply_started = true
                   local applied = {}
                   for _, item in ipairs(list) do applied[#applied + 1] = item._orig end
-                  apply_pending(applied, { on_complete = fire_complete, fidget = fidget })
+                  local apply_fidget = (opts.open_window ~= false) and UI.fidget({ open_window = true }) or nil
+                  apply_pending(applied, { on_complete = fire_complete, fidget = apply_fidget })
                 end,
                 on_close = function()
-                  if not apply_started then
-                    if fidget then fidget:close() end
-                    vim.schedule(fire_complete)
-                  end
+                  if not apply_started then vim.schedule(fire_complete) end
                 end,
                 on_expand = function(name, cb)
                   for _, p in ipairs(pending) do
