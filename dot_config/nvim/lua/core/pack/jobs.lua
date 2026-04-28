@@ -1,10 +1,6 @@
 local M = {}
 local uv = vim.uv or vim.loop
 
-local function default_concurrency()
-  return 2 * (uv.available_parallelism and uv.available_parallelism() or 2)
-end
-
 local TIMEOUT_MS = 10 * 60 * 1000
 local POLL_MS = 25
 
@@ -13,6 +9,10 @@ local function safe_call(label, fn, ...)
   if not ok then
     vim.notify("core.pack.jobs: " .. label .. ": " .. tostring(err), vim.log.levels.ERROR)
   end
+end
+
+local function default_concurrency()
+  return 2 * (uv.available_parallelism and uv.available_parallelism() or 2)
 end
 
 local Pool = {}
@@ -54,22 +54,38 @@ local function start_job(self, job, on_progress, total, on_all_done)
   end)
 end
 
+-- Non-blocking. Returns immediately. on_complete fires once when all jobs settle.
 function Pool:run(opts)
   opts = opts or {}
   local total = #self.queue
-  local finished = (total == 0)
-  local function on_all_done() finished = true end
-  -- Start up to `concurrency` jobs.
+  local function on_all_done()
+    if opts.on_complete then safe_call("on_complete", opts.on_complete) end
+  end
+  if total == 0 then
+    -- Schedule so on_complete still fires asynchronously (consistent with the non-empty path).
+    vim.schedule(on_all_done)
+    return
+  end
   local starting = math.min(self.concurrency, #self.queue)
   for _ = 1, starting do
     local job = table.remove(self.queue, 1)
     start_job(self, job, opts.on_progress, total, on_all_done)
   end
-  -- Block this coroutine until all settle.
-  local ok = vim.wait(TIMEOUT_MS, function() return finished end, POLL_MS)
+end
+
+-- Test-only synchronous wrapper. Production code uses pool:run directly with on_complete.
+function M.run_sync(pool, opts)
+  opts = opts or {}
+  local user_complete = opts.on_complete
+  local done = false
+  opts.on_complete = function()
+    if user_complete then user_complete() end
+    done = true
+  end
+  pool:run(opts)
+  local ok = vim.wait(TIMEOUT_MS, function() return done end, POLL_MS)
   if not ok then
-    vim.notify("core.pack.jobs: pool timed out after 10m (some jobs may not have completed)",
-      vim.log.levels.WARN)
+    vim.notify("core.pack.jobs: run_sync timed out after 10m", vim.log.levels.WARN)
   end
 end
 
