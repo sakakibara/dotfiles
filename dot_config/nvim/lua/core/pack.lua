@@ -643,6 +643,23 @@ vim.api.nvim_create_user_command("PackStatus", function()
   UI.status(M._status_lines(), { title = "core.pack: status" })
 end, { desc = "List registered plugin specs in a scratch buffer" })
 
+vim.api.nvim_create_user_command("PackInstall", function()
+  local Install = require("core.pack.install")
+  local specs = {}
+  for _, s in pairs(M._specs) do specs[#specs + 1] = s end
+  Install.install_missing(specs, {
+    open_window = true,
+    on_progress = function(done, total, last)
+      if last and last.tag then
+        vim.notify(("core.pack: installed %d/%d (%s)"):format(done, total, last.tag))
+      end
+    end,
+    on_complete = function()
+      vim.notify("core.pack: install complete")
+    end,
+  })
+end, { desc = "Install any plugins missing on disk" })
+
 vim.api.nvim_create_user_command("PackUpdate", function(opts)
   local Install = require("core.pack.install")
   local specs = {}
