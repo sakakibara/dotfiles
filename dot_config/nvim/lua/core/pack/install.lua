@@ -185,12 +185,31 @@ function M.update(specs, names, opts)
   if #pending == 0 then notify("core.pack: nothing to update"); return end
 
   if opts.confirm ~= false then
-    local lines = { ("core.pack: %d updates pending:"):format(#pending) }
+    -- Compute commit count for each pending entry (used by the review UI).
     for _, p in ipairs(pending) do
-      lines[#lines + 1] = ("  %s  %s..%s"):format(p.spec.name, p.from:sub(1, 7), p.to:sub(1, 7))
+      local commits = Git.log_between(p.dir, p.from, p.to) or {}
+      p.count = #commits
     end
-    local choice = vim.fn.confirm(table.concat(lines, "\n"), "&Apply\n&Cancel", 1)
-    if choice ~= 1 then notify("core.pack: cancelled"); return end
+    -- Adapt pending entries for ui (it expects { name, from, to, count }).
+    local items = {}
+    for _, p in ipairs(pending) do
+      items[#items + 1] = {
+        name = p.spec.name, from = p.from, to = p.to, count = p.count, _orig = p,
+      }
+    end
+    local UI = require("core.pack.ui")
+    local applied
+    UI.update_review(items, {
+      open_window = opts.open_window ~= false,
+      on_apply = function(list)
+        applied = {}
+        for _, item in ipairs(list) do applied[#applied + 1] = item._orig end
+      end,
+    })
+    -- Wait for the user to apply or cancel. on_apply fires on <CR>; close fires on q.
+    -- vim.wait blocks here until applied is populated or the user closes the buffer.
+    vim.wait(10 * 60 * 1000, function() return applied ~= nil end, 50)
+    pending = applied or {}
   end
 
   History.snapshot()

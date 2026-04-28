@@ -32,3 +32,43 @@ T.describe("core.pack.ui.progress", function()
     view:close()
   end)
 end)
+
+T.describe("core.pack.ui.update_review", function()
+  T.it("renders one line per pending update, default marked", function()
+    local UI = fresh()
+    local pending = {
+      { name = "a", from = "abc1234567", to = "def8901234", count = 3 },
+      { name = "b", from = "111", to = "222", count = 1 },
+    }
+    local view = UI.update_review(pending, { open_window = false, on_apply = function() end })
+    local lines = vim.api.nvim_buf_get_lines(view.buf, 0, -1, false)
+    T.truthy(lines[2]:match("^%s*%[x%] a "))
+    T.truthy(lines[3]:match("^%s*%[x%] b "))
+    view:close()
+  end)
+
+  T.it("toggle_at flips a line's mark", function()
+    local UI = fresh()
+    local pending = { { name = "a", from = "1", to = "2", count = 1 } }
+    local view = UI.update_review(pending, { open_window = false, on_apply = function() end })
+    view:toggle_at(2)
+    local lines = vim.api.nvim_buf_get_lines(view.buf, 0, -1, false)
+    T.truthy(lines[2]:match("^%s*%[ %] a "))
+    view:close()
+  end)
+
+  T.it("apply() invokes on_apply with currently-marked entries only", function()
+    local UI = fresh()
+    local pending = {
+      { name = "a", from = "1", to = "2", count = 1 },
+      { name = "b", from = "1", to = "2", count = 1 },
+    }
+    local got
+    local view = UI.update_review(pending, { open_window = false, on_apply = function(list) got = list end })
+    view:toggle_at(3)  -- unmark b
+    view:apply()
+    T.eq(#got, 1)
+    T.eq(got[1].name, "a")
+    view:close()
+  end)
+end)
