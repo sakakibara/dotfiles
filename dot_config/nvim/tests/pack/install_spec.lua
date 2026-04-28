@@ -106,4 +106,24 @@ T.describe("core.pack.install", function()
     I.install_missing({ { name = "demo", src = "file://" .. remote } }, {})
     T.truthy(#H.list() >= 1)
   end)
+
+  T.it("update with target=lockfile checks out lockfile rev (rollback flow)", function()
+    local I, L = fresh()
+    local remote = make_remote()
+    -- Initial install pins to default branch HEAD (rev_a).
+    I.install_missing({ { name = "demo", src = "file://" .. remote } }, {})
+    local rev_a = L.get("demo").rev
+    -- Remote advances; bring lockfile up to date via update.
+    sh({ "git", "-C", remote, "commit", "--allow-empty", "-q", "-m", "second" })
+    I.update({ { name = "demo", src = "file://" .. remote } }, { "demo" }, { confirm = false })
+    local rev_b = L.get("demo").rev
+    T.truthy(rev_a ~= rev_b, "remote update should advance lockfile")
+    -- Now simulate rollback: write rev_a back into the lockfile.
+    L.set("demo", { src = "file://" .. remote, rev = rev_a })
+    -- Apply with target = lockfile.
+    I.update({ { name = "demo", src = "file://" .. remote } }, { "demo" }, { confirm = false, target = "lockfile" })
+    -- Working tree should now be at rev_a.
+    local Git = require("core.pack.git")
+    T.eq(Git.current_rev(I.install_dir("demo")), rev_a)
+  end)
 end)

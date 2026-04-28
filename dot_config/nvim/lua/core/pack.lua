@@ -642,8 +642,10 @@ vim.api.nvim_create_user_command("PackUpdate", function(opts)
   local Install = require("core.pack.install")
   local specs = {}
   for _, s in pairs(M._specs) do specs[#specs + 1] = s end
-  Install.update(specs, opts.fargs, { confirm = true })
+  local target = opts.bang and "lockfile" or "remote"
+  Install.update(specs, opts.fargs, { confirm = true, target = target })
 end, {
+  bang = true,
   nargs = "*",
   complete = function(arglead)
     local out = {}
@@ -653,7 +655,7 @@ end, {
     table.sort(out)
     return out
   end,
-  desc = "Update plugin(s) via core.pack.install",
+  desc = "Update plugin(s); ! = target lockfile revs (use after :PackRollback)",
 })
 
 vim.api.nvim_create_user_command("PackClean", function()
@@ -667,5 +669,36 @@ vim.api.nvim_create_user_command("PackSync", function()
   vim.cmd("PackUpdate")
   vim.cmd("PackClean")
 end, { desc = "Update then clean" })
+
+vim.api.nvim_create_user_command("PackRollback", function(opts)
+  local History = require("core.pack.history")
+  local entries = History.list()
+  if #entries == 0 then notify("core.pack: no snapshots", vim.log.levels.WARN); return end
+
+  local function apply(ts)
+    local data = History.restore(ts)
+    if not data then notify("core.pack: restore failed", vim.log.levels.ERROR); return end
+    notify(("core.pack: restored snapshot %s — run :PackSync to apply"):format(os.date("!%Y-%m-%dT%H:%M:%SZ", math.floor(ts / 1000))))
+  end
+
+  -- Numeric arg = direct index (1 = newest); no arg = picker.
+  local idx = tonumber(opts.fargs[1])
+  if idx then
+    local e = entries[idx]
+    if not e then notify(("core.pack: no snapshot at index %d"):format(idx), vim.log.levels.WARN); return end
+    apply(e.ts)
+    return
+  end
+
+  local items = {}
+  for i, e in ipairs(entries) do items[i] = ("%d  %s"):format(i, e.iso) end
+  vim.ui.select(items, { prompt = "Rollback to:" }, function(choice, i)
+    if not i then return end
+    apply(entries[i].ts)
+  end)
+end, {
+  nargs = "?",
+  desc = "Rollback lockfile to a previous snapshot (use :PackSync after to apply)",
+})
 
 return M

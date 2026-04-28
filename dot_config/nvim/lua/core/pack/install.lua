@@ -137,14 +137,25 @@ function M.update(specs, names, opts)
             refs.default_branch = Git.default_branch(dir)
             local resolved = Version.resolve(spec.version, refs)
             if not resolved then return end
-            -- Compute target sha: for branch use origin/<branch>; for tag/commit, the ref itself.
-            local target_ref = resolved.kind == "branch" and ("origin/" .. resolved.ref) or resolved.ref
-            local rev_now    = Git.current_rev(dir)
-            local target_r   = vim.system({ "git", "-C", dir, "rev-parse", target_ref }, { text = true }):wait()
-            local target_rev = target_r.code == 0 and target_r.stdout:gsub("%s+", "") or nil
+            local rev_now = Git.current_rev(dir)
+            local target_rev
+            if opts.target == "lockfile" then
+              local entry = Lock.get(name)
+              target_rev = entry and entry.rev
+            else
+              local target_ref = resolved.kind == "branch" and ("origin/" .. resolved.ref) or resolved.ref
+              local rr = vim.system({ "git", "-C", dir, "rev-parse", target_ref }, { text = true }):wait()
+              target_rev = rr.code == 0 and rr.stdout:gsub("%s+", "") or nil
+            end
             if target_rev and target_rev ~= rev_now then
+              local checkout_ref
+              if opts.target == "lockfile" then
+                checkout_ref = target_rev  -- direct sha checkout for rollback
+              else
+                checkout_ref = (resolved.kind == "branch") and ("origin/" .. resolved.ref) or resolved.ref
+              end
               pending[#pending + 1] = { spec = spec, dir = dir, from = rev_now, to = target_rev,
-                ref = resolved.ref, checkout_ref = target_ref }
+                ref = resolved.ref, checkout_ref = checkout_ref }
             end
           end,
         })
