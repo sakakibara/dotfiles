@@ -37,7 +37,6 @@ sh -c "$(wget -qO- get.chezmoi.io/lb)" -- init --apply sakakibara
 - **`install-3-extras.sh.tmpl`** (Linux): bucket-3 tools not in distro repos (starship, gh, lazygit, lazydocker, cargo-installed Rust tools).
 - **`install-4-hive.sh.tmpl`**: workspace symlink layout via hive.
 - **`run_once_setup-theme.sh.tmpl`** (macOS / Linux / WSL) and the `windows/` PowerShell counterpart: downloads theme assets referenced by manifests under `~/.config/dotfiles/themes/`, verifies their sha256, and seeds `~/.local/state/dotfiles/theme` with the manifest's default. After this, `theme set <family>/<variant>` switches everything (kitty, wezterm, tmux, nvim, fish colors, fzf, vivid) at once.
-- **nvim plugins**: managed by the in-tree `core.pack` (under `dot_config/nvim/lua/core/pack/`). Lockfile at `~/.config/nvim/pack-lock.json` is tracked in source for reproducibility — first launch installs anything missing in parallel via the bundled job runner.
 
 On Windows native, `chezmoi apply` runs the PowerShell counterparts under `.chezmoiscripts/windows/`: `run_once_install-1-scoop.ps1.tmpl` (scoop + winget package install via `etc/windows/packages.txt`), `run_once_install-2-mise.ps1.tmpl` (mise toolchains), `run_once_install-4-hive.ps1.tmpl` (workspace symlinks via hive), and `run_once_setup-theme.ps1.tmpl` (theme assets). The wrapper-level `dotfiles` command on Windows is `dot_local/bin/dotfiles.ps1`; `sync` and the rest of the subcommands work the same as the bash side.
 
