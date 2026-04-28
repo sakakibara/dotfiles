@@ -858,4 +858,41 @@ end, {
   desc = "Show recent pack update log entries",
 })
 
+vim.api.nvim_create_user_command("PackBuild", function(opts)
+  local Install = require("core.pack.install")
+  local UI = require("core.pack.ui")
+  local target = opts.fargs[1]
+  local fidget = UI.fidget({ open_window = true })
+  local total = 0
+  for _, s in pairs(M._specs) do
+    if s.build and (target == nil or s.name == target) then total = total + 1 end
+  end
+  if total == 0 then
+    notify(target and ("core.pack: no build hook for " .. target) or "core.pack: no plugins with build hooks")
+    fidget:close()
+    return
+  end
+  fidget:set_status("core.pack", ("rebuilding 0/%d"):format(total))
+  local done = 0
+  for _, s in pairs(M._specs) do
+    if s.build and (target == nil or s.name == target) then
+      Install.run_build(s, Install.install_dir(s.name), { fidget = fidget })
+      done = done + 1
+      fidget:set_status("core.pack", ("rebuilding %d/%d"):format(done, total))
+    end
+  end
+  fidget:done("core.pack")
+end, {
+  nargs = "?",
+  complete = function(arglead)
+    local out = {}
+    for name, s in pairs(M._specs) do
+      if s.build and name:lower():find(arglead:lower(), 1, true) then out[#out + 1] = name end
+    end
+    table.sort(out)
+    return out
+  end,
+  desc = "Re-run plugin build hooks (one or all)",
+})
+
 return M
