@@ -639,8 +639,9 @@ function M._status_lines()
 end
 
 vim.api.nvim_create_user_command("PackStatus", function()
-  for _, l in ipairs(M._status_lines()) do print(l) end
-end, { desc = "List registered plugin specs" })
+  local UI = require("core.pack.ui")
+  UI.status(M._status_lines(), { title = "core.pack: status" })
+end, { desc = "List registered plugin specs in a scratch buffer" })
 
 vim.api.nvim_create_user_command("PackUpdate", function(opts)
   local Install = require("core.pack.install")
