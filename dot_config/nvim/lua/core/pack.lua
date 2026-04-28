@@ -335,11 +335,6 @@ local function install_all(specs)
   if #to_install > 0 then
     local ok, err = pcall(Install.install_missing, to_install, {
       open_window = true,
-      on_progress = function(done, total, last)
-        if last and last.tag then
-          vim.notify(("core.pack: installed %d/%d (%s)"):format(done, total, last.tag))
-        end
-      end,
       on_complete = function()
         vim.notify("core.pack: install complete — restart nvim to load eager plugins", vim.log.levels.INFO)
       end,
@@ -649,11 +644,6 @@ vim.api.nvim_create_user_command("PackInstall", function()
   for _, s in pairs(M._specs) do specs[#specs + 1] = s end
   Install.install_missing(specs, {
     open_window = true,
-    on_progress = function(done, total, last)
-      if last and last.tag then
-        vim.notify(("core.pack: installed %d/%d (%s)"):format(done, total, last.tag))
-      end
-    end,
     on_complete = function()
       vim.notify("core.pack: install complete")
     end,
