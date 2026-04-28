@@ -106,7 +106,7 @@ function M.update_review(pending, opts)
   vim.bo[buf].buftype = "nofile"
   vim.bo[buf].swapfile = false
   vim.bo[buf].bufhidden = "wipe"
-  if opts.open_window == false then vim.bo[buf].filetype = "pack-review" end
+  if opts.open_window == false then vim.bo[buf].filetype = "PackReview" end
   pcall(vim.api.nvim_buf_set_name, buf, "core.pack: update review")
 
   local marked = {}
@@ -121,7 +121,7 @@ function M.update_review(pending, opts)
     vim.cmd("topleft 18split")
     win = vim.api.nvim_get_current_win()
     vim.api.nvim_win_set_buf(win, buf)
-    vim.bo[buf].filetype = "pack-review"  -- after win_set_buf so ftdetect doesn't clear
+    vim.bo[buf].filetype = "PackReview"  -- after win_set_buf so ftdetect doesn't clear
     vim.wo[win].wrap = false
     vim.wo[win].cursorline = true
     vim.wo[win].number = false
@@ -251,7 +251,7 @@ function M.clean_review(items, opts)
   vim.bo[buf].buftype = "nofile"
   vim.bo[buf].swapfile = false
   vim.bo[buf].bufhidden = "wipe"
-  if opts.open_window == false then vim.bo[buf].filetype = "pack-clean" end
+  if opts.open_window == false then vim.bo[buf].filetype = "PackClean" end
   pcall(vim.api.nvim_buf_set_name, buf, "core.pack: clean review")
 
   local marked = {}
@@ -264,7 +264,7 @@ function M.clean_review(items, opts)
     vim.cmd("topleft 14split")
     win = vim.api.nvim_get_current_win()
     vim.api.nvim_win_set_buf(win, buf)
-    vim.bo[buf].filetype = "pack-clean"  -- after win_set_buf so ftdetect doesn't clear
+    vim.bo[buf].filetype = "PackClean"  -- after win_set_buf so ftdetect doesn't clear
     vim.wo[win].wrap = false
     vim.wo[win].cursorline = true
     vim.wo[win].number = false
@@ -365,7 +365,7 @@ function M.rollback_review(snapshots, opts)
   vim.bo[buf].buftype = "nofile"
   vim.bo[buf].swapfile = false
   vim.bo[buf].bufhidden = "wipe"
-  if opts.open_window == false then vim.bo[buf].filetype = "pack-rollback" end
+  if opts.open_window == false then vim.bo[buf].filetype = "PackRollback" end
   pcall(vim.api.nvim_buf_set_name, buf, "core.pack: rollback")
 
   local row_to_index = rollback_review_render(buf, snapshots)
@@ -375,7 +375,7 @@ function M.rollback_review(snapshots, opts)
     vim.cmd("topleft 14split")
     win = vim.api.nvim_get_current_win()
     vim.api.nvim_win_set_buf(win, buf)
-    vim.bo[buf].filetype = "pack-rollback"  -- after win_set_buf so ftdetect doesn't clear
+    vim.bo[buf].filetype = "PackRollback"  -- after win_set_buf so ftdetect doesn't clear
     vim.wo[win].wrap = false
     vim.wo[win].cursorline = true
     vim.wo[win].number = false
@@ -429,7 +429,7 @@ function M.status(lines, opts)
   vim.bo[buf].buftype = "nofile"
   vim.bo[buf].swapfile = false
   vim.bo[buf].bufhidden = "wipe"
-  local ft = opts.filetype or "pack-status"
+  local ft = opts.filetype or "PackStatus"
   if opts.open_window == false then vim.bo[buf].filetype = ft end
   pcall(vim.api.nvim_buf_set_name, buf, opts.title or "core.pack: status")
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
@@ -480,7 +480,7 @@ function M.fidget(opts)
   vim.bo[buf].buftype = "nofile"
   vim.bo[buf].swapfile = false
   vim.bo[buf].bufhidden = "wipe"
-  if opts.open_window == false then vim.bo[buf].filetype = "pack-fidget" end
+  if opts.open_window == false then vim.bo[buf].filetype = "PackFidget" end
   pcall(vim.api.nvim_buf_set_name, buf, "core.pack: fidget")
 
   -- Row state: { name, text, status = "active"|"done"|"error" }, in insertion order.
@@ -518,7 +518,7 @@ function M.fidget(opts)
       style = "minimal", border = "none",
       focusable = false, zindex = 200,
     })
-    vim.bo[buf].filetype = "pack-fidget"
+    vim.bo[buf].filetype = "PackFidget"
   end
 
   local function resize_window()

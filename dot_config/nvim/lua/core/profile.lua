@@ -70,7 +70,7 @@ vim.api.nvim_create_user_command("PackProfile", function()
   UI.status(data.lines, {
     title = "core.pack: profile",
     highlights = data.highlights,
-    filetype = "pack-profile",
+    filetype = "PackProfile",
   })
 end, { desc = "Show pack startup profile in a scratch buffer" })
 
