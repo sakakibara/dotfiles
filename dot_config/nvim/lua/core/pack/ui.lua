@@ -86,7 +86,7 @@ function M.update_review(pending, opts)
   vim.bo[buf].buftype = "nofile"
   vim.bo[buf].swapfile = false
   vim.bo[buf].bufhidden = "wipe"
-  vim.bo[buf].filetype = "pack-review"
+  if opts.open_window == false then vim.bo[buf].filetype = "pack-review" end
   pcall(vim.api.nvim_buf_set_name, buf, "core.pack: update review")
 
   local marked = {}
@@ -101,6 +101,7 @@ function M.update_review(pending, opts)
     vim.cmd("topleft 18split")
     win = vim.api.nvim_get_current_win()
     vim.api.nvim_win_set_buf(win, buf)
+    vim.bo[buf].filetype = "pack-review"  -- after win_set_buf so ftdetect doesn't clear
     vim.wo[win].wrap = false
     vim.wo[win].cursorline = true
     vim.wo[win].number = false
@@ -193,7 +194,8 @@ function M.status(lines, opts)
   vim.bo[buf].buftype = "nofile"
   vim.bo[buf].swapfile = false
   vim.bo[buf].bufhidden = "wipe"
-  vim.bo[buf].filetype = opts.filetype or "pack-status"
+  local ft = opts.filetype or "pack-status"
+  if opts.open_window == false then vim.bo[buf].filetype = ft end
   pcall(vim.api.nvim_buf_set_name, buf, opts.title or "core.pack: status")
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
   vim.bo[buf].modifiable = false
@@ -210,6 +212,7 @@ function M.status(lines, opts)
     vim.cmd("topleft " .. math.min(math.max(#lines + 2, 8), 24) .. "split")
     win = vim.api.nvim_get_current_win()
     vim.api.nvim_win_set_buf(win, buf)
+    vim.bo[buf].filetype = ft
     vim.wo[win].wrap = false
     vim.wo[win].cursorline = true
     vim.wo[win].number = false
@@ -241,7 +244,7 @@ function M.fidget(opts)
   vim.bo[buf].buftype = "nofile"
   vim.bo[buf].swapfile = false
   vim.bo[buf].bufhidden = "wipe"
-  vim.bo[buf].filetype = "pack-fidget"
+  if opts.open_window == false then vim.bo[buf].filetype = "pack-fidget" end
   pcall(vim.api.nvim_buf_set_name, buf, "core.pack: fidget")
 
   -- Row state: { name, text, status = "active"|"done"|"error" }, in insertion order.
@@ -279,6 +282,7 @@ function M.fidget(opts)
       style = "minimal", border = "none",
       focusable = false, zindex = 200,
     })
+    vim.bo[buf].filetype = "pack-fidget"
   end
 
   local function resize_window()
