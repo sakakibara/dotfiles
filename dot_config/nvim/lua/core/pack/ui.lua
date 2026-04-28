@@ -97,7 +97,7 @@ function M.update_review(pending, opts)
   local row_to_index = update_review_render(buf, win, pending, marked, expanded)
 
   if opts.open_window ~= false then
-    vim.cmd("botright 18split")
+    vim.cmd("topleft 18split")
     win = vim.api.nvim_get_current_win()
     vim.api.nvim_win_set_buf(win, buf)
     vim.wo[win].wrap = false
@@ -198,7 +198,7 @@ function M.status(lines, opts)
 
   local win
   if opts.open_window ~= false then
-    vim.cmd("botright " .. math.min(math.max(#lines + 2, 8), 24) .. "split")
+    vim.cmd("topleft " .. math.min(math.max(#lines + 2, 8), 24) .. "split")
     win = vim.api.nvim_get_current_win()
     vim.api.nvim_win_set_buf(win, buf)
     vim.wo[win].wrap = false
