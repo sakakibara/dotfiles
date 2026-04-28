@@ -138,6 +138,40 @@ function M.install_missing(specs, opts)
   })
 end
 
+-- Apply already-resolved pending updates: parallel checkouts, then lockfile + build hook per plugin.
+local function apply_pending(pending, opts)
+  opts = opts or {}
+  if #pending == 0 then
+    vim.schedule(function() if opts.on_complete then opts.on_complete() end end)
+    return
+  end
+  History.snapshot()
+
+  local pool = Jobs.pool({ concurrency = opts.concurrency })
+  for _, p in ipairs(pending) do
+    pool:add({
+      cmd = { "git", "-C", p.dir, "checkout", "--detach", "--quiet", p.checkout_ref or p.ref },
+      tag = p.spec.name,
+      on_done = function(r)
+        if r.code ~= 0 then
+          notify(("core.pack: update failed for %s: %s"):format(p.spec.name, r.stderr),
+            vim.log.levels.ERROR)
+          return
+        end
+        Lock.set(p.spec.name, {
+          src = p.spec.src, rev = Git.current_rev(p.dir),
+          version = type(p.spec.version) == "string" and p.spec.version or nil,
+        })
+        M.run_build(p.spec, p.dir)
+      end,
+    })
+  end
+  pool:run({
+    on_progress = opts.on_progress,
+    on_complete = function() if opts.on_complete then opts.on_complete() end end,
+  })
+end
+
 function M.update(specs, names, opts)
   opts = opts or {}
   local by_name = {}
@@ -160,8 +194,7 @@ function M.update(specs, names, opts)
             refs.default_branch = Git.default_branch(dir)
             local resolved = Version.resolve(spec.version, refs)
             if not resolved then return end
-            local rev_now = Git.current_rev(dir)
-            local target_rev
+            local target_rev, checkout_ref
             if opts.target == "lockfile" then
               local entry = Lock.get(name)
               if not entry then
@@ -169,73 +202,71 @@ function M.update(specs, names, opts)
                 return
               end
               target_rev = entry.rev
+              checkout_ref = target_rev
             else
               local target_ref = resolved.kind == "branch" and ("origin/" .. resolved.ref) or resolved.ref
               local rr = vim.system({ "git", "-C", dir, "rev-parse", target_ref }, { text = true }):wait()
               target_rev = rr.code == 0 and rr.stdout:gsub("%s+", "") or nil
+              checkout_ref = target_ref
             end
+            local rev_now = Git.current_rev(dir)
             if target_rev and target_rev ~= rev_now then
-              local checkout_ref
-              if opts.target == "lockfile" then
-                checkout_ref = target_rev  -- direct sha checkout for rollback
-              else
-                checkout_ref = (resolved.kind == "branch") and ("origin/" .. resolved.ref) or resolved.ref
-              end
-              pending[#pending + 1] = { spec = spec, dir = dir, from = rev_now, to = target_rev,
-                ref = resolved.ref, checkout_ref = checkout_ref }
+              pending[#pending + 1] = {
+                spec = spec, dir = dir, from = rev_now, to = target_rev,
+                ref = resolved.ref, checkout_ref = checkout_ref,
+              }
             end
           end,
         })
       end
     end
   end
-  pool:run({ on_progress = opts.on_progress })
 
-  if #pending == 0 then notify("core.pack: nothing to update"); return end
-
-  if opts.confirm ~= false then
-    -- Compute commit count for each pending entry (used by the review UI).
-    for _, p in ipairs(pending) do
-      local commits = Git.log_between(p.dir, p.from, p.to) or {}
-      p.count = #commits
-    end
-    -- Adapt pending entries for ui (it expects { name, from, to, count }).
-    local items = {}
-    for _, p in ipairs(pending) do
-      items[#items + 1] = {
-        name = p.spec.name, from = p.from, to = p.to, count = p.count, _orig = p,
-      }
-    end
-    local UI = require("core.pack.ui")
-    local applied, closed
-    UI.update_review(items, {
-      open_window = opts.open_window ~= false,
-      on_apply = function(list)
-        applied = {}
-        for _, item in ipairs(list) do applied[#applied + 1] = item._orig end
-      end,
-      on_close = function() closed = true end,
-    })
-    -- Predicate: applied set (user hit <CR>) OR buffer closed without applying (user hit q).
-    vim.wait(10 * 60 * 1000, function() return applied ~= nil or closed end, 50)
-    pending = applied or {}
-    if not applied then notify("core.pack: cancelled"); return end
-  end
-
-  History.snapshot()
-  for _, p in ipairs(pending) do
-    local r = Git.checkout(p.dir, p.checkout_ref or p.ref)
-    if r.ok then
-      Lock.set(p.spec.name, {
-        src = p.spec.src, rev = Git.current_rev(p.dir),
-        version = type(p.spec.version) == "string" and p.spec.version or nil,
+  pool:run({
+    on_progress = opts.on_progress,
+    on_complete = function()
+      if #pending == 0 then
+        notify("core.pack: nothing to update")
+        if opts.on_complete then opts.on_complete() end
+        return
+      end
+      if opts.confirm == false then
+        apply_pending(pending, { on_complete = opts.on_complete })
+        return
+      end
+      -- Confirm = true: open review buffer. Apply triggered by user's <CR>; cancel by q.
+      for _, p in ipairs(pending) do
+        local commits = Git.log_between(p.dir, p.from, p.to) or {}
+        p.count = #commits
+      end
+      local items = {}
+      for _, p in ipairs(pending) do
+        items[#items + 1] = {
+          name = p.spec.name, from = p.from, to = p.to, count = p.count, _orig = p,
+        }
+      end
+      -- complete_fired gate: fire opts.on_complete exactly once whether user applies or cancels.
+      local complete_fired = false
+      local function fire_complete()
+        if complete_fired then return end
+        complete_fired = true
+        if opts.on_complete then opts.on_complete() end
+      end
+      UI.update_review(items, {
+        open_window = opts.open_window ~= false,
+        on_apply = function(list)
+          local applied = {}
+          for _, item in ipairs(list) do applied[#applied + 1] = item._orig end
+          apply_pending(applied, { on_complete = fire_complete })
+        end,
+        on_close = function()
+          -- If apply was triggered, fire_complete is called from apply_pending's on_complete.
+          -- If cancelled, fire_complete fires here. Schedule so apply runs first if it raced.
+          vim.schedule(fire_complete)
+        end,
       })
-      M.run_build(p.spec, p.dir)
-    else
-      notify(("core.pack: update failed for %s: %s"):format(p.spec.name, r.err),
-        vim.log.levels.ERROR)
-    end
-  end
+    end,
+  })
 end
 
 function M.clean(specs, opts)
