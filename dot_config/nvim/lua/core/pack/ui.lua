@@ -103,6 +103,12 @@ local function format_subject(s, max)
   return s:sub(1, max - 1) .. "…"
 end
 
+local function fmt_size_kb(kb)
+  if kb < 1024 then return ("%d KB"):format(kb) end
+  if kb < 1024 * 1024 then return ("%.1f MB"):format(kb / 1024) end
+  return ("%.2f GB"):format(kb / 1024 / 1024)
+end
+
 local function update_review_render(buf, win, pending, marked, expanded)
   local lines = {}
   local marked_count = 0
@@ -294,9 +300,13 @@ end
 local function clean_review_render(buf, win, items, marked)
   local lines = {}
   local marked_count = 0
-  for i = 1, #items do if marked[i] then marked_count = marked_count + 1 end end
-  lines[#lines + 1] = ("core.pack: %d of %d marked   <Tab> toggle  a all  u none  <CR> remove  q cancel")
-    :format(marked_count, #items)
+  local total_kb = 0
+  for i = 1, #items do
+    if marked[i] then marked_count = marked_count + 1 end
+    total_kb = total_kb + (items[i].size_kb or 0)
+  end
+  lines[#lines + 1] = ("core.pack: %d of %d marked   %s total   <Tab> toggle  a all  u none  <CR> remove  q cancel")
+    :format(marked_count, #items, fmt_size_kb(total_kb))
 
   local row_to_index = {}
   local highlights = {}
@@ -307,31 +317,21 @@ local function clean_review_render(buf, win, items, marked)
   for _, p in ipairs(items) do name_max = math.max(name_max, #p.name) end
   if name_max > 50 then name_max = 50 end
 
-  -- Dir column gets remainder. Bytes before dir: 2 (lead) + 3 (glyph) + 2 + name_max + 2
-  local PREFIX_BYTES = 2 + 3 + 2 + name_max + 2
-  local dir_max
-  if win and vim.api.nvim_win_is_valid(win) then
-    dir_max = math.max(20, vim.api.nvim_win_get_width(win) - PREFIX_BYTES)
-  else
-    dir_max = 200
-  end
-
   for i, p in ipairs(items) do
     local glyph = M.pad_glyph(marked[i] and STATUS_MARKED or STATUS_UNMARKED)
     local hl_glyph = marked[i] and "Special" or "Comment"
     local name_truncated = p.name
     if #name_truncated > name_max then name_truncated = name_truncated:sub(1, name_max - 1) .. "…" end
     local name = ("%-" .. name_max .. "s"):format(name_truncated)
-    local dir = p.dir or ""
-    if #dir > dir_max then dir = dir:sub(1, dir_max - 1) .. "…" end
-    local line = ("  %s  %s  %s"):format(glyph, name, dir)
+    local size_str = fmt_size_kb(p.size_kb or 0)
+    local line = ("  %s  %s  %s"):format(glyph, name, size_str)
     lines[#lines + 1] = line
     row_to_index[row] = i
 
     local col = 2
     table.insert(highlights, { row - 1, col, col + #glyph, hl_glyph }); col = col + #glyph + 2
     table.insert(highlights, { row - 1, col, col + #name, "Identifier" }); col = col + #name + 2
-    table.insert(highlights, { row - 1, col, col + #dir, "Comment" })
+    table.insert(highlights, { row - 1, col, col + #size_str, "Number" })
     row = row + 1
   end
 

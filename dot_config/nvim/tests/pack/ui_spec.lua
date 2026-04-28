@@ -136,11 +136,14 @@ end)
 T.describe("core.pack.ui.clean_review", function()
   T.it("renders one row per orphan, default marked", function()
     local UI = fresh()
-    local items = { { name = "old-a", dir = "/tmp/old-a" }, { name = "old-b", dir = "/tmp/old-b" } }
+    local items = {
+      { name = "old-a", dir = "/tmp/old-a", size_kb = 1024 },
+      { name = "old-b", dir = "/tmp/old-b", size_kb = 512 },
+    }
     local view = UI.clean_review(items, { open_window = false, on_apply = function() end })
     local lines = vim.api.nvim_buf_get_lines(view.buf, 0, -1, false)
-    T.truthy(lines[1]:match("2 of 2 marked"))
-    T.truthy(lines[2]:match("%[x%]") and lines[2]:match("old%-a"))
+    T.truthy(lines[1]:match("2 of 2 marked") and lines[1]:match("MB"))
+    T.truthy(lines[2]:match("%[x%]") and lines[2]:match("old%-a") and lines[2]:match("MB"))
     T.truthy(lines[3]:match("%[x%]") and lines[3]:match("old%-b"))
     view:close()
   end)

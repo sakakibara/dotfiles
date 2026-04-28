@@ -433,7 +433,10 @@ function M.clean(specs, opts)
   local orphans = {}
   for _, name in ipairs(vim.fn.readdir(root) or {}) do
     if not keep[name] then
-      orphans[#orphans + 1] = { name = name, dir = root .. "/" .. name }
+      local dir = root .. "/" .. name
+      local sz_r = vim.system({ "du", "-sk", dir }, { text = true }):wait()
+      local size_kb = tonumber(sz_r.stdout and sz_r.stdout:match("^(%d+)") or "0") or 0
+      orphans[#orphans + 1] = { name = name, dir = dir, size_kb = size_kb }
     end
   end
 
