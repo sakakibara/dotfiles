@@ -340,6 +340,9 @@ local function install_all(specs)
           vim.notify(("core.pack: installed %d/%d (%s)"):format(done, total, last.tag))
         end
       end,
+      on_complete = function()
+        vim.notify("core.pack: install complete — restart nvim to load eager plugins", vim.log.levels.INFO)
+      end,
     })
     if not ok then
       notify("core.pack: install failed: " .. tostring(err), vim.log.levels.ERROR)
