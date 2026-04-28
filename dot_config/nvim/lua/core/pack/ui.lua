@@ -144,4 +144,38 @@ function M.update_review(pending, opts)
   return view
 end
 
+-- status(lines, opts) - read-only scratch buffer for displaying status text.
+-- opts: { open_window = bool (default true), title = string }
+function M.status(lines, opts)
+  opts = opts or {}
+  local buf = vim.api.nvim_create_buf(false, true)
+  vim.bo[buf].buftype = "nofile"
+  vim.bo[buf].swapfile = false
+  vim.bo[buf].bufhidden = "wipe"
+  pcall(vim.api.nvim_buf_set_name, buf, opts.title or "core.pack: status")
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+  vim.bo[buf].modifiable = false
+
+  local win
+  if opts.open_window ~= false then
+    vim.cmd("botright " .. math.min(math.max(#lines + 2, 8), 24) .. "split")
+    win = vim.api.nvim_get_current_win()
+    vim.api.nvim_win_set_buf(win, buf)
+    vim.wo[win].wrap = false
+    vim.wo[win].cursorline = true
+    vim.keymap.set("n", "q", "<cmd>close<cr>", { buffer = buf, nowait = true, silent = true })
+  end
+
+  local view = { buf = buf, win = win }
+  function view:close()
+    if self.win and vim.api.nvim_win_is_valid(self.win) then
+      vim.api.nvim_win_close(self.win, true)
+    end
+    if vim.api.nvim_buf_is_valid(self.buf) then
+      vim.api.nvim_buf_delete(self.buf, { force = true })
+    end
+  end
+  return view
+end
+
 return M
