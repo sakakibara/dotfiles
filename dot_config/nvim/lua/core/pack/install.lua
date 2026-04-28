@@ -354,6 +354,30 @@ function M.update(specs, names, opts)
                 on_close = function()
                   if not apply_started then vim.schedule(fire_complete) end
                 end,
+                on_expand = function(name, cb)
+                  for _, p in ipairs(pending) do
+                    if p.spec.name == name then
+                      local pool = Jobs.pool({ concurrency = 1 })
+                      pool:add({
+                        cmd = { "git", "-C", p.dir, "log", "--pretty=%H%x09%s", p.from .. ".." .. p.to },
+                        tag = name,
+                        on_done = function(r)
+                          local log = {}
+                          if r.code == 0 then
+                            for line in (r.stdout or ""):gmatch("[^\n]+") do
+                              local sha, subj = line:match("^(%w+)\t(.*)$")
+                              if sha then log[#log + 1] = { sha = sha, subject = subj } end
+                            end
+                          end
+                          cb(log)
+                        end,
+                      })
+                      pool:run({})
+                      return
+                    end
+                  end
+                  cb({})
+                end,
               })
             end,
           })

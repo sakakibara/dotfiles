@@ -87,6 +87,25 @@ T.describe("core.pack.ui.update_review", function()
     T.truthy(lines[1]:match("2 of 2 marked"))
     view:close()
   end)
+
+  T.it("toggle_expand calls on_expand for missing _log", function()
+    local UI = fresh()
+    local pending = { { name = "a", from = "1", to = "2", count = 1, subject = "x" } }
+    local expand_called_for
+    local view = UI.update_review(pending, {
+      open_window = false,
+      on_apply = function() end,
+      on_expand = function(name, cb)
+        expand_called_for = name
+        cb({ { sha = "abcdef0", subject = "test commit" } })
+      end,
+    })
+    view:toggle_expand(2)
+    T.eq(expand_called_for, "a")
+    local lines = vim.api.nvim_buf_get_lines(view.buf, 0, -1, false)
+    T.truthy(lines[3]:match("abcdef0") and lines[3]:match("test commit"), "expanded log line not rendered")
+    view:close()
+  end)
 end)
 
 T.describe("core.pack.ui.status", function()

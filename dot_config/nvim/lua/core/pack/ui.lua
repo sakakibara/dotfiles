@@ -166,8 +166,15 @@ function M.update_review(pending, opts)
   function view:toggle_expand(row)
     local i = row_to_index[row]
     if not i then return end
-    -- Lazy-load the per-plugin commit log on first expand. Caller is expected
-    -- to set p._log via a separate fetch step (Task 3 wires this up).
+    if not pending[i]._log and opts.on_expand then
+      -- Fetch lazily then re-render.
+      opts.on_expand(pending[i].name, function(log)
+        pending[i]._log = log or {}
+        expanded[i] = true
+        row_to_index = update_review_render(buf, pending, marked, expanded)
+      end)
+      return
+    end
     expanded[i] = not expanded[i]
     row_to_index = update_review_render(buf, pending, marked, expanded)
   end
