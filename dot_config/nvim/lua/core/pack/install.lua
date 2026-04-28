@@ -119,16 +119,18 @@ function M.install_missing(specs, opts)
 
   local view
   if opts.open_window then
-    local names = {}
-    for _, p in ipairs(pending) do names[#names + 1] = p.spec.name end
-    view = UI.progress(names, { open_window = true })
+    view = UI.fidget({ open_window = true })
+    for _, p in ipairs(pending) do view:set_status(p.spec.name, "queued") end
   end
 
   pool:run({
     on_progress = function(done, total, last)
       if view and last and last.tag then
-        view:set_status(last.tag, last.code == 0 and "ok" or "error",
-          last.code == 0 and "" or "failed")
+        if last.code == 0 then
+          view:done(last.tag)
+        else
+          view:error(last.tag, "failed")
+        end
       end
       if opts.on_progress then opts.on_progress(done, total, last) end
     end,

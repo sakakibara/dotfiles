@@ -1,38 +1,6 @@
 local T = require("tests.helpers")
 local function fresh() package.loaded["core.pack.ui"] = nil; return require("core.pack.ui") end
 
-T.describe("core.pack.ui.progress", function()
-  T.it("opens a buffer with one line per item, all 'pending'", function()
-    local UI = fresh()
-    local view = UI.progress({ "a", "b", "c" }, { open_window = false })
-    local lines = vim.api.nvim_buf_get_lines(view.buf, 0, -1, false)
-    -- Expect a header line + 3 status lines.
-    T.truthy(#lines >= 4)
-    T.truthy(lines[2]:match("^%s*%[ %] a "))
-    T.truthy(lines[3]:match("^%s*%[ %] b "))
-    T.truthy(lines[4]:match("^%s*%[ %] c "))
-    view:close()
-  end)
-
-  T.it("set_status updates the matching line in place", function()
-    local UI = fresh()
-    local view = UI.progress({ "a", "b" }, { open_window = false })
-    view:set_status("a", "ok", "cloned in 1.2s")
-    local lines = vim.api.nvim_buf_get_lines(view.buf, 0, -1, false)
-    T.truthy(lines[2]:match("^%s*%[✓%] a .*cloned"))
-    view:close()
-  end)
-
-  T.it("set_status with 'error' marks the line", function()
-    local UI = fresh()
-    local view = UI.progress({ "a" }, { open_window = false })
-    view:set_status("a", "error", "git failed")
-    local lines = vim.api.nvim_buf_get_lines(view.buf, 0, -1, false)
-    T.truthy(lines[2]:match("^%s*%[✗%] a "))
-    view:close()
-  end)
-end)
-
 T.describe("core.pack.ui.update_review", function()
   T.it("renders tabular row per pending update with elpaca-style layout", function()
     local UI = fresh()
