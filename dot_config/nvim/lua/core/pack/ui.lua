@@ -11,7 +11,7 @@ local function format_subject(s, max)
   return s:sub(1, max - 1) .. "…"
 end
 
-local function update_review_render(buf, pending, marked, expanded)
+local function update_review_render(buf, win, pending, marked, expanded)
   local lines = {}
   local marked_count = 0
   for i = 1, #pending do if marked[i] then marked_count = marked_count + 1 end end
@@ -20,6 +20,15 @@ local function update_review_render(buf, pending, marked, expanded)
 
   local row_to_index = {}  -- buffer row → pending index (for keymap targeting)
   local highlights = {}    -- { { row, col_start, col_end, hl_group }, ... }
+
+  local PREFIX_WIDTH = 60  -- bytes of "  ●  <name 22>  <from7>..<to7>  <count> commits  "
+  local subject_max
+  if win and vim.api.nvim_win_is_valid(win) then
+    subject_max = math.max(20, vim.api.nvim_win_get_width(win) - PREFIX_WIDTH)
+  else
+    subject_max = 200  -- headless tests: wide enough not to truncate
+  end
+
   local row = 2  -- 1-indexed; row 1 is header
 
   for i, p in ipairs(pending) do
@@ -28,7 +37,7 @@ local function update_review_render(buf, pending, marked, expanded)
     local name = ("%-22s"):format(p.name)
     local range = ("%s..%s"):format(p.from:sub(1, 7), p.to:sub(1, 7))
     local count_str = (p.count == 1) and "1 commit " or (("%d commits"):format(p.count))
-    local subject = format_subject(p.subject, 60)
+    local subject = format_subject(p.subject, subject_max)
     local line = ("  %s  %s  %s  %s  %s"):format(glyph, name, range, count_str, subject)
     lines[#lines + 1] = line
     row_to_index[row] = i
@@ -83,9 +92,10 @@ function M.update_review(pending, opts)
   local expanded = {}
   for i = 1, #pending do marked[i] = true end
 
-  local row_to_index = update_review_render(buf, pending, marked, expanded)
+  local win  -- declared early so render closures can read its width
 
-  local win
+  local row_to_index = update_review_render(buf, win, pending, marked, expanded)
+
   if opts.open_window ~= false then
     vim.cmd("botright 18split")
     win = vim.api.nvim_get_current_win()
@@ -97,6 +107,15 @@ function M.update_review(pending, opts)
     vim.wo[win].statuscolumn = ""
     vim.wo[win].signcolumn = "no"
     vim.api.nvim_win_set_cursor(win, { 2, 0 })
+    -- Force normal mode in case user was in insert in another buffer.
+    -- modifiable=false alone doesn't help if the user is already mid-insert.
+    vim.cmd("stopinsert")
+    vim.api.nvim_create_autocmd("InsertEnter", {
+      buffer = buf,
+      callback = function() vim.cmd("stopinsert") end,
+    })
+    -- Re-render now that we have the real window width for subject truncation.
+    row_to_index = update_review_render(buf, win, pending, marked, expanded)
   end
 
   local view = { buf = buf, win = win }
@@ -105,12 +124,12 @@ function M.update_review(pending, opts)
     local i = row_to_index[row]
     if not i then return end
     marked[i] = not marked[i]
-    row_to_index = update_review_render(buf, pending, marked, expanded)
+    row_to_index = update_review_render(buf, win, pending, marked, expanded)
   end
 
   function view:set_all(value)
     for i = 1, #pending do marked[i] = value end
-    row_to_index = update_review_render(buf, pending, marked, expanded)
+    row_to_index = update_review_render(buf, win, pending, marked, expanded)
   end
 
   function view:toggle_expand(row)
@@ -121,12 +140,12 @@ function M.update_review(pending, opts)
       opts.on_expand(pending[i].name, function(log)
         pending[i]._log = log or {}
         expanded[i] = true
-        row_to_index = update_review_render(buf, pending, marked, expanded)
+        row_to_index = update_review_render(buf, win, pending, marked, expanded)
       end)
       return
     end
     expanded[i] = not expanded[i]
-    row_to_index = update_review_render(buf, pending, marked, expanded)
+    row_to_index = update_review_render(buf, win, pending, marked, expanded)
   end
 
   function view:apply()

@@ -120,21 +120,18 @@ function M.install_missing(specs, opts)
   local view
   if opts.open_window then
     view = UI.fidget({ open_window = true })
-    for _, p in ipairs(pending) do view:set_status(p.spec.name, "queued") end
+    view:set_status("core.pack", ("installing 0/%d"):format(#pending))
   end
 
   pool:run({
     on_progress = function(done, total, last)
-      if view and last and last.tag then
-        if last.code == 0 then
-          view:done(last.tag)
-        else
-          view:error(last.tag, "failed")
-        end
+      if view then
+        view:set_status("core.pack", ("installing %d/%d"):format(done, total))
       end
       if opts.on_progress then opts.on_progress(done, total, last) end
     end,
     on_complete = function()
+      if view then view:done("core.pack") end
       if opts.on_complete then opts.on_complete() end
     end,
   })
@@ -184,9 +181,9 @@ local function apply_pending(pending, opts)
   end
   History.snapshot()
 
+  if opts.fidget then opts.fidget:set_status("core.pack", ("applying 0/%d"):format(#pending)) end
   local pool = Jobs.pool({ concurrency = opts.concurrency })
   for _, p in ipairs(pending) do
-    if opts.fidget then opts.fidget:set_status(p.spec.name, "applying") end
     pool:add({
       cmd = { "git", "-C", p.dir, "checkout", "--detach", "--quiet", p.checkout_ref or p.ref },
       tag = p.spec.name,
@@ -194,7 +191,6 @@ local function apply_pending(pending, opts)
         if r.code ~= 0 then
           notify(("core.pack: update failed for %s: %s"):format(p.spec.name, r.stderr),
             vim.log.levels.ERROR)
-          if opts.fidget then opts.fidget:error(p.spec.name, "checkout failed") end
           return
         end
         Lock.set(p.spec.name, {
@@ -202,13 +198,18 @@ local function apply_pending(pending, opts)
           version = type(p.spec.version) == "string" and p.spec.version or nil,
         })
         M.run_build(p.spec, p.dir)
-        if opts.fidget then opts.fidget:done(p.spec.name) end
       end,
     })
   end
   pool:run({
-    on_progress = opts.on_progress,
-    on_complete = function() if opts.on_complete then opts.on_complete() end end,
+    on_progress = function(done, total)
+      if opts.fidget then opts.fidget:set_status("core.pack", ("applying %d/%d"):format(done, total)) end
+      if opts.on_progress then opts.on_progress(done, total) end
+    end,
+    on_complete = function()
+      if opts.fidget then opts.fidget:done("core.pack") end
+      if opts.on_complete then opts.on_complete() end
+    end,
   })
 end
 
@@ -236,7 +237,7 @@ function M.update(specs, names, opts)
 
   local fidget = (opts.open_window ~= false) and UI.fidget({ open_window = true }) or nil
   if fidget then
-    for _, t in ipairs(targets) do fidget:set_status(t.name, "fetching") end
+    fidget:set_status("core.pack", ("fetching 0/%d"):format(#targets))
   end
 
   -- Phase 1: fetch in parallel.
@@ -247,16 +248,14 @@ function M.update(specs, names, opts)
       tag = t.name,
       on_done = function(r)
         t.fetch_ok = (r.code == 0)
-        if fidget then
-          if r.code == 0 then fidget:set_status(t.name, "resolving")
-          else fidget:error(t.name, "fetch failed") end
-        end
       end,
     })
   end
 
   fetch_pool:run({
-    on_progress = opts.on_progress,
+    on_progress = function(done, total)
+      if fidget then fidget:set_status("core.pack", ("fetching %d/%d"):format(done, total)) end
+    end,
     on_complete = function()
       -- Phase 2: resolve refs + HEAD in parallel via bundled script.
       local resolve_pool = Jobs.pool({ concurrency = opts.concurrency })
@@ -266,17 +265,16 @@ function M.update(specs, names, opts)
             cmd = { "sh", "-c", RESOLVE_SCRIPT, "_", t.dir },
             tag = t.name,
             on_done = function(r)
-              if r.code ~= 0 then
-                if fidget then fidget:error(t.name, "resolve failed") end
-                return
-              end
+              if r.code ~= 0 then return end
               t.refs = parse_resolve_output(r.stdout or "")
-              if fidget then fidget:set_status(t.name, "checking") end
             end,
           })
         end
       end
       resolve_pool:run({
+        on_progress = function(done, total)
+          if fidget then fidget:set_status("core.pack", ("resolving %d/%d"):format(done, total)) end
+        end,
         on_complete = function()
           -- Pure-Lua version resolution per target.
           for _, t in ipairs(targets) do
@@ -315,6 +313,9 @@ function M.update(specs, names, opts)
             end
           end
           rp_pool:run({
+            on_progress = function(done, total)
+              if fidget then fidget:set_status("core.pack", ("checking %d/%d"):format(done, total)) end
+            end,
             on_complete = function()
               -- Build pending list (pure Lua).
               local pending = {}
@@ -324,14 +325,6 @@ function M.update(specs, names, opts)
                     spec = t.spec, dir = t.dir, from = t.refs.head_rev, to = t.target_rev,
                     ref = t.resolved and t.resolved.ref or nil, checkout_ref = t.checkout_ref,
                   }
-                end
-              end
-
-              local pending_names = {}
-              for _, p in ipairs(pending) do pending_names[p.spec.name] = true end
-              if fidget then
-                for _, t in ipairs(targets) do
-                  if not pending_names[t.name] then fidget:done(t.name) end
                 end
               end
 
