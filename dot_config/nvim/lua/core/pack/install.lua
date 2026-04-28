@@ -138,6 +138,41 @@ function M.install_missing(specs, opts)
   })
 end
 
+-- Helper: parse the bundled resolve-script stdout into a refs table.
+-- Format: <tags>\x1f<branches>\x1f<default_branch>\x1f<head_rev>
+local function parse_resolve_output(stdout)
+  local sections = {}
+  for section in (stdout .. "\x1f"):gmatch("([^\x1f]*)\x1f") do
+    sections[#sections + 1] = section
+  end
+  if #sections < 4 then return nil end
+  local tags, branches = {}, {}
+  for tag in sections[1]:gmatch("[^\n]+") do tags[#tags + 1] = tag end
+  for line in sections[2]:gmatch("[^\n]+") do
+    local b = line:match("^origin/(.+)$")
+    if b and b ~= "HEAD" and b ~= "" then branches[#branches + 1] = b end
+  end
+  local raw_db = sections[3]:match("([^\n]+)")
+  local default_branch = raw_db and (raw_db:match("^origin/(.+)$") or raw_db) or nil
+  local head = sections[4]:match("([^\n]+)") or ""
+  return {
+    tags = tags,
+    branches = branches,
+    default_branch = default_branch,
+    head_rev = head:gsub("%s+", ""),
+  }
+end
+
+local RESOLVE_SCRIPT = [[
+git -C "$1" tag --list
+printf '\x1f'
+git -C "$1" branch -r --format='%(refname:short)'
+printf '\x1f'
+git -C "$1" symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null || true
+printf '\x1f'
+git -C "$1" rev-parse HEAD
+]]
+
 -- Apply already-resolved pending updates: parallel checkouts, then lockfile + build hook per plugin.
 local function apply_pending(pending, opts)
   opts = opts or {}
@@ -178,100 +213,150 @@ function M.update(specs, names, opts)
   for _, s in ipairs(specs) do by_name[s.name] = s end
   if names == nil or #names == 0 then names = vim.tbl_keys(by_name) end
 
-  local pending = {}
-  local pool = Jobs.pool({ concurrency = opts.concurrency })
+  -- Filter to plugins on disk.
+  local targets = {}
   for _, name in ipairs(names) do
     local spec = by_name[name]
     if spec and not spec.dev then
       local dir = M.install_dir(name)
-      if Git.is_repo(dir) then
-        pool:add({
-          cmd = { "git", "-C", dir, "fetch", "--tags", "--prune", "origin" },
-          tag = name,
-          on_done = function(r)
-            if r.code ~= 0 then return end
-            local refs = Git.list_remote_refs(dir)
-            refs.default_branch = Git.default_branch(dir)
-            local resolved = Version.resolve(spec.version, refs)
-            if not resolved then return end
-            local target_rev, checkout_ref
-            if opts.target == "lockfile" then
-              local entry = Lock.get(name)
-              if not entry then
-                notify(("core.pack: %s not in lockfile — skipping"):format(name), vim.log.levels.WARN)
-                return
-              end
-              target_rev = entry.rev
-              checkout_ref = target_rev
-            else
-              local target_ref = resolved.kind == "branch" and ("origin/" .. resolved.ref) or resolved.ref
-              -- ^{commit} dereferences annotated tags to the underlying commit SHA;
-              -- without it, rev-parse returns the tag-object SHA which always differs
-              -- from current_rev (a commit SHA), so the plugin would falsely show as
-              -- needing an update with 0 commits between from..to.
-              local rr = vim.system({ "git", "-C", dir, "rev-parse", target_ref .. "^{commit}" }, { text = true }):wait()
-              target_rev = rr.code == 0 and rr.stdout:gsub("%s+", "") or nil
-              checkout_ref = target_ref
-            end
-            local rev_now = Git.current_rev(dir)
-            if target_rev and target_rev ~= rev_now then
-              pending[#pending + 1] = {
-                spec = spec, dir = dir, from = rev_now, to = target_rev,
-                ref = resolved.ref, checkout_ref = checkout_ref,
-              }
-            end
-          end,
-        })
-      end
+      if Git.is_repo(dir) then targets[#targets + 1] = { name = name, spec = spec, dir = dir } end
     end
   end
 
-  pool:run({
+  if #targets == 0 then
+    notify("core.pack: nothing to update")
+    vim.schedule(function() if opts.on_complete then opts.on_complete() end end)
+    return
+  end
+
+  -- Phase 1: fetch in parallel.
+  local fetch_pool = Jobs.pool({ concurrency = opts.concurrency })
+  for _, t in ipairs(targets) do
+    fetch_pool:add({
+      cmd = { "git", "-C", t.dir, "fetch", "--tags", "--prune", "origin" },
+      tag = t.name,
+      on_done = function(r) t.fetch_ok = (r.code == 0) end,
+    })
+  end
+
+  fetch_pool:run({
     on_progress = opts.on_progress,
     on_complete = function()
-      if #pending == 0 then
-        notify("core.pack: nothing to update")
-        if opts.on_complete then opts.on_complete() end
-        return
+      -- Phase 2: resolve refs + HEAD in parallel via bundled script.
+      local resolve_pool = Jobs.pool({ concurrency = opts.concurrency })
+      for _, t in ipairs(targets) do
+        if t.fetch_ok then
+          resolve_pool:add({
+            cmd = { "sh", "-c", RESOLVE_SCRIPT, "_", t.dir },
+            tag = t.name,
+            on_done = function(r)
+              if r.code ~= 0 then return end
+              t.refs = parse_resolve_output(r.stdout or "")
+            end,
+          })
+        end
       end
-      if opts.confirm == false then
-        apply_pending(pending, { on_complete = opts.on_complete })
-        return
-      end
-      -- Confirm = true: open review buffer. Apply triggered by user's <CR>; cancel by q.
-      for _, p in ipairs(pending) do
-        local commits = Git.log_between(p.dir, p.from, p.to) or {}
-        p.count = #commits
-      end
-      local items = {}
-      for _, p in ipairs(pending) do
-        items[#items + 1] = {
-          name = p.spec.name, from = p.from, to = p.to, count = p.count, _orig = p,
-        }
-      end
-      -- complete_fired gate: fire opts.on_complete exactly once whether user applies or cancels.
-      local complete_fired = false
-      local function fire_complete()
-        if complete_fired then return end
-        complete_fired = true
-        if opts.on_complete then opts.on_complete() end
-      end
-      local apply_started = false
-      UI.update_review(items, {
-        open_window = opts.open_window ~= false,
-        on_apply = function(list)
-          apply_started = true
-          local applied = {}
-          for _, item in ipairs(list) do applied[#applied + 1] = item._orig end
-          apply_pending(applied, { on_complete = fire_complete })
-        end,
-        on_close = function()
-          -- Only fire on_complete from on_close on the cancel path. The apply path
-          -- routes through apply_pending's on_complete (which fires fire_complete
-          -- after checkouts settle). Without this gate, vim.schedule(fire_complete)
-          -- would land BEFORE the async checkout pool finishes, signaling completion
-          -- before the lockfile actually advances.
-          if not apply_started then vim.schedule(fire_complete) end
+      resolve_pool:run({
+        on_complete = function()
+          -- Pure-Lua version resolution per target.
+          for _, t in ipairs(targets) do
+            if t.refs then
+              local resolved = Version.resolve(t.spec.version, t.refs)
+              if resolved then
+                t.resolved = resolved
+                t.target_ref = resolved.kind == "branch" and ("origin/" .. resolved.ref) or resolved.ref
+              end
+            end
+          end
+          -- Phase 3: rev-parse target_ref^{commit} in parallel.
+          local rp_pool = Jobs.pool({ concurrency = opts.concurrency })
+          for _, t in ipairs(targets) do
+            if t.target_ref then
+              if opts.target == "lockfile" then
+                local entry = Lock.get(t.name)
+                if not entry then
+                  notify(("core.pack: %s not in lockfile — skipping"):format(t.name), vim.log.levels.WARN)
+                else
+                  t.target_rev = entry.rev
+                  t.checkout_ref = entry.rev
+                end
+              else
+                rp_pool:add({
+                  cmd = { "git", "-C", t.dir, "rev-parse", t.target_ref .. "^{commit}" },
+                  tag = t.name,
+                  on_done = function(r)
+                    if r.code == 0 then
+                      t.target_rev = (r.stdout or ""):gsub("%s+", "")
+                      t.checkout_ref = t.target_ref
+                    end
+                  end,
+                })
+              end
+            end
+          end
+          rp_pool:run({
+            on_complete = function()
+              -- Build pending list (pure Lua).
+              local pending = {}
+              for _, t in ipairs(targets) do
+                if t.target_rev and t.refs and t.target_rev ~= t.refs.head_rev then
+                  pending[#pending + 1] = {
+                    spec = t.spec, dir = t.dir, from = t.refs.head_rev, to = t.target_rev,
+                    ref = t.resolved and t.resolved.ref or nil, checkout_ref = t.checkout_ref,
+                  }
+                end
+              end
+
+              if #pending == 0 then
+                notify("core.pack: nothing to update")
+                if opts.on_complete then opts.on_complete() end
+                return
+              end
+              if opts.confirm == false then
+                apply_pending(pending, { on_complete = opts.on_complete })
+                return
+              end
+
+              -- Compute commit count + latest commit subject for review buffer.
+              -- These are local-only `git log` calls; fast (~5 ms each), still sync
+              -- per-plugin. Acceptable for the review-display path because it runs
+              -- once after resolve, not per-plugin in a burst.
+              for _, p in ipairs(pending) do
+                local commits = Git.log_between(p.dir, p.from, p.to) or {}
+                p.count = #commits
+                p.subject = commits[1] and commits[1].subject or ""
+              end
+
+              local items = {}
+              for _, p in ipairs(pending) do
+                items[#items + 1] = {
+                  name = p.spec.name, from = p.from, to = p.to,
+                  count = p.count, subject = p.subject, dir = p.dir,
+                  _orig = p,
+                }
+              end
+
+              local complete_fired = false
+              local function fire_complete()
+                if complete_fired then return end
+                complete_fired = true
+                if opts.on_complete then opts.on_complete() end
+              end
+              local apply_started = false
+              UI.update_review(items, {
+                open_window = opts.open_window ~= false,
+                on_apply = function(list)
+                  apply_started = true
+                  local applied = {}
+                  for _, item in ipairs(list) do applied[#applied + 1] = item._orig end
+                  apply_pending(applied, { on_complete = fire_complete })
+                end,
+                on_close = function()
+                  if not apply_started then vim.schedule(fire_complete) end
+                end,
+              })
+            end,
+          })
         end,
       })
     end,

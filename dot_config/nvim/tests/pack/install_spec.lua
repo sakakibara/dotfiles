@@ -188,4 +188,27 @@ T.describe("core.pack.install", function()
     async(function(cb) I.update({ spec }, { "demo" }, { confirm = false, on_complete = cb }) end)
     T.eq(L.get("demo").rev, rev_initial, "no rev change when already at the annotated tag")
   end)
+
+  T.it("update with range version picks highest matching tag", function()
+    local I, L = fresh()
+    local remote = make_remote()
+    sh({ "git", "-C", remote, "tag", "v1.0.0" })
+    sh({ "git", "-C", remote, "commit", "--allow-empty", "-q", "-m", "1.5" })
+    sh({ "git", "-C", remote, "tag", "v1.5.0" })
+    sh({ "git", "-C", remote, "commit", "--allow-empty", "-q", "-m", "2.0" })
+    sh({ "git", "-C", remote, "tag", "v2.0.0" })
+    local spec = { name = "demo", src = "file://" .. remote, version = vim.version.range("1") }
+    async(function(cb) I.install_missing({ spec }, { on_complete = cb }) end)
+    -- Already at v1.5.0 (highest in range "1"). No update should be applied.
+    local rev_before = L.get("demo").rev
+    async(function(cb) I.update({ spec }, { "demo" }, { confirm = false, on_complete = cb }) end)
+    T.eq(L.get("demo").rev, rev_before, "no rev change when already at highest matching tag")
+    -- Now publish v1.6.0; update should bump to it (not v2.0.0).
+    sh({ "git", "-C", remote, "commit", "--allow-empty", "-q", "-m", "1.6" })
+    sh({ "git", "-C", remote, "tag", "v1.6.0" })
+    async(function(cb) I.update({ spec }, { "demo" }, { confirm = false, on_complete = cb }) end)
+    local rev_after = L.get("demo").rev
+    local rr = vim.fn.system({ "git", "-C", remote, "rev-parse", "v1.6.0^{commit}" })
+    T.eq(rev_after, (rr:gsub("%s+", "")), "should advance to v1.6.0, not v2.0.0")
+  end)
 end)
