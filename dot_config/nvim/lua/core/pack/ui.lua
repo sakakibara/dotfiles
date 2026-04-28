@@ -10,7 +10,7 @@ function M.progress(names, opts)
   vim.bo[buf].buftype = "nofile"
   vim.bo[buf].swapfile = false
   vim.bo[buf].bufhidden = "wipe"
-  vim.api.nvim_buf_set_name(buf, opts.title or "core.pack: install")
+  pcall(vim.api.nvim_buf_set_name, buf, opts.title or "core.pack: install")
 
   local lines = { ("Installing %d plugins..."):format(#names) }
   local row_of = {}
