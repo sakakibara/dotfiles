@@ -94,6 +94,8 @@ function M.update_review(pending, opts)
     vim.wo[win].cursorline = true
     vim.wo[win].number = false
     vim.wo[win].relativenumber = false
+    vim.wo[win].statuscolumn = ""
+    vim.wo[win].signcolumn = "no"
     vim.api.nvim_win_set_cursor(win, { 2, 0 })
   end
 
@@ -184,6 +186,8 @@ function M.status(lines, opts)
     vim.wo[win].cursorline = true
     vim.wo[win].number = false
     vim.wo[win].relativenumber = false
+    vim.wo[win].statuscolumn = ""
+    vim.wo[win].signcolumn = "no"
     vim.keymap.set("n", "q", "<cmd>close<cr>", { buffer = buf, nowait = true, silent = true })
   end
 
@@ -217,6 +221,7 @@ function M.fidget(opts)
   local spinner_step = 1
 
   local function render()
+    if not vim.api.nvim_buf_is_valid(buf) then return end
     local lines = {}
     for i, r in ipairs(rows) do
       local glyph
@@ -261,6 +266,7 @@ function M.fidget(opts)
 
   local timer
   local function tick()
+    if not vim.api.nvim_buf_is_valid(buf) then return end
     spinner_step = spinner_step + 1
     render()
   end

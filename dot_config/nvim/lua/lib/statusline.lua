@@ -347,10 +347,11 @@ local function build_path(buf, budget)
   local name = buf_path_name(buf)
   if name == "" then return "%#StslDim# [No Name] " end
 
-  -- Scratch buffers (buftype=nofile) have no meaningful filesystem path —
-  -- render the buffer name as-is to avoid the misleading cwd prefix.
+  -- Scratch buffers (buftype=nofile) — nvim_buf_set_name stores names with
+  -- cwd prefix, so render only the tail to avoid the misleading cwd. Use
+  -- StslPathRO (italic dim) since these are read-only listing buffers.
   if vim.bo[buf].buftype == "nofile" then
-    return "%#StslPathFile# " .. name .. " "
+    return "%#StslPathRO# " .. vim.fn.fnamemodify(name, ":t") .. " "
   end
 
   local abs = vim.fn.fnamemodify(name, ":p")
