@@ -1,0 +1,53 @@
+local M = {}
+
+-- Internal: build a list of { kind, text } items by running checks. Used by
+-- both check() (which prints via vim.health) and tests (which inspect data).
+local function gather()
+  local Lock = require("core.pack.lock")
+  local Install = require("core.pack.install")
+  local items = {}
+  local function add(kind, text) items[#items + 1] = { kind = kind, text = text } end
+
+  -- git on PATH
+  local git_ok = vim.fn.executable("git") == 1
+  if git_ok then
+    add("ok", "git found at " .. vim.fn.exepath("git"))
+  else
+    add("error", "git is not on PATH")
+  end
+
+  -- Lockfile
+  local lock_path = Lock.path()
+  if vim.fn.filereadable(lock_path) == 1 then
+    local data = Lock.read()
+    add("ok", ("lockfile readable (%s, %d plugins)"):format(lock_path, vim.tbl_count(data.plugins)))
+  else
+    add("warn", "lockfile missing at " .. lock_path)
+  end
+
+  -- Install root
+  local install_root = Install.install_dir(""):gsub("/$", "")
+  if vim.fn.isdirectory(install_root) == 1 then
+    local count = #(vim.fn.readdir(install_root) or {})
+    add("ok", ("install root exists (%s, %d entries)"):format(install_root, count))
+  else
+    add("warn", "install root does not exist: " .. install_root)
+  end
+
+  return items
+end
+
+function M.report() return gather() end
+
+function M.check()
+  vim.health.start("core.pack")
+  for _, item in ipairs(gather()) do
+    if item.kind == "ok"    then vim.health.ok(item.text)
+    elseif item.kind == "warn"  then vim.health.warn(item.text)
+    elseif item.kind == "error" then vim.health.error(item.text)
+    else                              vim.health.info(item.text)
+    end
+  end
+end
+
+return M
