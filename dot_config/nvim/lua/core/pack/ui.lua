@@ -20,6 +20,38 @@ M.keymaps = {
   },
 }
 
+-- Apply window options for pack scratch buffers and lock them against mode-change
+-- autocmds elsewhere in the user's config (e.g., toggling relativenumber on InsertEnter).
+-- The buffer-local autocmd reasserts these options on BufEnter/WinEnter/ModeChanged.
+function M.lock_pack_window(buf, win)
+  local function apply()
+    if win == nil or not vim.api.nvim_win_is_valid(win) then return end
+    vim.wo[win].number = false
+    vim.wo[win].relativenumber = false
+    vim.wo[win].statuscolumn = ""
+    vim.wo[win].signcolumn = "no"
+    vim.wo[win].wrap = false
+    vim.wo[win].cursorline = true
+  end
+  apply()
+
+  local group = vim.api.nvim_create_augroup("CorePackWindowLock_" .. buf, { clear = true })
+  vim.api.nvim_create_autocmd({ "BufEnter", "WinEnter", "ModeChanged" }, {
+    group = group,
+    buffer = buf,
+    callback = function()
+      local w = vim.api.nvim_get_current_win()
+      if vim.api.nvim_win_get_buf(w) ~= buf then return end
+      vim.wo[w].number = false
+      vim.wo[w].relativenumber = false
+      vim.wo[w].statuscolumn = ""
+      vim.wo[w].signcolumn = "no"
+      vim.wo[w].wrap = false
+      vim.wo[w].cursorline = true
+    end,
+  })
+end
+
 -- Decide which columns to include given available width.
 -- min_widths: { col → byte width }
 -- priorities: { col → integer (higher = keep longer) }
@@ -56,6 +88,15 @@ local NS = vim.api.nvim_create_namespace("core.pack.ui")
 local STATUS_MARKED   = "●"
 local STATUS_UNMARKED = "◯"
 
+-- Pad a glyph to a consistent display width across rows. Some glyphs (●/⚙/◯,
+-- emoji-presentation chars) render at different cell widths depending on
+-- terminal/font; columns misalign without padding.
+function M.pad_glyph(g)
+  local w = vim.fn.strdisplaywidth(g)
+  if w >= 2 then return g end
+  return g .. " "  -- pad to 2 cells
+end
+
 local function format_subject(s, max)
   s = s or ""
   if #s <= max then return s end
@@ -89,7 +130,7 @@ local function update_review_render(buf, win, pending, marked, expanded)
   local row = 2  -- 1-indexed; row 1 is header
 
   for i, p in ipairs(pending) do
-    local glyph = marked[i] and STATUS_MARKED or STATUS_UNMARKED
+    local glyph = M.pad_glyph(marked[i] and STATUS_MARKED or STATUS_UNMARKED)
     local hl_glyph = marked[i] and "Special" or "Comment"
     local name_truncated = p.name
     if #name_truncated > name_max then name_truncated = name_truncated:sub(1, name_max - 1) .. "…" end
@@ -170,12 +211,7 @@ function M.update_review(pending, opts)
     win = vim.api.nvim_get_current_win()
     vim.api.nvim_win_set_buf(win, buf)
     vim.bo[buf].filetype = "PackReview"  -- after win_set_buf so ftdetect doesn't clear
-    vim.wo[win].wrap = false
-    vim.wo[win].cursorline = true
-    vim.wo[win].number = false
-    vim.wo[win].relativenumber = false
-    vim.wo[win].statuscolumn = ""
-    vim.wo[win].signcolumn = "no"
+    M.lock_pack_window(buf, win)
     vim.api.nvim_win_set_cursor(win, { 2, 0 })
     -- Force normal mode in case user was in insert in another buffer.
     -- modifiable=false alone doesn't help if the user is already mid-insert.
@@ -281,7 +317,7 @@ local function clean_review_render(buf, win, items, marked)
   end
 
   for i, p in ipairs(items) do
-    local glyph = marked[i] and STATUS_MARKED or STATUS_UNMARKED
+    local glyph = M.pad_glyph(marked[i] and STATUS_MARKED or STATUS_UNMARKED)
     local hl_glyph = marked[i] and "Special" or "Comment"
     local name_truncated = p.name
     if #name_truncated > name_max then name_truncated = name_truncated:sub(1, name_max - 1) .. "…" end
@@ -330,12 +366,7 @@ function M.clean_review(items, opts)
     win = vim.api.nvim_get_current_win()
     vim.api.nvim_win_set_buf(win, buf)
     vim.bo[buf].filetype = "PackClean"  -- after win_set_buf so ftdetect doesn't clear
-    vim.wo[win].wrap = false
-    vim.wo[win].cursorline = true
-    vim.wo[win].number = false
-    vim.wo[win].relativenumber = false
-    vim.wo[win].statuscolumn = ""
-    vim.wo[win].signcolumn = "no"
+    M.lock_pack_window(buf, win)
     vim.api.nvim_win_set_cursor(win, { 2, 0 })
     vim.cmd("stopinsert")
     vim.api.nvim_create_autocmd("InsertEnter", {
@@ -443,12 +474,7 @@ function M.rollback_review(snapshots, opts)
     win = vim.api.nvim_get_current_win()
     vim.api.nvim_win_set_buf(win, buf)
     vim.bo[buf].filetype = "PackRollback"  -- after win_set_buf so ftdetect doesn't clear
-    vim.wo[win].wrap = false
-    vim.wo[win].cursorline = true
-    vim.wo[win].number = false
-    vim.wo[win].relativenumber = false
-    vim.wo[win].statuscolumn = ""
-    vim.wo[win].signcolumn = "no"
+    M.lock_pack_window(buf, win)
     vim.api.nvim_win_set_cursor(win, { 3, 0 })  -- first snapshot row
     vim.cmd("stopinsert")
     vim.api.nvim_create_autocmd("InsertEnter", {
@@ -515,12 +541,7 @@ function M.status(lines, opts)
     win = vim.api.nvim_get_current_win()
     vim.api.nvim_win_set_buf(win, buf)
     vim.bo[buf].filetype = ft
-    vim.wo[win].wrap = false
-    vim.wo[win].cursorline = true
-    vim.wo[win].number = false
-    vim.wo[win].relativenumber = false
-    vim.wo[win].statuscolumn = ""
-    vim.wo[win].signcolumn = "no"
+    M.lock_pack_window(buf, win)
     local km = vim.tbl_extend("force", M.keymaps.status, opts.keymaps or {})
     vim.keymap.set("n", km.cancel, "<cmd>close<cr>", { buffer = buf, nowait = true, silent = true })
   end

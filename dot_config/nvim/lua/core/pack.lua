@@ -635,7 +635,7 @@ function M._structured_status()
   local LOAD_W = 9
 
   -- Trigger column gets remainder. Fixed prefix bytes:
-  --   2 (lead) + 3 (glyph) + 2 + name_max + 2 + 8 (state) + 2 + 9 (load) + 2 = 28 + name_max
+  --   2 (lead) + 4 (padded glyph) + 2 + name_max + 2 + 8 (state) + 2 + 9 (load) + 2 = 29 + name_max
   -- Use a generous default of 180 chars since :PackStatus renders before the
   -- window is open and can't know the actual width at that point.
   local trigger_max = 180 - (28 + name_max)
@@ -652,6 +652,7 @@ function M._structured_status()
   }
   local highlights = { { 0, 0, #lines[1], "Title" } }
 
+  local UI = require("core.pack.ui")
   for _, n in ipairs(names) do
     local s = M._specs[n]
     local state, glyph, glyph_hl
@@ -662,6 +663,7 @@ function M._structured_status()
     else
       state, glyph, glyph_hl = "pending", "◯", "Comment"
     end
+    glyph = UI.pad_glyph(glyph)
 
     local trigger = s.event and ("event=" .. vim.inspect(s.event):gsub("\n%s*", ""))
         or s.ft and ("ft=" .. vim.inspect(s.ft))
