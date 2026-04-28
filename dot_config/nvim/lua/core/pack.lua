@@ -893,4 +893,24 @@ end, {
   desc = "Re-run plugin build hooks (one or all)",
 })
 
+vim.api.nvim_create_user_command("PackLoad", function(opts)
+  local name = opts.fargs[1]
+  if not name then notify("core.pack: usage :PackLoad <name>", vim.log.levels.WARN); return end
+  if not M.has(name) then notify(("core.pack: unknown plugin '%s'"):format(name), vim.log.levels.WARN); return end
+  if M.loaded(name) then notify(("core.pack: %s already loaded"):format(name)); return end
+  M.load(name)
+  notify(("core.pack: loaded %s"):format(name))
+end, {
+  nargs = 1,
+  complete = function(arglead)
+    local out = {}
+    for n in pairs(M._specs) do
+      if not M._loaded[n] and n:lower():find(arglead:lower(), 1, true) then out[#out + 1] = n end
+    end
+    table.sort(out)
+    return out
+  end,
+  desc = "Manually load a lazy plugin by name",
+})
+
 return M
