@@ -61,7 +61,7 @@ end
 
 -- update_review(pending, opts)
 -- pending: { { name, from, to, count, dir, ... }, ... }
--- opts: { open_window = bool, on_apply = function(marked_entries) end }
+-- opts: { open_window = bool, on_apply = function(marked_entries) end, on_close = function() end }
 function M.update_review(pending, opts)
   opts = opts or {}
   local buf = vim.api.nvim_create_buf(false, true)
@@ -121,6 +121,7 @@ function M.update_review(pending, opts)
   end
 
   function view:close()
+    if opts.on_close then opts.on_close() end
     if self.win and vim.api.nvim_win_is_valid(self.win) then
       vim.api.nvim_win_close(self.win, true)
     end

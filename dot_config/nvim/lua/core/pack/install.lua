@@ -198,18 +198,19 @@ function M.update(specs, names, opts)
       }
     end
     local UI = require("core.pack.ui")
-    local applied
+    local applied, closed
     UI.update_review(items, {
       open_window = opts.open_window ~= false,
       on_apply = function(list)
         applied = {}
         for _, item in ipairs(list) do applied[#applied + 1] = item._orig end
       end,
+      on_close = function() closed = true end,
     })
-    -- Wait for the user to apply or cancel. on_apply fires on <CR>; close fires on q.
-    -- vim.wait blocks here until applied is populated or the user closes the buffer.
-    vim.wait(10 * 60 * 1000, function() return applied ~= nil end, 50)
+    -- Predicate: applied set (user hit <CR>) OR buffer closed without applying (user hit q).
+    vim.wait(10 * 60 * 1000, function() return applied ~= nil or closed end, 50)
     pending = applied or {}
+    if not applied then notify("core.pack: cancelled"); return end
   end
 
   History.snapshot()
