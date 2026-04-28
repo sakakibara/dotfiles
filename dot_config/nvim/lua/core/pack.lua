@@ -334,6 +334,7 @@ local function install_all(specs)
   end
   if #to_install > 0 then
     local ok, err = pcall(Install.install_missing, to_install, {
+      open_window = true,
       on_progress = function(done, total, last)
         if last and last.tag then
           vim.notify(("core.pack: installed %d/%d (%s)"):format(done, total, last.tag))

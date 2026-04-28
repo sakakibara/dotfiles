@@ -5,6 +5,7 @@ local Lock    = require("core.pack.lock")
 local Git     = require("core.pack.git")
 local Jobs    = require("core.pack.jobs")
 local Version = require("core.pack.version")
+local UI      = require("core.pack.ui")
 
 M._install_root_override = nil  -- tests
 
@@ -112,7 +113,20 @@ function M.install_missing(specs, opts)
 
   if #pending == 0 then return end
   History.snapshot()
-  pool:run({ on_progress = opts.on_progress })
+
+  local names = {}
+  for _, p in ipairs(pending) do names[#names + 1] = p.spec.name end
+  local view = opts.open_window and UI.progress(names, { open_window = true }) or nil
+
+  pool:run({
+    on_progress = function(done, total, last)
+      if view and last and last.tag then
+        view:set_status(last.tag, last.code == 0 and "ok" or "error",
+          last.code == 0 and "" or "failed")
+      end
+      if opts.on_progress then opts.on_progress(done, total, last) end
+    end,
+  })
 end
 
 function M.update(specs, names, opts)
