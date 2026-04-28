@@ -137,7 +137,7 @@ local function update_review_render(buf, win, pending, marked, expanded)
 
   for i, p in ipairs(pending) do
     local glyph = M.pad_glyph(marked[i] and STATUS_MARKED or STATUS_UNMARKED)
-    local hl_glyph = marked[i] and "Special" or "Comment"
+    local hl_glyph = marked[i] and "Special" or "NonText"
     local name_truncated = p.name
     if #name_truncated > name_max then name_truncated = name_truncated:sub(1, name_max - 1) .. "…" end
     local name = ("%-" .. name_max .. "s"):format(name_truncated)
@@ -319,7 +319,7 @@ local function clean_review_render(buf, win, items, marked)
 
   for i, p in ipairs(items) do
     local glyph = M.pad_glyph(marked[i] and STATUS_MARKED or STATUS_UNMARKED)
-    local hl_glyph = marked[i] and "Special" or "Comment"
+    local hl_glyph = marked[i] and "Special" or "NonText"
     local name_truncated = p.name
     if #name_truncated > name_max then name_truncated = name_truncated:sub(1, name_max - 1) .. "…" end
     local name = ("%-" .. name_max .. "s"):format(name_truncated)
