@@ -40,6 +40,8 @@ function M.dump()
   end
 end
 
+local KIND_LABELS = { packadd = "load", config = "setup" }
+
 function M._structured_report()
   local sorted = vim.deepcopy(spans)
   table.sort(sorted, function(a, b) return a.ms > b.ms end)
@@ -50,9 +52,14 @@ function M._structured_report()
   }
   local highlights = { { 0, 0, #lines[1], "Title" } }
   for _, s in ipairs(sorted) do
-    local name_padded = ("%-30s"):format(s.name)
+    -- Strip the redundant "<kind>:" prefix from name (the kind column already shows it).
+    local clean_name = s.name:gsub("^[^:]*:", "")
+    -- Truncate to keep columns aligned for long plugin names.
+    if #clean_name > 30 then clean_name = clean_name:sub(1, 29) .. "…" end
+    local name_padded = ("%-30s"):format(clean_name)
     local ms_str = ("%9.2f ms"):format(s.ms)
-    local kind_str = ("(%s)"):format(s.kind)
+    local kind_label = KIND_LABELS[s.kind] or s.kind
+    local kind_str = ("(%s)"):format(kind_label)
     local line = ("  %s  %s  %s"):format(name_padded, ms_str, kind_str)
     local row = #lines
     local col = 2
