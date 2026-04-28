@@ -41,10 +41,16 @@ local function update_review_render(buf, win, pending, marked, expanded)
   local row_to_index = {}  -- buffer row → pending index (for keymap targeting)
   local highlights = {}    -- { { row, col_start, col_end, hl_group }, ... }
 
-  local PREFIX_WIDTH = 60  -- bytes of "  ●  <name 22>  <from7>..<to7>  <count> commits  "
+  -- Name column: longest actual name, floor 16, cap 50.
+  local name_max = 16
+  for _, p in ipairs(pending) do name_max = math.max(name_max, #p.name) end
+  if name_max > 50 then name_max = 50 end
+
+  -- Bytes before subject: 2 (lead) + 3 (glyph) + 2 + name_max + 2 + 17 (range) + 2 + 11 (count) + 2
+  local PREFIX_BYTES = 2 + 3 + 2 + name_max + 2 + 17 + 2 + 11 + 2
   local subject_max
   if win and vim.api.nvim_win_is_valid(win) then
-    subject_max = math.max(20, vim.api.nvim_win_get_width(win) - PREFIX_WIDTH)
+    subject_max = math.max(20, vim.api.nvim_win_get_width(win) - PREFIX_BYTES)
   else
     subject_max = 200  -- headless tests: wide enough not to truncate
   end
@@ -54,7 +60,9 @@ local function update_review_render(buf, win, pending, marked, expanded)
   for i, p in ipairs(pending) do
     local glyph = marked[i] and STATUS_MARKED or STATUS_UNMARKED
     local hl_glyph = marked[i] and "Special" or "Comment"
-    local name = ("%-22s"):format(p.name)
+    local name_truncated = p.name
+    if #name_truncated > name_max then name_truncated = name_truncated:sub(1, name_max - 1) .. "…" end
+    local name = ("%-" .. name_max .. "s"):format(name_truncated)
     local range = ("%s..%s"):format(p.from:sub(1, 7), p.to:sub(1, 7))
     local count_str = (p.count == 1) and "1 commit " or (("%d commits"):format(p.count))
     local subject = format_subject(p.subject, subject_max)
@@ -207,7 +215,7 @@ function M.update_review(pending, opts)
   return view
 end
 
-local function clean_review_render(buf, items, marked)
+local function clean_review_render(buf, win, items, marked)
   local lines = {}
   local marked_count = 0
   for i = 1, #items do if marked[i] then marked_count = marked_count + 1 end end
@@ -218,11 +226,28 @@ local function clean_review_render(buf, items, marked)
   local highlights = {}
   local row = 2
 
+  -- Name column: longest actual name, floor 16, cap 50.
+  local name_max = 16
+  for _, p in ipairs(items) do name_max = math.max(name_max, #p.name) end
+  if name_max > 50 then name_max = 50 end
+
+  -- Dir column gets remainder. Bytes before dir: 2 (lead) + 3 (glyph) + 2 + name_max + 2
+  local PREFIX_BYTES = 2 + 3 + 2 + name_max + 2
+  local dir_max
+  if win and vim.api.nvim_win_is_valid(win) then
+    dir_max = math.max(20, vim.api.nvim_win_get_width(win) - PREFIX_BYTES)
+  else
+    dir_max = 200
+  end
+
   for i, p in ipairs(items) do
     local glyph = marked[i] and STATUS_MARKED or STATUS_UNMARKED
     local hl_glyph = marked[i] and "Special" or "Comment"
-    local name = ("%-30s"):format(p.name)
+    local name_truncated = p.name
+    if #name_truncated > name_max then name_truncated = name_truncated:sub(1, name_max - 1) .. "…" end
+    local name = ("%-" .. name_max .. "s"):format(name_truncated)
     local dir = p.dir or ""
+    if #dir > dir_max then dir = dir:sub(1, dir_max - 1) .. "…" end
     local line = ("  %s  %s  %s"):format(glyph, name, dir)
     lines[#lines + 1] = line
     row_to_index[row] = i
@@ -257,9 +282,9 @@ function M.clean_review(items, opts)
   local marked = {}
   for i = 1, #items do marked[i] = true end
 
-  local row_to_index = clean_review_render(buf, items, marked)
+  local win  -- declared early so render closures can read its width
+  local row_to_index = clean_review_render(buf, nil, items, marked)
 
-  local win
   if opts.open_window ~= false then
     vim.cmd("topleft 14split")
     win = vim.api.nvim_get_current_win()
@@ -277,6 +302,8 @@ function M.clean_review(items, opts)
       buffer = buf,
       callback = function() vim.cmd("stopinsert") end,
     })
+    -- Re-render now that we have the real window width for dir truncation.
+    row_to_index = clean_review_render(buf, win, items, marked)
   end
 
   local view = { buf = buf, win = win }
@@ -285,12 +312,12 @@ function M.clean_review(items, opts)
     local i = row_to_index[row]
     if not i then return end
     marked[i] = not marked[i]
-    row_to_index = clean_review_render(buf, items, marked)
+    row_to_index = clean_review_render(buf, win, items, marked)
   end
 
   function view:set_all(value)
     for i = 1, #items do marked[i] = value end
-    row_to_index = clean_review_render(buf, items, marked)
+    row_to_index = clean_review_render(buf, win, items, marked)
   end
 
   function view:apply()

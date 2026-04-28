@@ -626,6 +626,18 @@ function M._structured_status()
     elseif M._specs[n].lazy then lazy_count = lazy_count + 1 end
   end
 
+  -- Name column: longest actual name, floor 16, cap 50.
+  local name_max = 16
+  for _, n in ipairs(names) do name_max = math.max(name_max, #n) end
+  if name_max > 50 then name_max = 50 end
+
+  -- Trigger column gets remainder. Fixed prefix bytes:
+  --   2 (lead) + 3 (glyph) + 2 + name_max + 2 + 8 (state) + 2 = 19 + name_max
+  -- Use a generous default of 180 chars since :PackStatus renders before the
+  -- window is open and can't know the actual width at that point.
+  local trigger_max = 180 - (19 + name_max)
+  if trigger_max < 30 then trigger_max = 30 end
+
   local lines = {
     ("core.pack: %d registered (%d lazy, %d loaded)"):format(#names, lazy_count, loaded_count),
     "",
@@ -649,9 +661,13 @@ function M._structured_status()
         or s.keys and "keys"
         or ("priority=" .. s.priority)
 
-    local name_padded = ("%-22s"):format(n)
+    local name_truncated = n
+    if #name_truncated > name_max then name_truncated = name_truncated:sub(1, name_max - 1) .. "…" end
+    local name_padded = ("%-" .. name_max .. "s"):format(name_truncated)
     local state_padded = ("%-8s"):format(state)
-    local line = ("  %s  %s  %s  %s"):format(glyph, name_padded, state_padded, trigger)
+    local trigger_truncated = trigger
+    if #trigger_truncated > trigger_max then trigger_truncated = trigger_truncated:sub(1, trigger_max - 1) .. "…" end
+    local line = ("  %s  %s  %s  %s"):format(glyph, name_padded, state_padded, trigger_truncated)
     local row = #lines
 
     -- col offsets (byte-aware: ●/⚙/◯ are 3-byte UTF-8)
@@ -659,7 +675,7 @@ function M._structured_status()
     table.insert(highlights, { row, col, col + #glyph, glyph_hl }); col = col + #glyph + 2
     table.insert(highlights, { row, col, col + #name_padded, "Identifier" }); col = col + #name_padded + 2
     table.insert(highlights, { row, col, col + #state_padded, "Type" }); col = col + #state_padded + 2
-    table.insert(highlights, { row, col, col + #trigger, "Comment" })
+    table.insert(highlights, { row, col, col + #trigger_truncated, "Comment" })
 
     lines[#lines + 1] = line
   end
