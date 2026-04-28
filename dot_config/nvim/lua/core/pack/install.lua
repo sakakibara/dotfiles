@@ -186,6 +186,7 @@ local function apply_pending(pending, opts)
 
   local pool = Jobs.pool({ concurrency = opts.concurrency })
   for _, p in ipairs(pending) do
+    if opts.fidget then opts.fidget:set_status(p.spec.name, "applying") end
     pool:add({
       cmd = { "git", "-C", p.dir, "checkout", "--detach", "--quiet", p.checkout_ref or p.ref },
       tag = p.spec.name,
@@ -193,6 +194,7 @@ local function apply_pending(pending, opts)
         if r.code ~= 0 then
           notify(("core.pack: update failed for %s: %s"):format(p.spec.name, r.stderr),
             vim.log.levels.ERROR)
+          if opts.fidget then opts.fidget:error(p.spec.name, "checkout failed") end
           return
         end
         Lock.set(p.spec.name, {
@@ -200,6 +202,7 @@ local function apply_pending(pending, opts)
           version = type(p.spec.version) == "string" and p.spec.version or nil,
         })
         M.run_build(p.spec, p.dir)
+        if opts.fidget then opts.fidget:done(p.spec.name) end
       end,
     })
   end
@@ -231,13 +234,24 @@ function M.update(specs, names, opts)
     return
   end
 
+  local fidget = (opts.open_window ~= false) and UI.fidget({ open_window = true }) or nil
+  if fidget then
+    for _, t in ipairs(targets) do fidget:set_status(t.name, "fetching") end
+  end
+
   -- Phase 1: fetch in parallel.
   local fetch_pool = Jobs.pool({ concurrency = opts.concurrency })
   for _, t in ipairs(targets) do
     fetch_pool:add({
       cmd = { "git", "-C", t.dir, "fetch", "--tags", "--prune", "origin" },
       tag = t.name,
-      on_done = function(r) t.fetch_ok = (r.code == 0) end,
+      on_done = function(r)
+        t.fetch_ok = (r.code == 0)
+        if fidget then
+          if r.code == 0 then fidget:set_status(t.name, "resolving")
+          else fidget:error(t.name, "fetch failed") end
+        end
+      end,
     })
   end
 
@@ -252,8 +266,12 @@ function M.update(specs, names, opts)
             cmd = { "sh", "-c", RESOLVE_SCRIPT, "_", t.dir },
             tag = t.name,
             on_done = function(r)
-              if r.code ~= 0 then return end
+              if r.code ~= 0 then
+                if fidget then fidget:error(t.name, "resolve failed") end
+                return
+              end
               t.refs = parse_resolve_output(r.stdout or "")
+              if fidget then fidget:set_status(t.name, "checking") end
             end,
           })
         end
@@ -309,13 +327,22 @@ function M.update(specs, names, opts)
                 end
               end
 
+              local pending_names = {}
+              for _, p in ipairs(pending) do pending_names[p.spec.name] = true end
+              if fidget then
+                for _, t in ipairs(targets) do
+                  if not pending_names[t.name] then fidget:done(t.name) end
+                end
+              end
+
               if #pending == 0 then
                 notify("core.pack: nothing to update")
+                if fidget then fidget:close() end
                 if opts.on_complete then opts.on_complete() end
                 return
               end
               if opts.confirm == false then
-                apply_pending(pending, { on_complete = opts.on_complete })
+                apply_pending(pending, { on_complete = opts.on_complete, fidget = fidget })
                 return
               end
 
@@ -351,10 +378,13 @@ function M.update(specs, names, opts)
                   apply_started = true
                   local applied = {}
                   for _, item in ipairs(list) do applied[#applied + 1] = item._orig end
-                  apply_pending(applied, { on_complete = fire_complete })
+                  apply_pending(applied, { on_complete = fire_complete, fidget = fidget })
                 end,
                 on_close = function()
-                  if not apply_started then vim.schedule(fire_complete) end
+                  if not apply_started then
+                    if fidget then fidget:close() end
+                    vim.schedule(fire_complete)
+                  end
                 end,
                 on_expand = function(name, cb)
                   for _, p in ipairs(pending) do
