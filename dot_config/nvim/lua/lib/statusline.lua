@@ -347,6 +347,12 @@ local function build_path(buf, budget)
   local name = buf_path_name(buf)
   if name == "" then return "%#StslDim# [No Name] " end
 
+  -- Scratch buffers (buftype=nofile) have no meaningful filesystem path —
+  -- render the buffer name as-is to avoid the misleading cwd prefix.
+  if vim.bo[buf].buftype == "nofile" then
+    return "%#StslPathFile# " .. name .. " "
+  end
+
   local abs = vim.fn.fnamemodify(name, ":p")
   local cwd_zone, rel_zone, base = split_path_zones(abs)
 
