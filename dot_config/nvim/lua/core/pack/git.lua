@@ -42,12 +42,12 @@ function M.checkout(dir, ref)
 end
 
 function M.log_between(dir, a, b)
-  local r = git({ "log", "--pretty=%H%x09%s", a .. ".." .. b }, dir)
+  local r = git({ "log", "--pretty=%H%x09%an%x09%ar%x09%s", a .. ".." .. b }, dir)
   if not r.ok then return nil end
   local out = {}
   for line in r.stdout:gmatch("[^\n]+") do
-    local sha, subj = line:match("^(%w+)\t(.*)$")
-    if sha then out[#out + 1] = { sha = sha, subject = subj } end
+    local sha, author, ago, subj = line:match("^(%w+)\t([^\t]*)\t([^\t]*)\t(.*)$")
+    if sha then out[#out + 1] = { sha = sha, author = author, ago = ago, subject = subj } end
   end
   return out
 end

@@ -349,13 +349,14 @@ function M.update(specs, names, opts)
                 local commits = Git.log_between(p.dir, p.from, p.to) or {}
                 p.count = #commits
                 p.subject = commits[1] and commits[1].subject or ""
+                p.ago = commits[1] and commits[1].ago or ""
               end
 
               local items = {}
               for _, p in ipairs(pending) do
                 items[#items + 1] = {
                   name = p.spec.name, from = p.from, to = p.to,
-                  count = p.count, subject = p.subject, dir = p.dir,
+                  count = p.count, subject = p.subject, ago = p.ago, dir = p.dir,
                   _orig = p,
                 }
               end
@@ -386,14 +387,14 @@ function M.update(specs, names, opts)
                     if p.spec.name == name then
                       local pool = Jobs.pool({ concurrency = 1 })
                       pool:add({
-                        cmd = { "git", "-C", p.dir, "log", "--pretty=%H%x09%s", p.from .. ".." .. p.to },
+                        cmd = { "git", "-C", p.dir, "log", "--pretty=%H%x09%an%x09%ar%x09%s", p.from .. ".." .. p.to },
                         tag = name,
                         on_done = function(r)
                           local log = {}
                           if r.code == 0 then
                             for line in (r.stdout or ""):gmatch("[^\n]+") do
-                              local sha, subj = line:match("^(%w+)\t(.*)$")
-                              if sha then log[#log + 1] = { sha = sha, subject = subj } end
+                              local sha, author, ago, subj = line:match("^(%w+)\t([^\t]*)\t([^\t]*)\t(.*)$")
+                              if sha then log[#log + 1] = { sha = sha, author = author, ago = ago, subject = subj } end
                             end
                           end
                           cb(log)

@@ -96,7 +96,9 @@ local function update_review_render(buf, win, pending, marked, expanded)
     local name = ("%-" .. name_max .. "s"):format(name_truncated)
     local range = ("%s..%s"):format(p.from:sub(1, 7), p.to:sub(1, 7))
     local count_str = (p.count == 1) and "1 commit " or (("%d commits"):format(p.count))
-    local subject = format_subject(p.subject, subject_max)
+    local subj_full = p.subject or ""
+    if p.ago and p.ago ~= "" then subj_full = subj_full .. " (" .. p.ago .. ")" end
+    local subject = format_subject(subj_full, subject_max)
     local line = ("  %s  %s  %s  %s  %s"):format(glyph, name, range, count_str, subject)
     lines[#lines + 1] = line
     row_to_index[row] = i
@@ -115,9 +117,16 @@ local function update_review_render(buf, win, pending, marked, expanded)
 
     if expanded[i] and p._log then
       for _, sha in ipairs(p._log) do
-        lines[#lines + 1] = ("        %s  %s"):format(sha.sha:sub(1, 7), sha.subject)
+        local meta = ""
+        if sha.author and sha.author ~= "" then
+          meta = ("  %s, %s"):format(sha.author, sha.ago or "")
+        end
+        lines[#lines + 1] = ("        %s  %s%s"):format(sha.sha:sub(1, 7), sha.subject, meta)
         table.insert(highlights, { row - 1, 8, 15, "Comment" })
         table.insert(highlights, { row - 1, 17, 17 + #sha.subject, "Comment" })
+        if meta ~= "" then
+          table.insert(highlights, { row - 1, 17 + #sha.subject, 17 + #sha.subject + #meta, "DiagnosticHint" })
+        end
         row = row + 1
       end
     end
