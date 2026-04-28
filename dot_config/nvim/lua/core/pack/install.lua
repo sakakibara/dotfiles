@@ -1,5 +1,6 @@
 local M = {}
 
+local History = require("core.pack.history")
 local Lock    = require("core.pack.lock")
 local Git     = require("core.pack.git")
 local Jobs    = require("core.pack.jobs")
@@ -110,6 +111,7 @@ function M.install_missing(specs, opts)
   end
 
   if #pending == 0 then return end
+  History.snapshot()
   pool:run({ on_progress = opts.on_progress })
 end
 
@@ -162,6 +164,7 @@ function M.update(specs, names, opts)
     if choice ~= 1 then notify("core.pack: cancelled"); return end
   end
 
+  History.snapshot()
   for _, p in ipairs(pending) do
     local r = Git.checkout(p.dir, p.checkout_ref or p.ref)
     if r.ok then

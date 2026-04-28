@@ -92,4 +92,18 @@ T.describe("core.pack.install", function()
     T.truthy(L.get("a"))
     T.eq(vim.fn.isdirectory(I.install_dir("b")), 0)
   end)
+
+  T.it("install_missing snapshots before writing lockfile", function()
+    package.loaded["core.pack.history"] = nil
+    local H = require("core.pack.history")
+    H._dir_override = vim.fn.tempname() .. "-hist"
+    vim.fn.mkdir(H._dir_override, "p")
+    H._max_snapshots = 5
+    local I, L = fresh()
+    local remote = make_remote()
+    -- seed the lockfile so there's something to snapshot
+    L.set("seed", { src = "x", rev = "0" })
+    I.install_missing({ { name = "demo", src = "file://" .. remote } }, {})
+    T.truthy(#H.list() >= 1)
+  end)
 end)
