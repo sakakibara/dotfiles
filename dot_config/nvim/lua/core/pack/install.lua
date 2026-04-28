@@ -37,10 +37,14 @@ end
 
 -- Build hook: shell / Ex command / function. Direct sync, mirrors what
 -- pack.lua's run_build did under the PackChanged autocmd.
-function M.run_build(spec, path)
+function M.run_build(spec, path, opts)
+  opts = opts or {}
   local b = spec.build
   if not b or b == "" then return end
-  notify(("core.pack: building %s..."):format(spec.name))
+  -- During the (synchronous) build, surface progress via the fidget summary.
+  -- After run_build returns, the calling pool's on_progress overwrites the text
+  -- back to "installing N/M" / "applying N/M" — that's the intentional handoff.
+  if opts.fidget then opts.fidget:set_status("core.pack", "building " .. spec.name) end
   local ok, err
   if type(b) == "function" then
     ok, err = pcall(b, { name = spec.name, path = path, spec = spec })
@@ -59,9 +63,7 @@ function M.run_build(spec, path)
       vim.log.levels.WARN)
     return
   end
-  if ok then
-    notify(("core.pack: build ok for %s"):format(spec.name))
-  else
+  if not ok then
     notify(("core.pack: build failed for %s: %s"):format(spec.name, tostring(err)),
       vim.log.levels.ERROR)
   end
@@ -104,7 +106,7 @@ function M.install_missing(specs, opts)
               src = spec.src, rev = rev,
               version = type(spec.version) == "string" and spec.version or nil,
             })
-            M.run_build(spec, dir)
+            M.run_build(spec, dir, { fidget = view })
           end,
         })
       end
@@ -197,7 +199,7 @@ local function apply_pending(pending, opts)
           src = p.spec.src, rev = Git.current_rev(p.dir),
           version = type(p.spec.version) == "string" and p.spec.version or nil,
         })
-        M.run_build(p.spec, p.dir)
+        M.run_build(p.spec, p.dir, { fidget = opts.fidget })
       end,
     })
   end
