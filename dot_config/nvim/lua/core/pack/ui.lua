@@ -109,6 +109,14 @@ local function fmt_size_kb(kb)
   return ("%.2f GB"):format(kb / 1024 / 1024)
 end
 
+local function format_ago(ts)
+  local age_s = os.time() - (ts or 0)
+  if age_s < 60        then return ("%ds ago"):format(age_s) end
+  if age_s < 3600      then return ("%dm ago"):format(math.floor(age_s / 60)) end
+  if age_s < 86400     then return ("%dh ago"):format(math.floor(age_s / 3600)) end
+  return ("%dd ago"):format(math.floor(age_s / 86400))
+end
+
 local function update_review_render(buf, win, pending, marked, expanded)
   local lines = {}
   local marked_count = 0
@@ -435,14 +443,16 @@ local function rollback_review_render(buf, snapshots)
 
   for i, s in ipairs(snapshots) do
     local idx_str = ("%2d"):format(i)
+    local ago_str = ("%-9s"):format(format_ago(s.ts or 0))
     local plugins = ("%d plugins"):format(s.plugin_count or 0)
-    local line = ("  %s  %s  %s"):format(idx_str, s.iso, plugins)
+    local line = ("  %s  %s  %s  %s"):format(idx_str, s.iso, ago_str, plugins)
     lines[#lines + 1] = line
     row_to_index[row] = i
 
     local col = 2
     table.insert(highlights, { row - 1, col, col + #idx_str, "Number" }); col = col + #idx_str + 2
     table.insert(highlights, { row - 1, col, col + #s.iso, "Identifier" }); col = col + #s.iso + 2
+    table.insert(highlights, { row - 1, col, col + #ago_str, "DiagnosticHint" }); col = col + #ago_str + 2
     table.insert(highlights, { row - 1, col, col + #plugins, "Comment" })
     row = row + 1
   end
