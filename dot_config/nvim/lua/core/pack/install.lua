@@ -141,7 +141,11 @@ function M.update(specs, names, opts)
             local target_rev
             if opts.target == "lockfile" then
               local entry = Lock.get(name)
-              target_rev = entry and entry.rev
+              if not entry then
+                notify(("core.pack: %s not in lockfile — skipping"):format(name), vim.log.levels.WARN)
+                return
+              end
+              target_rev = entry.rev
             else
               local target_ref = resolved.kind == "branch" and ("origin/" .. resolved.ref) or resolved.ref
               local rr = vim.system({ "git", "-C", dir, "rev-parse", target_ref }, { text = true }):wait()

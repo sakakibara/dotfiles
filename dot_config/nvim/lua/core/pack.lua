@@ -678,7 +678,7 @@ vim.api.nvim_create_user_command("PackRollback", function(opts)
   local function apply(ts)
     local data = History.restore(ts)
     if not data then notify("core.pack: restore failed", vim.log.levels.ERROR); return end
-    notify(("core.pack: restored snapshot %s — run :PackSync to apply"):format(os.date("!%Y-%m-%dT%H:%M:%SZ", math.floor(ts / 1000))))
+    notify(("core.pack: restored snapshot %s — run :PackUpdate! to apply"):format(os.date("!%Y-%m-%dT%H:%M:%SZ", math.floor(ts / 1000))))
   end
 
   -- Numeric arg = direct index (1 = newest); no arg = picker.
@@ -698,7 +698,7 @@ vim.api.nvim_create_user_command("PackRollback", function(opts)
   end)
 end, {
   nargs = "?",
-  desc = "Rollback lockfile to a previous snapshot (use :PackSync after to apply)",
+  desc = "Rollback lockfile to a previous snapshot (use :PackUpdate! after to apply)",
 })
 
 return M
