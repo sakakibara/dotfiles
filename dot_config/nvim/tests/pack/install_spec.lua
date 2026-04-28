@@ -173,4 +173,19 @@ T.describe("core.pack.install", function()
     T.truthy(complete_called_at_rev, "on_complete must fire")
     T.truthy(complete_called_at_rev ~= rev_a, "on_complete must fire AFTER lockfile advances")
   end)
+
+  T.it("update derefs annotated tags so a no-change is detected as no-change", function()
+    local I, L = fresh()
+    local remote = make_remote()
+    -- Create an annotated tag at remote HEAD. Annotated tags are git objects
+    -- (rev-parse returns the tag-object SHA, not the commit SHA), so without
+    -- ^{commit} dereferencing, target_rev would always differ from current_rev
+    -- and the plugin would falsely show as needing an update with 0 commits.
+    sh({ "git", "-C", remote, "tag", "-a", "v1.0.0", "-m", "release 1.0" })
+    local spec = { name = "demo", src = "file://" .. remote, version = "v1.0.0" }
+    async(function(cb) I.install_missing({ spec }, { on_complete = cb }) end)
+    local rev_initial = L.get("demo").rev
+    async(function(cb) I.update({ spec }, { "demo" }, { confirm = false, on_complete = cb }) end)
+    T.eq(L.get("demo").rev, rev_initial, "no rev change when already at the annotated tag")
+  end)
 end)

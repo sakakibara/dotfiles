@@ -205,7 +205,11 @@ function M.update(specs, names, opts)
               checkout_ref = target_rev
             else
               local target_ref = resolved.kind == "branch" and ("origin/" .. resolved.ref) or resolved.ref
-              local rr = vim.system({ "git", "-C", dir, "rev-parse", target_ref }, { text = true }):wait()
+              -- ^{commit} dereferences annotated tags to the underlying commit SHA;
+              -- without it, rev-parse returns the tag-object SHA which always differs
+              -- from current_rev (a commit SHA), so the plugin would falsely show as
+              -- needing an update with 0 commits between from..to.
+              local rr = vim.system({ "git", "-C", dir, "rev-parse", target_ref .. "^{commit}" }, { text = true }):wait()
               target_rev = rr.code == 0 and rr.stdout:gsub("%s+", "") or nil
               checkout_ref = target_ref
             end
