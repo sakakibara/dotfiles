@@ -659,7 +659,7 @@ function M._structured_status()
     if M._loaded[n] then
       state, glyph, glyph_hl = "loaded", "●", "Special"
     elseif s.lazy then
-      state, glyph, glyph_hl = "lazy", "⚙", "Identifier"
+      state, glyph, glyph_hl = "lazy", "◐", "Identifier"
     else
       state, glyph, glyph_hl = "pending", "◯", "Comment"
     end
