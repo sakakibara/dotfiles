@@ -230,3 +230,37 @@ T.describe("core.pack.ui.status", function()
     view:close()
   end)
 end)
+
+T.describe("core.pack.ui.plan_columns", function()
+  T.it("includes all columns when width fits", function()
+    local UI = fresh()
+    local plan = UI.plan_columns(
+      { a = 10, b = 10, c = 10 },
+      { a = 100, b = 80, c = 60 },
+      100
+    )
+    T.eq(plan.a, true); T.eq(plan.b, true); T.eq(plan.c, true)
+  end)
+
+  T.it("drops lowest-priority column when too narrow", function()
+    local UI = fresh()
+    local plan = UI.plan_columns(
+      { a = 30, b = 30, c = 30 },
+      { a = 100, b = 80, c = 60 },
+      80
+    )
+    T.eq(plan.c, false)  -- lowest priority dropped first
+    T.truthy(plan.a and plan.b)
+  end)
+
+  T.it("drops multiple columns until width fits", function()
+    local UI = fresh()
+    local plan = UI.plan_columns(
+      { a = 50, b = 50, c = 50 },
+      { a = 100, b = 80, c = 60 },
+      60
+    )
+    T.eq(plan.b, false); T.eq(plan.c, false)
+    T.eq(plan.a, true)
+  end)
+end)

@@ -20,6 +20,37 @@ M.keymaps = {
   },
 }
 
+-- Decide which columns to include given available width.
+-- min_widths: { col → byte width }
+-- priorities: { col → integer (higher = keep longer) }
+-- win_w: total width budget (e.g., from nvim_win_get_width)
+-- Returns: { col → bool included }. Always tries to keep at least the highest-priority col.
+function M.plan_columns(min_widths, priorities, win_w)
+  local include = {}
+  local SEP = 2  -- two-space separator between columns
+  for k in pairs(min_widths) do include[k] = true end
+
+  local function total()
+    local t = 0
+    local n = 0
+    for k, w in pairs(min_widths) do
+      if include[k] then t = t + w; n = n + 1 end
+    end
+    return t + math.max(0, n - 1) * SEP
+  end
+
+  while total() > win_w do
+    local victim, victim_pri = nil, math.huge
+    for k, p in pairs(priorities) do
+      if include[k] and p < victim_pri then victim, victim_pri = k, p end
+    end
+    if not victim then break end  -- nothing left to drop
+    include[victim] = false
+  end
+
+  return include
+end
+
 local NS = vim.api.nvim_create_namespace("core.pack.ui")
 
 local STATUS_MARKED   = "●"
