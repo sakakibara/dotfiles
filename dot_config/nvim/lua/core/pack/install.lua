@@ -111,12 +111,18 @@ function M.install_missing(specs, opts)
     end
   end
 
-  if #pending == 0 then return end
+  if #pending == 0 then
+    vim.schedule(function() if opts.on_complete then opts.on_complete() end end)
+    return
+  end
   History.snapshot()
 
-  local names = {}
-  for _, p in ipairs(pending) do names[#names + 1] = p.spec.name end
-  local view = opts.open_window and UI.progress(names, { open_window = true }) or nil
+  local view
+  if opts.open_window then
+    local names = {}
+    for _, p in ipairs(pending) do names[#names + 1] = p.spec.name end
+    view = UI.progress(names, { open_window = true })
+  end
 
   pool:run({
     on_progress = function(done, total, last)
@@ -125,6 +131,9 @@ function M.install_missing(specs, opts)
           last.code == 0 and "" or "failed")
       end
       if opts.on_progress then opts.on_progress(done, total, last) end
+    end,
+    on_complete = function()
+      if opts.on_complete then opts.on_complete() end
     end,
   })
 end
@@ -229,7 +238,8 @@ function M.update(specs, names, opts)
   end
 end
 
-function M.clean(specs, _opts)
+function M.clean(specs, opts)
+  opts = opts or {}
   local keep = {}
   for _, s in ipairs(specs) do keep[s.name] = true end
   local removed = {}
@@ -242,6 +252,7 @@ function M.clean(specs, _opts)
     end
   end
   if #removed > 0 then notify("core.pack: removed " .. table.concat(removed, ", ")) end
+  vim.schedule(function() if opts.on_complete then opts.on_complete() end end)
   return removed
 end
 
