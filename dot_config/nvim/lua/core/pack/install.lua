@@ -6,6 +6,7 @@ local Git     = require("core.pack.git")
 local Jobs    = require("core.pack.jobs")
 local Version = require("core.pack.version")
 local UI      = require("core.pack.ui")
+local Log     = require("core.pack.log")
 
 M._install_root_override = nil  -- tests
 
@@ -200,6 +201,15 @@ local function apply_pending(pending, opts)
           version = type(p.spec.version) == "string" and p.spec.version or nil,
         })
         M.run_build(p.spec, p.dir, { fidget = opts.fidget })
+        Log.append({
+          ts = os.time(),
+          kind = "update",
+          name = p.spec.name,
+          from = p.from,
+          to = p.to,
+          count = p.count or 0,
+          subject = p.subject or "",
+        })
       end,
     })
   end
