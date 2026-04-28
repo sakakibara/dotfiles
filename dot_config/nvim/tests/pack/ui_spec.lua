@@ -118,6 +118,41 @@ T.describe("core.pack.ui.fidget", function()
   end)
 end)
 
+T.describe("core.pack.ui.clean_review", function()
+  T.it("renders one row per orphan, default marked", function()
+    local UI = fresh()
+    local items = { { name = "old-a", dir = "/tmp/old-a" }, { name = "old-b", dir = "/tmp/old-b" } }
+    local view = UI.clean_review(items, { open_window = false, on_apply = function() end })
+    local lines = vim.api.nvim_buf_get_lines(view.buf, 0, -1, false)
+    T.truthy(lines[1]:match("2 of 2 marked"))
+    T.truthy(lines[2]:match("●") and lines[2]:match("old%-a"))
+    T.truthy(lines[3]:match("●") and lines[3]:match("old%-b"))
+    view:close()
+  end)
+
+  T.it("toggle_at flips a row's mark", function()
+    local UI = fresh()
+    local items = { { name = "a", dir = "/tmp/a" } }
+    local view = UI.clean_review(items, { open_window = false, on_apply = function() end })
+    view:toggle_at(2)
+    local lines = vim.api.nvim_buf_get_lines(view.buf, 0, -1, false)
+    T.truthy(lines[2]:match("◯"))
+    view:close()
+  end)
+
+  T.it("apply invokes on_apply with marked entries only", function()
+    local UI = fresh()
+    local items = { { name = "a", dir = "/tmp/a" }, { name = "b", dir = "/tmp/b" } }
+    local got
+    local view = UI.clean_review(items, { open_window = false, on_apply = function(list) got = list end })
+    view:toggle_at(3)  -- unmark b
+    view:apply()
+    T.eq(#got, 1)
+    T.eq(got[1].name, "a")
+    view:close()
+  end)
+end)
+
 T.describe("core.pack.ui.status", function()
   T.it("renders a buffer containing the supplied lines", function()
     local UI = fresh()

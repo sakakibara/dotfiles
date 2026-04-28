@@ -418,18 +418,44 @@ function M.clean(specs, opts)
   opts = opts or {}
   local keep = {}
   for _, s in ipairs(specs) do keep[s.name] = true end
-  local removed = {}
   local root = install_root()
+  local orphans = {}
   for _, name in ipairs(vim.fn.readdir(root) or {}) do
     if not keep[name] then
-      vim.fn.delete(root .. "/" .. name, "rf")
-      Lock.delete(name)
-      removed[#removed + 1] = name
+      orphans[#orphans + 1] = { name = name, dir = root .. "/" .. name }
     end
   end
-  if #removed > 0 then notify("core.pack: removed " .. table.concat(removed, ", ")) end
-  vim.schedule(function() if opts.on_complete then opts.on_complete() end end)
-  return removed
+
+  local function do_remove(items)
+    local removed = {}
+    for _, item in ipairs(items) do
+      vim.fn.delete(item.dir, "rf")
+      Lock.delete(item.name)
+      removed[#removed + 1] = item.name
+    end
+    if #removed > 0 then notify("core.pack: removed " .. table.concat(removed, ", ")) end
+    if opts.on_complete then vim.schedule(opts.on_complete) end
+    return removed
+  end
+
+  if #orphans == 0 then
+    notify("core.pack: nothing to clean")
+    if opts.on_complete then vim.schedule(opts.on_complete) end
+    return {}
+  end
+
+  if opts.confirm == false then
+    return do_remove(orphans)
+  end
+
+  -- Confirm flow: hand off to caller. on_review receives the list and an apply callback.
+  if opts.on_review then
+    opts.on_review(orphans, do_remove)
+    return
+  end
+
+  -- No on_review provided: fall back to non-confirming removal (legacy behavior).
+  return do_remove(orphans)
 end
 
 return M

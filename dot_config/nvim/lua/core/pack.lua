@@ -710,10 +710,17 @@ end, {
 
 vim.api.nvim_create_user_command("PackClean", function()
   local Install = require("core.pack.install")
+  local UI = require("core.pack.ui")
   local specs = {}
   for _, s in pairs(M._specs) do specs[#specs + 1] = s end
-  Install.clean(specs, {})
-end, { desc = "Remove plugins not in spec" })
+  Install.clean(specs, {
+    on_review = function(orphans, do_remove)
+      UI.clean_review(orphans, {
+        on_apply = function(list) do_remove(list) end,
+      })
+    end,
+  })
+end, { desc = "Remove plugins not in spec (with confirmation buffer)" })
 
 vim.api.nvim_create_user_command("PackSync", function()
   vim.cmd("PackUpdate")

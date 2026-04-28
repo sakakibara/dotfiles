@@ -186,6 +186,124 @@ function M.update_review(pending, opts)
   return view
 end
 
+local function clean_review_render(buf, items, marked)
+  local lines = {}
+  local marked_count = 0
+  for i = 1, #items do if marked[i] then marked_count = marked_count + 1 end end
+  lines[#lines + 1] = ("core.pack: %d of %d marked   <Tab> toggle  a all  u none  <CR> remove  q cancel")
+    :format(marked_count, #items)
+
+  local row_to_index = {}
+  local highlights = {}
+  local row = 2
+
+  for i, p in ipairs(items) do
+    local glyph = marked[i] and STATUS_MARKED or STATUS_UNMARKED
+    local hl_glyph = marked[i] and "Special" or "Comment"
+    local name = ("%-30s"):format(p.name)
+    local dir = p.dir or ""
+    local line = ("  %s  %s  %s"):format(glyph, name, dir)
+    lines[#lines + 1] = line
+    row_to_index[row] = i
+
+    local col = 2
+    table.insert(highlights, { row - 1, col, col + #glyph, hl_glyph }); col = col + #glyph + 2
+    table.insert(highlights, { row - 1, col, col + #name, "Identifier" }); col = col + #name + 2
+    table.insert(highlights, { row - 1, col, col + #dir, "Comment" })
+    row = row + 1
+  end
+
+  vim.bo[buf].modifiable = true
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+  vim.bo[buf].modifiable = false
+  vim.api.nvim_buf_clear_namespace(buf, NS, 0, -1)
+  vim.api.nvim_buf_set_extmark(buf, NS, 0, 0, { end_col = #lines[1], hl_group = "Title" })
+  for _, hl in ipairs(highlights) do
+    vim.api.nvim_buf_set_extmark(buf, NS, hl[1], hl[2], { end_col = hl[3], hl_group = hl[4] })
+  end
+  return row_to_index
+end
+
+function M.clean_review(items, opts)
+  opts = opts or {}
+  local buf = vim.api.nvim_create_buf(false, true)
+  vim.bo[buf].buftype = "nofile"
+  vim.bo[buf].swapfile = false
+  vim.bo[buf].bufhidden = "wipe"
+  if opts.open_window == false then vim.bo[buf].filetype = "pack-clean" end
+  pcall(vim.api.nvim_buf_set_name, buf, "core.pack: clean review")
+
+  local marked = {}
+  for i = 1, #items do marked[i] = true end
+
+  local row_to_index = clean_review_render(buf, items, marked)
+
+  local win
+  if opts.open_window ~= false then
+    vim.cmd("topleft 14split")
+    win = vim.api.nvim_get_current_win()
+    vim.api.nvim_win_set_buf(win, buf)
+    vim.bo[buf].filetype = "pack-clean"  -- after win_set_buf so ftdetect doesn't clear
+    vim.wo[win].wrap = false
+    vim.wo[win].cursorline = true
+    vim.wo[win].number = false
+    vim.wo[win].relativenumber = false
+    vim.wo[win].statuscolumn = ""
+    vim.wo[win].signcolumn = "no"
+    vim.api.nvim_win_set_cursor(win, { 2, 0 })
+    vim.cmd("stopinsert")
+    vim.api.nvim_create_autocmd("InsertEnter", {
+      buffer = buf,
+      callback = function() vim.cmd("stopinsert") end,
+    })
+  end
+
+  local view = { buf = buf, win = win }
+
+  function view:toggle_at(row)
+    local i = row_to_index[row]
+    if not i then return end
+    marked[i] = not marked[i]
+    row_to_index = clean_review_render(buf, items, marked)
+  end
+
+  function view:set_all(value)
+    for i = 1, #items do marked[i] = value end
+    row_to_index = clean_review_render(buf, items, marked)
+  end
+
+  function view:apply()
+    local out = {}
+    for i, p in ipairs(items) do if marked[i] then out[#out + 1] = p end end
+    if opts.on_apply then opts.on_apply(out) end
+  end
+
+  function view:close()
+    if opts.on_close then opts.on_close() end
+    if self.win and vim.api.nvim_win_is_valid(self.win) then
+      vim.api.nvim_win_close(self.win, true)
+    end
+    if vim.api.nvim_buf_is_valid(self.buf) then
+      vim.api.nvim_buf_delete(self.buf, { force = true })
+    end
+  end
+
+  if win then
+    local function map(lhs, rhs) vim.keymap.set("n", lhs, rhs, { buffer = buf, nowait = true, silent = true }) end
+    map("<Tab>", function() view:toggle_at(vim.api.nvim_win_get_cursor(win)[1]) end)
+    map("x",     function() view:toggle_at(vim.api.nvim_win_get_cursor(win)[1]) end)
+    map("a",     function() view:set_all(true) end)
+    map("u",     function() view:set_all(false) end)
+    map("<CR>",  function() view:apply(); view:close() end)
+    map("q",     function() view:close() end)
+    for _, k in ipairs({ "i", "I", "A", "o", "O", "c", "C", "s", "S", "r", "R", "p", "P" }) do
+      vim.keymap.set("n", k, "<nop>", { buffer = buf, nowait = true, silent = true })
+    end
+  end
+
+  return view
+end
+
 -- status(lines, opts) - read-only scratch buffer for displaying status text.
 -- opts: { open_window = bool (default true), title = string, highlights = { { row, col_start, col_end, hl_group }, ... } }
 function M.status(lines, opts)
