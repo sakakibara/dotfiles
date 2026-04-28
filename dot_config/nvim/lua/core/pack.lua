@@ -615,10 +615,18 @@ function M.add_keys(name, keys)
   if M._loaded[name] then install() else M.on_load(name, install) end
 end
 
-function M._structured_status()
+function M._structured_status(filter_pattern)
   local Profile = require("core.profile")
   local names = vim.tbl_keys(M._specs)
   table.sort(names)
+  if filter_pattern and filter_pattern ~= "" then
+    local fp = filter_pattern:lower()
+    local filtered = {}
+    for _, n in ipairs(names) do
+      if n:lower():find(fp, 1, true) then filtered[#filtered + 1] = n end
+    end
+    names = filtered
+  end
 
   local loaded_count = 0
   local lazy_count = 0
@@ -697,12 +705,20 @@ end
 
 vim.api.nvim_create_user_command("PackStatus", function()
   local UI = require("core.pack.ui")
-  local data = M._structured_status()
-  UI.status(data.lines, {
-    title = "core.pack: status",
-    highlights = data.highlights,
-  })
-end, { desc = "List registered plugin specs in a scratch buffer" })
+  local function render(filter_pattern)
+    local data = M._structured_status(filter_pattern)
+    local view
+    view = UI.status(data.lines, {
+      title = "core.pack: status",
+      highlights = data.highlights,
+      on_filter = function(p)
+        view:close()
+        render(p)
+      end,
+    })
+  end
+  render("")
+end, { desc = "List registered plugin specs (f to filter, F to clear)" })
 
 vim.api.nvim_create_user_command("PackInstall", function()
   local Install = require("core.pack.install")

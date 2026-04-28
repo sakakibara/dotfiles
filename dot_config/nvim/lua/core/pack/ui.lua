@@ -544,6 +544,15 @@ function M.status(lines, opts)
     M.lock_pack_window(buf, win)
     local km = vim.tbl_extend("force", M.keymaps.status, opts.keymaps or {})
     vim.keymap.set("n", km.cancel, "<cmd>close<cr>", { buffer = buf, nowait = true, silent = true })
+    if opts.on_filter then
+      vim.keymap.set("n", "f", function()
+        vim.ui.input({ prompt = "filter: " }, function(input)
+          opts.on_filter(input or "")
+        end)
+      end, { buffer = buf, nowait = true, silent = true })
+      vim.keymap.set("n", "F", function() opts.on_filter("") end,
+        { buffer = buf, nowait = true, silent = true })
+    end
   end
 
   local view = { buf = buf, win = win }
