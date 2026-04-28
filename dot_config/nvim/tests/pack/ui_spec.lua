@@ -34,41 +34,57 @@ T.describe("core.pack.ui.progress", function()
 end)
 
 T.describe("core.pack.ui.update_review", function()
-  T.it("renders one line per pending update, default marked", function()
+  T.it("renders tabular row per pending update with elpaca-style layout", function()
     local UI = fresh()
     local pending = {
-      { name = "a", from = "abc1234567", to = "def8901234", count = 3 },
-      { name = "b", from = "111", to = "222", count = 1 },
+      { name = "a", from = "abc1234567", to = "def8901234", count = 3, subject = "feat: x" },
+      { name = "b", from = "111", to = "222", count = 1, subject = "fix: y" },
     }
     local view = UI.update_review(pending, { open_window = false, on_apply = function() end })
     local lines = vim.api.nvim_buf_get_lines(view.buf, 0, -1, false)
-    T.truthy(lines[2]:match("^%s*%[x%] a "))
-    T.truthy(lines[3]:match("^%s*%[x%] b "))
+    -- Header line summarizes counts + keymap legend.
+    T.truthy(lines[1]:match("2 of 2 marked"))
+    T.truthy(lines[1]:match("<Tab> toggle"))
+    -- Per-row format: status glyph + name + from..to + count + subject.
+    T.truthy(lines[2]:match("●") and lines[2]:match("a") and lines[2]:match("abc1234..def8901") and lines[2]:match("3 commits") and lines[2]:match("feat: x"))
+    T.truthy(lines[3]:match("●") and lines[3]:match("b") and lines[3]:match("1 commit") and lines[3]:match("fix: y"))
     view:close()
   end)
 
-  T.it("toggle_at flips a line's mark", function()
+  T.it("toggle_at flips marked state and updates header counter", function()
     local UI = fresh()
-    local pending = { { name = "a", from = "1", to = "2", count = 1 } }
+    local pending = { { name = "a", from = "1", to = "2", count = 1, subject = "x" }, { name = "b", from = "3", to = "4", count = 2, subject = "y" } }
     local view = UI.update_review(pending, { open_window = false, on_apply = function() end })
     view:toggle_at(2)
     local lines = vim.api.nvim_buf_get_lines(view.buf, 0, -1, false)
-    T.truthy(lines[2]:match("^%s*%[ %] a "))
+    T.truthy(lines[1]:match("1 of 2 marked"))
+    T.truthy(lines[2]:match("◯"))
+    T.truthy(lines[3]:match("●"))
     view:close()
   end)
 
   T.it("apply() invokes on_apply with currently-marked entries only", function()
     local UI = fresh()
-    local pending = {
-      { name = "a", from = "1", to = "2", count = 1 },
-      { name = "b", from = "1", to = "2", count = 1 },
-    }
+    local pending = { { name = "a", from = "1", to = "2", count = 1, subject = "x" }, { name = "b", from = "3", to = "4", count = 1, subject = "y" } }
     local got
     local view = UI.update_review(pending, { open_window = false, on_apply = function(list) got = list end })
     view:toggle_at(3)  -- unmark b
     view:apply()
     T.eq(#got, 1)
     T.eq(got[1].name, "a")
+    view:close()
+  end)
+
+  T.it("set_all marks or unmarks all rows", function()
+    local UI = fresh()
+    local pending = { { name = "a", from = "1", to = "2", count = 1, subject = "x" }, { name = "b", from = "3", to = "4", count = 1, subject = "y" } }
+    local view = UI.update_review(pending, { open_window = false, on_apply = function() end })
+    view:set_all(false)
+    local lines = vim.api.nvim_buf_get_lines(view.buf, 0, -1, false)
+    T.truthy(lines[1]:match("0 of 2 marked"))
+    view:set_all(true)
+    lines = vim.api.nvim_buf_get_lines(view.buf, 0, -1, false)
+    T.truthy(lines[1]:match("2 of 2 marked"))
     view:close()
   end)
 end)
