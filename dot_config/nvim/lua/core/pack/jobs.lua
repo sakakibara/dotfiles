@@ -58,6 +58,7 @@ end
 function Pool:run(opts)
   opts = opts or {}
   local total = #self.queue
+  self.done = 0  -- reset progress counter so on_progress reports correctly on re-runs
   local function on_all_done()
     if opts.on_complete then safe_call("on_complete", opts.on_complete) end
   end
@@ -79,8 +80,8 @@ function M.run_sync(pool, opts)
   local user_complete = opts.on_complete
   local done = false
   opts.on_complete = function()
-    if user_complete then user_complete() end
     done = true
+    if user_complete then user_complete() end
   end
   pool:run(opts)
   local ok = vim.wait(TIMEOUT_MS, function() return done end, POLL_MS)
