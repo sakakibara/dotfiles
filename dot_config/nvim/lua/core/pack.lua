@@ -682,7 +682,7 @@ function M._structured_status(filter_pattern)
     local name_padded = ("%-" .. name_max .. "s"):format(name_truncated)
     local state_padded = ("%-8s"):format(state)
     local load_ms = Profile.lookup(n)
-    local load_str = load_ms and ("%6.2f ms"):format(load_ms) or "       —"
+    local load_str = load_ms and ("%6.2f ms"):format(load_ms) or "       - "
     local load_padded = ("%-" .. LOAD_W .. "s"):format(load_str)
     local trigger_truncated = trigger
     if #trigger_truncated > trigger_max then trigger_truncated = trigger_truncated:sub(1, trigger_max - 1) .. "…" end
