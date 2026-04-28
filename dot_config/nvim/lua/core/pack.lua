@@ -729,30 +729,40 @@ end, { desc = "Update then clean" })
 
 vim.api.nvim_create_user_command("PackRollback", function(opts)
   local History = require("core.pack.history")
+  local UI = require("core.pack.ui")
   local entries = History.list()
   if #entries == 0 then notify("core.pack: no snapshots", vim.log.levels.WARN); return end
 
-  local function apply(ts)
-    local data = History.restore(ts)
-    if not data then notify("core.pack: restore failed", vim.log.levels.ERROR); return end
-    notify(("core.pack: restored snapshot %s — run :PackUpdate! to apply"):format(os.date("!%Y-%m-%dT%H:%M:%SZ", math.floor(ts / 1000))))
+  -- Enrich with plugin counts (cheap: read each snapshot JSON).
+  for _, e in ipairs(entries) do
+    local fd = io.open(e.path, "r")
+    if fd then
+      local raw = fd:read("*a"); fd:close()
+      local ok, data = pcall(vim.json.decode, raw)
+      e.plugin_count = (ok and type(data) == "table" and type(data.plugins) == "table") and vim.tbl_count(data.plugins) or 0
+    else
+      e.plugin_count = 0
+    end
   end
 
-  -- Numeric arg = direct index (1 = newest); no arg = picker.
+  local function apply(snapshot)
+    local data = History.restore(snapshot.ts)
+    if not data then notify("core.pack: restore failed", vim.log.levels.ERROR); return end
+    notify(("core.pack: restored snapshot %s — run :PackUpdate! to apply"):format(snapshot.iso))
+  end
+
+  -- Numeric arg = direct index (1 = newest).
   local idx = tonumber(opts.fargs[1])
   if idx then
     local e = entries[idx]
     if not e then notify(("core.pack: no snapshot at index %d"):format(idx), vim.log.levels.WARN); return end
-    apply(e.ts)
+    apply(e)
     return
   end
 
-  local items = {}
-  for i, e in ipairs(entries) do items[i] = ("%d  %s"):format(i, e.iso) end
-  vim.ui.select(items, { prompt = "Rollback to:" }, function(choice, i)
-    if not i then return end
-    apply(entries[i].ts)
-  end)
+  UI.rollback_review(entries, {
+    on_select = function(snapshot) apply(snapshot) end,
+  })
 end, {
   nargs = "?",
   desc = "Rollback lockfile to a previous snapshot (use :PackUpdate! after to apply)",

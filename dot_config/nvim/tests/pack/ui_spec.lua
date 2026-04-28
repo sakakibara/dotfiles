@@ -153,6 +153,35 @@ T.describe("core.pack.ui.clean_review", function()
   end)
 end)
 
+T.describe("core.pack.ui.rollback_review", function()
+  T.it("renders one row per snapshot with iso date and plugin count", function()
+    local UI = fresh()
+    local snapshots = {
+      { ts = 1714293600, iso = "2026-04-28T12:00:00Z", path = "/tmp/a.json", plugin_count = 88 },
+      { ts = 1714207200, iso = "2026-04-27T12:00:00Z", path = "/tmp/b.json", plugin_count = 87 },
+    }
+    local view = UI.rollback_review(snapshots, { open_window = false, on_select = function() end })
+    local lines = vim.api.nvim_buf_get_lines(view.buf, 0, -1, false)
+    T.truthy(lines[1]:match("2 snapshots"))
+    T.truthy(lines[3]:match("2026%-04%-28") and lines[3]:match("88"))
+    T.truthy(lines[4]:match("2026%-04%-27") and lines[4]:match("87"))
+    view:close()
+  end)
+
+  T.it("select_at calls on_select with the chosen snapshot", function()
+    local UI = fresh()
+    local snapshots = {
+      { ts = 1714293600, iso = "2026-04-28T12:00:00Z", path = "/tmp/a.json", plugin_count = 88 },
+      { ts = 1714207200, iso = "2026-04-27T12:00:00Z", path = "/tmp/b.json", plugin_count = 87 },
+    }
+    local got
+    local view = UI.rollback_review(snapshots, { open_window = false, on_select = function(s) got = s end })
+    view:select_at(4)  -- second snapshot row (header + blank + first + second)
+    T.eq(got and got.ts, 1714207200)
+    view:close()
+  end)
+end)
+
 T.describe("core.pack.ui.status", function()
   T.it("renders a buffer containing the supplied lines", function()
     local UI = fresh()
