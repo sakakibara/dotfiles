@@ -85,8 +85,8 @@ end
 
 local NS = vim.api.nvim_create_namespace("core.pack.ui")
 
-local STATUS_MARKED   = "*"
-local STATUS_UNMARKED = "o"
+local STATUS_MARKED   = "[x]"
+local STATUS_UNMARKED = "[ ]"
 
 -- Pad a glyph to a consistent display width across rows. Some glyphs (●/⚙/◯,
 -- emoji-presentation chars) render at different cell widths depending on
