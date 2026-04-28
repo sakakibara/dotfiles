@@ -33,7 +33,7 @@ T.describe("core.pack.history", function()
     for i = 1, 5 do
       L.set("a", { src = "u/a", rev = tostring(i) })
       H.snapshot()
-      vim.uv.sleep(1010)  -- ensure distinct timestamps
+      vim.uv.sleep(15)  -- ensure distinct timestamps
     end
     T.eq(#H.list(), 3)
   end)
@@ -42,7 +42,7 @@ T.describe("core.pack.history", function()
     local H, L = fresh()
     L.set("a", { src = "u/a", rev = "1" })
     H.snapshot()
-    vim.uv.sleep(1010)
+    vim.uv.sleep(15)
     L.set("a", { src = "u/a", rev = "2" })
     local snaps = H.list()
     H.restore(snaps[#snaps].ts)  -- oldest snapshot
@@ -52,7 +52,7 @@ T.describe("core.pack.history", function()
   T.it("list returns newest first", function()
     local H, L = fresh()
     L.set("a", { src = "u/a", rev = "1" })
-    H.snapshot(); vim.uv.sleep(1010)
+    H.snapshot(); vim.uv.sleep(15)
     L.set("a", { src = "u/a", rev = "2" })
     H.snapshot()
     local entries = H.list()

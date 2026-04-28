@@ -18,9 +18,10 @@ function M.snapshot()
   local lock_path = Lock.path()
   if vim.fn.filereadable(lock_path) ~= 1 then return nil end
   ensure_dir()
-  local ts = os.time()
+  local sec, usec = vim.uv.gettimeofday()
+  local ts = sec * 1000 + math.floor(usec / 1000)
   local path = dir() .. "/" .. tostring(ts) .. ".json"
-  -- Avoid collision when multiple snapshots happen in the same second.
+  -- Avoid collision when multiple snapshots happen in the same millisecond.
   if vim.fn.filereadable(path) == 1 then
     local i = 1
     while vim.fn.filereadable(dir() .. "/" .. ts .. "-" .. i .. ".json") == 1 do i = i + 1 end
@@ -48,7 +49,7 @@ function M.list()
       out[#out + 1] = {
         ts   = ts,
         path = dir() .. "/" .. name,
-        iso  = os.date("!%Y-%m-%dT%H:%M:%SZ", ts),
+        iso  = os.date("!%Y-%m-%dT%H:%M:%SZ", math.floor(ts / 1000)),
       }
     end
   end
