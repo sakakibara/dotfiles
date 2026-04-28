@@ -136,4 +136,18 @@ T.describe("core.pack.ui.status", function()
     view:close()
     T.eq(vim.api.nvim_buf_is_valid(buf), false)
   end)
+
+  T.it("status applies opts.highlights via extmarks", function()
+    local UI = fresh()
+    local view = UI.status({ "header", "  body" }, {
+      open_window = false,
+      highlights = {
+        { 0, 0, 6, "Title" },
+        { 1, 2, 6, "Identifier" },
+      },
+    })
+    local marks = vim.api.nvim_buf_get_extmarks(view.buf, -1, 0, -1, { details = true })
+    T.truthy(#marks >= 2)
+    view:close()
+  end)
 end)

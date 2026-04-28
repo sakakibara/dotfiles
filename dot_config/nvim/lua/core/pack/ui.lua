@@ -185,7 +185,7 @@ function M.update_review(pending, opts)
 end
 
 -- status(lines, opts) - read-only scratch buffer for displaying status text.
--- opts: { open_window = bool (default true), title = string }
+-- opts: { open_window = bool (default true), title = string, highlights = { { row, col_start, col_end, hl_group }, ... } }
 function M.status(lines, opts)
   opts = opts or {}
   local buf = vim.api.nvim_create_buf(false, true)
@@ -195,6 +195,13 @@ function M.status(lines, opts)
   pcall(vim.api.nvim_buf_set_name, buf, opts.title or "core.pack: status")
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
   vim.bo[buf].modifiable = false
+
+  if opts.highlights then
+    vim.api.nvim_buf_clear_namespace(buf, NS, 0, -1)
+    for _, hl in ipairs(opts.highlights) do
+      vim.api.nvim_buf_set_extmark(buf, NS, hl[1], hl[2], { end_col = hl[3], hl_group = hl[4] })
+    end
+  end
 
   local win
   if opts.open_window ~= false then
