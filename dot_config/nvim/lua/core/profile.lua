@@ -128,6 +128,19 @@ function M._structured_report()
   return { lines = lines, highlights = highlights }
 end
 
+-- Lookup total profile time for a single plugin (sum of all phases).
+function M.lookup(name)
+  local total = 0
+  local found = false
+  for _, s in ipairs(spans) do
+    if s.name:gsub("^[^:]*:", "") == name then
+      total = total + s.ms
+      found = true
+    end
+  end
+  return found and total or nil
+end
+
 vim.api.nvim_create_user_command("PackProfile", function()
   local UI = require("core.pack.ui")
   local data = M._structured_report()

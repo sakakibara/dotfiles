@@ -616,6 +616,7 @@ function M.add_keys(name, keys)
 end
 
 function M._structured_status()
+  local Profile = require("core.profile")
   local names = vim.tbl_keys(M._specs)
   table.sort(names)
 
@@ -631,15 +632,22 @@ function M._structured_status()
   for _, n in ipairs(names) do name_max = math.max(name_max, #n) end
   if name_max > 50 then name_max = 50 end
 
+  local LOAD_W = 9
+
   -- Trigger column gets remainder. Fixed prefix bytes:
-  --   2 (lead) + 3 (glyph) + 2 + name_max + 2 + 8 (state) + 2 = 19 + name_max
+  --   2 (lead) + 3 (glyph) + 2 + name_max + 2 + 8 (state) + 2 + 9 (load) + 2 = 28 + name_max
   -- Use a generous default of 180 chars since :PackStatus renders before the
   -- window is open and can't know the actual width at that point.
-  local trigger_max = 180 - (19 + name_max)
+  local trigger_max = 180 - (28 + name_max)
   if trigger_max < 30 then trigger_max = 30 end
 
+  local total_load_ms = 0
+  for _, n in ipairs(names) do
+    local lt = Profile.lookup(n)
+    if lt then total_load_ms = total_load_ms + lt end
+  end
   local lines = {
-    ("core.pack: %d registered (%d lazy, %d loaded)"):format(#names, lazy_count, loaded_count),
+    ("core.pack: %d registered (%d lazy, %d loaded, %.0f ms total load)"):format(#names, lazy_count, loaded_count, total_load_ms),
     "",
   }
   local highlights = { { 0, 0, #lines[1], "Title" } }
@@ -665,9 +673,12 @@ function M._structured_status()
     if #name_truncated > name_max then name_truncated = name_truncated:sub(1, name_max - 1) .. "…" end
     local name_padded = ("%-" .. name_max .. "s"):format(name_truncated)
     local state_padded = ("%-8s"):format(state)
+    local load_ms = Profile.lookup(n)
+    local load_str = load_ms and ("%6.2f ms"):format(load_ms) or "       —"
+    local load_padded = ("%-" .. LOAD_W .. "s"):format(load_str)
     local trigger_truncated = trigger
     if #trigger_truncated > trigger_max then trigger_truncated = trigger_truncated:sub(1, trigger_max - 1) .. "…" end
-    local line = ("  %s  %s  %s  %s"):format(glyph, name_padded, state_padded, trigger_truncated)
+    local line = ("  %s  %s  %s  %s  %s"):format(glyph, name_padded, state_padded, load_padded, trigger_truncated)
     local row = #lines
 
     -- col offsets (byte-aware: ●/⚙/◯ are 3-byte UTF-8)
@@ -675,6 +686,7 @@ function M._structured_status()
     table.insert(highlights, { row, col, col + #glyph, glyph_hl }); col = col + #glyph + 2
     table.insert(highlights, { row, col, col + #name_padded, "Identifier" }); col = col + #name_padded + 2
     table.insert(highlights, { row, col, col + #state_padded, "Type" }); col = col + #state_padded + 2
+    table.insert(highlights, { row, col, col + #load_padded, "Number" }); col = col + #load_padded + 2
     table.insert(highlights, { row, col, col + #trigger_truncated, "Comment" })
 
     lines[#lines + 1] = line
