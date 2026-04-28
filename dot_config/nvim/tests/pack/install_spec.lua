@@ -143,4 +143,34 @@ T.describe("core.pack.install", function()
     local Git = require("core.pack.git")
     T.eq(Git.current_rev(I.install_dir("demo")), rev_a)
   end)
+
+  T.it("update with confirm=true fires on_complete only after lockfile advances", function()
+    local I, L = fresh()
+    local remote = make_remote()
+    async(function(cb) I.install_missing({ { name = "demo", src = "file://" .. remote } }, { on_complete = cb }) end)
+    local rev_a = L.get("demo").rev
+    sh({ "git", "-C", remote, "commit", "--allow-empty", "-q", "-m", "second" })
+
+    -- Stub UI.update_review to drive on_apply then on_close synchronously, the same way
+    -- the <CR> keymap does. This reproduces the race that broke before the fix.
+    -- fresh() already loaded core.pack.ui; grab that same table so install.lua's
+    -- local UI upvalue sees the stub.
+    local UI = require("core.pack.ui")
+    UI.update_review = function(items, opts)
+      opts.on_apply(items)  -- apply all
+      opts.on_close()       -- mimic <CR> keymap's apply+close sequence
+      return { close = function() end }
+    end
+
+    local complete_called_at_rev
+    I.update({ { name = "demo", src = "file://" .. remote } }, { "demo" }, {
+      confirm = true, open_window = false,
+      on_complete = function()
+        complete_called_at_rev = L.get("demo").rev
+      end,
+    })
+    vim.wait(60000, function() return complete_called_at_rev ~= nil end, 25)
+    T.truthy(complete_called_at_rev, "on_complete must fire")
+    T.truthy(complete_called_at_rev ~= rev_a, "on_complete must fire AFTER lockfile advances")
+  end)
 end)

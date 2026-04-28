@@ -252,17 +252,22 @@ function M.update(specs, names, opts)
         complete_fired = true
         if opts.on_complete then opts.on_complete() end
       end
+      local apply_started = false
       UI.update_review(items, {
         open_window = opts.open_window ~= false,
         on_apply = function(list)
+          apply_started = true
           local applied = {}
           for _, item in ipairs(list) do applied[#applied + 1] = item._orig end
           apply_pending(applied, { on_complete = fire_complete })
         end,
         on_close = function()
-          -- If apply was triggered, fire_complete is called from apply_pending's on_complete.
-          -- If cancelled, fire_complete fires here. Schedule so apply runs first if it raced.
-          vim.schedule(fire_complete)
+          -- Only fire on_complete from on_close on the cancel path. The apply path
+          -- routes through apply_pending's on_complete (which fires fire_complete
+          -- after checkouts settle). Without this gate, vim.schedule(fire_complete)
+          -- would land BEFORE the async checkout pool finishes, signaling completion
+          -- before the lockfile actually advances.
+          if not apply_started then vim.schedule(fire_complete) end
         end,
       })
     end,
