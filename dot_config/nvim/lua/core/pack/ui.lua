@@ -85,8 +85,8 @@ end
 
 local NS = vim.api.nvim_create_namespace("core.pack.ui")
 
-local STATUS_MARKED   = "●"
-local STATUS_UNMARKED = "◯"
+local STATUS_MARKED   = "*"
+local STATUS_UNMARKED = "o"
 
 -- Pad a glyph to a consistent display width across rows. Some glyphs (●/⚙/◯,
 -- emoji-presentation chars) render at different cell widths depending on
@@ -581,8 +581,8 @@ function M.fidget(opts)
     local lines = {}
     for i, r in ipairs(rows) do
       local glyph
-      if r.status == "done" then glyph = "✓"
-      elseif r.status == "error" then glyph = "✗"
+      if r.status == "done" then glyph = "v"
+      elseif r.status == "error" then glyph = "x"
       else glyph = SPINNER[((spinner_step - 1) % #SPINNER) + 1]
       end
       lines[i] = (" %s %s  %s"):format(glyph, r.name, r.text or "")
