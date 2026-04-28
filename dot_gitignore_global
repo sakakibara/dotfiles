@@ -66,3 +66,6 @@ Desktop.ini
 
 # Mise
 mise.toml
+
+# Claude Code per-project local state
+.claude/
