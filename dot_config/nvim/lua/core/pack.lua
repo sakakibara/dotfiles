@@ -615,27 +615,65 @@ function M.add_keys(name, keys)
   if M._loaded[name] then install() else M.on_load(name, install) end
 end
 
-function M._status_lines()
+function M._structured_status()
   local names = vim.tbl_keys(M._specs)
   table.sort(names)
-  local lines = { string.format("Packs: %d registered", #names), "" }
+
+  local loaded_count = 0
+  local lazy_count = 0
+  for _, n in ipairs(names) do
+    if M._loaded[n] then loaded_count = loaded_count + 1
+    elseif M._specs[n].lazy then lazy_count = lazy_count + 1 end
+  end
+
+  local lines = {
+    ("core.pack: %d registered (%d lazy, %d loaded)"):format(#names, lazy_count, loaded_count),
+    "",
+  }
+  local highlights = { { 0, 0, #lines[1], "Title" } }
+
   for _, n in ipairs(names) do
     local s = M._specs[n]
-    local state = M._loaded[n] and "loaded"
-        or (s.lazy and "lazy") or "pending"
+    local state, glyph, glyph_hl
+    if M._loaded[n] then
+      state, glyph, glyph_hl = "loaded", "●", "Special"
+    elseif s.lazy then
+      state, glyph, glyph_hl = "lazy", "⚙", "Identifier"
+    else
+      state, glyph, glyph_hl = "pending", "◯", "Comment"
+    end
+
     local trigger = s.event and ("event=" .. vim.inspect(s.event):gsub("\n%s*", ""))
         or s.ft and ("ft=" .. vim.inspect(s.ft))
         or s.cmd and ("cmd=" .. vim.inspect(s.cmd))
         or s.keys and "keys"
         or ("priority=" .. s.priority)
-    lines[#lines + 1] = string.format("  %-30s  %-10s  %s", n, state, trigger)
+
+    local name_padded = ("%-22s"):format(n)
+    local state_padded = ("%-8s"):format(state)
+    local line = ("  %s  %s  %s  %s"):format(glyph, name_padded, state_padded, trigger)
+    local row = #lines
+
+    -- col offsets (byte-aware: ●/⚙/◯ are 3-byte UTF-8)
+    local col = 2
+    table.insert(highlights, { row, col, col + #glyph, glyph_hl }); col = col + #glyph + 2
+    table.insert(highlights, { row, col, col + #name_padded, "Identifier" }); col = col + #name_padded + 2
+    table.insert(highlights, { row, col, col + #state_padded, "Type" }); col = col + #state_padded + 2
+    table.insert(highlights, { row, col, col + #trigger, "Comment" })
+
+    lines[#lines + 1] = line
   end
-  return lines
+
+  return { lines = lines, highlights = highlights }
 end
 
 vim.api.nvim_create_user_command("PackStatus", function()
   local UI = require("core.pack.ui")
-  UI.status(M._status_lines(), { title = "core.pack: status" })
+  local data = M._structured_status()
+  UI.status(data.lines, {
+    title = "core.pack: status",
+    highlights = data.highlights,
+  })
 end, { desc = "List registered plugin specs in a scratch buffer" })
 
 vim.api.nvim_create_user_command("PackInstall", function()
