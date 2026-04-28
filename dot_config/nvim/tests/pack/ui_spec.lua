@@ -74,6 +74,21 @@ T.describe("core.pack.ui.update_review", function()
     T.truthy(lines[3]:match("abcdef0") and lines[3]:match("test commit"), "expanded log line not rendered")
     view:close()
   end)
+
+  T.it("opts.keymaps overrides default toggle", function()
+    local UI = fresh()
+    -- Module-level default
+    T.eq(UI.keymaps.update_review.toggle, "<Tab>")
+    -- Per-call override constructs without error
+    local pending = { { name = "a", from = "1", to = "2", count = 1, subject = "x" } }
+    local view = UI.update_review(pending, {
+      open_window = false,
+      on_apply = function() end,
+      keymaps = { toggle = "<Space>" },
+    })
+    T.truthy(view.buf)
+    view:close()
+  end)
 end)
 
 T.describe("core.pack.ui.fidget", function()

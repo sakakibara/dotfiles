@@ -1,5 +1,25 @@
 local M = {}
 
+M.keymaps = {
+  update_review = {
+    toggle = "<Tab>", toggle_alt = "x",
+    mark_all = "a", mark_none = "u",
+    expand = "<C-d>",
+    apply = "<CR>", cancel = "q",
+  },
+  clean_review = {
+    toggle = "<Tab>", toggle_alt = "x",
+    mark_all = "a", mark_none = "u",
+    apply = "<CR>", cancel = "q",
+  },
+  rollback_review = {
+    select = "<CR>", cancel = "q",
+  },
+  status = {
+    cancel = "q",
+  },
+}
+
 local NS = vim.api.nvim_create_namespace("core.pack.ui")
 
 local STATUS_MARKED   = "●"
@@ -167,14 +187,15 @@ function M.update_review(pending, opts)
   end
 
   if win then
+    local km = vim.tbl_extend("force", M.keymaps.update_review, opts.keymaps or {})
     local function map(lhs, rhs) vim.keymap.set("n", lhs, rhs, { buffer = buf, nowait = true, silent = true }) end
-    map("<Tab>", function() view:toggle_at(vim.api.nvim_win_get_cursor(win)[1]) end)
-    map("x",     function() view:toggle_at(vim.api.nvim_win_get_cursor(win)[1]) end)
-    map("a",     function() view:set_all(true) end)
-    map("u",     function() view:set_all(false) end)
-    map("<C-d>", function() view:toggle_expand(vim.api.nvim_win_get_cursor(win)[1]) end)
-    map("<CR>",  function() view:apply(); view:close() end)
-    map("q",     function() view:close() end)
+    map(km.toggle,     function() view:toggle_at(vim.api.nvim_win_get_cursor(win)[1]) end)
+    map(km.toggle_alt, function() view:toggle_at(vim.api.nvim_win_get_cursor(win)[1]) end)
+    map(km.mark_all,   function() view:set_all(true) end)
+    map(km.mark_none,  function() view:set_all(false) end)
+    map(km.expand,     function() view:toggle_expand(vim.api.nvim_win_get_cursor(win)[1]) end)
+    map(km.apply,      function() view:apply(); view:close() end)
+    map(km.cancel,     function() view:close() end)
     -- Block edit-mode entry keys; the buffer is modifiable=false but the brief
     -- modifiable window during re-render can let queued insert keys through if
     -- the user was typing in another buffer when the review window opened.
@@ -289,13 +310,14 @@ function M.clean_review(items, opts)
   end
 
   if win then
+    local km = vim.tbl_extend("force", M.keymaps.clean_review, opts.keymaps or {})
     local function map(lhs, rhs) vim.keymap.set("n", lhs, rhs, { buffer = buf, nowait = true, silent = true }) end
-    map("<Tab>", function() view:toggle_at(vim.api.nvim_win_get_cursor(win)[1]) end)
-    map("x",     function() view:toggle_at(vim.api.nvim_win_get_cursor(win)[1]) end)
-    map("a",     function() view:set_all(true) end)
-    map("u",     function() view:set_all(false) end)
-    map("<CR>",  function() view:apply(); view:close() end)
-    map("q",     function() view:close() end)
+    map(km.toggle,     function() view:toggle_at(vim.api.nvim_win_get_cursor(win)[1]) end)
+    map(km.toggle_alt, function() view:toggle_at(vim.api.nvim_win_get_cursor(win)[1]) end)
+    map(km.mark_all,   function() view:set_all(true) end)
+    map(km.mark_none,  function() view:set_all(false) end)
+    map(km.apply,      function() view:apply(); view:close() end)
+    map(km.cancel,     function() view:close() end)
     for _, k in ipairs({ "i", "I", "A", "o", "O", "c", "C", "s", "S", "r", "R", "p", "P" }) do
       vim.keymap.set("n", k, "<nop>", { buffer = buf, nowait = true, silent = true })
     end
@@ -387,9 +409,10 @@ function M.rollback_review(snapshots, opts)
   end
 
   if win then
+    local km = vim.tbl_extend("force", M.keymaps.rollback_review, opts.keymaps or {})
     local function map(lhs, rhs) vim.keymap.set("n", lhs, rhs, { buffer = buf, nowait = true, silent = true }) end
-    map("<CR>", function() view:select_at(vim.api.nvim_win_get_cursor(win)[1]); view:close() end)
-    map("q",    function() view:close() end)
+    map(km.select, function() view:select_at(vim.api.nvim_win_get_cursor(win)[1]); view:close() end)
+    map(km.cancel, function() view:close() end)
     for _, k in ipairs({ "i", "I", "A", "a", "o", "O", "c", "C", "s", "S", "r", "R", "p", "P" }) do
       vim.keymap.set("n", k, "<nop>", { buffer = buf, nowait = true, silent = true })
     end
@@ -431,7 +454,8 @@ function M.status(lines, opts)
     vim.wo[win].relativenumber = false
     vim.wo[win].statuscolumn = ""
     vim.wo[win].signcolumn = "no"
-    vim.keymap.set("n", "q", "<cmd>close<cr>", { buffer = buf, nowait = true, silent = true })
+    local km = vim.tbl_extend("force", M.keymaps.status, opts.keymaps or {})
+    vim.keymap.set("n", km.cancel, "<cmd>close<cr>", { buffer = buf, nowait = true, silent = true })
   end
 
   local view = { buf = buf, win = win }
