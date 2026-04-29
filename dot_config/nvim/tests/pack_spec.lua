@@ -654,6 +654,36 @@ T.describe("core.pack keys — external collision detection", function()
     pcall(vim.keymap.del, "n", "<F31>", { buffer = 0 })
     unmap_all("<F31>")
   end)
+
+  T.it("lazy spec with custom desc: stub->real does not re-fire warning", function()
+    local pack = reset_pack()
+    unmap_all("<F32>")
+    local warnings = {}
+    local orig = vim.notify
+    vim.notify = function(msg, lvl)
+      if lvl == vim.log.levels.WARN then table.insert(warnings, msg) end
+    end
+    pack.setup({
+      specs = {
+        { dev = true, name = "custom-desc-lazy",
+          event = "User CustomDescTrigger",  -- non-firing trigger keeps spec lazy
+          keys = { { "<F32>", function() end, mode = "n", desc = "Custom Description" } },
+          config = function() end },
+      },
+    })
+    -- Drive stub->real
+    vim.api.nvim_feedkeys(
+      vim.api.nvim_replace_termcodes("<F32>", true, false, true), "mx", false)
+    vim.wait(100, function() return pack.loaded("custom-desc-lazy") end)
+    vim.notify = orig
+    for _, msg in ipairs(warnings) do
+      T.eq(msg:match("Custom Description"), nil,
+        "false-positive: stub->real warned with the spec's own desc")
+      T.eq(msg:match("overrides existing"), nil,
+        "false-positive: stub->real fired overrides-existing warning")
+    end
+    unmap_all("<F32>")
+  end)
 end)
 
 T.describe("core.pack module name resolution", function()

@@ -389,6 +389,7 @@ local function set_stub_keymap(spec, k, m)
     })
   else
     vim.keymap.set(m, lhs, stub, opts)
+    M._installed_global[m .. ":" .. lhs] = spec.name
   end
 end
 
