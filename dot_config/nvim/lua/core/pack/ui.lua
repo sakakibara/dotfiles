@@ -752,7 +752,14 @@ function M.cold_install_splash(total)
   vim.o.laststatus  = 0
   vim.o.showtabline = 0
   vim.o.winbar      = ""
-  vim.o.cmdheight   = math.max(20, math.floor(vim.o.lines / 2))
+  -- cmdheight = 1 (not 0 or large): 0 guarantees press-enter on every
+  -- message and the prompt blocks the main thread; large cmdheight just
+  -- shrinks the floating-window editor area, leaving the cmdline visible
+  -- below the splash. 1 lets each truncated message slot in cleanly with
+  -- no hit-enter, and the cmdline strip at the bottom of the screen is
+  -- usually unobtrusive against the splash. shortmess "aT" forces
+  -- single-line truncation so multi-line messages can't overflow.
+  vim.o.cmdheight   = 1
   vim.o.more        = false
   vim.opt.shortmess:append("aT")
   -- Hide the terminal cursor via DECTCEM (CSI ?25 l). The TUI cursor is
