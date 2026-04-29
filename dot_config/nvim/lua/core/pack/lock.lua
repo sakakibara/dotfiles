@@ -37,6 +37,20 @@ end
 -- inner entries each on their own indented line in alphabetical order.
 -- Per-plugin entries stay on a single line — they're small and the diff
 -- value is at the plugin-name layer.
+-- Serialize a plugin entry as a single-line JSON object with keys in a
+-- deterministic alphabetical order. vim.json.encode by itself doesn't
+-- guarantee key order, so two encodes of the same table can produce
+-- different bytes — which would defeat the byte-equality skip in
+-- M.write and cause spurious lockfile rewrites on every startup.
+local function encode_entry(entry)
+  local keys = vim.tbl_keys(entry); table.sort(keys)
+  local parts = {}
+  for _, k in ipairs(keys) do
+    parts[#parts + 1] = ("%s:%s"):format(vim.json.encode(k), vim.json.encode(entry[k]))
+  end
+  return "{" .. table.concat(parts, ",") .. "}"
+end
+
 local function pretty_encode(data)
   local plugins = data.plugins or {}
   local plugin_names = vim.tbl_keys(plugins); table.sort(plugin_names)
@@ -44,7 +58,7 @@ local function pretty_encode(data)
   for i, name in ipairs(plugin_names) do
     local sep = i < #plugin_names and "," or ""
     plugin_lines[#plugin_lines + 1] = ('    %s: %s%s'):format(
-      vim.json.encode(name), vim.json.encode(plugins[name]), sep)
+      vim.json.encode(name), encode_entry(plugins[name]), sep)
   end
   local plugins_block = #plugin_lines == 0 and "{}" or
     "{\n" .. table.concat(plugin_lines, "\n") .. "\n  }"

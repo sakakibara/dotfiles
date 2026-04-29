@@ -47,7 +47,11 @@ T.describe("lib.colors.detect TS dispatch", function()
     -- (e.g., after trashing ~/.local/share/nvim/) — in that case skip
     -- the assertion rather than fail; regex fallback over-captures the
     -- comment color, which is a known limitation, not a regression.
-    if not pcall(vim.treesitter.language.add, "css") then
+    -- vim.treesitter.language.add returns false (no error) when the
+    -- parser can't be located, so check the actual file presence.
+    local has_parser = vim.api.nvim_get_runtime_file("parser/css.so", false)[1]
+      or vim.api.nvim_get_runtime_file("parser/css.dylib", false)[1]
+    if not has_parser then
       print("      (skipped — CSS treesitter parser not installed)")
       return
     end
