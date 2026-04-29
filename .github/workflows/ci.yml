@@ -143,6 +143,19 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v5
+      - name: Install chezmoi (used by dotfiles_wrapper smoke tests)
+        shell: pwsh
+        # Pull the latest release binary directly. scoop/winget add ~30s of
+        # cold-start vs ~3s for a single archive download.
+        run: |
+          $tag = (Invoke-RestMethod 'https://api.github.com/repos/twpayne/chezmoi/releases/latest').tag_name
+          $ver = $tag.TrimStart('v')
+          $url = "https://github.com/twpayne/chezmoi/releases/download/$tag/chezmoi_${ver}_windows_amd64.zip"
+          $zip = "$env:RUNNER_TEMP/chezmoi.zip"
+          $dest = "$env:RUNNER_TEMP/chezmoi"
+          Invoke-WebRequest $url -OutFile $zip
+          Expand-Archive $zip -DestinationPath $dest
+          Add-Content $env:GITHUB_PATH $dest
       - name: theme.ps1 (full suite via HttpListener)
         shell: pwsh
         run: pwsh -NoProfile -File etc/tests/theme.ps1
