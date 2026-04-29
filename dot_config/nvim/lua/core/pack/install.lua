@@ -156,6 +156,13 @@ local function parse_resolve_output(stdout)
   end
   local raw_db = sections[3]:match("([^\n]+)")
   local default_branch = raw_db and (raw_db:match("^origin/(.+)$") or raw_db) or nil
+  -- Mirror Git.default_branch's fallback: pick "main"/"master" from branches
+  -- when symbolic-ref didn't set origin/HEAD (rare, but cheap to guard).
+  if not default_branch then
+    for _, candidate in ipairs({ "main", "master" }) do
+      if vim.tbl_contains(branches, candidate) then default_branch = candidate; break end
+    end
+  end
   local head = sections[4]:match("([^\n]+)") or ""
   return {
     tags = tags,
@@ -165,13 +172,16 @@ local function parse_resolve_output(stdout)
   }
 end
 
+-- \037 is octal for 0x1F (the section delimiter byte). Octal escapes are
+-- POSIX printf; \xNN is a bash extension that dash (Ubuntu /bin/sh) treats
+-- literally — silently breaking the parser without an error code.
 local RESOLVE_SCRIPT = [[
 git -C "$1" tag --list
-printf '\x1f'
+printf '\037'
 git -C "$1" branch -r --format='%(refname:short)'
-printf '\x1f'
+printf '\037'
 git -C "$1" symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null || true
-printf '\x1f'
+printf '\037'
 git -C "$1" rev-parse HEAD
 ]]
 
