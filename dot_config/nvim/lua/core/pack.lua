@@ -9,6 +9,7 @@ M._key_registry = {} -- { [mode..":"..lhs..":"..(ft or "")] = spec.name }
 M._warned_conflicts = {} -- { [sig..":"..nameA..":"..nameB (sorted)] = true }
 M._installed_global = {} -- { [mode..":"..lhs] = spec.name } — global maps we set
 M._warned_external = {}  -- { [mode..":"..lhs] = true } — already-warned externals
+M._warned_external_ft = {} -- { [mode..":"..lhs..":"..bufnr] = true } — ft-scoped per-buffer dedup
 
 -- Notify with guaranteed :messages persistence. config/init.lua's wrapper A
 -- normally tees vim.notify into :messages history, but snacks.notifier loads
@@ -179,6 +180,38 @@ local function preserve_mapping(existing, mode, target_lhs, source_lhs, buf)
   return true
 end
 
+-- ft-scoped collision dispatch. Mirrors register_lhs's external-block tail
+-- but scoped to a specific buffer. All maparg calls happen inside
+-- nvim_buf_call so buffer-local mappings are visible. Per-buffer dedup
+-- uses _warned_external_ft.
+local function apply_collision_for_buf(spec, k, mode, lhs, buf)
+  local key = mode .. ":" .. lhs .. ":" .. tostring(buf)
+  if M._warned_external_ft[key] then return end
+  -- Run the entire dispatch inside buf's context so maparg sees its local
+  -- mappings. maparg returns buffer=1 (not the actual bufnr) when the
+  -- mapping is buffer-local.
+  pcall(vim.api.nvim_buf_call, buf, function()
+    local existing = vim.fn.maparg(lhs, mode, false, true)
+    if not existing or vim.tbl_isempty(existing) then return end
+    if existing.buffer ~= 1 then return end  -- not buffer-local for this buf
+    M._warned_external_ft[key] = true
+    -- Validation here mirrors register_lhs's; for ft we skip the more-elaborate
+    -- combinations and only apply preserve/override directly.
+    if k.override then return end
+    if type(k.preserve) == "string" and k.preserve ~= lhs then
+      preserve_mapping(existing, mode, k.preserve, lhs, buf)
+      return
+    end
+    local where = (existing.desc and existing.desc ~= "") and existing.desc
+      or (existing.rhs and existing.rhs ~= "" and existing.rhs:sub(1, 60))
+      or "<lua callback>"
+    notify(
+      ("core.pack: '%s' (mode=%s, ft=%s, buf=%d) on '%s' overrides existing mapping (was: %s)")
+        :format(lhs, mode, tostring(k.ft), buf, spec.name, where),
+      vim.log.levels.WARN)
+  end)
+end
+
 local function register_lhs(spec, mode, lhs, ft, k)
   local sig = conflict_key(mode, lhs, ft)
   local owner = M._key_registry[sig]
@@ -286,6 +319,7 @@ local function set_real_keymap(spec, k, m)
   if k.ft then
     local fts = type(k.ft) == "table" and k.ft or { k.ft }
     local function install_on_buf(args)
+      apply_collision_for_buf(spec, k, m, lhs, args.buf)
       local bopts = vim.tbl_extend("force", opts, { buffer = args.buf })
       vim.keymap.set(m, lhs, rhs, bopts)
     end
@@ -477,6 +511,7 @@ local function set_stub_keymap(spec, k, m)
     vim.api.nvim_create_autocmd("FileType", {
       pattern = fts,
       callback = function(args)
+        apply_collision_for_buf(spec, k, m, lhs, args.buf)
         local bopts = vim.tbl_extend("force", opts, { buffer = args.buf })
         vim.keymap.set(m, lhs, stub, bopts)
       end,
@@ -535,6 +570,7 @@ function M.setup(cfg)
   M._warned_conflicts = {}
   M._installed_global = {}
   M._warned_external = {}
+  M._warned_external_ft = {}
   -- NOTE: do NOT reset M._on_load here. Plugin spec files call
   -- Lib.plugin.on_load(...) as side effects at require-time, and
   -- require("config.plugins") runs as setup's argument — before setup's

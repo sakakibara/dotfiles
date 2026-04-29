@@ -950,6 +950,54 @@ T.describe("core.pack keys — external collision detection", function()
   end)
 end)
 
+T.describe("core.pack keys — ft-scoped external collisions", function()
+  T.it("ft-scoped preserve runs at FileType time, per-buffer", function()
+    local pack = reset_pack()
+    unmap_all("<F50>")
+    unmap_all("<F51>")
+
+    -- Two lua buffers, each with a buffer-local <F50>
+    local bufs = {}
+    for _ = 1, 2 do
+      local buf = vim.api.nvim_create_buf(true, false)
+      table.insert(bufs, buf)
+      vim.api.nvim_buf_set_option(buf, "filetype", "")
+      vim.api.nvim_set_current_buf(buf)
+      vim.keymap.set("n", "<F50>", ":noh<CR>", { buffer = buf, desc = "Original buf" })
+    end
+
+    pack.setup({
+      specs = {
+        { dev = true, name = "ft-preserve",
+          keys = { { "<F50>", function() end, mode = "n", ft = "lua",
+                     desc = "Spec", preserve = "<F51>" } },
+          config = function() end },
+      },
+    })
+
+    -- Trigger FileType lua on both bufs
+    for _, buf in ipairs(bufs) do
+      vim.api.nvim_set_current_buf(buf)
+      vim.bo.filetype = "lua"
+    end
+
+    -- Each buffer should have <F51> bound to the original rhs (buffer-local)
+    for _, buf in ipairs(bufs) do
+      vim.api.nvim_set_current_buf(buf)
+      local moved = vim.fn.maparg("<F51>", "n", false, true)
+      T.truthy(moved.rhs and moved.rhs:match("noh"),
+        "ft preserve missing on buf " .. buf)
+      T.eq(moved.buffer, 1, "ft preserve should be buffer-local")
+    end
+
+    for _, buf in ipairs(bufs) do
+      pcall(vim.api.nvim_buf_delete, buf, { force = true })
+    end
+    unmap_all("<F50>")
+    unmap_all("<F51>")
+  end)
+end)
+
 T.describe("core.pack module name resolution", function()
   -- Build a fake plugin install root with a lua/<modname>/ directory and run
   -- _resolve_main against a spec that points at it.
