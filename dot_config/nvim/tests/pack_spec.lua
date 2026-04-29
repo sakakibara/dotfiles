@@ -844,6 +844,51 @@ T.describe("core.pack keys — external collision detection", function()
     unmap_all("<F41>")
     unmap_all("<F42>")
   end)
+
+  T.it("preserve in multi-mode key applies to each colliding mode", function()
+    local pack = reset_pack()
+    unmap_all("<F43>")
+    unmap_all("<F44>")
+    vim.keymap.set("n", "<F43>", ":noh<CR>", { desc = "Original n" })
+    vim.keymap.set("x", "<F43>", ":<C-u>echo 'x'<CR>", { desc = "Original x" })
+    pack.setup({
+      specs = {
+        { dev = true, name = "preserve-multi", lazy = false,
+          keys = { { "<F43>", function() end, mode = { "n", "x" }, desc = "Spec",
+                     preserve = "<F44>" } },
+          config = function() end },
+      },
+    })
+    T.truthy(vim.fn.maparg("<F44>", "n", false, true).rhs:match("noh"),
+      "n-mode preserve missing")
+    T.truthy(vim.fn.maparg("<F44>", "x", false, true).rhs:match("echo 'x'"),
+      "x-mode preserve missing")
+    unmap_all("<F43>")
+    unmap_all("<F44>")
+  end)
+
+  T.it("preserve in multi-mode key: mode without existing has no preserve copy", function()
+    local pack = reset_pack()
+    unmap_all("<F45>")
+    unmap_all("<F46>")
+    vim.keymap.set("n", "<F45>", ":noh<CR>", { desc = "Original n only" })
+    -- Note: x mode has no <F45> binding
+    pack.setup({
+      specs = {
+        { dev = true, name = "preserve-multi-partial", lazy = false,
+          keys = { { "<F45>", function() end, mode = { "n", "x" }, desc = "Spec",
+                     preserve = "<F46>" } },
+          config = function() end },
+      },
+    })
+    -- n: preserve happened
+    T.truthy(vim.fn.maparg("<F46>", "n", false, true).rhs and
+             vim.fn.maparg("<F46>", "n", false, true).rhs:match("noh"))
+    -- x: no preserve, since there was no x-mode collision
+    T.eq(vim.fn.maparg("<F46>", "x"), "")
+    unmap_all("<F45>")
+    unmap_all("<F46>")
+  end)
 end)
 
 T.describe("core.pack module name resolution", function()
