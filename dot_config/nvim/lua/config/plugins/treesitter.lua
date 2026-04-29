@@ -17,6 +17,15 @@ return {
       -- main branch compiles parsers on-demand and requires tree-sitter-cli
       -- (>= 0.26.1) on PATH. mason's registry has it.
       Lib.mason.add("tree-sitter-cli")
+      -- Clean stale tree-sitter-<lang>-tmp dirs from interrupted prior
+      -- installs. nvim-treesitter "main" doesn't clean these on startup,
+      -- so a previously-interrupted install leaves EEXIST + truncated-
+      -- gzip errors that make every subsequent launch retry-and-fail.
+      -- vim.fn.delete doesn't take globs; expand first, delete each.
+      local cache = vim.fn.stdpath("cache")
+      for _, dir in ipairs(vim.fn.glob(cache .. "/tree-sitter-*-tmp", false, true)) do
+        vim.fn.delete(dir, "rf")
+      end
     end,
     config = function()
       require("nvim-treesitter").setup({
