@@ -93,4 +93,25 @@ T.describe("core.pack.refs.resolve", function()
     T.eq(resolved, nil)
     T.truthy(err and err:match("did not resolve"))
   end)
+
+  T.it("rejects non-SHA rev-parse output (defense in depth)", function()
+    local Refs = reset_refs()
+    local restore = stubs.stub_system({
+      ["tag --list"] = { code = 0, stdout = "" },
+      ["branch -r --format=%(refname:short)"] = { code = 0, stdout = "origin/main\n" },
+      ["symbolic-ref refs/remotes/origin/HEAD"] = { code = 0, stdout = "refs/remotes/origin/main\n" },
+      -- rev-parse "succeeds" but returns garbage. Git.rev_parse itself will
+      -- reject this (its own validation), but if it slipped through, refs
+      -- would catch it. Simulate the slip-through by stubbing rev-parse to
+      -- return something that LOOKS hex-shaped but is somehow flag-like —
+      -- which Git.rev_parse's `^%x+$` check would reject. Use Git.rev_parse's
+      -- existing rejection as the verification path.
+      ["rev-parse --verify refs/remotes/origin/HEAD^{commit}"] = { code = 0, stdout = "not-a-sha\n" },
+    })
+    local resolved, err = Refs.resolve({ name = "p" }, "/some/dir")
+    restore()
+    T.eq(resolved, nil)
+    T.truthy(err and (err:match("non%-SHA") or err:match("invalid SHA") or err:match("did not resolve")),
+      "expected error mentioning SHA validation, got: " .. tostring(err))
+  end)
 end)

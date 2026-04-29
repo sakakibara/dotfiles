@@ -158,6 +158,19 @@ T.describe("core.pack.spec._merge: scalar conflicts", function()
     local merged, _ = Spec._merge(a, b)
     T.truthy(merged.version, "expected a's version to survive nil from b")
   end)
+
+  T.it("branch-derived version: branch conflict produces only ONE warning", function()
+    local Spec = reset_spec()
+    -- Both specs have version derived from branch (normalize fallback).
+    -- The branch fields differ, which means version (== branch on each
+    -- side) also differs. Without the derived_from_branch guard we'd
+    -- produce two warnings; with it, we produce one (branch only).
+    local a = Spec.normalize({ dev = true, name = "p", branch = "main" })
+    local b = Spec.normalize({ dev = true, name = "p", branch = "develop" })
+    local _, warnings = Spec._merge(a, b)
+    T.eq(#warnings, 1, "expected exactly one warning (branch-only); got " .. #warnings)
+    T.truthy(warnings[1]:match("conflicting branch"))
+  end)
 end)
 
 T.describe("core.pack.spec.resolve", function()

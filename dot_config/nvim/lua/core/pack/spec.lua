@@ -92,10 +92,12 @@ local function union(a, b)
   return out
 end
 
--- Merge two canonical specs, b shadowing a. Collections union/deep-merge;
--- booleans use most-eager-wins semantics (any non-lazy → eager, any
--- disabled → disabled, any dev → dev). Scalar handling (with warnings)
--- is added in a follow-up; for now scalars take last-non-nil-wins.
+-- Merge two canonical specs, b shadowing a. Returns (merged, warnings).
+-- Collections (deps/keys/event/ft/cmd/opts) union or deep-merge.
+-- Booleans use most-eager-wins (any non-lazy → eager, any disabled →
+-- disabled, any dev → dev). Scalars (src/version/branch/build/init/
+-- config/main/cond) use last-non-nil-wins; conflicts on different
+-- non-nil values produce a warning naming the field.
 function M._merge(a, b)
   local merged = vim.deepcopy(a)
   -- Collections

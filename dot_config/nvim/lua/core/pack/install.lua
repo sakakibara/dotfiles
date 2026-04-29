@@ -105,7 +105,12 @@ function M.install_missing(specs, opts)
             if not rev then
               vim.fn.delete(dir, "rf")
               notify(("core.pack: %s"):format(err), vim.log.levels.ERROR)
-              if opts.on_failed then opts.on_failed(spec.name, err) end
+              if opts.on_failed then
+                -- err is "<name>: <message>"; strip the name prefix since on_failed
+                -- receives name separately.
+                local clean_msg = err:gsub("^" .. vim.pesc(spec.name) .. ":%s*", "")
+                opts.on_failed(spec.name, clean_msg)
+              end
               return
             end
             Lock.set(spec.name, {
@@ -203,7 +208,8 @@ local function apply_pending(pending, opts)
   local pool = Jobs.pool({ concurrency = opts.concurrency })
   for _, p in ipairs(pending) do
     pool:add({
-      cmd = { "git", "-C", p.dir, "checkout", "--detach", "--quiet", p.checkout_ref or p.ref },
+      cmd = { "git", "-C", p.dir, "checkout", "--detach", "--quiet",
+              p.target_rev or p.checkout_ref or p.ref },
       tag = p.spec.name,
       on_done = function(r)
         if r.code ~= 0 then
@@ -358,6 +364,7 @@ function M.update(specs, names, opts)
                   pending[#pending + 1] = {
                     spec = t.spec, dir = t.dir, from = t.refs.head_rev, to = t.target_rev,
                     ref = t.resolved and t.resolved.name or nil, checkout_ref = t.checkout_ref,
+                    target_rev = t.target_rev,
                   }
                 end
               end
