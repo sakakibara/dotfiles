@@ -164,7 +164,12 @@ local function register_lhs(spec, mode, lhs, ft, k)
   if not existing or vim.tbl_isempty(existing) then return end
   if existing.buffer ~= 0 then return end
   if existing.desc and (existing.desc:find("^key: ") or existing.desc:find("^lazy: ")) then return end
-  M._warned_external[ext_key] = true
+  M._warned_external[ext_key] = true  -- sentinel covers all branches below
+
+  if k and k.override then
+    return
+  end
+
   local where = (existing.desc and existing.desc ~= "") and existing.desc
     or (existing.rhs and existing.rhs ~= "" and existing.rhs:sub(1, 60))
     or "<lua callback>"

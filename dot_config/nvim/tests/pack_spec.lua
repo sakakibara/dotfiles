@@ -686,6 +686,59 @@ T.describe("core.pack keys — external collision detection", function()
     end
     unmap_all("<F32>")
   end)
+
+  T.it("override = true suppresses warning, still installs spec key (eager)", function()
+    local pack = reset_pack()
+    unmap_all("<F33>")
+    vim.keymap.set("n", "<F33>", "<Cmd>echo 'external'<CR>", { desc = "External" })
+    local warnings = {}
+    local orig = vim.notify
+    vim.notify = function(msg, lvl)
+      if lvl == vim.log.levels.WARN and msg:match("overrides existing mapping") then
+        table.insert(warnings, msg)
+      end
+    end
+    local fn = function() end
+    pack.setup({
+      specs = {
+        { dev = true, name = "override-eager", lazy = false,
+          keys = { { "<F33>", fn, mode = "n", desc = "Spec mapping", override = true } },
+          config = function() end },
+      },
+    })
+    vim.notify = orig
+    T.eq(#warnings, 0, "override = true should suppress the overrides-existing warning")
+    T.eq(vim.fn.maparg("<F33>", "n", false, true).callback, fn,
+      "spec key was not installed")
+    unmap_all("<F33>")
+  end)
+
+  T.it("override = true on lazy spec: no warning at stub install or after stub->real", function()
+    local pack = reset_pack()
+    unmap_all("<F34>")
+    vim.keymap.set("n", "<F34>", "<Cmd>echo 'external'<CR>", { desc = "External" })
+    local warnings = {}
+    local orig = vim.notify
+    vim.notify = function(msg, lvl)
+      if lvl == vim.log.levels.WARN and msg:match("overrides existing mapping") then
+        table.insert(warnings, msg)
+      end
+    end
+    pack.setup({
+      specs = {
+        { dev = true, name = "override-lazy",
+          event = "User OverrideLazyTrigger",
+          keys = { { "<F34>", function() end, mode = "n", desc = "Spec mapping", override = true } },
+          config = function() end },
+      },
+    })
+    vim.api.nvim_feedkeys(
+      vim.api.nvim_replace_termcodes("<F34>", true, false, true), "mx", false)
+    vim.wait(100, function() return pack.loaded("override-lazy") end)
+    vim.notify = orig
+    T.eq(#warnings, 0, "override = true should suppress warning at stub and at stub->real")
+    unmap_all("<F34>")
+  end)
 end)
 
 T.describe("core.pack module name resolution", function()
