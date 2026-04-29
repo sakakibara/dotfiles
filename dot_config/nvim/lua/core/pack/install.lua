@@ -5,6 +5,7 @@ local Lock    = require("core.pack.lock")
 local Git     = require("core.pack.git")
 local Jobs    = require("core.pack.jobs")
 local Version = require("core.pack.version")
+local Refs    = require("core.pack.refs")
 local UI      = require("core.pack.ui")
 local Log     = require("core.pack.log")
 
@@ -25,26 +26,15 @@ end
 
 -- Resolve and check out the right ref for a freshly-cloned plugin.
 local function pin_to_version(spec, dir)
-  local refs = Git.list_remote_refs(dir)
-  refs.default_branch = Git.default_branch(dir)
-  local resolved = Version.resolve(spec.version, refs)
+  local resolved, err = Refs.resolve(spec, dir)
   if not resolved then
-    return nil, "could not resolve version for " .. spec.name
+    return nil, ("%s: %s"):format(spec.name, err)
   end
-  local target_ref
-  if resolved.kind == "default" then
-    target_ref = refs.default_branch
-  elseif resolved.kind == "commit" or resolved.kind == "branch" or resolved.kind == "tag" then
-    target_ref = resolved.name
+  local r = Git.checkout_sha(dir, resolved.sha)
+  if not r.ok then
+    return nil, ("%s: checkout failed: %s"):format(spec.name, r.err)
   end
-  if not target_ref then return nil, "could not determine ref for " .. spec.name end
-  local sha, rev_err = Git.rev_parse(dir, target_ref)
-  if not sha then
-    return nil, ("could not resolve %s for %s: %s"):format(target_ref, spec.name, rev_err)
-  end
-  local r = Git.checkout_sha(dir, sha)
-  if not r.ok then return nil, r.err end
-  return Git.current_rev(dir), nil
+  return resolved.sha
 end
 
 -- Build hook: shell / Ex command / function. Direct sync, mirrors what
