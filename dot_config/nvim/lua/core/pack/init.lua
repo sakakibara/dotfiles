@@ -617,14 +617,36 @@ function M.setup(cfg)
 
   M._register_triggers(ordered)
 
-  -- Close the splash at VeryLazy: by then eager loads, UIEnter, and any
-  -- VeryLazy-event-driven plugins (noice, etc.) have all attached, so
-  -- nvim is in its fully-responsive steady state.
+  -- Close the splash on the first user input after VeryLazy, OR after a
+  -- generous fallback delay — whichever happens first. VeryLazy itself
+  -- fires *before* VeryLazy-event-triggered plugins (noice, treesitter
+  -- install, etc.) finish their config()s, so closing on bare VeryLazy
+  -- still leaves a frozen-looking nvim. Waiting for first input means
+  -- the splash stays up exactly until the user can interact (whatever
+  -- the actual settle time is); the timer is the safety net for users
+  -- who don't type. 1500ms covers nearly all real-world post-VeryLazy
+  -- work; tune if needed.
   if splash then
     vim.api.nvim_create_autocmd("User", {
       pattern = "VeryLazy",
       once = true,
-      callback = function() splash:close() end,
+      callback = function()
+        local closed = false
+        local close_once = function()
+          if closed then return end
+          closed = true
+          splash:close()
+        end
+        local key_handler
+        key_handler = vim.on_key(function()
+          vim.schedule(close_once)
+          vim.on_key(nil, key_handler)
+        end)
+        vim.defer_fn(function()
+          close_once()
+          if key_handler then vim.on_key(nil, key_handler) end
+        end, 1500)
+      end,
     })
   end
 end
