@@ -750,13 +750,21 @@ function M.cold_install_splash(total)
   vim.o.winbar      = ""
   vim.o.cmdheight   = 0
   vim.o.more        = false
-  -- Hide the cursor by linking Cursor / lCursor to NormalFloat, so the
-  -- cursor block renders with the same fg/bg as the splash background
-  -- (which is itself NormalFloat) and is therefore invisible. blend=100
-  -- alone doesn't hide the TUI cursor — the cursor block uses Cursor's
-  -- explicit fg/bg, not winblend.
-  pcall(vim.api.nvim_set_hl, 0, "Cursor",  { link = "NormalFloat" })
-  pcall(vim.api.nvim_set_hl, 0, "lCursor", { link = "NormalFloat" })
+  -- Hide the cursor. The TUI cursor block uses Cursor's explicit fg/bg
+  -- (not winblend), so for an invisible cursor we set fg = bg = splash
+  -- background color. Linking to NormalFloat alone isn't enough because
+  -- NormalFloat has distinct fg/bg → the cursor block would still render
+  -- as a NormalFloat-colored cell. We also need the cursor to live in
+  -- the splash window (not the background [No Name]), which we ensure
+  -- below by passing enter = true to nvim_open_win.
+  do
+    local nf = vim.api.nvim_get_hl(0, { name = "NormalFloat" })
+    local bg = nf.bg
+    if bg then
+      pcall(vim.api.nvim_set_hl, 0, "Cursor",  { fg = bg, bg = bg })
+      pcall(vim.api.nvim_set_hl, 0, "lCursor", { fg = bg, bg = bg })
+    end
+  end
 
   local SCREEN_W = vim.o.columns
   local SCREEN_H = vim.o.lines  -- cmdheight=0 means full screen is ours
@@ -891,7 +899,12 @@ function M.cold_install_splash(total)
 
   render()
 
-  local win = vim.api.nvim_open_win(buf, false, {
+  -- enter = true so the cursor lives in the splash window. Combined with
+  -- the Cursor highlight override above (fg = bg = NormalFloat.bg), the
+  -- cursor block renders invisibly against the splash background. Without
+  -- entering, the cursor stays in the [No Name] background window where
+  -- the highlight tweak doesn't help.
+  local win = vim.api.nvim_open_win(buf, true, {
     relative  = "editor",
     width     = SCREEN_W,
     height    = SCREEN_H,

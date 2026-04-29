@@ -498,10 +498,16 @@ local function install_all(specs)
       on_progress = function(d, _t, _last) splash:update(d) end,
       on_complete = function()
         splash:close()
-        -- The splash already displayed final progress (`N/N`) just before
-        -- it closed; firing a separate "installed N plugins" notification
-        -- on top is redundant and contributes to the post-splash message
-        -- backlog that triggers noice's long-message split view. Drop it.
+        local installed_count = #to_install - vim.tbl_count(failed)
+        -- Deferred so the notify call runs after eager loads complete and
+        -- snacks owns vim.notify — it then renders as a single toast
+        -- (top-right) instead of going through the wrapper-A cmdline echo
+        -- path during the splash → snacks-load transition.
+        vim.schedule(function()
+          vim.notify(
+            ("core.pack: installed %d plugins"):format(installed_count),
+            vim.log.levels.INFO)
+        end)
         done = true
       end,
     })
