@@ -95,7 +95,6 @@ function M.setup()
   -- Option strings (vim.o.statusline etc.) are set in options.lua so
   -- the bar layout is reserved from frame 0.
   Lib.statusline.setup()
-  Lib.statuscolumn.setup()
   Lib.winbar.setup()
   Lib.tabline.setup()
 
