@@ -59,6 +59,11 @@ map("n", "<Leader>qq", "<Cmd>qa<CR>", { desc = "Quit all" })
 map("n", "[b", "<Cmd>bprevious<CR>", { desc = "Prev buffer" })
 map("n", "]b", "<Cmd>bnext<CR>",     { desc = "Next buffer" })
 
+-- sibling-file navigation (same directory, wrap-around). [f/]f are taken by
+-- treesitter-textobjects for function-start jumping; use uppercase F.
+map("n", "[F", function() Lib.keymaps.cycle_sibling(-1) end, { desc = "Prev file in directory" })
+map("n", "]F", function() Lib.keymaps.cycle_sibling( 1) end, { desc = "Next file in directory" })
+
 -- winbar / statusline pickers — same menus the segments open on click
 map("n", "<Leader>;",  function() Lib.winbar.pick_scope()       end, { desc = "Scope picker (sibling symbols)" })
 map("n", "<Leader>.",  function() Lib.winbar.pick_path()        end, { desc = "Path picker (sibling files)" })

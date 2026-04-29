@@ -63,6 +63,7 @@ return {
   {
     "sakakibara/organ.nvim",
     name  = "organ.nvim",
+    ft    = "org",
     build = "make -C grammar",
     opts  = {
       org_dir = vim.fn.expand("~/org"),
