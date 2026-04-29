@@ -93,6 +93,11 @@ return {
       { "zp", function() require("ufo").peekFoldedLinesUnderCursor()  end, desc = "Peek fold" },
     },
     opts = {
+      -- ufo's provider_selector accepts at most {main, fallback}. The default
+      -- combo is "lsp main, indent universal fallback" — works for any
+      -- language with a language server, falls through to indent for the rest.
+      -- Per-ft overrides pin a different combo (or single provider) where the
+      -- LSP folding ranges are wrong/missing.
       provider_selector = function(_, ft, _)
         local ft_map = {
           markdown = { "treesitter" },
@@ -101,7 +106,7 @@ return {
           zsh      = { "treesitter", "indent" },
           css      = { "treesitter", "indent" },
         }
-        return ft_map[ft] or { "lsp", "treesitter", "indent" }
+        return ft_map[ft] or { "lsp", "indent" }
       end,
       fold_virt_text_handler = function(virt_text, lnum, end_lnum, width, truncate)
         local new_virt = {}
