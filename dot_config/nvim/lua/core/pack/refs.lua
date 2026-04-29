@@ -41,6 +41,9 @@ function M.resolve(spec, dir)
   if not sha then
     return nil, ("ref '%s' did not resolve in %s: %s"):format(qualified, dir, err or "?")
   end
+  if not M.validate(sha) or not sha:match("^%x+$") then
+    return nil, ("rev-parse returned invalid SHA: %s"):format(sha)
+  end
   return { kind = resolved.kind, name = resolved.name, sha = sha }
 end
 
