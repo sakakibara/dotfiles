@@ -159,3 +159,52 @@ T.describe("core.pack.spec._merge: scalar conflicts", function()
     T.truthy(merged.version, "expected a's version to survive nil from b")
   end)
 end)
+
+T.describe("core.pack.spec.resolve", function()
+  T.it("dedup identical entries: no warning, single canonical spec", function()
+    local Spec = reset_spec()
+    local raw = { F.minimal_lazy("p"), F.minimal_lazy("p") }
+    local specs, warnings = Spec.resolve(raw)
+    T.eq(#specs, 1)
+    T.eq(specs[1].name, "p")
+    T.eq(#warnings, 0)
+  end)
+
+  T.it("preserves first-occurrence insertion order", function()
+    local Spec = reset_spec()
+    local raw = {
+      F.minimal_eager("a"),
+      F.minimal_eager("b"),
+      F.minimal_eager("a"),  -- duplicate, doesn't shift order
+      F.minimal_eager("c"),
+    }
+    local specs = Spec.resolve(raw)
+    T.eq(#specs, 3)
+    T.eq(specs[1].name, "a")
+    T.eq(specs[2].name, "b")
+    T.eq(specs[3].name, "c")
+  end)
+
+  T.it("three-way merge: collections accumulate", function()
+    local Spec = reset_spec()
+    local raw = {
+      F.with_deps("p", { "x" }),
+      F.with_deps("p", { "y" }),
+      F.with_deps("p", { "z" }),
+    }
+    local specs = Spec.resolve(raw)
+    table.sort(specs[1].dependencies)
+    T.eq(specs[1].dependencies, { "x", "y", "z" })
+  end)
+
+  T.it("conflict warning bubbles up to resolve", function()
+    local Spec = reset_spec()
+    local raw = {
+      F.with_version("p", "1.*"),
+      F.with_version("p", "2.*"),
+    }
+    local _, warnings = Spec.resolve(raw)
+    T.eq(#warnings, 1)
+    T.truthy(warnings[1]:match("conflicting version"))
+  end)
+end)

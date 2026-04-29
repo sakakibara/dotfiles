@@ -142,4 +142,27 @@ function M._merge(a, b)
   return merged, warnings
 end
 
+-- Resolve a list of raw spec entries into a deduped, merged list of
+-- canonical specs. First occurrence of each name determines its position;
+-- later occurrences merge into the first via _merge.
+function M.resolve(raw_specs)
+  local by_name = {}
+  local order = {}
+  local warnings = {}
+  for _, raw in ipairs(raw_specs) do
+    local s = M.normalize(raw)
+    if by_name[s.name] then
+      local merged, ws = M._merge(by_name[s.name], s)
+      by_name[s.name] = merged
+      for _, w in ipairs(ws) do warnings[#warnings + 1] = w end
+    else
+      by_name[s.name] = s
+      order[#order + 1] = s.name
+    end
+  end
+  local specs = {}
+  for _, name in ipairs(order) do specs[#specs + 1] = by_name[name] end
+  return specs, warnings
+end
+
 return M
