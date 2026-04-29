@@ -720,11 +720,10 @@ function M.fidget(opts)
 end
 
 -- Cold-install splash. Shown only when pack.setup is blocking on a fresh
--- install (#to_install > 0 in install_all). A centered floating box that
--- says "we're doing one-time work" with a progress bar — replaces the
--- otherwise-blank screen during the cold-start vim.wait. The corner
--- UI.fidget keeps running for per-spec detail; this is the prominent
--- "something is happening" indicator.
+-- install (#to_install > 0 in install_all). A full-screen floating buffer
+-- with a centered, themed box — replaces the otherwise-blank screen and
+-- all half-rendered chrome (statusline, winbar, tabline) during the
+-- cold-start vim.wait.
 function M.cold_install_splash(total)
   local buf = vim.api.nvim_create_buf(false, true)
   vim.bo[buf].buftype   = "nofile"
@@ -733,58 +732,141 @@ function M.cold_install_splash(total)
   vim.bo[buf].filetype  = "PackSplash"
   pcall(vim.api.nvim_buf_set_name, buf, "core.pack: install")
 
-  -- Hide chrome the user would otherwise see as half-rendered noise on a
-  -- buffer-less screen. Saved and restored on :close().
-  local saved_laststatus  = vim.o.laststatus
-  local saved_showtabline = vim.o.showtabline
+  -- Save every piece of chrome we hide so :close() restores cleanly.
+  local saved = {
+    laststatus  = vim.o.laststatus,
+    showtabline = vim.o.showtabline,
+    winbar      = vim.o.winbar,
+  }
   vim.o.laststatus  = 0
   vim.o.showtabline = 0
+  vim.o.winbar      = ""
 
-  local W = 47          -- inner width
-  local BAR = 23        -- progress-bar cell count
-  local done = 0
+  local SCREEN_W = vim.o.columns
+  local SCREEN_H = vim.o.lines - vim.o.cmdheight  -- room above cmdline
+  local BOX_W    = 49                              -- includes borders
+  local BOX_H    = 9                               -- 7 content rows + 2 borders
+  local BAR      = 25                              -- progress-bar cells
+  local pad_top  = math.floor((SCREEN_H - BOX_H) / 2)
+  local pad_left = math.floor((SCREEN_W - BOX_W) / 2)
+  local inner_w  = BOX_W - 2                        -- between the side borders
+  local done     = 0
 
-  local function bar()
+  local ns = vim.api.nvim_create_namespace("PackSplash")
+
+  -- Build a centered line of `inner_w` display cells, padded with spaces.
+  local function center(text)
+    local w = vim.fn.strdisplaywidth(text)
+    local left = math.floor((inner_w - w) / 2)
+    return (" "):rep(left) .. text .. (" "):rep(inner_w - w - left)
+  end
+
+  -- Compose the box and progress bar. Returns the buffer lines and a list
+  -- of {row, col_start_byte, col_end_byte, hl_group} highlight ranges.
+  local function compose()
     local filled = (total > 0) and math.floor(done * BAR / total) or 0
-    return ("▰"):rep(filled) .. ("▱"):rep(BAR - filled)
+    local bar_filled = ("▰"):rep(filled)
+    local bar_empty  = ("▱"):rep(BAR - filled)
+    local count      = ("%d/%d"):format(done, total)
+
+    -- The progress row's content (no border, no edges):
+    --   <bar_filled><bar_empty>  <count>
+    local bar_w     = BAR * vim.fn.strdisplaywidth("▰")
+    local count_w   = vim.fn.strdisplaywidth(count)
+    local prog_text = bar_filled .. bar_empty .. "  " .. count
+    local prog_pad_left = math.floor((inner_w - bar_w - 2 - count_w) / 2)
+    local prog_line     = (" "):rep(prog_pad_left) .. prog_text
+    -- right-pad to inner_w cells
+    prog_line = prog_line .. (" "):rep(inner_w - vim.fn.strdisplaywidth(prog_line))
+
+    local box_rows = {
+      "╭" .. ("─"):rep(BOX_W - 2) .. "╮",
+      "│" .. center("")                         .. "│",
+      "│" .. center("core.pack · first-run install") .. "│",
+      "│" .. center("")                         .. "│",
+      "│" .. prog_line                          .. "│",
+      "│" .. center("")                         .. "│",
+      "│" .. center("one-time setup — restart isn't needed") .. "│",
+      "│" .. center("")                         .. "│",
+      "╰" .. ("─"):rep(BOX_W - 2) .. "╯",
+    }
+
+    -- Full screen: empty top padding + indented box rows + empty bottom.
+    local lines = {}
+    for _ = 1, pad_top do lines[#lines + 1] = "" end
+    for _, row in ipairs(box_rows) do
+      lines[#lines + 1] = (" "):rep(pad_left) .. row
+    end
+    while #lines < SCREEN_H do lines[#lines + 1] = "" end
+
+    -- Highlight ranges. Byte offsets account for UTF-8 (3 bytes per box
+    -- glyph and per ▰/▱). pad_left is always ASCII spaces (1 byte each).
+    local hls = {}
+    local box_left_byte  = pad_left
+    local box_right_byte = pad_left + 1 + (BOX_W - 2) * 3 + 1  -- approximate
+    local function add(row, sb, eb, hl)
+      hls[#hls + 1] = { row = row, sb = sb, eb = eb, hl = hl }
+    end
+
+    -- Whole-box border highlight on top/bottom rows
+    local box_top    = pad_top
+    local box_bottom = pad_top + BOX_H - 1
+    add(box_top,    box_left_byte, -1, "FloatBorder")
+    add(box_bottom, box_left_byte, -1, "FloatBorder")
+    -- Side borders on each row in between (just first and last 3 bytes)
+    for r = box_top + 1, box_bottom - 1 do
+      add(r, box_left_byte, box_left_byte + 3, "FloatBorder")
+      -- right border position: pad_left + 1 (left border) + inner_w bytes
+      -- of content. Inner content is mixed ASCII + unicode; the right
+      -- border sits at the end of the line. Highlight last 3 bytes of
+      -- the line via -1.
+      -- Computing exact end byte is awkward; rely on -1 below in tile.
+    end
+    -- Title row (3rd line of the box)
+    add(box_top + 2, box_left_byte, -1, "Title")
+    -- Subtitle row (7th line of the box)
+    add(box_top + 6, box_left_byte, -1, "Comment")
+    -- Progress filled glyphs: ▰ = 3 UTF-8 bytes
+    local prog_row = box_top + 4
+    local prog_inner_start = box_left_byte + 1  -- skip "│"
+    local filled_start = prog_inner_start + prog_pad_left
+    local filled_end   = filled_start + filled * 3
+    local empty_end    = filled_end + (BAR - filled) * 3
+    add(prog_row, filled_start, filled_end, "String")
+    add(prog_row, filled_end,   empty_end,  "Comment")
+    add(prog_row, empty_end + 2, empty_end + 2 + count_w, "Constant")  -- N/M number
+
+    return lines, hls
   end
 
   local function render()
     if not vim.api.nvim_buf_is_valid(buf) then return end
-    local progress = ("%s   %d/%d"):format(bar(), done, total)
-    local lines = {
-      "",
-      "  core.pack · first-run install",
-      "",
-      "  " .. progress,
-      "",
-      "  one-time setup — restart isn't needed",
-      "",
-    }
-    for i, line in ipairs(lines) do
-      if vim.fn.strdisplaywidth(line) < W then
-        lines[i] = line .. (" "):rep(W - vim.fn.strdisplaywidth(line))
-      end
-    end
+    local lines, hls = compose()
     vim.bo[buf].modifiable = true
     vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
     vim.bo[buf].modifiable = false
+    vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
+    for _, h in ipairs(hls) do
+      pcall(vim.api.nvim_buf_add_highlight, buf, ns, h.hl, h.row, h.sb, h.eb)
+    end
   end
 
   render()
 
-  local H = 7  -- matches #lines above
   local win = vim.api.nvim_open_win(buf, false, {
     relative  = "editor",
-    width     = W,
-    height    = H,
-    row       = math.floor((vim.o.lines   - H) / 2) - 2,
-    col       = math.floor((vim.o.columns - W) / 2),
+    width     = SCREEN_W,
+    height    = SCREEN_H,
+    row       = 0,
+    col       = 0,
     style     = "minimal",
-    border    = "rounded",
+    border    = "none",
     focusable = false,
     zindex    = 100,
   })
+  -- Use the float palette so the splash visually distinguishes from
+  -- whatever buffer/wincolor scheme is otherwise active.
+  vim.wo[win].winhighlight = "Normal:NormalFloat"
 
   local view = { buf = buf, win = win }
 
@@ -804,8 +886,7 @@ function M.cold_install_splash(total)
     if vim.api.nvim_buf_is_valid(buf) then
       pcall(vim.api.nvim_buf_delete, buf, { force = true })
     end
-    vim.o.laststatus  = saved_laststatus
-    vim.o.showtabline = saved_showtabline
+    for k, v in pairs(saved) do vim.o[k] = v end
   end
 
   return view
