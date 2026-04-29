@@ -68,7 +68,6 @@ _render .chezmoiscripts/run_once_install-2-mise.sh.tmpl            bash
 _render .chezmoiscripts/run_once_install-3-extras.sh.tmpl          bash
 _render .chezmoiscripts/run_once_install-4-hive.sh.tmpl            bash
 _render .chezmoiscripts/run_once_setup-theme.sh.tmpl               bash
-_render .chezmoiscripts/run_after_99-untracked-nudge.sh.tmpl       bash
 
 # Non-shell templates with format-specific post-render checks
 _render dot_config/starship.toml.tmpl                        toml
