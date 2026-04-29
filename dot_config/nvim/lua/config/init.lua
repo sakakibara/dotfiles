@@ -148,12 +148,14 @@ function M.setup()
           return prev(msg, level, opts)
         end
 
-        -- Drain via `prev` directly, not wrapper B: wrapper A already echoed
-        -- each entry to :messages at capture time, so routing through B would
-        -- produce a duplicate echo. We only need noice to see them.
-        for _, n in ipairs(_pending) do
-          prev(n.msg, n.level, n.opts)
-        end
+        -- Drop the queue without replaying through noice. Wrapper A
+        -- already echoed each entry to :messages at capture time, so the
+        -- history is reachable via :messages. Replaying through noice
+        -- would render every queued install-time notification as a toast
+        -- after the cold-install splash closes — visible as a flurry of
+        -- "message window" popups the user has explicitly asked to avoid.
+        -- The trade-off: :Noice all only shows post-noice messages, not
+        -- the install-time queue. :messages remains the source of truth.
         _pending = {}
       end)
 
