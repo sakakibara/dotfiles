@@ -645,7 +645,7 @@ function M.setup(cfg)
         vim.defer_fn(function()
           close_once()
           if key_handler then vim.on_key(nil, key_handler) end
-        end, 1500)
+        end, 30000)
       end,
     })
   end

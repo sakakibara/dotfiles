@@ -1,5 +1,10 @@
 local M = {}
 
+-- The currently-open cold-install splash, exposed so external callers
+-- (nvim-treesitter's logger override, etc.) can pipe progress text into
+-- the splash status line instead of routing through nvim_echo.
+M._active_splash = nil
+
 M.keymaps = {
   update_review = {
     toggle = "<Tab>", toggle_alt = "x",
@@ -953,6 +958,7 @@ function M.cold_install_splash(total)
   vim.wo[win].winhighlight = "Normal:NormalFloat"
 
   local view = { buf = buf, win = win }
+  M._active_splash = view
 
   function view:update(d)
     done = d or done
@@ -981,6 +987,16 @@ function M.cold_install_splash(total)
     pcall(vim.cmd.redraw)
   end
 
+  -- Set the middle row to arbitrary text (no counter format). Used by
+  -- external callers (e.g., the nvim-treesitter logger override) to pipe
+  -- their progress directly into the splash instead of going through
+  -- nvim_echo, which would overflow the cmdline and trigger press-enter.
+  function view:set_status_text(text)
+    setup_status = text or ""
+    render()
+    pcall(vim.cmd.redraw)
+  end
+
   function view:close()
     if win and vim.api.nvim_win_is_valid(win) then
       pcall(vim.api.nvim_win_close, win, true)
@@ -1000,6 +1016,7 @@ function M.cold_install_splash(total)
     -- hide we sent on splash open.
     pcall(io.stdout.write, io.stdout, "\27[?25h")
     pcall(io.stdout.flush, io.stdout)
+    if M._active_splash == self then M._active_splash = nil end
   end
 
   return view
