@@ -24,21 +24,25 @@ return {
       })
 
       -- Parsers to ensure installed (asynchronous; no-op if already
-      -- present). Deferred to VeryLazy: install fires a vim.notify per
-      -- language as it queues each download. During eager loads (before
-      -- noice attaches via ext_messages) those go straight to nvim's
-      -- cmdline and overflow, triggering the press-enter prompt. Running
-      -- after VeryLazy lets noice route the bursts to its own UI quietly.
+      -- present). Deferred to AFTER all VeryLazy autocmds have run, not
+      -- just to VeryLazy itself: install fires a vim.notify per language
+      -- as it queues each download, and noice (event="VeryLazy") may not
+      -- have finished attaching ext_messages by the time the bare VeryLazy
+      -- callbacks run. vim.schedule pushes the install to the next event
+      -- tick after the entire VeryLazy chain completes, so noice is up
+      -- and routes the bursts to its own UI quietly.
       vim.api.nvim_create_autocmd("User", {
         pattern  = "VeryLazy",
         once     = true,
         callback = function()
-          require("nvim-treesitter").install({
-            "bash", "c", "cpp", "css", "html", "javascript", "json",
-            "lua", "luadoc", "markdown", "markdown_inline", "python",
-            "query", "regex", "rust", "styled", "toml", "tsx", "typescript",
-            "vim", "vimdoc", "yaml",
-          })
+          vim.schedule(function()
+            require("nvim-treesitter").install({
+              "bash", "c", "cpp", "css", "html", "javascript", "json",
+              "lua", "luadoc", "markdown", "markdown_inline", "python",
+              "query", "regex", "rust", "styled", "toml", "tsx", "typescript",
+              "vim", "vimdoc", "yaml",
+            })
+          end)
         end,
       })
 
