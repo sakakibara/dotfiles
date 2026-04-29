@@ -124,7 +124,7 @@ local function conflict_key(mode, lhs, ft)
   return mode .. ":" .. lhs .. ":" .. (ft or "")
 end
 
-local function register_lhs(spec, mode, lhs, ft)
+local function register_lhs(spec, mode, lhs, ft, k)
   local sig = conflict_key(mode, lhs, ft)
   local owner = M._key_registry[sig]
   if owner and owner ~= spec.name then
@@ -183,7 +183,7 @@ local function set_real_keymap(spec, k, m)
   opts.remap = remap_default(k)
   opts.desc  = opts.desc or ("key: " .. spec.name)
 
-  register_lhs(spec, m, lhs, k.ft)
+  register_lhs(spec, m, lhs, k.ft, k)
 
   -- rhs==nil means "plugin's own setup owns the keymap" — we only track it
   -- for conflict detection and skip installing anything.
@@ -368,7 +368,7 @@ local function set_stub_keymap(spec, k, m)
 
   -- Track the stub lhs in the registry so two lazy specs binding the same
   -- key are flagged, not silently overwriting each other at stub time.
-  register_lhs(spec, m, lhs, k.ft)
+  register_lhs(spec, m, lhs, k.ft, k)
 
   local function stub()
     local count = vim.v.count > 0 and tostring(vim.v.count) or ""
