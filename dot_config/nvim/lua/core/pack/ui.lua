@@ -750,21 +750,13 @@ function M.cold_install_splash(total)
   vim.o.winbar      = ""
   vim.o.cmdheight   = 0
   vim.o.more        = false
-  -- Hide the cursor. The TUI cursor block uses Cursor's explicit fg/bg
-  -- (not winblend), so for an invisible cursor we set fg = bg = splash
-  -- background color. Linking to NormalFloat alone isn't enough because
-  -- NormalFloat has distinct fg/bg → the cursor block would still render
-  -- as a NormalFloat-colored cell. We also need the cursor to live in
-  -- the splash window (not the background [No Name]), which we ensure
-  -- below by passing enter = true to nvim_open_win.
-  do
-    local nf = vim.api.nvim_get_hl(0, { name = "NormalFloat" })
-    local bg = nf.bg
-    if bg then
-      pcall(vim.api.nvim_set_hl, 0, "Cursor",  { fg = bg, bg = bg })
-      pcall(vim.api.nvim_set_hl, 0, "lCursor", { fg = bg, bg = bg })
-    end
-  end
+  -- Hide the terminal cursor via DECTCEM (CSI ?25 l). The TUI cursor is
+  -- ultimately rendered by the terminal, not nvim, so highlight tweaks
+  -- and `guicursor` settings only affect shape/color — not visibility.
+  -- The escape sequence directly tells the terminal to hide its cursor.
+  -- Restored with CSI ?25 h on :close().
+  pcall(io.stdout.write, io.stdout, "\27[?25l")
+  pcall(io.stdout.flush, io.stdout)
 
   local SCREEN_W = vim.o.columns
   local SCREEN_H = vim.o.lines  -- cmdheight=0 means full screen is ours

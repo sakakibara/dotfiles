@@ -38,7 +38,13 @@ return {
       health = { checker = false },
       presets = {
         command_palette = true,
-        long_message_to_split = true,
+        -- long_message_to_split routes any multi-line / fast-burst
+        -- message stream into a split window. That fires during the
+        -- post-cold-install window when many plugin-load notifications
+        -- arrive in quick succession, popping up a :messages-style
+        -- buffer. Disable it; long message streams stay in :messages
+        -- history for inspection.
+        long_message_to_split = false,
       },
       routes = {
         { filter = { event = "msg_show", any = {
