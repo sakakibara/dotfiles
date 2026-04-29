@@ -63,6 +63,17 @@ function M.write(data)
   local p = M.path()
   vim.fn.mkdir(vim.fn.fnamemodify(p, ":h"), "p")
   local payload = pretty_encode(data)
+  -- Skip the write if the on-disk bytes are already what we'd write.
+  -- Avoids touching mtime / triggering `git status` churn on no-ops,
+  -- and means a single format-conversion write happens once when the
+  -- legacy single-line lockfile is first encountered (after that the
+  -- file matches the pretty-printed payload and no-op skips kick in).
+  local existing_fd = io.open(p, "r")
+  if existing_fd then
+    local existing = existing_fd:read("*a")
+    existing_fd:close()
+    if existing == payload then return end
+  end
   -- Write to tempfile then rename so a crash mid-write can't corrupt the file.
   local tmp = p .. ".tmp"
   local fd = assert(io.open(tmp, "w"))

@@ -131,26 +131,19 @@ function M.install_missing(specs, opts)
               return
             end
             local existing = Lock.get(spec.name) or {}
-            local new_entry = {
+            -- Preserve the human-readable version field. spec.version may
+            -- be a vim.version.range (table) after normalize; in that case
+            -- type(...) == "string" is false and we'd write nil, dropping
+            -- the field on round-trip. Keep the previously-locked string
+            -- instead so the lockfile stays stable.
+            Lock.set(spec.name, {
               src = spec.src,
               rev = rev,
-              -- Preserve the human-readable version field. spec.version may
-              -- be a vim.version.range (table) after normalize; in that case
-              -- type(...) == "string" is false and we'd write nil, dropping
-              -- the field on round-trip. Keep the previously-locked string
-              -- instead so the lockfile stays stable.
               version = (type(spec.version) == "string" and spec.version)
                 or existing.version,
-            }
-            -- Skip the write entirely when the entry is unchanged. Avoids
-            -- bumping the lockfile mtime / re-pretty-printing on every cold
-            -- install, which makes `git status` noisy without cause.
-            if existing.src ~= new_entry.src
-              or existing.rev ~= new_entry.rev
-              or existing.version ~= new_entry.version
-            then
-              Lock.set(spec.name, new_entry)
-            end
+            })
+            -- Lock.write skips when the rendered payload matches disk, so
+            -- this is a no-op when nothing about this entry changed.
             M.run_build(spec, dir, { fidget = view, on_failed = opts.on_failed })
           end,
         })
