@@ -1,4 +1,11 @@
 -- lua/config/keymaps.lua
+-- Leader must be set before any `<leader>x` keymap is created (incl. eager
+-- plugin config()s during pack.setup). This file is required synchronously in
+-- config/init.lua's stage 1 — costs ~1 ms warm but guarantees keymaps are
+-- bound from t=0 instead of after the 30–100 ms UIEnter→VeryLazy window.
+vim.g.mapleader      = " "
+vim.g.maplocalleader = "\\"
+
 local map = vim.keymap.set
 
 -- smooth wrapped-line motion

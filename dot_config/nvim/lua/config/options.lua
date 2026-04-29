@@ -1,12 +1,6 @@
 -- lua/config/options.lua
 local opt = vim.opt
 
--- Leader keys: must be set before any `<leader>x` keymap is created (incl.
--- eager-plugin config()s during pack.setup). options.lua is loaded
--- synchronously in stage 1, before plugin specs — earliest safe point.
-vim.g.mapleader      = " "
-vim.g.maplocalleader = "\\"
-
 -- mise shims (unique to this user's tool-version setup)
 vim.env.PATH = vim.fn.expand("~/.local/share/mise/shims") .. ":" .. vim.env.PATH
 
