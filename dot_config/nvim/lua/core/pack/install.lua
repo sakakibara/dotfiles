@@ -25,7 +25,24 @@ local function notify(msg, level)
 end
 
 -- Resolve and check out the right ref for a freshly-cloned plugin.
+-- Lockfile takes precedence: if a SHA is recorded for this plugin we
+-- check it out directly so cold installs are reproducible across
+-- machines. Falls back to a fresh resolve when the lock entry is
+-- missing or the SHA isn't in the cloned repo (force-pushed branch,
+-- removed commit, etc.) — `:PackUpdate` is what recomputes.
 local function pin_to_version(spec, dir)
+  local locked = Lock.get(spec.name)
+  if locked and type(locked.rev) == "string"
+    and locked.rev:match("^%x+$") and #locked.rev >= 7
+  then
+    local r = Git.checkout_sha(dir, locked.rev)
+    if r.ok then return locked.rev end
+    notify(
+      ("core.pack: %s: locked rev %s not in remote; resolving fresh"):format(
+        spec.name, locked.rev:sub(1, 8)),
+      vim.log.levels.WARN)
+  end
+
   local resolved, err = Refs.resolve(spec, dir)
   if not resolved then
     return nil, ("%s: %s"):format(spec.name, err)

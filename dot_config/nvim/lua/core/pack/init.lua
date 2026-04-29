@@ -490,7 +490,10 @@ local function install_all(specs)
     local splash = UI.cold_install_splash(#to_install)
     local done = false
     local ok, err = pcall(Install.install_missing, to_install, {
-      open_window = true,
+      -- Splash takes over the prominent indicator role; the corner fidget
+      -- would just be a redundant second progress widget on cold start.
+      -- :PackInstall (user-invoked) still gets the fidget.
+      open_window = false,
       on_failed = function(name, _msg) failed[name] = true end,
       on_progress = function(d, _t, _last) splash:update(d) end,
       on_complete = function()
