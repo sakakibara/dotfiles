@@ -199,6 +199,45 @@ local function install_spec_keys(spec)
   end
 end
 
+-- Normalize a plugin/module name to a canonical form so dash/underscore and
+-- nvim-prefix differences compare equal: e.g. "better-escape" and
+-- "better_escape" both → "better_escape"; "nvim-treesitter-context" and
+-- "treesitter-context" both → "treesitter_context". Mirrors lazy.nvim's
+-- find_main heuristic.
+local function _norm_modname(s)
+  return s:lower()
+    :gsub("nvim", "")
+    :gsub("[%.%-]", "_")
+    :gsub("__+", "_")
+    :gsub("^_+", "")
+    :gsub("_+$", "")
+end
+
+-- Resolve the plugin's Lua module name. Order:
+--   1. spec.main (explicit override)
+--   2. derived from name (strip ".nvim" suffix) — works for the common case
+--   3. scan the plugin's lua/ directory for a top-level module whose
+--      normalized name matches the plugin's normalized name
+-- Exposed as M._resolve_main for tests.
+function M._resolve_main(spec)
+  if spec.main then return spec.main end
+  local derived = spec.name:gsub("%.nvim$", "")
+  local lua_dir = require("core.pack.install").install_dir(spec.name) .. "/lua"
+  if vim.fn.isdirectory(lua_dir) == 0 then return derived end
+  -- Quick check: does the derived name exist as a directory or .lua file?
+  if vim.fn.isdirectory(lua_dir .. "/" .. derived) == 1
+     or vim.fn.filereadable(lua_dir .. "/" .. derived .. ".lua") == 1 then
+    return derived
+  end
+  -- Fall back: scan and match by normalized name.
+  local target = _norm_modname(derived)
+  for _, entry in ipairs(vim.fn.readdir(lua_dir)) do
+    local mod = entry:gsub("%.lua$", "")
+    if _norm_modname(mod) == target then return mod end
+  end
+  return derived
+end
+
 local function run_config(spec)
   if M._loaded[spec.name] then return end
   M._loaded[spec.name] = true
@@ -210,7 +249,7 @@ local function run_config(spec)
       if spec.config then
         spec.config(spec, spec.opts)
       else
-        local mod = spec.main or spec.name:gsub("%.nvim$", "")
+        local mod = M._resolve_main(spec)
         local ok2, plugin = pcall(require, mod)
         if ok2 and type(plugin) == "table" and type(plugin.setup) == "function" then
           plugin.setup(spec.opts)

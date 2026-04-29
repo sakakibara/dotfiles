@@ -566,3 +566,74 @@ T.describe("core.pack add_keys API", function()
     unmap_all("<F28>")
   end)
 end)
+
+T.describe("core.pack module name resolution", function()
+  -- Build a fake plugin install root with a lua/<modname>/ directory and run
+  -- _resolve_main against a spec that points at it.
+  local function make_plugin(plugin_name, lua_subdir)
+    local root = vim.fn.tempname() .. "-pack"
+    local plug_dir = root .. "/" .. plugin_name .. "/lua/" .. lua_subdir
+    vim.fn.mkdir(plug_dir, "p")
+    return root, plug_dir
+  end
+
+  local function with_root(root, fn)
+    local Install = require("core.pack.install")
+    local prev = Install._install_root_override
+    Install._install_root_override = root
+    local ok, err = pcall(fn)
+    Install._install_root_override = prev
+    if not ok then error(err) end
+  end
+
+  T.it("respects explicit spec.main override", function()
+    local pack = reset_pack()
+    local root = make_plugin("anything.nvim", "anything")
+    with_root(root, function()
+      T.eq(pack._resolve_main({ name = "anything.nvim", main = "explicit" }), "explicit")
+    end)
+  end)
+
+  T.it("strips .nvim suffix when module dir matches", function()
+    local pack = reset_pack()
+    local root = make_plugin("plenary.nvim", "plenary")
+    with_root(root, function()
+      T.eq(pack._resolve_main({ name = "plenary.nvim" }), "plenary")
+    end)
+  end)
+
+  T.it("resolves dash → underscore mismatch (better-escape.nvim → better_escape)", function()
+    local pack = reset_pack()
+    local root = make_plugin("better-escape.nvim", "better_escape")
+    with_root(root, function()
+      T.eq(pack._resolve_main({ name = "better-escape.nvim" }), "better_escape")
+    end)
+  end)
+
+  T.it("resolves nvim- prefix mismatch (nvim-treesitter-context → treesitter-context)", function()
+    local pack = reset_pack()
+    local root = make_plugin("nvim-treesitter-context", "treesitter-context")
+    with_root(root, function()
+      T.eq(pack._resolve_main({ name = "nvim-treesitter-context" }), "treesitter-context")
+    end)
+  end)
+
+  T.it("resolves nvim- prefix + .nvim suffix (nvim-ufo → ufo)", function()
+    local pack = reset_pack()
+    local root = make_plugin("nvim-ufo", "ufo")
+    with_root(root, function()
+      T.eq(pack._resolve_main({ name = "nvim-ufo" }), "ufo")
+    end)
+  end)
+
+  T.it("falls through to derived name when no module dir matches", function()
+    -- ibl-style: lua/ibl exists but plugin name is indent-blankline.nvim. The
+    -- normalized names don't match, so we fall through to derived "indent-blankline"
+    -- — this is a case where the user MUST set spec.main = "ibl" explicitly.
+    local pack = reset_pack()
+    local root = make_plugin("indent-blankline.nvim", "ibl")
+    with_root(root, function()
+      T.eq(pack._resolve_main({ name = "indent-blankline.nvim" }), "indent-blankline")
+    end)
+  end)
+end)
