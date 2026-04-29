@@ -889,6 +889,65 @@ T.describe("core.pack keys — external collision detection", function()
     unmap_all("<F45>")
     unmap_all("<F46>")
   end)
+
+  T.it("validation: preserve and override both set -> warn, prefer preserve", function()
+    local pack = reset_pack()
+    unmap_all("<F47>")
+    unmap_all("<F48>")
+    vim.keymap.set("n", "<F47>", ":noh<CR>", { desc = "Original" })
+    local warned_mutex = false
+    local warned_overrides = false
+    local orig = vim.notify
+    vim.notify = function(msg, lvl)
+      if lvl == vim.log.levels.WARN then
+        if msg:match("mutually exclusive") then warned_mutex = true end
+        if msg:match("overrides existing") then warned_overrides = true end
+      end
+    end
+    pack.setup({
+      specs = {
+        { dev = true, name = "validate-both", lazy = false,
+          keys = { { "<F47>", function() end, mode = "n", desc = "Spec",
+                     preserve = "<F48>", override = true } },
+          config = function() end },
+      },
+    })
+    vim.notify = orig
+    T.truthy(warned_mutex, "expected mutually-exclusive warning")
+    T.eq(warned_overrides, false, "should not warn about overrides when preserve wins")
+    T.truthy(vim.fn.maparg("<F48>", "n", false, true).rhs and
+             vim.fn.maparg("<F48>", "n", false, true).rhs:match("noh"),
+      "preserve should have run (preserve wins on conflict)")
+    unmap_all("<F47>")
+    unmap_all("<F48>")
+  end)
+
+  T.it("validation: preserve == k[1] -> warn, ignore preserve, fall back to warn", function()
+    local pack = reset_pack()
+    unmap_all("<F49>")
+    vim.keymap.set("n", "<F49>", ":noh<CR>", { desc = "Original" })
+    local warned_noop = false
+    local warned_overrides = false
+    local orig = vim.notify
+    vim.notify = function(msg, lvl)
+      if lvl == vim.log.levels.WARN then
+        if msg:match("preserve target equals source") then warned_noop = true end
+        if msg:match("overrides existing") then warned_overrides = true end
+      end
+    end
+    pack.setup({
+      specs = {
+        { dev = true, name = "validate-noop", lazy = false,
+          keys = { { "<F49>", function() end, mode = "n", desc = "Spec", preserve = "<F49>" } },
+          config = function() end },
+      },
+    })
+    vim.notify = orig
+    T.truthy(warned_noop, "expected no-op preserve warning")
+    T.truthy(warned_overrides,
+      "with preserve ignored, the default overrides-existing warning should fire")
+    unmap_all("<F49>")
+  end)
 end)
 
 T.describe("core.pack module name resolution", function()

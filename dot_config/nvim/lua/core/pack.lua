@@ -215,18 +215,47 @@ local function register_lhs(spec, mode, lhs, ft, k)
   local ext_key = mode .. ":" .. lhs
   if M._warned_external[ext_key] then return end
   if M._installed_global[ext_key] == spec.name then return end
+
+  -- Validate collision opts. Bad combinations get one warning and the
+  -- offending field is dropped; processing continues.
+  local k_local = k and vim.deepcopy(k) or nil
+  if k_local and k_local.preserve ~= nil and type(k_local.preserve) ~= "string" then
+    notify(
+      ("core.pack: invalid preserve on '%s' (mode=%s); expected string lhs"):format(lhs, mode),
+      vim.log.levels.WARN)
+    k_local.preserve = nil
+  end
+  if k_local and k_local.override ~= nil and type(k_local.override) ~= "boolean" then
+    notify(
+      ("core.pack: invalid override on '%s' (mode=%s); expected boolean"):format(lhs, mode),
+      vim.log.levels.WARN)
+    k_local.override = nil
+  end
+  if k_local and k_local.preserve and k_local.override then
+    notify(
+      ("core.pack: preserve and override are mutually exclusive on '%s' (mode=%s); using preserve"):format(lhs, mode),
+      vim.log.levels.WARN)
+    k_local.override = nil
+  end
+  if k_local and k_local.preserve == lhs then
+    notify(
+      ("core.pack: preserve target equals source on '%s' (mode=%s); ignoring"):format(lhs, mode),
+      vim.log.levels.WARN)
+    k_local.preserve = nil
+  end
+
   local existing = vim.fn.maparg(lhs, mode, false, true)
   if not existing or vim.tbl_isempty(existing) then return end
   if existing.buffer ~= 0 then return end
   if existing.desc and (existing.desc:find("^key: ") or existing.desc:find("^lazy: ")) then return end
   M._warned_external[ext_key] = true  -- sentinel covers all branches below
 
-  if k and k.override then
+  if k_local and k_local.override then
     return
   end
 
-  if k and type(k.preserve) == "string" then
-    preserve_mapping(existing, mode, k.preserve, lhs, nil)
+  if k_local and type(k_local.preserve) == "string" then
+    preserve_mapping(existing, mode, k_local.preserve, lhs, nil)
     return
   end
 
