@@ -1,10 +1,4 @@
 -- lua/config/keymaps.lua
--- Leader must be set before any `<leader>x` keymap is created (incl. eager
--- plugin config()s during pack.setup), so this file is required synchronously
--- in config/init.lua's stage-1 — before plugin specs load.
-vim.g.mapleader      = " "
-vim.g.maplocalleader = "\\"
-
 local map = vim.keymap.set
 
 -- smooth wrapped-line motion
