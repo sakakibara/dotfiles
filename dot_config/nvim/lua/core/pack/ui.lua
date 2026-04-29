@@ -937,6 +937,10 @@ function M.cold_install_splash(total)
     -- attributes; passing the table reinstates them as-is).
     pcall(vim.api.nvim_set_hl, 0, "Cursor",  saved.cursor_hl)
     pcall(vim.api.nvim_set_hl, 0, "lCursor", saved.lcursor_hl)
+    -- Show the terminal cursor again (DECTCEM CSI ?25 h), undoing the
+    -- hide we sent on splash open.
+    pcall(io.stdout.write, io.stdout, "\27[?25h")
+    pcall(io.stdout.flush, io.stdout)
   end
 
   return view
