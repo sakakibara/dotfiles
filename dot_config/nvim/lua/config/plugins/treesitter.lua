@@ -23,12 +23,23 @@ return {
         install_dir = vim.fn.stdpath("data") .. "/site",
       })
 
-      -- Parsers to ensure installed (asynchronous; no-op if already present).
-      require("nvim-treesitter").install({
-        "bash", "c", "cpp", "css", "html", "javascript", "json",
-        "lua", "luadoc", "markdown", "markdown_inline", "python",
-        "query", "regex", "rust", "styled", "toml", "tsx", "typescript",
-        "vim", "vimdoc", "yaml",
+      -- Parsers to ensure installed (asynchronous; no-op if already
+      -- present). Deferred to VeryLazy: install fires a vim.notify per
+      -- language as it queues each download. During eager loads (before
+      -- noice attaches via ext_messages) those go straight to nvim's
+      -- cmdline and overflow, triggering the press-enter prompt. Running
+      -- after VeryLazy lets noice route the bursts to its own UI quietly.
+      vim.api.nvim_create_autocmd("User", {
+        pattern  = "VeryLazy",
+        once     = true,
+        callback = function()
+          require("nvim-treesitter").install({
+            "bash", "c", "cpp", "css", "html", "javascript", "json",
+            "lua", "luadoc", "markdown", "markdown_inline", "python",
+            "query", "regex", "rust", "styled", "toml", "tsx", "typescript",
+            "vim", "vimdoc", "yaml",
+          })
+        end,
       })
 
       -- Highlight on every filetype where a parser exists.
