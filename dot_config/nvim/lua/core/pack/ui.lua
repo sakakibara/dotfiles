@@ -794,11 +794,18 @@ function M.cold_install_splash(total)
 
   -- Phase: "install" while clones+builds are running, "setup" while
   -- eager-load configs run after install_all completes. Setup phase
-  -- shows a (loaded/total) counter + per-plugin name instead of the
-  -- progress bar — a spinner here would look frozen because each
-  -- load_spec is synchronous and blocks the event loop.
-  local phase         = "install"
-  local setup_status  = ""
+  -- shows a (loaded/total) counter + per-plugin name + an animated
+  -- spinner. The spinner is driven by a libuv timer that fires
+  -- ~10/sec, independent of the main thread, so it keeps moving even
+  -- when no new messages are arriving (e.g., between treesitter
+  -- compile stages). A stuck spinner means a real main-thread block;
+  -- a moving spinner means the editor is alive even though the work
+  -- behind the scenes is silent.
+  local phase           = "install"
+  local setup_status    = ""
+  local spinner_step    = 1
+  local SPINNER         = { "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏" }
+  local spinner_timer   = nil
 
   local ns = vim.api.nvim_create_namespace("PackSplash")
 
@@ -832,7 +839,8 @@ function M.cold_install_splash(total)
       mid_line         = (" "):rep(prog_pad_left) .. prog_text
       mid_line         = mid_line .. (" "):rep(inner_w - vim.fn.strdisplaywidth(mid_line))
     else
-      mid_line = center(setup_status)
+      local spin = SPINNER[((spinner_step - 1) % #SPINNER) + 1]
+      mid_line = center(spin .. "  " .. setup_status)
     end
 
     local box_rows = {
@@ -915,14 +923,16 @@ function M.cold_install_splash(total)
       add(prog_row, filled_eb, empty_eb,          "Comment")
       add(prog_row, count_sb,  count_sb + count_w, "Constant")
     else
-      -- Setup phase: highlight the leading "(N/M)" counter as Constant,
-      -- the rest reads as standard NormalFloat text.
+      -- Setup phase: highlight the leading spinner glyph as Title (the
+      -- attention-grabbing element) and any "(N/M)" counter that
+      -- follows as Constant.
       local line = lines[box_top + 5]  -- 1-indexed
       local lead_spaces = #(line:sub(pad_left + 4):match("^ *") or "")
-      local counter_sb = pad_left + 3 + lead_spaces
-      -- The counter ends at the first space after "(N/M)".
-      local counter_match = line:sub(counter_sb + 1):match("^(%([%d/]+%))")
+      local spin_sb = pad_left + 3 + lead_spaces
+      add(box_top + 4, spin_sb, spin_sb + 3, "Title")  -- ⠋ etc. are 3-byte
+      local counter_match = line:sub(spin_sb + 6):match("^(%([%d/]+%))")
       if counter_match then
+        local counter_sb = spin_sb + 5  -- past spinner + 2 spaces
         add(box_top + 4, counter_sb, counter_sb + #counter_match, "Constant")
       end
     end
@@ -1012,6 +1022,19 @@ function M.cold_install_splash(total)
     phase = "setup"
     render()
     pcall(vim.cmd.redraw)
+    -- Start the spinner ticker. Fires every 100ms via libuv, advances
+    -- the spinner one frame, schedules a redraw on the main thread.
+    -- The libuv timer ticks regardless of Lua state, so the spinner
+    -- keeps animating even when no status messages are arriving.
+    if not spinner_timer then
+      spinner_timer = vim.uv.new_timer()
+      spinner_timer:start(100, 100, vim.schedule_wrap(function()
+        if not vim.api.nvim_buf_is_valid(buf) then return end
+        spinner_step = spinner_step + 1
+        render()
+        pcall(vim.cmd.redraw)
+      end))
+    end
   end
 
   -- Update the per-plugin status shown in the setup phase: "(idx/total)
@@ -1045,6 +1068,11 @@ function M.cold_install_splash(total)
   end
 
   function view:close()
+    if spinner_timer then
+      pcall(spinner_timer.stop, spinner_timer)
+      pcall(spinner_timer.close, spinner_timer)
+      spinner_timer = nil
+    end
     if close_timer then
       pcall(close_timer.stop, close_timer)
       pcall(close_timer.close, close_timer)
