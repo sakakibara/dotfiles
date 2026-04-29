@@ -31,7 +31,14 @@ local function pin_to_version(spec, dir)
   if not resolved then
     return nil, "could not resolve version for " .. spec.name
   end
-  local r = Git.checkout(dir, resolved.ref)
+  local target_ref
+  if resolved.kind == "default" then
+    target_ref = refs.default_branch
+  elseif resolved.kind == "commit" or resolved.kind == "branch" or resolved.kind == "tag" then
+    target_ref = resolved.name
+  end
+  if not target_ref then return nil, "could not determine ref for " .. spec.name end
+  local r = Git.checkout(dir, target_ref)
   if not r.ok then return nil, r.err end
   return Git.current_rev(dir), nil
 end
@@ -304,7 +311,14 @@ function M.update(specs, names, opts)
               local resolved = Version.resolve(t.spec.version, t.refs)
               if resolved then
                 t.resolved = resolved
-                t.target_ref = resolved.kind == "branch" and ("origin/" .. resolved.ref) or resolved.ref
+                if resolved.kind == "default" then
+                  local db = t.refs.default_branch
+                  t.target_ref = db and ("origin/" .. db) or nil
+                elseif resolved.kind == "branch" then
+                  t.target_ref = "origin/" .. resolved.name
+                elseif resolved.kind == "tag" or resolved.kind == "commit" then
+                  t.target_ref = resolved.name
+                end
               end
             end
           end
@@ -345,7 +359,7 @@ function M.update(specs, names, opts)
                 if t.target_rev and t.refs and t.target_rev ~= t.refs.head_rev then
                   pending[#pending + 1] = {
                     spec = t.spec, dir = t.dir, from = t.refs.head_rev, to = t.target_rev,
-                    ref = t.resolved and t.resolved.ref or nil, checkout_ref = t.checkout_ref,
+                    ref = t.resolved and t.resolved.name or nil, checkout_ref = t.checkout_ref,
                   }
                 end
               end

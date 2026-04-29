@@ -1070,3 +1070,22 @@ T.describe("core.pack module name resolution", function()
     end)
   end)
 end)
+
+T.describe("core.pack.version.resolve: default sentinel", function()
+  T.it("nil version returns kind='default'", function()
+    package.loaded["core.pack.version"] = nil
+    local Version = require("core.pack.version")
+    local refs = { tags = {}, branches = { "main" }, default_branch = "main" }
+    local r = Version.resolve(nil, refs)
+    T.eq(r.kind, "default")
+    T.eq(r.name, nil)
+  end)
+
+  T.it("nil version with no default_branch still returns default sentinel", function()
+    package.loaded["core.pack.version"] = nil
+    local Version = require("core.pack.version")
+    local refs = { tags = {}, branches = {}, default_branch = nil }
+    local r = Version.resolve(nil, refs)
+    T.eq(r.kind, "default")
+  end)
+end)
