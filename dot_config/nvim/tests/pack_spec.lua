@@ -739,6 +739,78 @@ T.describe("core.pack keys — external collision detection", function()
     T.eq(#warnings, 0, "override = true should suppress warning at stub and at stub->real")
     unmap_all("<F34>")
   end)
+
+  T.it("preserve copies rhs string and installs spec key", function()
+    local pack = reset_pack()
+    unmap_all("<F35>")
+    unmap_all("<F36>")
+    vim.keymap.set("n", "<F35>", ":tnext<CR>", { desc = "Original" })
+    local warnings = {}
+    local orig = vim.notify
+    vim.notify = function(msg, lvl)
+      if lvl == vim.log.levels.WARN then table.insert(warnings, msg) end
+    end
+    local fn = function() end
+    pack.setup({
+      specs = {
+        { dev = true, name = "preserve-rhs", lazy = false,
+          keys = { { "<F35>", fn, mode = "n", desc = "Spec", preserve = "<F36>" } },
+          config = function() end },
+      },
+    })
+    vim.notify = orig
+    -- No collision warning fired
+    for _, msg in ipairs(warnings) do
+      T.eq(msg:match("overrides existing"), nil)
+    end
+    -- Original was preserved at <F36>
+    local moved = vim.fn.maparg("<F36>", "n", false, true)
+    T.truthy(moved.rhs and moved.rhs:match("tnext"), "preserve target missing original rhs")
+    -- Spec key is installed at <F35>
+    T.eq(vim.fn.maparg("<F35>", "n", false, true).callback, fn)
+    unmap_all("<F35>")
+    unmap_all("<F36>")
+  end)
+
+  T.it("preserve copies Lua callback when source has no rhs string", function()
+    local pack = reset_pack()
+    unmap_all("<F37>")
+    unmap_all("<F38>")
+    local original_fn = function() end
+    vim.keymap.set("n", "<F37>", original_fn, { desc = "Original cb" })
+    pack.setup({
+      specs = {
+        { dev = true, name = "preserve-cb", lazy = false,
+          keys = { { "<F37>", function() end, mode = "n", desc = "Spec", preserve = "<F38>" } },
+          config = function() end },
+      },
+    })
+    T.eq(vim.fn.maparg("<F38>", "n", false, true).callback, original_fn,
+      "callback was not preserved")
+    unmap_all("<F37>")
+    unmap_all("<F38>")
+  end)
+
+  T.it("preserve copies expr/silent/nowait flags", function()
+    local pack = reset_pack()
+    unmap_all("<F39>")
+    unmap_all("<F40>")
+    vim.keymap.set("n", "<F39>", function() return "<Esc>" end,
+      { desc = "Flagged", expr = true, silent = true, nowait = true })
+    pack.setup({
+      specs = {
+        { dev = true, name = "preserve-flags", lazy = false,
+          keys = { { "<F39>", function() end, mode = "n", desc = "Spec", preserve = "<F40>" } },
+          config = function() end },
+      },
+    })
+    local moved = vim.fn.maparg("<F40>", "n", false, true)
+    T.eq(moved.expr, 1, "expr flag not preserved")
+    T.eq(moved.silent, 1, "silent flag not preserved")
+    T.eq(moved.nowait, 1, "nowait flag not preserved")
+    unmap_all("<F39>")
+    unmap_all("<F40>")
+  end)
 end)
 
 T.describe("core.pack module name resolution", function()

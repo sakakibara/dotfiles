@@ -124,6 +124,39 @@ local function conflict_key(mode, lhs, ft)
   return mode .. ":" .. lhs .. ":" .. (ft or "")
 end
 
+-- Copy `existing` (a maparg(...,true) table) to `target_lhs` in `mode`.
+-- buf=nil installs globally; buf=<bufnr> installs buffer-locally (ft-scoped).
+-- Returns true if installation happened, false otherwise (caller decides
+-- whether the failure is fatal — for `preserve`, it isn't: the spec's own
+-- key still gets installed).
+local function preserve_mapping(existing, mode, target_lhs, source_lhs, buf)
+  if not (existing.callback or (existing.rhs and existing.rhs ~= "")) then
+    notify(
+      ("core.pack: cannot preserve '%s' (no rhs/callback)"):format(source_lhs),
+      vim.log.levels.WARN)
+    return false
+  end
+  local opts = {
+    desc    = existing.desc or ("preserved: " .. source_lhs),
+    expr    = existing.expr == 1,
+    silent  = existing.silent == 1,
+    nowait  = existing.nowait == 1,
+    noremap = existing.noremap == 1,
+    script  = existing.script == 1,
+    buffer  = buf,
+  }
+  local rhs = existing.callback or existing.rhs
+  local ok, err = pcall(vim.keymap.set, mode, target_lhs, rhs, opts)
+  if not ok then
+    notify(
+      ("core.pack: cannot preserve '%s' to '%s': %s")
+        :format(source_lhs, target_lhs, tostring(err)),
+      vim.log.levels.WARN)
+    return false
+  end
+  return true
+end
+
 local function register_lhs(spec, mode, lhs, ft, k)
   local sig = conflict_key(mode, lhs, ft)
   local owner = M._key_registry[sig]
@@ -167,6 +200,11 @@ local function register_lhs(spec, mode, lhs, ft, k)
   M._warned_external[ext_key] = true  -- sentinel covers all branches below
 
   if k and k.override then
+    return
+  end
+
+  if k and type(k.preserve) == "string" then
+    preserve_mapping(existing, mode, k.preserve, lhs, nil)
     return
   end
 
