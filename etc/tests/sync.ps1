@@ -129,14 +129,14 @@ $Script:SyncActions = @('add', '@work', 'skip', 'block')
 
 Sync-Apply $pkgFile $bocFile 'scoop' *> $null
 
-$pkgContent = (Get-Content -LiteralPath $pkgFile -Raw)
+$pkgContent = ((Get-Content -LiteralPath $pkgFile -Raw) -replace "`r`n", "`n")
 Test-Eq 'pkg keeps existing header' $true ($pkgContent.Contains('# header line'))
 Test-Eq 'pkg appends ripgrep'       $true ($pkgContent.Contains("`nripgrep`n"))
 Test-Eq 'pkg appends cask:slack'    $true ($pkgContent.Contains("`ncask:slack @work"))
 Test-Eq 'pkg does NOT contain fd'   $false ($pkgContent.Contains('`nfd'))
 Test-Eq 'pkg does NOT contain evil' $false ($pkgContent.Contains("`nevil"))
 
-$bocContent = (Get-Content -LiteralPath $bocFile -Raw)
+$bocContent = ((Get-Content -LiteralPath $bocFile -Raw) -replace "`r`n", "`n")
 Test-Eq 'blacklist appends evil'    $true ($bocContent.Contains('evil'))
 Test-Eq 'blacklist no slack'        $false ($bocContent.Contains('slack'))
 
