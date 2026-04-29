@@ -742,12 +742,18 @@ function M.cold_install_splash(total)
     winbar      = vim.o.winbar,
     cmdheight   = vim.o.cmdheight,
     more        = vim.o.more,
+    cursor_hl   = vim.api.nvim_get_hl(0, { name = "Cursor" }),
+    lcursor_hl  = vim.api.nvim_get_hl(0, { name = "lCursor" }),
   }
   vim.o.laststatus  = 0
   vim.o.showtabline = 0
   vim.o.winbar      = ""
   vim.o.cmdheight   = 0
   vim.o.more        = false
+  -- Hide the cursor by making the Cursor highlight fully blended into
+  -- background. Restored on :close().
+  pcall(vim.api.nvim_set_hl, 0, "Cursor",  { blend = 100 })
+  pcall(vim.api.nvim_set_hl, 0, "lCursor", { blend = 100 })
 
   local SCREEN_W = vim.o.columns
   local SCREEN_H = vim.o.lines  -- cmdheight=0 means full screen is ours
@@ -806,42 +812,64 @@ function M.cold_install_splash(total)
     end
     while #lines < SCREEN_H do lines[#lines + 1] = "" end
 
-    -- Highlight ranges. Byte offsets account for UTF-8 (3 bytes per box
-    -- glyph and per ▰/▱). pad_left is always ASCII spaces (1 byte each).
+    -- Highlight ranges. Each line is `pad_left ASCII spaces + box_row`.
+    -- Box glyphs are 3 UTF-8 bytes each, so the side borders ("│") are
+    -- exactly 3 bytes. Per-line:
+    --   left border  : [pad_left, pad_left+3)
+    --   inner content: [pad_left+3, #line-3)
+    --   right border : [#line-3, #line)
+    -- Highlights for inner-row content (title, subtitle, progress) MUST
+    -- exclude both borders so FloatBorder isn't visually overridden by
+    -- dimmer groups like Comment.
     local hls = {}
-    local box_left_byte  = pad_left
-    local box_right_byte = pad_left + 1 + (BOX_W - 2) * 3 + 1  -- approximate
+    local box_top    = pad_top
+    local box_bottom = pad_top + BOX_H - 1
+
     local function add(row, sb, eb, hl)
       hls[#hls + 1] = { row = row, sb = sb, eb = eb, hl = hl }
     end
 
-    -- Whole-box border highlight on top/bottom rows
-    local box_top    = pad_top
-    local box_bottom = pad_top + BOX_H - 1
-    add(box_top,    box_left_byte, -1, "FloatBorder")
-    add(box_bottom, box_left_byte, -1, "FloatBorder")
-    -- Side borders on each row in between (just first and last 3 bytes)
-    for r = box_top + 1, box_bottom - 1 do
-      add(r, box_left_byte, box_left_byte + 3, "FloatBorder")
-      -- right border position: pad_left + 1 (left border) + inner_w bytes
-      -- of content. Inner content is mixed ASCII + unicode; the right
-      -- border sits at the end of the line. Highlight last 3 bytes of
-      -- the line via -1.
-      -- Computing exact end byte is awkward; rely on -1 below in tile.
+    -- Per-row inner range. Each box row has predictable left/right
+    -- border byte offsets, so we read them from the assembled line
+    -- rather than recomputing display widths.
+    local function inner_range(row_idx)
+      local line = lines[row_idx + 1]  -- 1-indexed
+      return pad_left + 3, #line - 3
     end
-    -- Title row (3rd line of the box)
-    add(box_top + 2, box_left_byte, -1, "Title")
-    -- Subtitle row (7th line of the box)
-    add(box_top + 6, box_left_byte, -1, "Comment")
-    -- Progress filled glyphs: ▰ = 3 UTF-8 bytes
-    local prog_row = box_top + 4
-    local prog_inner_start = box_left_byte + 1  -- skip "│"
-    local filled_start = prog_inner_start + prog_pad_left
-    local filled_end   = filled_start + filled * 3
-    local empty_end    = filled_end + (BAR - filled) * 3
-    add(prog_row, filled_start, filled_end, "String")
-    add(prog_row, filled_end,   empty_end,  "Comment")
-    add(prog_row, empty_end + 2, empty_end + 2 + count_w, "Constant")  -- N/M number
+
+    -- Top and bottom border rows are entirely FloatBorder.
+    add(box_top,    pad_left, -1, "FloatBorder")
+    add(box_bottom, pad_left, -1, "FloatBorder")
+    -- Side borders on each interior row, both edges.
+    for r = box_top + 1, box_bottom - 1 do
+      local line = lines[r + 1]
+      add(r, pad_left,        pad_left + 3, "FloatBorder")
+      add(r, #line - 3,       #line,        "FloatBorder")
+    end
+
+    -- Inner content highlights. Title row = box_top + 2, progress row
+    -- = box_top + 4, subtitle row = box_top + 6.
+    do
+      local sb, eb = inner_range(box_top + 2)
+      add(box_top + 2, sb, eb, "Title")
+    end
+    do
+      local sb, eb = inner_range(box_top + 6)
+      add(box_top + 6, sb, eb, "Comment")
+    end
+
+    -- Progress segments: filled (String), empty (Comment), N/M (Constant).
+    -- Byte offsets are deterministic because the progress line is
+    -- ASCII spaces + N×▰ + M×▱ + "  " + ASCII count.
+    local prog_row    = box_top + 4
+    local prog_inner  = pad_left + 3  -- skip left "│"
+    local filled_sb   = prog_inner + prog_pad_left
+    local filled_eb   = filled_sb + filled * 3
+    local empty_eb    = filled_eb + (BAR - filled) * 3
+    local count_sb    = empty_eb + 2  -- skip the 2 ASCII spaces
+    add(prog_row, filled_sb, filled_eb,         "String")
+    add(prog_row, filled_eb, empty_eb,          "Comment")
+    add(prog_row, count_sb,  count_sb + count_w, "Constant")
 
     return lines, hls
   end
@@ -893,7 +921,14 @@ function M.cold_install_splash(total)
     if vim.api.nvim_buf_is_valid(buf) then
       pcall(vim.api.nvim_buf_delete, buf, { force = true })
     end
-    for k, v in pairs(saved) do vim.o[k] = v end
+    -- Restore the simple option saves first.
+    for _, k in ipairs({ "laststatus", "showtabline", "winbar", "cmdheight", "more" }) do
+      vim.o[k] = saved[k]
+    end
+    -- Restore Cursor highlights (the saved hl table contains all original
+    -- attributes; passing the table reinstates them as-is).
+    pcall(vim.api.nvim_set_hl, 0, "Cursor",  saved.cursor_hl)
+    pcall(vim.api.nvim_set_hl, 0, "lCursor", saved.lcursor_hl)
   end
 
   return view
