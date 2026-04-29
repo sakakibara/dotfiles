@@ -59,6 +59,11 @@ map("n", "<Leader>qq", "<Cmd>qa<CR>", { desc = "Quit all" })
 map("n", "[b", "<Cmd>bprevious<CR>", { desc = "Prev buffer" })
 map("n", "]b", "<Cmd>bnext<CR>",     { desc = "Next buffer" })
 
+-- drop unused nvim default tag-stack maps — :tag/:tnext/:tlast cmdline forms
+-- still work if ever needed; ]t/[t go to other uses via core.pack override.
+pcall(vim.keymap.del, "n", "]T")
+pcall(vim.keymap.del, "n", "[T")
+
 -- sibling-file navigation (same directory, wrap-around). [f/]f are taken by
 -- treesitter-textobjects for function-start jumping; use uppercase F.
 map("n", "[F", function() Lib.keymaps.cycle_sibling(-1) end, { desc = "Prev file in directory" })
