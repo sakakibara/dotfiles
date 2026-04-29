@@ -28,6 +28,17 @@ return {
       end
     end,
     config = function()
+      -- Silence nvim-treesitter's info-level logger. The install function
+      -- spams `[nvim-treesitter/install/<lang>]: Downloading...` etc. via
+      -- vim.api.nvim_echo with history=true. Even with noice's ext_messages
+      -- attached, the timing of those echoes vs noice attach is fragile
+      -- (noice.setup itself defers via vim.schedule), and any miss bursts
+      -- straight to nvim's cmdline → overflow → press-enter prompt that
+      -- blocks the main thread. Replacing the logger function eliminates
+      -- the source. warn/error are preserved so real failures still surface.
+      local ts_log = require("nvim-treesitter.log")
+      ts_log.Logger.info = function() end
+
       require("nvim-treesitter").setup({
         install_dir = vim.fn.stdpath("data") .. "/site",
       })
