@@ -42,6 +42,15 @@ end)
 
 T.describe("lib.colors.detect TS dispatch", function()
   T.it("uses TS for CSS buffers", function()
+    -- Requires a CSS tree-sitter parser on disk. CI compiles one in
+    -- .github/workflows/ci.yml. Locally the parser may be missing
+    -- (e.g., after trashing ~/.local/share/nvim/) — in that case skip
+    -- the assertion rather than fail; regex fallback over-captures the
+    -- comment color, which is a known limitation, not a regression.
+    if not pcall(vim.treesitter.language.add, "css") then
+      print("      (skipped — CSS treesitter parser not installed)")
+      return
+    end
     local buf = make_buf({
       ".btn {",
       "  color: #ff0000;",

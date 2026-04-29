@@ -733,17 +733,24 @@ function M.cold_install_splash(total)
   pcall(vim.api.nvim_buf_set_name, buf, "core.pack: install")
 
   -- Save every piece of chrome we hide so :close() restores cleanly.
+  -- cmdheight=0 + more=false silence echo-area output during install so
+  -- the splash isn't covered by transient messages or the press-enter
+  -- prompt. Output still lands in :messages history for later inspection.
   local saved = {
     laststatus  = vim.o.laststatus,
     showtabline = vim.o.showtabline,
     winbar      = vim.o.winbar,
+    cmdheight   = vim.o.cmdheight,
+    more        = vim.o.more,
   }
   vim.o.laststatus  = 0
   vim.o.showtabline = 0
   vim.o.winbar      = ""
+  vim.o.cmdheight   = 0
+  vim.o.more        = false
 
   local SCREEN_W = vim.o.columns
-  local SCREEN_H = vim.o.lines - vim.o.cmdheight  -- room above cmdline
+  local SCREEN_H = vim.o.lines  -- cmdheight=0 means full screen is ours
   local BOX_W    = 49                              -- includes borders
   local BOX_H    = 9                               -- 7 content rows + 2 borders
   local BAR      = 25                              -- progress-bar cells
