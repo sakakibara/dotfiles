@@ -110,11 +110,36 @@ function M._merge(a, b)
   merged.lazy     = a.lazy and b.lazy
   merged.enabled  = a.enabled and b.enabled
   merged.dev      = a.dev or b.dev
-  -- Scalar last-non-nil-wins (warning logic comes in next task)
-  for _, k in ipairs({ "src", "version", "branch", "build", "init", "config", "main", "cond" }) do
+  -- Scalar last-non-nil-wins with conflict detection.
+  -- vim.deep_equal handles every type correctly:
+  --   - same string / number / boolean        -> equal -> silent
+  --   - same function reference               -> equal -> silent
+  --   - different functions (any identities)  -> not equal -> warn
+  --   - different tables (deep)                -> compared deeply
+  local warnings = {}
+  local CONFLICT_FIELDS = {
+    "src", "version", "branch", "build", "init", "config", "main", "cond",
+  }
+  local function fmt_value(v)
+    if type(v) == "function" then return "<function>" end
+    if type(v) == "table" then return vim.inspect(v):gsub("\n", " "):sub(1, 60) end
+    return tostring(v)
+  end
+  for _, k in ipairs(CONFLICT_FIELDS) do
+    -- Skip version conflict when version was derived from branch (same string);
+    -- the branch field will emit its own conflict warning for that case.
+    local derived_from_branch = k == "version"
+      and type(a[k]) == "string" and a[k] == a.branch
+      and type(b[k]) == "string" and b[k] == b.branch
+    if not derived_from_branch
+      and a[k] ~= nil and b[k] ~= nil and not vim.deep_equal(a[k], b[k])
+    then
+      table.insert(warnings, ("%s: conflicting %s: %s vs %s; using %s")
+        :format(merged.name, k, fmt_value(a[k]), fmt_value(b[k]), fmt_value(b[k])))
+    end
     if b[k] ~= nil then merged[k] = b[k] end
   end
-  return merged
+  return merged, warnings
 end
 
 return M
