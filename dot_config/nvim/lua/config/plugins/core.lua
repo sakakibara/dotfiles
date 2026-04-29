@@ -16,6 +16,7 @@ return {
         which_key = true,
         native_lsp = { enabled = true },
         treesitter = true,
+        treesitter_context = true,  -- TreesitterContext / Bottom / LineNumber hl groups
         heirline = true,  -- M3; no-op today, costs nothing
       },
     },
