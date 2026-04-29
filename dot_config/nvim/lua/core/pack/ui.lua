@@ -748,6 +748,8 @@ function M.cold_install_splash(total)
     laststatus  = vim.o.laststatus,
     showtabline = vim.o.showtabline,
     winbar      = vim.o.winbar,
+    statusline  = vim.o.statusline,
+    tabline     = vim.o.tabline,
     cmdheight   = vim.o.cmdheight,
     more        = vim.o.more,
     shortmess   = vim.o.shortmess,
@@ -757,6 +759,11 @@ function M.cold_install_splash(total)
   vim.o.laststatus  = 0
   vim.o.showtabline = 0
   vim.o.winbar      = ""
+  -- Some redraw paths still evaluate the `statusline` / `tabline`
+  -- expressions even with laststatus=0/showtabline=0; clearing the
+  -- expression strings makes the suppression unconditional.
+  vim.o.statusline  = ""
+  vim.o.tabline     = ""
   -- cmdheight = 1 (not 0 or large): 0 guarantees press-enter on every
   -- message and the prompt blocks the main thread; large cmdheight just
   -- shrinks the floating-window editor area, leaving the cmdline visible
@@ -1050,7 +1057,7 @@ function M.cold_install_splash(total)
       pcall(vim.api.nvim_buf_delete, buf, { force = true })
     end
     -- Restore the simple option saves first.
-    for _, k in ipairs({ "laststatus", "showtabline", "winbar", "cmdheight", "more", "shortmess" }) do
+    for _, k in ipairs({ "laststatus", "showtabline", "winbar", "statusline", "tabline", "cmdheight", "more", "shortmess" }) do
       vim.o[k] = saved[k]
     end
     -- Restore Cursor highlights (the saved hl table contains all original
