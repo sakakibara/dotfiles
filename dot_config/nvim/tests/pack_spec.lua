@@ -676,6 +676,8 @@ T.describe("core.pack keys — external collision detection", function()
       vim.api.nvim_replace_termcodes("<F32>", true, false, true), "mx", false)
     vim.wait(100, function() return pack.loaded("custom-desc-lazy") end)
     vim.notify = orig
+    T.truthy(pack.loaded("custom-desc-lazy"),
+      "spec never loaded — stub->real did not fire; warning assertions would be vacuous")
     for _, msg in ipairs(warnings) do
       T.eq(msg:match("Custom Description"), nil,
         "false-positive: stub->real warned with the spec's own desc")
