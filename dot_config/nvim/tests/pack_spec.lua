@@ -1156,3 +1156,58 @@ T.describe("core.pack.setup: failed-install pruning", function()
     pack._specs.good = nil
   end)
 end)
+
+T.describe("core.pack.lock: pretty-printed write", function()
+  local function tmpdir()
+    local p = vim.fn.tempname()
+    vim.fn.mkdir(p, "p")
+    return p
+  end
+
+  T.it("write produces multi-line output", function()
+    package.loaded["core.pack.lock"] = nil
+    local Lock = require("core.pack.lock")
+    local dir = tmpdir()
+    Lock._path_override = dir .. "/lock.json"
+    Lock.write({ version = 1, plugins = { foo = { rev = "abc" }, bar = { rev = "def" } } })
+    local fd = io.open(Lock._path_override, "r")
+    local content = fd:read("*a"); fd:close()
+    T.truthy(content:find("\n"), "expected multi-line lockfile")
+    Lock._path_override = nil
+  end)
+
+  T.it("plugin keys are sorted alphabetically", function()
+    package.loaded["core.pack.lock"] = nil
+    local Lock = require("core.pack.lock")
+    local dir = tmpdir()
+    Lock._path_override = dir .. "/lock.json"
+    Lock.write({ version = 1, plugins = {
+      zeta = { rev = "z" },
+      alpha = { rev = "a" },
+      mu = { rev = "m" },
+    } })
+    local fd = io.open(Lock._path_override, "r")
+    local content = fd:read("*a"); fd:close()
+    local alpha_pos = content:find('"alpha"')
+    local mu_pos = content:find('"mu"')
+    local zeta_pos = content:find('"zeta"')
+    T.truthy(alpha_pos and mu_pos and zeta_pos, "expected all keys to appear")
+    T.truthy(alpha_pos < mu_pos and mu_pos < zeta_pos,
+      "expected alphabetical key order in lockfile")
+    Lock._path_override = nil
+  end)
+
+  T.it("round-trip: write then read returns same data", function()
+    package.loaded["core.pack.lock"] = nil
+    local Lock = require("core.pack.lock")
+    local dir = tmpdir()
+    Lock._path_override = dir .. "/lock.json"
+    local data = { version = 1, plugins = { foo = { rev = "abc", src = "https://x/y" } } }
+    Lock.write(data)
+    local read = Lock.read()
+    T.eq(read.version, 1)
+    T.eq(read.plugins.foo.rev, "abc")
+    T.eq(read.plugins.foo.src, "https://x/y")
+    Lock._path_override = nil
+  end)
+end)

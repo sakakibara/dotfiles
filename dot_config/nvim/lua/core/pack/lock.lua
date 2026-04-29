@@ -33,10 +33,36 @@ function M.read()
   return data
 end
 
+-- Pretty-print the lockfile: top-level keys sorted, "plugins" object's
+-- inner entries each on their own indented line in alphabetical order.
+-- Per-plugin entries stay on a single line — they're small and the diff
+-- value is at the plugin-name layer.
+local function pretty_encode(data)
+  local plugins = data.plugins or {}
+  local plugin_names = vim.tbl_keys(plugins); table.sort(plugin_names)
+  local plugin_lines = {}
+  for i, name in ipairs(plugin_names) do
+    local sep = i < #plugin_names and "," or ""
+    plugin_lines[#plugin_lines + 1] = ('    %s: %s%s'):format(
+      vim.json.encode(name), vim.json.encode(plugins[name]), sep)
+  end
+  local plugins_block = #plugin_lines == 0 and "{}" or
+    "{\n" .. table.concat(plugin_lines, "\n") .. "\n  }"
+  -- Top-level: sort all keys, emit one per line.
+  local top_keys = vim.tbl_keys(data); table.sort(top_keys)
+  local top_lines = {}
+  for i, k in ipairs(top_keys) do
+    local sep = i < #top_keys and "," or ""
+    local v = (k == "plugins") and plugins_block or vim.json.encode(data[k])
+    top_lines[#top_lines + 1] = ("  %s: %s%s"):format(vim.json.encode(k), v, sep)
+  end
+  return "{\n" .. table.concat(top_lines, "\n") .. "\n}"
+end
+
 function M.write(data)
   local p = M.path()
   vim.fn.mkdir(vim.fn.fnamemodify(p, ":h"), "p")
-  local payload = vim.json.encode(data)
+  local payload = pretty_encode(data)
   -- Write to tempfile then rename so a crash mid-write can't corrupt the file.
   local tmp = p .. ".tmp"
   local fd = assert(io.open(tmp, "w"))
