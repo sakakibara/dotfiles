@@ -52,6 +52,11 @@ function M.setup()
 
   require("config.options")
 
+  -- Keymaps load BEFORE pack.setup so that mapleader/maplocalleader (set at
+  -- the top of keymaps.lua) are in place before any eager plugin's config()
+  -- registers `<leader>x` keymaps — otherwise those bind to the default `\`.
+  require("config.keymaps")
+
   -- chezmoi template support: filetype detection for *.tmpl, gotmpl
   -- treesitter injection in {{...}} regions, blink.cmp source registration.
   Lib.chezmoi.setup()
@@ -96,7 +101,6 @@ function M.setup()
     pattern = "VeryLazy",
     once = true,
     callback = function()
-      require("config.keymaps")
       Lib.lsp.setup()
       Lib.format.setup()
       Lib.root.setup()
