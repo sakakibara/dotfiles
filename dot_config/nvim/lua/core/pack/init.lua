@@ -628,15 +628,9 @@ function M.setup(cfg)
       pattern = "VeryLazy",
       once = true,
       callback = function()
-        -- Three independent close triggers — whichever fires first wins:
-        --   1. Idle: ~1.5s after the last status update (covers normal
-        --      completion when the treesitter install task callback also
-        --      fires close, just earlier).
-        --   2. on_key: any keystroke fires close immediately.
-        --   3. Autocmd-based interaction: CursorMoved / BufEnter / InsertEnter
-        --      fire when nvim accepts input again, so even if on_key has
-        --      timing issues with vim.schedule, normal cursor movement or
-        --      buffer entry will dismiss the splash.
+        -- Multiple independent close triggers — whichever fires first wins.
+        -- The hard 3s timer is the unconditional fallback so the splash
+        -- never overstays even if every other path is blocked or broken.
         splash:start_idle_close(1500)
         local key_handler
         key_handler = vim.on_key(function()
@@ -644,9 +638,10 @@ function M.setup(cfg)
           vim.on_key(nil, key_handler)
         end)
         vim.api.nvim_create_autocmd(
-          { "CursorMoved", "BufEnter", "InsertEnter" },
+          { "CursorMoved", "CursorHold", "CursorHoldI", "BufEnter", "InsertEnter" },
           { once = true, callback = function() splash:close() end }
         )
+        vim.defer_fn(function() splash:close() end, 3000)
       end,
     })
   end
