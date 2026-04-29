@@ -567,6 +567,95 @@ T.describe("core.pack add_keys API", function()
   end)
 end)
 
+T.describe("core.pack keys — external collision detection", function()
+  T.it("warns when a spec key overrides an existing global mapping", function()
+    local pack = reset_pack()
+    unmap_all("<F29>")
+    -- Pre-install an external mapping (simulating config/keymaps.lua or a
+    -- plugin's setup() body — neither goes through core.pack's spec path).
+    vim.keymap.set("n", "<F29>", "<Cmd>echo 'external'<CR>", { desc = "External pre-existing" })
+
+    local notified = false
+    local orig = vim.notify
+    vim.notify = function(msg, lvl)
+      if lvl == vim.log.levels.WARN
+        and msg:match("overrides existing mapping")
+        and msg:match("External pre%-existing") then
+        notified = true
+      end
+    end
+    pack.setup({
+      specs = {
+        { dev = true, name = "ext-override",
+          keys = { { "<F29>", function() end, mode = "n", desc = "Spec mapping" } },
+          config = function() end },
+      },
+    })
+    vim.notify = orig
+    T.truthy(notified, "expected an override warning, got none")
+    unmap_all("<F29>")
+  end)
+
+  T.it("does NOT warn when our own spec re-installs its own keymap", function()
+    local pack = reset_pack()
+    unmap_all("<F30>")
+    -- First install via spec — sets the mapping with desc "key: own".
+    pack.setup({
+      specs = {
+        { dev = true, name = "own", keys = { { "<F30>", function() end, mode = "n" } },
+          config = function() end },
+      },
+    })
+
+    -- Re-install with a fresh pack instance but the SAME nvim session, so
+    -- the existing mapping persists. The override warning should NOT fire,
+    -- because the existing mapping has our default "key: " desc prefix.
+    local pack2 = reset_pack()
+    local notified = false
+    local orig = vim.notify
+    vim.notify = function(msg, lvl)
+      if lvl == vim.log.levels.WARN and msg:match("overrides existing mapping") then
+        notified = true
+      end
+    end
+    pack2.setup({
+      specs = {
+        { dev = true, name = "own", keys = { { "<F30>", function() end, mode = "n" } },
+          config = function() end },
+      },
+    })
+    vim.notify = orig
+    T.eq(notified, false, "false-positive: warned on our own re-install")
+    unmap_all("<F30>")
+  end)
+
+  T.it("does NOT warn for buffer-local pre-existing mappings", function()
+    local pack = reset_pack()
+    unmap_all("<F31>")
+    vim.keymap.set("n", "<F31>", "<Cmd>echo 'buf'<CR>",
+      { desc = "Buffer-local existing", buffer = 0 })
+
+    local notified = false
+    local orig = vim.notify
+    vim.notify = function(msg, lvl)
+      if lvl == vim.log.levels.WARN and msg:match("overrides existing mapping") then
+        notified = true
+      end
+    end
+    pack.setup({
+      specs = {
+        { dev = true, name = "buf-noop",
+          keys = { { "<F31>", function() end, mode = "n", desc = "Spec mapping" } },
+          config = function() end },
+      },
+    })
+    vim.notify = orig
+    T.eq(notified, false, "false-positive: warned on buffer-local existing")
+    pcall(vim.keymap.del, "n", "<F31>", { buffer = 0 })
+    unmap_all("<F31>")
+  end)
+end)
+
 T.describe("core.pack module name resolution", function()
   -- Build a fake plugin install root with a lua/<modname>/ directory and run
   -- _resolve_main against a spec that points at it.

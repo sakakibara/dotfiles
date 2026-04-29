@@ -7,6 +7,8 @@ M._opts = {}        -- { [name] = merged_opts }
 M._on_load = {}     -- { [name] = { fn, ... } }
 M._key_registry = {} -- { [mode..":"..lhs..":"..(ft or "")] = spec.name }
 M._warned_conflicts = {} -- { [sig..":"..nameA..":"..nameB (sorted)] = true }
+M._installed_global = {} -- { [mode..":"..lhs] = spec.name } — global maps we set
+M._warned_external = {}  -- { [mode..":"..lhs] = true } — already-warned externals
 
 -- Pre-noice queuing and :messages tee are handled by wrapper A in
 -- config/init.lua — we just forward to vim.notify here.
@@ -131,6 +133,35 @@ local function register_lhs(spec, mode, lhs, ft)
     end
   end
   M._key_registry[sig] = spec.name
+
+  -- External collision check: another mapping (from a plugin's setup() or
+  -- from config/keymaps.lua) already binds this lhs. The spec-vs-spec check
+  -- above only sees other plugin specs going through core.pack; this catches
+  -- everything else.
+  --
+  -- Skipped for ft-scoped specs because they install per-buffer at FileType
+  -- time (the mapping isn't global yet at registration), and for keys with
+  -- rhs == nil (keymap is owned by the plugin's own setup, no install on
+  -- our side). False-positive guards: skip when the existing mapping was
+  -- installed by core.pack itself — either via _installed_global (real
+  -- mappings from set_real_keymap) or via the desc prefix used by both
+  -- set_real_keymap ("key: ") and set_stub_keymap ("lazy: ").
+  if ft then return end
+  local ext_key = mode .. ":" .. lhs
+  if M._warned_external[ext_key] then return end
+  if M._installed_global[ext_key] == spec.name then return end
+  local existing = vim.fn.maparg(lhs, mode, false, true)
+  if not existing or vim.tbl_isempty(existing) then return end
+  if existing.buffer ~= 0 then return end
+  if existing.desc and (existing.desc:find("^key: ") or existing.desc:find("^lazy: ")) then return end
+  M._warned_external[ext_key] = true
+  local where = (existing.desc and existing.desc ~= "") and existing.desc
+    or (existing.rhs and existing.rhs ~= "" and existing.rhs:sub(1, 60))
+    or "<lua callback>"
+  notify(
+    ("core.pack: '%s' (mode=%s) on '%s' overrides existing mapping (was: %s)")
+      :format(lhs, mode, spec.name, where),
+    vim.log.levels.WARN)
 end
 
 -- Install one real keymap for (spec, k, mode). Handles ft-scoped (FileType
@@ -167,6 +198,7 @@ local function set_real_keymap(spec, k, m)
     end
   else
     vim.keymap.set(m, lhs, rhs, opts)
+    M._installed_global[m .. ":" .. lhs] = spec.name
   end
 end
 
@@ -396,6 +428,8 @@ function M.setup(cfg)
   M._opts = {}
   M._key_registry = {}
   M._warned_conflicts = {}
+  M._installed_global = {}
+  M._warned_external = {}
   -- NOTE: do NOT reset M._on_load here. Plugin spec files call
   -- Lib.plugin.on_load(...) as side effects at require-time, and
   -- require("config.plugins") runs as setup's argument — before setup's
