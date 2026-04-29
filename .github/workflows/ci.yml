@@ -70,6 +70,19 @@ jobs:
           curl -fsSL https://github.com/neovim/neovim/releases/download/stable/nvim-linux-x86_64.tar.gz -o nvim.tar.gz
           tar xzf nvim.tar.gz
           echo "$PWD/nvim-linux-x86_64/bin" >> $GITHUB_PATH
+      - name: Build CSS treesitter parser
+        # detect_spec's "uses TS for CSS buffers" test exercises the TS code
+        # path; without a css parser installed nvim falls back to regex and
+        # over-captures the comment color, so the assertion fails. Compile the
+        # upstream tree-sitter-css source (parser + external scanner) into
+        # nvim's runtime parser dir.
+        run: |
+          git clone --depth 1 https://github.com/tree-sitter/tree-sitter-css /tmp/tree-sitter-css
+          mkdir -p "$HOME/.local/share/nvim/site/parser"
+          gcc -O2 -shared -fPIC -I /tmp/tree-sitter-css/src \
+            /tmp/tree-sitter-css/src/parser.c \
+            /tmp/tree-sitter-css/src/scanner.c \
+            -o "$HOME/.local/share/nvim/site/parser/css.so"
       - name: Run nvim test suite
         run: |
           cd dot_config/nvim
