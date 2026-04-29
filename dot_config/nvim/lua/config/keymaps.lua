@@ -68,6 +68,11 @@ map("n", "<Leader>ut", function() Lib.keymaps.pick_filetype() end, { desc = "Set
 map("n", "<Leader>uf", function() Lib.format.toggle()     end, { desc = "Toggle autoformat (global)" })
 map("n", "<Leader>uF", function() Lib.format.toggle(true) end, { desc = "Toggle autoformat (buffer)" })
 map("n", "<Leader>ui", function() Lib.format.info()       end, { desc = "Autoformat info" })
+map("n", "<Leader>uT", "<Cmd>TSContext toggle<CR>", { desc = "Toggle treesitter context" })
+map("n", "<Leader>un", function()
+  Snacks.notifier.hide()
+  pcall(vim.cmd, "Noice dismiss")
+end, { desc = "Dismiss all notifications" })
 
 -- single-chord fast-access (skip a keystroke for the daily-driver ops)
 map("n", "<Leader><Space>", function() Snacks.picker.smart()            end, { desc = "Smart find (files)" })
