@@ -476,6 +476,8 @@ local function install_all(specs)
     end
   end
   local failed = {}
+  local splash = nil  -- returned to caller so it can transition to the
+                       -- setup phase and close at VeryLazy
   if #to_install > 0 then
     -- Block setup() on install completion so the eager load phase below
     -- finds every spec on disk. Without the wait, a fresh state dir means
@@ -485,9 +487,12 @@ local function install_all(specs)
     --
     -- Cold-install splash: a centered "first-run install" indicator that
     -- replaces the otherwise-blank screen during the wait. Updates from
-    -- on_progress; closes from on_complete.
+    -- on_progress; the splash is NOT closed here — the caller transitions
+    -- it to the setup phase and closes it at VeryLazy so it covers eager
+    -- loads too (otherwise nvim looks frozen for several seconds with no
+    -- visual indicator of activity).
     local UI = require("core.pack.ui")
-    local splash = UI.cold_install_splash(#to_install)
+    splash = UI.cold_install_splash(#to_install)
     local done = false
     local ok, err = pcall(Install.install_missing, to_install, {
       -- Splash takes over the prominent indicator role; the corner fidget
@@ -497,7 +502,6 @@ local function install_all(specs)
       on_failed = function(name, _msg) failed[name] = true end,
       on_progress = function(d, _t, _last) splash:update(d) end,
       on_complete = function()
-        splash:close()
         local installed_count = #to_install - vim.tbl_count(failed)
         -- Deferred so the notify call runs after eager loads complete and
         -- snacks owns vim.notify — it then renders as a single toast
@@ -512,15 +516,15 @@ local function install_all(specs)
       end,
     })
     if not ok then
-      splash:close()
+      splash:close(); splash = nil
       notify("core.pack: install failed: " .. tostring(err), vim.log.levels.ERROR)
-      return {}  -- treat as no failures from a registry-pruning standpoint
+      return {}, nil  -- treat as no failures from a registry-pruning standpoint
     end
     vim.wait(180000, function() return done end, 50)
   end
   local out = {}
   for name in pairs(failed) do out[#out + 1] = name end
-  return out
+  return out, splash
 end
 
 -- Idempotent-destructive: calling setup() again resets all registries and
@@ -561,7 +565,7 @@ function M.setup(cfg)
     end
   end
 
-  local failed_names = install_all(ordered)
+  local failed_names, splash = install_all(ordered)
   local failed = {}
   for _, name in ipairs(failed_names) do failed[name] = true end
   for name in pairs(failed) do
@@ -573,6 +577,14 @@ function M.setup(cfg)
     if M._specs[s.name] then pruned[#pruned + 1] = s end
   end
   ordered = pruned
+
+  -- Splash transitions from install phase to setup phase. The eager
+  -- load loop below is synchronous and blocks the UI; without the
+  -- splash covering it, nvim looks frozen for several seconds while
+  -- plugin configs run. Splash stays up through eager loads, animates
+  -- a per-plugin name in the spinner, and closes at VeryLazy when
+  -- setup is fully complete.
+  if splash then splash:enter_setup_phase() end
 
   -- Reproducibility: lockfile at $XDG_CONFIG_HOME/nvim/pack-lock.json,
   -- written incrementally by core.pack.install on each install/update,
@@ -598,9 +610,23 @@ function M.setup(cfg)
   local eagers = {}
   for _, s in ipairs(ordered) do if not s.lazy then eagers[#eagers + 1] = s end end
   table.sort(eagers, function(a, b) return a.priority > b.priority end)
-  for _, s in ipairs(eagers) do load_spec(s) end
+  for _, s in ipairs(eagers) do
+    if splash then splash:set_setup_status(s.name) end
+    load_spec(s)
+  end
 
   M._register_triggers(ordered)
+
+  -- Close the splash at VeryLazy: by then eager loads, UIEnter, and any
+  -- VeryLazy-event-driven plugins (noice, etc.) have all attached, so
+  -- nvim is in its fully-responsive steady state.
+  if splash then
+    vim.api.nvim_create_autocmd("User", {
+      pattern = "VeryLazy",
+      once = true,
+      callback = function() splash:close() end,
+    })
+  end
 end
 
 -- Deferred re-fire of a lazy-trigger event, so plugin autocmds registered

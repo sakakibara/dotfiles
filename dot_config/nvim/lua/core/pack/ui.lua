@@ -768,6 +768,14 @@ function M.cold_install_splash(total)
   local inner_w  = BOX_W - 2                        -- between the side borders
   local done     = 0
 
+  -- Phase: "install" while clones+builds are running, "setup" while
+  -- eager-load configs run after install_all completes. Setup phase
+  -- shows a spinner + per-plugin name instead of the progress bar.
+  local phase         = "install"
+  local setup_status  = ""
+  local spinner_step  = 1
+  local SPINNER       = { "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏" }
+
   local ns = vim.api.nvim_create_namespace("PackSplash")
 
   -- Build a centered line of `inner_w` display cells, padded with spaces.
@@ -777,30 +785,39 @@ function M.cold_install_splash(total)
     return (" "):rep(left) .. text .. (" "):rep(inner_w - w - left)
   end
 
-  -- Compose the box and progress bar. Returns the buffer lines and a list
-  -- of {row, col_start_byte, col_end_byte, hl_group} highlight ranges.
+  -- Compose the box content. Returns the buffer lines and a list of
+  -- {row, col_start_byte, col_end_byte, hl_group} highlight ranges.
   local function compose()
-    local filled = (total > 0) and math.floor(done * BAR / total) or 0
-    local bar_filled = ("▰"):rep(filled)
-    local bar_empty  = ("▱"):rep(BAR - filled)
-    local count      = ("%d/%d"):format(done, total)
+    local title    = phase == "install"
+      and "core.pack · first-run install"
+      or  "core.pack · loading"
 
-    -- The progress row's content (no border, no edges):
-    --   <bar_filled><bar_empty>  <count>
-    local bar_w     = BAR * vim.fn.strdisplaywidth("▰")
-    local count_w   = vim.fn.strdisplaywidth(count)
-    local prog_text = bar_filled .. bar_empty .. "  " .. count
-    local prog_pad_left = math.floor((inner_w - bar_w - 2 - count_w) / 2)
-    local prog_line     = (" "):rep(prog_pad_left) .. prog_text
-    -- right-pad to inner_w cells
-    prog_line = prog_line .. (" "):rep(inner_w - vim.fn.strdisplaywidth(prog_line))
+    -- Middle row content depends on phase:
+    --   install: progress bar with N/M counter
+    --   setup:   spinner + currently-loading plugin name
+    local mid_line, prog_pad_left, filled, count_w
+    if phase == "install" then
+      filled = (total > 0) and math.floor(done * BAR / total) or 0
+      local bar_filled = ("▰"):rep(filled)
+      local bar_empty  = ("▱"):rep(BAR - filled)
+      local count      = ("%d/%d"):format(done, total)
+      local bar_w      = BAR * vim.fn.strdisplaywidth("▰")
+      count_w          = vim.fn.strdisplaywidth(count)
+      local prog_text  = bar_filled .. bar_empty .. "  " .. count
+      prog_pad_left    = math.floor((inner_w - bar_w - 2 - count_w) / 2)
+      mid_line         = (" "):rep(prog_pad_left) .. prog_text
+      mid_line         = mid_line .. (" "):rep(inner_w - vim.fn.strdisplaywidth(mid_line))
+    else
+      local spinner = SPINNER[((spinner_step - 1) % #SPINNER) + 1]
+      mid_line = center(spinner .. "  " .. setup_status)
+    end
 
     local box_rows = {
       "╭" .. ("─"):rep(BOX_W - 2) .. "╮",
       "│" .. center("")                         .. "│",
-      "│" .. center("core.pack · first-run install") .. "│",
+      "│" .. center(title)                      .. "│",
       "│" .. center("")                         .. "│",
-      "│" .. prog_line                          .. "│",
+      "│" .. mid_line                           .. "│",
       "│" .. center("")                         .. "│",
       "│" .. center("one-time setup — restart isn't needed") .. "│",
       "│" .. center("")                         .. "│",
@@ -861,18 +878,32 @@ function M.cold_install_splash(total)
       add(box_top + 6, sb, eb, "Comment")
     end
 
-    -- Progress segments: filled (String), empty (Comment), N/M (Constant).
-    -- Byte offsets are deterministic because the progress line is
-    -- ASCII spaces + N×▰ + M×▱ + "  " + ASCII count.
-    local prog_row    = box_top + 4
-    local prog_inner  = pad_left + 3  -- skip left "│"
-    local filled_sb   = prog_inner + prog_pad_left
-    local filled_eb   = filled_sb + filled * 3
-    local empty_eb    = filled_eb + (BAR - filled) * 3
-    local count_sb    = empty_eb + 2  -- skip the 2 ASCII spaces
-    add(prog_row, filled_sb, filled_eb,         "String")
-    add(prog_row, filled_eb, empty_eb,          "Comment")
-    add(prog_row, count_sb,  count_sb + count_w, "Constant")
+    if phase == "install" then
+      -- Progress segments: filled (String), empty (Comment), N/M (Constant).
+      -- Byte offsets are deterministic because the progress line is
+      -- ASCII spaces + N×▰ + M×▱ + "  " + ASCII count.
+      local prog_row    = box_top + 4
+      local prog_inner  = pad_left + 3  -- skip left "│"
+      local filled_sb   = prog_inner + prog_pad_left
+      local filled_eb   = filled_sb + filled * 3
+      local empty_eb    = filled_eb + (BAR - filled) * 3
+      local count_sb    = empty_eb + 2  -- skip the 2 ASCII spaces
+      add(prog_row, filled_sb, filled_eb,         "String")
+      add(prog_row, filled_eb, empty_eb,          "Comment")
+      add(prog_row, count_sb,  count_sb + count_w, "Constant")
+    else
+      -- Setup phase: highlight just the spinner glyph (3 bytes) as Title
+      -- to draw the eye to the active indicator; the plugin name reads
+      -- as standard NormalFloat text.
+      local sb, eb = inner_range(box_top + 4)
+      -- The spinner sits centered, so find its byte offset by scanning
+      -- past leading spaces. center() pads with leading spaces to align.
+      local line   = lines[box_top + 5]  -- 1-indexed
+      local pre    = line:sub(pad_left + 4)  -- after the left "│ "
+      local lead_spaces = #(pre:match("^ *") or "")
+      local spin_sb = pad_left + 3 + lead_spaces
+      add(box_top + 4, spin_sb, spin_sb + 3, "Title")
+    end
 
     return lines, hls
   end
@@ -919,6 +950,25 @@ function M.cold_install_splash(total)
     -- Force redraw so progress is visible even though setup() is blocked
     -- in vim.wait. vim.wait pumps the event loop but doesn't issue a
     -- draw on its own.
+    pcall(vim.cmd.redraw)
+  end
+
+  -- Switch the splash to setup phase: progress bar replaced with spinner +
+  -- per-plugin status. Called from the coordinator after install_all
+  -- completes, before eager loads start.
+  function view:enter_setup_phase()
+    phase = "setup"
+    render()
+    pcall(vim.cmd.redraw)
+  end
+
+  -- Update the per-plugin status shown in the setup phase. Each call
+  -- advances the spinner one frame and forces a redraw so the user sees
+  -- progress even though setup() runs synchronously.
+  function view:set_setup_status(name)
+    setup_status = name or ""
+    spinner_step = spinner_step + 1
+    render()
     pcall(vim.cmd.redraw)
   end
 
