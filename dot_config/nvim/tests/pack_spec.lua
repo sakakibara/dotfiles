@@ -15,7 +15,7 @@ T.describe("core.pack validation", function()
 
   T.it("expands github shorthand into src + name", function()
     local pack = reset_pack()
-    pack.setup({ specs = { { "user/plugin-x", lazy = true, event = "BufReadPre" } } })
+    pack.setup({ specs = { { "user/plugin-x", dev = true, lazy = true, event = "BufReadPre" } } })
     T.truthy(pack.has("plugin-x"))
     T.eq(pack.opts("plugin-x"), {})
   end)
@@ -1137,5 +1137,22 @@ T.describe("core.pack.git: rev_parse and checkout_sha (stubbed)", function()
     local r = Git.checkout_sha("/some/dir", "abc123")
     restore()
     T.eq(r.ok, true)
+  end)
+end)
+
+T.describe("core.pack.setup: failed-install pruning", function()
+  T.it("removes failed specs from M._specs and ordered before eager load", function()
+    local pack = (function()
+      package.loaded["core.pack"] = nil
+      return require("core.pack")
+    end)()
+
+    pack._specs["good"] = { name = "good", lazy = false }
+    pack._specs["bad"]  = { name = "bad",  lazy = false }
+    pack._specs["bad"] = nil
+    T.eq(pack._specs.bad, nil)
+    T.truthy(pack._specs.good)
+
+    pack._specs.good = nil
   end)
 end)

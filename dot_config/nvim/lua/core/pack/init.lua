@@ -475,6 +475,7 @@ local function install_all(specs)
       to_install[#to_install + 1] = s
     end
   end
+  local failed = {}
   if #to_install > 0 then
     -- Block setup() on install completion so the eager load phase below
     -- finds every spec on disk. Without the wait, a fresh state dir means
@@ -484,19 +485,23 @@ local function install_all(specs)
     local done = false
     local ok, err = pcall(Install.install_missing, to_install, {
       open_window = true,
+      on_failed = function(name, _msg) failed[name] = true end,
       on_complete = function()
         vim.notify(
-          ("core.pack: installed %d plugins"):format(#to_install),
+          ("core.pack: installed %d plugins"):format(#to_install - vim.tbl_count(failed)),
           vim.log.levels.INFO)
         done = true
       end,
     })
     if not ok then
       notify("core.pack: install failed: " .. tostring(err), vim.log.levels.ERROR)
-      return
+      return {}  -- treat as no failures from a registry-pruning standpoint
     end
     vim.wait(180000, function() return done end, 50)
   end
+  local out = {}
+  for name in pairs(failed) do out[#out + 1] = name end
+  return out
 end
 
 -- Idempotent-destructive: calling setup() again resets all registries and
@@ -537,7 +542,18 @@ function M.setup(cfg)
     end
   end
 
-  install_all(ordered)
+  local failed_names = install_all(ordered)
+  local failed = {}
+  for _, name in ipairs(failed_names) do failed[name] = true end
+  for name in pairs(failed) do
+    M._specs[name] = nil
+    M._opts[name] = nil
+  end
+  local pruned = {}
+  for _, s in ipairs(ordered) do
+    if M._specs[s.name] then pruned[#pruned + 1] = s end
+  end
+  ordered = pruned
 
   -- Reproducibility: lockfile at $XDG_CONFIG_HOME/nvim/pack-lock.json,
   -- written incrementally by core.pack.install on each install/update,

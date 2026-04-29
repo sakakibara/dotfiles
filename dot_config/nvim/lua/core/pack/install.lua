@@ -66,8 +66,9 @@ function M.run_build(spec, path, opts)
     return
   end
   if not ok then
-    notify(("core.pack: build failed for %s: %s"):format(spec.name, tostring(err)),
+    notify(("core.pack: %s: build failed: %s"):format(spec.name, tostring(err)),
       vim.log.levels.ERROR)
+    if opts and opts.on_failed then opts.on_failed(spec.name, "build failed: " .. tostring(err)) end
   end
 end
 
@@ -95,20 +96,23 @@ function M.install_missing(specs, opts)
           tag = spec.name,
           on_done = function(r)
             if r.code ~= 0 then
-              notify(("core.pack: clone failed for %s: %s"):format(spec.name, r.stderr),
+              notify(("core.pack: %s: clone failed: %s"):format(spec.name, r.stderr),
                 vim.log.levels.ERROR)
+              if opts.on_failed then opts.on_failed(spec.name, "clone failed: " .. r.stderr) end
               return
             end
             local rev, err = pin_to_version(spec, dir)
             if not rev then
               vim.fn.delete(dir, "rf")
-              notify(("core.pack: %s"):format(err), vim.log.levels.ERROR); return
+              notify(("core.pack: %s"):format(err), vim.log.levels.ERROR)
+              if opts.on_failed then opts.on_failed(spec.name, err) end
+              return
             end
             Lock.set(spec.name, {
               src = spec.src, rev = rev,
               version = type(spec.version) == "string" and spec.version or nil,
             })
-            M.run_build(spec, dir, { fidget = view })
+            M.run_build(spec, dir, { fidget = view, on_failed = opts.on_failed })
           end,
         })
       end
@@ -203,7 +207,7 @@ local function apply_pending(pending, opts)
       tag = p.spec.name,
       on_done = function(r)
         if r.code ~= 0 then
-          notify(("core.pack: update failed for %s: %s"):format(p.spec.name, r.stderr),
+          notify(("core.pack: %s: update failed: %s"):format(p.spec.name, r.stderr),
             vim.log.levels.ERROR)
           return
         end
