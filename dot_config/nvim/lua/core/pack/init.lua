@@ -520,9 +520,12 @@ function M.setup(cfg)
   -- body. Resetting would wipe hooks that the caller just registered.
   M._on_load = M._on_load or {}
 
+  local resolved, warnings = Spec.resolve(specs)
+  for _, w in ipairs(warnings) do
+    notify("core.pack: " .. w, vim.log.levels.WARN)
+  end
   local ordered = {}
-  for _, raw in ipairs(specs) do
-    local spec = Spec.normalize(raw)
+  for _, spec in ipairs(resolved) do
     if spec.enabled and (spec.cond == nil or (type(spec.cond) == "function" and spec.cond()) or spec.cond == true) then
       M._specs[spec.name] = spec
       M._opts[spec.name] = spec.opts
