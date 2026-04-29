@@ -733,6 +733,13 @@ function M.cold_install_splash(total)
   vim.bo[buf].filetype  = "PackSplash"
   pcall(vim.api.nvim_buf_set_name, buf, "core.pack: install")
 
+  -- Hide chrome the user would otherwise see as half-rendered noise on a
+  -- buffer-less screen. Saved and restored on :close().
+  local saved_laststatus  = vim.o.laststatus
+  local saved_showtabline = vim.o.showtabline
+  vim.o.laststatus  = 0
+  vim.o.showtabline = 0
+
   local W = 47          -- inner width
   local BAR = 23        -- progress-bar cell count
   local done = 0
@@ -797,6 +804,8 @@ function M.cold_install_splash(total)
     if vim.api.nvim_buf_is_valid(buf) then
       pcall(vim.api.nvim_buf_delete, buf, { force = true })
     end
+    vim.o.laststatus  = saved_laststatus
+    vim.o.showtabline = saved_showtabline
   end
 
   return view
