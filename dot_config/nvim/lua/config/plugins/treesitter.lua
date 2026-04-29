@@ -33,24 +33,31 @@ return {
       })
 
       -- Parsers to ensure installed (asynchronous; no-op if already
-      -- present). Deferred to AFTER all VeryLazy autocmds have run, not
-      -- just to VeryLazy itself: install fires a vim.notify per language
-      -- as it queues each download, and noice (event="VeryLazy") may not
-      -- have finished attaching ext_messages by the time the bare VeryLazy
-      -- callbacks run. vim.schedule pushes the install to the next event
-      -- tick after the entire VeryLazy chain completes, so noice is up
-      -- and routes the bursts to its own UI quietly.
+      -- present). The install fires nvim_echo per language; without
+      -- noice attached via ext_messages those go to nvim's bare cmdline
+      -- and overflow → press-enter prompt that blocks the main thread.
+      --
+      -- Tricky timing: noice.setup() itself does vim.schedule(load), so
+      -- when pack loads noice during a VeryLazy autocmd, noice is queued
+      -- but not yet attached. A single vim.schedule from us would fire
+      -- in the SAME iteration (FIFO with noice's load) and our install
+      -- runs first because our autocmd fires before pack's lazy handler.
+      -- Nest two schedules: the outer runs in iteration N (alongside
+      -- noice's load), the inner pushes to iteration N+1 — by then noice
+      -- has attached and routes the burst quietly via the route below.
       vim.api.nvim_create_autocmd("User", {
         pattern  = "VeryLazy",
         once     = true,
         callback = function()
           vim.schedule(function()
-            require("nvim-treesitter").install({
-              "bash", "c", "cpp", "css", "html", "javascript", "json",
-              "lua", "luadoc", "markdown", "markdown_inline", "python",
-              "query", "regex", "rust", "styled", "toml", "tsx", "typescript",
-              "vim", "vimdoc", "yaml",
-            })
+            vim.schedule(function()
+              require("nvim-treesitter").install({
+                "bash", "c", "cpp", "css", "html", "javascript", "json",
+                "lua", "luadoc", "markdown", "markdown_inline", "python",
+                "query", "regex", "rust", "styled", "toml", "tsx", "typescript",
+                "vim", "vimdoc", "yaml",
+              })
+            end)
           end)
         end,
       })
