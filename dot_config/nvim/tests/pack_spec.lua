@@ -1089,3 +1089,53 @@ T.describe("core.pack.version.resolve: default sentinel", function()
     T.eq(r.kind, "default")
   end)
 end)
+
+T.describe("core.pack.git: rev_parse and checkout_sha (stubbed)", function()
+  local stubs = require("tests.pack.stubs")
+
+  T.it("rev_parse returns SHA on success", function()
+    package.loaded["core.pack.git"] = nil
+    local Git = require("core.pack.git")
+    local restore = stubs.stub_system({
+      ["rev-parse --verify refs/heads/main"] = { code = 0, stdout = "abc1234567890def\n" },
+    })
+    local sha = Git.rev_parse("/some/dir", "refs/heads/main")
+    restore()
+    T.eq(sha, "abc1234567890def")
+  end)
+
+  T.it("rev_parse rejects non-SHA stdout", function()
+    package.loaded["core.pack.git"] = nil
+    local Git = require("core.pack.git")
+    local restore = stubs.stub_system({
+      ["rev-parse --verify garbage"] = { code = 0, stdout = "not-hex\n" },
+    })
+    local sha, err = Git.rev_parse("/some/dir", "garbage")
+    restore()
+    T.eq(sha, nil)
+    T.truthy(err and err:match("non%-SHA"))
+  end)
+
+  T.it("rev_parse returns err on git failure", function()
+    package.loaded["core.pack.git"] = nil
+    local Git = require("core.pack.git")
+    local restore = stubs.stub_system({
+      ["rev-parse --verify nope"] = { code = 1, stderr = "fatal: bad revision\n" },
+    })
+    local sha, err = Git.rev_parse("/some/dir", "nope")
+    restore()
+    T.eq(sha, nil)
+    T.truthy(err and err:match("bad revision"))
+  end)
+
+  T.it("checkout_sha invokes detached checkout with the SHA", function()
+    package.loaded["core.pack.git"] = nil
+    local Git = require("core.pack.git")
+    local restore = stubs.stub_system({
+      ["checkout --detach --quiet abc123"] = { code = 0 },
+    })
+    local r = Git.checkout_sha("/some/dir", "abc123")
+    restore()
+    T.eq(r.ok, true)
+  end)
+end)

@@ -33,12 +33,24 @@ function M.fetch(dir)
   return { ok = true }
 end
 
-function M.checkout(dir, ref)
-  -- Use detached checkout so we don't accumulate local branches; preserves
-  -- a clean state for whatever ref the lockfile points at next.
-  local r = git({ "checkout", "--detach", "--quiet", ref }, dir)
+function M.checkout_sha(dir, sha)
+  -- SHA is hex; cannot be misinterpreted as a flag. Detached so we don't
+  -- accumulate local branches.
+  local r = git({ "checkout", "--detach", "--quiet", sha }, dir)
   if not r.ok then return { ok = false, err = r.stderr } end
   return { ok = true }
+end
+
+function M.rev_parse(dir, ref)
+  -- Resolve `ref` to a SHA. Pass `ref^{commit}` to peel annotated tags.
+  -- Returns sha string on success, or nil + stderr on failure.
+  local r = git({ "rev-parse", "--verify", ref }, dir)
+  if not r.ok then return nil, r.stderr end
+  local sha = (r.stdout:gsub("%s+", ""))
+  if not sha:match("^%x+$") or #sha < 7 then
+    return nil, "rev-parse returned non-SHA: " .. sha
+  end
+  return sha
 end
 
 function M.log_between(dir, a, b)

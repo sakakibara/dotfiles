@@ -38,7 +38,11 @@ local function pin_to_version(spec, dir)
     target_ref = resolved.name
   end
   if not target_ref then return nil, "could not determine ref for " .. spec.name end
-  local r = Git.checkout(dir, target_ref)
+  local sha, rev_err = Git.rev_parse(dir, target_ref)
+  if not sha then
+    return nil, ("could not resolve %s for %s: %s"):format(target_ref, spec.name, rev_err)
+  end
+  local r = Git.checkout_sha(dir, sha)
   if not r.ok then return nil, r.err end
   return Git.current_rev(dir), nil
 end
