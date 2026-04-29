@@ -960,6 +960,35 @@ function M.cold_install_splash(total)
   local view = { buf = buf, win = win }
   M._active_splash = view
 
+  -- Idle close: splash auto-closes after `idle_close_ms` of no status
+  -- updates. Reset on every set_setup_status / set_status_text call,
+  -- so as long as something keeps updating us we stay open. The timer
+  -- is also explicit-cancellable on close.
+  local close_timer    = nil
+  local idle_close_ms  = nil
+
+  local function bump_idle()
+    if not idle_close_ms then return end
+    if close_timer then
+      pcall(close_timer.stop, close_timer)
+      pcall(close_timer.close, close_timer)
+    end
+    close_timer = vim.uv.new_timer()
+    close_timer:start(idle_close_ms, 0, vim.schedule_wrap(function() view:close() end))
+  end
+
+  -- Truncate `text` to fit in `max_w` display columns; adds an ellipsis
+  -- when truncated. Char-aware via strcharpart so multi-byte input
+  -- doesn't get cut mid-codepoint.
+  local function truncate(text, max_w)
+    if vim.fn.strdisplaywidth(text) <= max_w then return text end
+    local n = max_w - 1
+    while n > 0 and vim.fn.strdisplaywidth(vim.fn.strcharpart(text, 0, n) .. "…") > max_w do
+      n = n - 1
+    end
+    return vim.fn.strcharpart(text, 0, math.max(n, 0)) .. "…"
+  end
+
   function view:update(d)
     done = d or done
     render()
@@ -985,19 +1014,35 @@ function M.cold_install_splash(total)
     setup_status = ("(%d/%d)  %s"):format(idx or 0, total_eagers or 0, name or "")
     render()
     pcall(vim.cmd.redraw)
+    bump_idle()
   end
 
-  -- Set the middle row to arbitrary text (no counter format). Used by
+  -- Set the middle row to arbitrary text (truncated to fit). Used by
   -- external callers (e.g., the nvim-treesitter logger override) to pipe
   -- their progress directly into the splash instead of going through
   -- nvim_echo, which would overflow the cmdline and trigger press-enter.
   function view:set_status_text(text)
-    setup_status = text or ""
+    setup_status = truncate(text or "", inner_w - 2)
     render()
     pcall(vim.cmd.redraw)
+    bump_idle()
+  end
+
+  -- Start the idle-close timer. Splash will close `ms` milliseconds
+  -- after the most recent status update. Each subsequent update bumps
+  -- the deadline forward, so the splash stays open as long as something
+  -- is reporting progress.
+  function view:start_idle_close(ms)
+    idle_close_ms = ms
+    bump_idle()
   end
 
   function view:close()
+    if close_timer then
+      pcall(close_timer.stop, close_timer)
+      pcall(close_timer.close, close_timer)
+      close_timer = nil
+    end
     if win and vim.api.nvim_win_is_valid(win) then
       pcall(vim.api.nvim_win_close, win, true)
     end
