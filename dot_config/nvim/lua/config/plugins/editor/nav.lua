@@ -54,7 +54,7 @@ return {
   {
     "chrishrb/gx.nvim",
     name = "gx.nvim",
-    keys = { { "gx", "<Cmd>Browse<CR>", mode = { "n", "x" }, desc = "Open URL / path" } },
+    keys = { { "gx", "<Cmd>Browse<CR>", mode = { "n", "x" }, desc = "Open URL / path", override = true } },
     cmd  = { "Browse" },
     init = function() vim.g.netrw_nogx = 1 end,
     opts = { handler_options = { search_engine = "duckduckgo" } },

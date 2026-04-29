@@ -300,8 +300,8 @@ return {
     cmd  = { "TodoTrouble", "TodoTelescope", "TodoQuickFix", "TodoLocList" },
     opts = {},
     keys = {
-      { "]t",         function() require("todo-comments").jump_next() end,            desc = "Next todo" },
-      { "[t",         function() require("todo-comments").jump_prev() end,            desc = "Prev todo" },
+      { "]t",         function() require("todo-comments").jump_next() end,            desc = "Next todo", override = true },
+      { "[t",         function() require("todo-comments").jump_prev() end,            desc = "Prev todo", override = true },
       { "<Leader>st", "<Cmd>TodoTrouble<CR>",                                         desc = "Todo (Trouble)" },
       { "<Leader>sT", "<Cmd>TodoTrouble keywords=TODO,FIX,FIXME<CR>",                 desc = "Todo/Fix (Trouble)" },
     },
