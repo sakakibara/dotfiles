@@ -64,6 +64,12 @@ return {
         -- so the identifying token is always in the same column regardless of
         -- tree depth — much easier to skim than stock left-aligned paths.
         formatters = { file = { filename_first = true } },
+        -- Follow symlinks for files/grep — without this, grepping a directory
+        -- whose entries are symlinks silently skips them and returns 0 hits.
+        sources = {
+          files = { follow = true },
+          grep  = { follow = true },
+        },
       },
       terminal  = { enabled = true },
       bufdelete = { enabled = true },

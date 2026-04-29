@@ -18,7 +18,11 @@ end
 opt.foldenable = true
 opt.foldlevel = 99
 opt.foldlevelstart = 99
-opt.foldcolumn = "3"
+-- Custom statuscolumn (Lib.statuscolumn) renders fold open/close indicators
+-- itself, so we don't need a separate foldcolumn. Keeping foldcolumn > 0 used
+-- to leak nested-level digits ("234"/"345") into the gutter on windows where
+-- statuscolumn was transiently cleared (e.g. after :split + opening a file).
+opt.foldcolumn = "0"
 -- Nerd-font PUA glyphs need explicit cell width for fillchars (Neovim 0.12
 -- rejects ambiguous-width chars with E1511). Tell it our fold chevrons + a
 -- few common icon ranges render as 1-cell.
