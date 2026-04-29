@@ -76,4 +76,45 @@ function M.normalize(spec)
   }
 end
 
+-- Union two list-like tables, dedup'd by string equality (or table identity).
+local function union(a, b)
+  if type(a) ~= "table" then a = a == nil and {} or { a } end
+  if type(b) ~= "table" then b = b == nil and {} or { b } end
+  local seen = {}
+  local out = {}
+  local function add(v)
+    if seen[v] then return end
+    seen[v] = true
+    out[#out + 1] = v
+  end
+  for _, v in ipairs(a) do add(v) end
+  for _, v in ipairs(b) do add(v) end
+  return out
+end
+
+-- Merge two canonical specs, b shadowing a. Collections union/deep-merge;
+-- booleans use most-eager-wins semantics (any non-lazy → eager, any
+-- disabled → disabled, any dev → dev). Scalar handling (with warnings)
+-- is added in a follow-up; for now scalars take last-non-nil-wins.
+function M._merge(a, b)
+  local merged = vim.deepcopy(a)
+  -- Collections
+  merged.dependencies = union(a.dependencies, b.dependencies)
+  merged.keys         = union(a.keys, b.keys)
+  merged.event        = union(a.event, b.event)
+  merged.ft           = union(a.ft, b.ft)
+  merged.cmd          = union(a.cmd, b.cmd)
+  merged.opts         = vim.tbl_deep_extend("force", a.opts or {}, b.opts or {})
+  -- Most-eager-wins booleans
+  merged.priority = math.max(a.priority or 50, b.priority or 50)
+  merged.lazy     = a.lazy and b.lazy
+  merged.enabled  = a.enabled and b.enabled
+  merged.dev      = a.dev or b.dev
+  -- Scalar last-non-nil-wins (warning logic comes in next task)
+  for _, k in ipairs({ "src", "version", "branch", "build", "init", "config", "main", "cond" }) do
+    if b[k] ~= nil then merged[k] = b[k] end
+  end
+  return merged
+end
+
 return M
