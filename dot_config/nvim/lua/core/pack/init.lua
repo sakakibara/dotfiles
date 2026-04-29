@@ -624,24 +624,27 @@ function M.setup(cfg)
   -- still reporting progress, and closes promptly once the activity dies
   -- down — independent of whether the actual install took 5s or 60s.
   if splash then
+    -- Splash close is driven by treesitter's install task: when the
+    -- install Task signals completion, we close. This makes the splash
+    -- cover the *entire* cold-install timeline (clones → eager loads →
+    -- treesitter parser downloads + compiles), since treesitter is the
+    -- last and longest piece of cold-install work.
+    --
+    -- The treesitter spec's `config()` registers a callback via
+    -- `task:await(...)` that calls splash:close() — see plugins/treesitter.lua.
+    -- We only register an on_key here so the user can dismiss the splash
+    -- at will, plus a far-out safety fallback (5 minutes) so a hung or
+    -- never-completing install can't strand the user forever.
     vim.api.nvim_create_autocmd("User", {
       pattern = "VeryLazy",
       once = true,
       callback = function()
-        -- Multiple independent close triggers — whichever fires first wins.
-        -- The hard 3s timer is the unconditional fallback so the splash
-        -- never overstays even if every other path is blocked or broken.
-        splash:start_idle_close(1500)
         local key_handler
         key_handler = vim.on_key(function()
           vim.schedule(function() splash:close() end)
           vim.on_key(nil, key_handler)
         end)
-        vim.api.nvim_create_autocmd(
-          { "CursorMoved", "CursorHold", "CursorHoldI", "BufEnter", "InsertEnter" },
-          { once = true, callback = function() splash:close() end }
-        )
-        vim.defer_fn(function() splash:close() end, 3000)
+        vim.defer_fn(function() splash:close() end, 300000)
       end,
     })
   end
