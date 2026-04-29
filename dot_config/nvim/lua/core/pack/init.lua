@@ -610,8 +610,8 @@ function M.setup(cfg)
   local eagers = {}
   for _, s in ipairs(ordered) do if not s.lazy then eagers[#eagers + 1] = s end end
   table.sort(eagers, function(a, b) return a.priority > b.priority end)
-  for _, s in ipairs(eagers) do
-    if splash then splash:set_setup_status(s.name) end
+  for i, s in ipairs(eagers) do
+    if splash then splash:set_setup_status(i, #eagers, s.name) end
     load_spec(s)
   end
 

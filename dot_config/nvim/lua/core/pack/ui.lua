@@ -770,11 +770,11 @@ function M.cold_install_splash(total)
 
   -- Phase: "install" while clones+builds are running, "setup" while
   -- eager-load configs run after install_all completes. Setup phase
-  -- shows a spinner + per-plugin name instead of the progress bar.
+  -- shows a (loaded/total) counter + per-plugin name instead of the
+  -- progress bar — a spinner here would look frozen because each
+  -- load_spec is synchronous and blocks the event loop.
   local phase         = "install"
   local setup_status  = ""
-  local spinner_step  = 1
-  local SPINNER       = { "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏" }
 
   local ns = vim.api.nvim_create_namespace("PackSplash")
 
@@ -808,8 +808,7 @@ function M.cold_install_splash(total)
       mid_line         = (" "):rep(prog_pad_left) .. prog_text
       mid_line         = mid_line .. (" "):rep(inner_w - vim.fn.strdisplaywidth(mid_line))
     else
-      local spinner = SPINNER[((spinner_step - 1) % #SPINNER) + 1]
-      mid_line = center(spinner .. "  " .. setup_status)
+      mid_line = center(setup_status)
     end
 
     local box_rows = {
@@ -892,17 +891,16 @@ function M.cold_install_splash(total)
       add(prog_row, filled_eb, empty_eb,          "Comment")
       add(prog_row, count_sb,  count_sb + count_w, "Constant")
     else
-      -- Setup phase: highlight just the spinner glyph (3 bytes) as Title
-      -- to draw the eye to the active indicator; the plugin name reads
-      -- as standard NormalFloat text.
-      local sb, eb = inner_range(box_top + 4)
-      -- The spinner sits centered, so find its byte offset by scanning
-      -- past leading spaces. center() pads with leading spaces to align.
-      local line   = lines[box_top + 5]  -- 1-indexed
-      local pre    = line:sub(pad_left + 4)  -- after the left "│ "
-      local lead_spaces = #(pre:match("^ *") or "")
-      local spin_sb = pad_left + 3 + lead_spaces
-      add(box_top + 4, spin_sb, spin_sb + 3, "Title")
+      -- Setup phase: highlight the leading "(N/M)" counter as Constant,
+      -- the rest reads as standard NormalFloat text.
+      local line = lines[box_top + 5]  -- 1-indexed
+      local lead_spaces = #(line:sub(pad_left + 4):match("^ *") or "")
+      local counter_sb = pad_left + 3 + lead_spaces
+      -- The counter ends at the first space after "(N/M)".
+      local counter_match = line:sub(counter_sb + 1):match("^(%([%d/]+%))")
+      if counter_match then
+        add(box_top + 4, counter_sb, counter_sb + #counter_match, "Constant")
+      end
     end
 
     return lines, hls
@@ -962,12 +960,11 @@ function M.cold_install_splash(total)
     pcall(vim.cmd.redraw)
   end
 
-  -- Update the per-plugin status shown in the setup phase. Each call
-  -- advances the spinner one frame and forces a redraw so the user sees
-  -- progress even though setup() runs synchronously.
-  function view:set_setup_status(name)
-    setup_status = name or ""
-    spinner_step = spinner_step + 1
+  -- Update the per-plugin status shown in the setup phase: "(idx/total)
+  -- name". Each call forces a redraw so the user sees the counter
+  -- advance even though the surrounding loop runs synchronously.
+  function view:set_setup_status(idx, total_eagers, name)
+    setup_status = ("(%d/%d)  %s"):format(idx or 0, total_eagers or 0, name or "")
     render()
     pcall(vim.cmd.redraw)
   end
