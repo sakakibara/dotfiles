@@ -811,6 +811,39 @@ T.describe("core.pack keys — external collision detection", function()
     unmap_all("<F39>")
     unmap_all("<F40>")
   end)
+
+  T.it("preserve target already bound: warn, skip move, still install spec key", function()
+    local pack = reset_pack()
+    unmap_all("<F41>")
+    unmap_all("<F42>")
+    vim.keymap.set("n", "<F41>", ":tnext<CR>", { desc = "Original" })
+    local target_fn = function() end
+    vim.keymap.set("n", "<F42>", target_fn, { desc = "Pre-existing target" })
+    local warned_target_busy = false
+    local orig = vim.notify
+    vim.notify = function(msg, lvl)
+      if lvl == vim.log.levels.WARN and msg:match("preserve target already in use") then
+        warned_target_busy = true
+      end
+    end
+    local spec_fn = function() end
+    pack.setup({
+      specs = {
+        { dev = true, name = "preserve-busy-target", lazy = false,
+          keys = { { "<F41>", spec_fn, mode = "n", desc = "Spec", preserve = "<F42>" } },
+          config = function() end },
+      },
+    })
+    vim.notify = orig
+    T.truthy(warned_target_busy, "expected preserve-target-busy warning")
+    -- <F42> still has the pre-existing callback (unchanged)
+    T.eq(vim.fn.maparg("<F42>", "n", false, true).callback, target_fn,
+      "preserve target was clobbered")
+    -- Spec's own key still installed at <F41>
+    T.eq(vim.fn.maparg("<F41>", "n", false, true).callback, spec_fn)
+    unmap_all("<F41>")
+    unmap_all("<F42>")
+  end)
 end)
 
 T.describe("core.pack module name resolution", function()

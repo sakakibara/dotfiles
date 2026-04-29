@@ -130,6 +130,28 @@ end
 -- whether the failure is fatal — for `preserve`, it isn't: the spec's own
 -- key still gets installed).
 local function preserve_mapping(existing, mode, target_lhs, source_lhs, buf)
+  -- Preflight: don't clobber an already-bound target. For ft-scoped (buf
+  -- non-nil), maparg without buffer context returns the global mapping
+  -- regardless — but ft-scoped install via vim.keymap.set with buffer = buf
+  -- does not collide with the global, so the preflight uses the appropriate
+  -- scope: buffer-local maparg if buf is set.
+  local existing_target = (buf ~= nil)
+    and vim.fn.maparg(target_lhs, mode, false, true)  -- buffer context: caller (FileType cb) is in that buf
+    or vim.fn.maparg(target_lhs, mode)
+  local target_busy = false
+  if buf == nil then
+    target_busy = type(existing_target) == "string" and existing_target ~= ""
+  else
+    target_busy = type(existing_target) == "table" and not vim.tbl_isempty(existing_target)
+      and existing_target.buffer == buf
+  end
+  if target_busy then
+    notify(
+      ("core.pack: '%s' preserve target already in use (mode=%s)"):format(target_lhs, mode),
+      vim.log.levels.WARN)
+    return false
+  end
+
   if not (existing.callback or (existing.rhs and existing.rhs ~= "")) then
     notify(
       ("core.pack: cannot preserve '%s' (no rhs/callback)"):format(source_lhs),
