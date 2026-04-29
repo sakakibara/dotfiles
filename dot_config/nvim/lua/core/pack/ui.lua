@@ -733,23 +733,28 @@ function M.cold_install_splash(total)
   pcall(vim.api.nvim_buf_set_name, buf, "core.pack: install")
 
   -- Save every piece of chrome we hide so :close() restores cleanly.
-  -- cmdheight=0 + more=false silence echo-area output during install so
-  -- the splash isn't covered by transient messages or the press-enter
-  -- prompt. Output still lands in :messages history for later inspection.
+  -- cmdheight is set high (not 0) — a 0-height cmdline guarantees the
+  -- press-enter prompt for any message, and that prompt blocks the
+  -- main thread so vim.defer_fn / vim.on_key can't fire to close the
+  -- splash. Splash floats over everything, so the visually-large
+  -- cmdline area is hidden anyway. shortmess "aT" truncates verbose
+  -- messages to a single line for safety.
   local saved = {
     laststatus  = vim.o.laststatus,
     showtabline = vim.o.showtabline,
     winbar      = vim.o.winbar,
     cmdheight   = vim.o.cmdheight,
     more        = vim.o.more,
+    shortmess   = vim.o.shortmess,
     cursor_hl   = vim.api.nvim_get_hl(0, { name = "Cursor" }),
     lcursor_hl  = vim.api.nvim_get_hl(0, { name = "lCursor" }),
   }
   vim.o.laststatus  = 0
   vim.o.showtabline = 0
   vim.o.winbar      = ""
-  vim.o.cmdheight   = 0
+  vim.o.cmdheight   = math.max(20, math.floor(vim.o.lines / 2))
   vim.o.more        = false
+  vim.opt.shortmess:append("aT")
   -- Hide the terminal cursor via DECTCEM (CSI ?25 l). The TUI cursor is
   -- ultimately rendered by the terminal, not nvim, so highlight tweaks
   -- and `guicursor` settings only affect shape/color — not visibility.
@@ -759,7 +764,7 @@ function M.cold_install_splash(total)
   pcall(io.stdout.flush, io.stdout)
 
   local SCREEN_W = vim.o.columns
-  local SCREEN_H = vim.o.lines  -- cmdheight=0 means full screen is ours
+  local SCREEN_H = vim.o.lines  -- splash floats over the cmdline area too
   local BOX_W    = 49                              -- includes borders
   local BOX_H    = 9                               -- 7 content rows + 2 borders
   local BAR      = 25                              -- progress-bar cells
@@ -977,7 +982,7 @@ function M.cold_install_splash(total)
       pcall(vim.api.nvim_buf_delete, buf, { force = true })
     end
     -- Restore the simple option saves first.
-    for _, k in ipairs({ "laststatus", "showtabline", "winbar", "cmdheight", "more" }) do
+    for _, k in ipairs({ "laststatus", "showtabline", "winbar", "cmdheight", "more", "shortmess" }) do
       vim.o[k] = saved[k]
     end
     -- Restore Cursor highlights (the saved hl table contains all original
