@@ -545,15 +545,26 @@ local function install_all(specs)
     end
   end
   if #to_install > 0 then
+    -- Block setup() on install completion so the eager load phase below
+    -- finds every spec on disk. Without the wait, a fresh state dir means
+    -- load_spec calls run_config → require("<plugin>") → "module not found"
+    -- and packadd → E919, until the user manually restarts. vim.wait pumps
+    -- the event loop so clone jobs progress and the install fidget updates.
+    local done = false
     local ok, err = pcall(Install.install_missing, to_install, {
       open_window = true,
       on_complete = function()
-        vim.notify("core.pack: install complete — restart nvim to load eager plugins", vim.log.levels.INFO)
+        vim.notify(
+          ("core.pack: installed %d plugins"):format(#to_install),
+          vim.log.levels.INFO)
+        done = true
       end,
     })
     if not ok then
       notify("core.pack: install failed: " .. tostring(err), vim.log.levels.ERROR)
+      return
     end
+    vim.wait(180000, function() return done end, 50)
   end
 end
 
