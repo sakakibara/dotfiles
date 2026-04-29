@@ -432,14 +432,6 @@ local function build_lsp(buf)
   return clickable(3, function() vim.cmd("checkhealth vim.lsp") end, "%#StslLsp# " .. Lib.icons.status.Lsp .. names .. " ")
 end
 
-local function pick_filetype()
-  local items = vim.fn.getcompletion("", "filetype")
-  table.sort(items)
-  vim.ui.select(items, { prompt = "Set filetype: " }, function(choice)
-    if choice and choice ~= "" then vim.bo.filetype = choice end
-  end)
-end
-
 local function build_filetype(buf)
   local ft = vim.bo[buf].filetype
   if ft == "" then ft = "plain" end
@@ -454,7 +446,7 @@ local function build_filetype(buf)
       icon = (devicons.get_icon(name, ext, { default = true }) or "") .. " "
     end
   end
-  return clickable(6, pick_filetype, "%#StslFT# " .. icon .. ft:upper() .. " ")
+  return clickable(6, Lib.keymaps.pick_filetype, "%#StslFT# " .. icon .. ft:upper() .. " ")
 end
 
 local function build_enc(buf)

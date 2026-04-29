@@ -59,9 +59,10 @@ map("n", "<Leader>qq", "<Cmd>qa<CR>", { desc = "Quit all" })
 map("n", "[b", "<Cmd>bprevious<CR>", { desc = "Prev buffer" })
 map("n", "]b", "<Cmd>bnext<CR>",     { desc = "Next buffer" })
 
--- winbar pickers — same menus the breadcrumb segments open on click
-map("n", "<Leader>;", function() Lib.winbar.pick_scope() end, { desc = "Scope picker (sibling symbols)" })
-map("n", "<Leader>.", function() Lib.winbar.pick_path()  end, { desc = "Path picker (sibling files)" })
+-- winbar / statusline pickers — same menus the segments open on click
+map("n", "<Leader>;",  function() Lib.winbar.pick_scope()       end, { desc = "Scope picker (sibling symbols)" })
+map("n", "<Leader>.",  function() Lib.winbar.pick_path()        end, { desc = "Path picker (sibling files)" })
+map("n", "<Leader>ut", function() Lib.keymaps.pick_filetype() end, { desc = "Set filetype" })
 
 -- autoformat toggles (UI toggles convention: <Leader>u…)
 map("n", "<Leader>uf", function() Lib.format.toggle()     end, { desc = "Toggle autoformat (global)" })
