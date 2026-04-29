@@ -66,12 +66,23 @@ return {
         callback = function()
           vim.schedule(function()
             vim.schedule(function()
-              require("nvim-treesitter").install({
+              local task = require("nvim-treesitter").install({
                 "bash", "c", "cpp", "css", "html", "javascript", "json",
                 "lua", "luadoc", "markdown", "markdown_inline", "python",
                 "query", "regex", "rust", "styled", "toml", "tsx", "typescript",
                 "vim", "vimdoc", "yaml",
               })
+              -- nvim-treesitter "main" exposes install as an async Task
+              -- with :await(cb). Close the splash the moment the task
+              -- completes (or errors) — better UX than relying on the
+              -- idle-close timer to time out after activity dies down.
+              if task and type(task.await) == "function" then
+                task:await(function()
+                  vim.schedule(function()
+                    if UI._active_splash then UI._active_splash:close() end
+                  end)
+                end)
+              end
             end)
           end)
         end,
