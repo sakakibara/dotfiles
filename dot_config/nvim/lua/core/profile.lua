@@ -69,6 +69,11 @@ function M._structured_report()
   for _, name in ipairs(order) do sorted[#sorted + 1] = agg[name] end
   table.sort(sorted, function(a, b) return a.total_ms > b.total_ms end)
 
+  -- Bars are normalized to the heaviest plugin so the slowest is full and the
+  -- rest scale relative to it. Wall-clock total_ms (header) dwarfs any single
+  -- plugin's spans, so normalizing against it would round every bar to zero.
+  local max_plugin_ms = sorted[1] and sorted[1].total_ms or 0
+
   -- Compute name column width: longest actual, floor 16, cap 40.
   local name_max = 16
   for _, e in ipairs(sorted) do name_max = math.max(name_max, #e.name) end
@@ -86,13 +91,15 @@ function M._structured_report()
     if #name > name_max then name = name:sub(1, name_max - 1) .. "…" end
     local name_padded = ("%-" .. name_max .. "s"):format(name)
 
-    -- Bar: filled segments proportional to share of total.
-    local share = (total_ms > 0) and (e.total_ms / total_ms) or 0
-    local filled = math.floor(share * BAR_WIDTH + 0.5)
+    -- Bar: relative to heaviest plugin (so slowest = full bar). Percentages
+    -- below stay relative to wall-clock total — that's the meaningful number.
+    local bar_share = (max_plugin_ms > 0) and (e.total_ms / max_plugin_ms) or 0
+    local filled = math.floor(bar_share * BAR_WIDTH + 0.5)
     if filled > BAR_WIDTH then filled = BAR_WIDTH end
     local bar = BAR_FILLED:rep(filled) .. BAR_EMPTY:rep(BAR_WIDTH - filled)
 
     local ms_str = ("%9.2f ms"):format(e.total_ms)
+    local share = (total_ms > 0) and (e.total_ms / total_ms) or 0
     local pct_str = ("%5.1f%%"):format(share * 100)
 
     -- Phase breakdown: "setup 120.34 + load 45.12" (sorted desc by ms).
