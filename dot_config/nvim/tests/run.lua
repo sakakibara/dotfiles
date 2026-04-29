@@ -1,6 +1,25 @@
 -- tests/run.lua
 -- Usage: nvim --headless -l tests/run.lua
 vim.opt.rtp:prepend(vim.fn.getcwd())
+
+-- In-memory clipboard so tests touching `+`/`*` registers don't depend on
+-- xclip/xsel/wl-copy being installed (headless CI Linux has no provider).
+do
+  local plus, star = { "" }, { "" }
+  vim.g.clipboard = {
+    name = "test-stub",
+    copy = {
+      ["+"] = function(lines) plus = lines end,
+      ["*"] = function(lines) star = lines end,
+    },
+    paste = {
+      ["+"] = function() return plus end,
+      ["*"] = function() return star end,
+    },
+    cache_enabled = 0,
+  }
+end
+
 require("lib").init()
 
 dofile(vim.fn.getcwd() .. "/tests/event_spec.lua")
