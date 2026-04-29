@@ -750,10 +750,13 @@ function M.cold_install_splash(total)
   vim.o.winbar      = ""
   vim.o.cmdheight   = 0
   vim.o.more        = false
-  -- Hide the cursor by making the Cursor highlight fully blended into
-  -- background. Restored on :close().
-  pcall(vim.api.nvim_set_hl, 0, "Cursor",  { blend = 100 })
-  pcall(vim.api.nvim_set_hl, 0, "lCursor", { blend = 100 })
+  -- Hide the cursor by linking Cursor / lCursor to NormalFloat, so the
+  -- cursor block renders with the same fg/bg as the splash background
+  -- (which is itself NormalFloat) and is therefore invisible. blend=100
+  -- alone doesn't hide the TUI cursor — the cursor block uses Cursor's
+  -- explicit fg/bg, not winblend.
+  pcall(vim.api.nvim_set_hl, 0, "Cursor",  { link = "NormalFloat" })
+  pcall(vim.api.nvim_set_hl, 0, "lCursor", { link = "NormalFloat" })
 
   local SCREEN_W = vim.o.columns
   local SCREEN_H = vim.o.lines  -- cmdheight=0 means full screen is ours

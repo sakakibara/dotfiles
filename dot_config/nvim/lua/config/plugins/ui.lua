@@ -46,6 +46,13 @@ return {
           { find = "; after #%d+" },
           { find = "; before #%d+" },
         } }, view = "mini" },
+        -- nvim-treesitter "main" branch fires a vim.notify per language
+        -- during async install (50+ at once with our parser list). The
+        -- long_message_to_split preset routes that burst into a split
+        -- window. Skip the noice rendering entirely — :messages still
+        -- captures them for diagnostic inspection.
+        { filter = { event = "msg_show",
+          find = "^%[nvim%-treesitter/install/" }, opts = { skip = true } },
       },
     },
     config = function(_, opts)
