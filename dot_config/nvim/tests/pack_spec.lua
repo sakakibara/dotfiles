@@ -736,6 +736,8 @@ T.describe("core.pack keys — external collision detection", function()
       vim.api.nvim_replace_termcodes("<F34>", true, false, true), "mx", false)
     vim.wait(100, function() return pack.loaded("override-lazy") end)
     vim.notify = orig
+    T.truthy(pack.loaded("override-lazy"),
+      "spec never loaded — stub->real did not fire; warning assertion would be vacuous")
     T.eq(#warnings, 0, "override = true should suppress warning at stub and at stub->real")
     unmap_all("<F34>")
   end)

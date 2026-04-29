@@ -143,8 +143,9 @@ local function preserve_mapping(existing, mode, target_lhs, source_lhs, buf)
   if buf == nil then
     target_busy = type(existing_target) == "string" and existing_target ~= ""
   else
+    -- maparg returns buffer=1 as a flag (means "is buffer-local"), not the actual bufnr.
     target_busy = type(existing_target) == "table" and not vim.tbl_isempty(existing_target)
-      and existing_target.buffer == buf
+      and existing_target.buffer == 1
   end
   if target_busy then
     notify(
