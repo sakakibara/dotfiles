@@ -482,11 +482,19 @@ local function install_all(specs)
     -- load_spec calls run_config → require("<plugin>") → "module not found"
     -- and packadd → E919, until the user manually restarts. vim.wait pumps
     -- the event loop so clone jobs progress and the install fidget updates.
+    --
+    -- Cold-install splash: a centered "first-run install" indicator that
+    -- replaces the otherwise-blank screen during the wait. Updates from
+    -- on_progress; closes from on_complete.
+    local UI = require("core.pack.ui")
+    local splash = UI.cold_install_splash(#to_install)
     local done = false
     local ok, err = pcall(Install.install_missing, to_install, {
       open_window = true,
       on_failed = function(name, _msg) failed[name] = true end,
+      on_progress = function(d, _t, _last) splash:update(d) end,
       on_complete = function()
+        splash:close()
         vim.notify(
           ("core.pack: installed %d plugins"):format(#to_install - vim.tbl_count(failed)),
           vim.log.levels.INFO)
@@ -494,6 +502,7 @@ local function install_all(specs)
       end,
     })
     if not ok then
+      splash:close()
       notify("core.pack: install failed: " .. tostring(err), vim.log.levels.ERROR)
       return {}  -- treat as no failures from a registry-pruning standpoint
     end

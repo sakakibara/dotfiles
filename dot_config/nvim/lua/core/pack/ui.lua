@@ -719,4 +719,87 @@ function M.fidget(opts)
   return view
 end
 
+-- Cold-install splash. Shown only when pack.setup is blocking on a fresh
+-- install (#to_install > 0 in install_all). A centered floating box that
+-- says "we're doing one-time work" with a progress bar — replaces the
+-- otherwise-blank screen during the cold-start vim.wait. The corner
+-- UI.fidget keeps running for per-spec detail; this is the prominent
+-- "something is happening" indicator.
+function M.cold_install_splash(total)
+  local buf = vim.api.nvim_create_buf(false, true)
+  vim.bo[buf].buftype   = "nofile"
+  vim.bo[buf].swapfile  = false
+  vim.bo[buf].bufhidden = "wipe"
+  vim.bo[buf].filetype  = "PackSplash"
+  pcall(vim.api.nvim_buf_set_name, buf, "core.pack: install")
+
+  local W = 47          -- inner width
+  local BAR = 23        -- progress-bar cell count
+  local done = 0
+
+  local function bar()
+    local filled = (total > 0) and math.floor(done * BAR / total) or 0
+    return ("▰"):rep(filled) .. ("▱"):rep(BAR - filled)
+  end
+
+  local function render()
+    if not vim.api.nvim_buf_is_valid(buf) then return end
+    local progress = ("%s   %d/%d"):format(bar(), done, total)
+    local lines = {
+      "",
+      "  core.pack · first-run install",
+      "",
+      "  " .. progress,
+      "",
+      "  one-time setup — restart isn't needed",
+      "",
+    }
+    for i, line in ipairs(lines) do
+      if vim.fn.strdisplaywidth(line) < W then
+        lines[i] = line .. (" "):rep(W - vim.fn.strdisplaywidth(line))
+      end
+    end
+    vim.bo[buf].modifiable = true
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+    vim.bo[buf].modifiable = false
+  end
+
+  render()
+
+  local H = 7  -- matches #lines above
+  local win = vim.api.nvim_open_win(buf, false, {
+    relative  = "editor",
+    width     = W,
+    height    = H,
+    row       = math.floor((vim.o.lines   - H) / 2) - 2,
+    col       = math.floor((vim.o.columns - W) / 2),
+    style     = "minimal",
+    border    = "rounded",
+    focusable = false,
+    zindex    = 100,
+  })
+
+  local view = { buf = buf, win = win }
+
+  function view:update(d)
+    done = d or done
+    render()
+    -- Force redraw so progress is visible even though setup() is blocked
+    -- in vim.wait. vim.wait pumps the event loop but doesn't issue a
+    -- draw on its own.
+    pcall(vim.cmd.redraw)
+  end
+
+  function view:close()
+    if win and vim.api.nvim_win_is_valid(win) then
+      pcall(vim.api.nvim_win_close, win, true)
+    end
+    if vim.api.nvim_buf_is_valid(buf) then
+      pcall(vim.api.nvim_buf_delete, buf, { force = true })
+    end
+  end
+
+  return view
+end
+
 return M
