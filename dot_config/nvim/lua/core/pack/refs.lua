@@ -16,7 +16,11 @@ end
 -- directly (checkout always uses the SHA from .resolve()).
 function M.qualified(kind, name)
   if kind == "tag"    then return "refs/tags/" .. name end
-  if kind == "branch" then return "refs/heads/" .. name end
+  -- Post-clone with --filter=blob:none, branches live at
+  -- refs/remotes/origin/<name>; refs/heads/<name> doesn't exist until
+  -- a local tracking branch is created. Pass the remote refspec so
+  -- rev-parse succeeds.
+  if kind == "branch" then return "refs/remotes/origin/" .. name end
   if kind == "commit" then return name end
   if kind == "default" then return "refs/remotes/origin/HEAD" end
   error("refs.qualified: unknown kind " .. tostring(kind))
