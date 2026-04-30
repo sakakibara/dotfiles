@@ -6,6 +6,26 @@ return {
     version = "1.*",  -- uses released prebuilt Rust binary
     event = { "InsertEnter", "CmdlineEnter" },
     dependencies = { "friendly-snippets", "lazydev.nvim" },
+    config = function(_, opts)
+      -- blink.cmp's utils.notify uses vim.api.nvim_echo({...}, true, ...)
+      -- (history=true). With our cmdheight=0, those echoes have no
+      -- cmdline area, so nvim displays them as a brief stacked popup at
+      -- the top of the screen — the "Downloading pre-built binary" /
+      -- "Downloaded..." flashes the user sees on first InsertEnter.
+      -- The same text also flows through ext_messages → noice → snacks
+      -- toast, producing a double display. Monkey-patch the notify
+      -- function to route via vim.notify instead, which goes through
+      -- snacks cleanly with no cmdline echo.
+      local utils = require("blink.cmp.lib.utils")
+      utils.notify = function(msg, lvl)
+        local out = {}
+        for _, chunk in ipairs(msg or {}) do
+          out[#out + 1] = chunk[1] or ""
+        end
+        vim.notify(table.concat(out), lvl)
+      end
+      require("blink.cmp").setup(opts)
+    end,
     opts = {
       keymap = { preset = "default" },
       appearance = { nerd_font_variant = "mono" },
