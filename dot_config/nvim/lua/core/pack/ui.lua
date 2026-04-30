@@ -860,13 +860,14 @@ function M.cold_install_splash(total)
       local bar_w      = BAR * vim.fn.strdisplaywidth("▰")
       count_w          = vim.fn.strdisplaywidth(count)
       local prog_text  = bar_filled .. bar_empty .. "  " .. count
-      -- Center within text_w region (gutters on either side), then pad
-      -- left edge with the gutter so it lines up with center()'d rows.
+      -- Build the prog row: GUTTER + center-pad + prog_text + fill to inner_w.
       prog_pad_left    = math.floor((text_w - bar_w - 2 - count_w) / 2)
       if prog_pad_left < 0 then prog_pad_left = 0 end
       mid_line = (" "):rep(GUTTER) .. (" "):rep(prog_pad_left) .. prog_text
-      local pad_right = inner_w - GUTTER - vim.fn.strdisplaywidth(mid_line)
-      if pad_right < GUTTER then pad_right = GUTTER end
+      -- Pad to exactly inner_w cells. The gutter is already accounted
+      -- for in the leading spaces, so we just fill to inner_w total.
+      local pad_right = inner_w - vim.fn.strdisplaywidth(mid_line)
+      if pad_right < 0 then pad_right = 0 end
       mid_line = mid_line .. (" "):rep(pad_right)
       -- prog_pad_left for highlight calc: byte offset from inner start.
       prog_pad_left = GUTTER + prog_pad_left
