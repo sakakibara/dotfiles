@@ -1159,14 +1159,6 @@ function M.cold_install_splash(total)
     -- hide we sent on splash open.
     pcall(io.stdout.write, io.stdout, "\27[?25h")
     pcall(io.stdout.flush, io.stdout)
-    -- Clear :messages history. Various plugins (blink.cmp, treesitter,
-    -- pack itself) accumulated entries during cold-install. With
-    -- cmdheight=0 those entries can briefly re-render at the top of
-    -- the screen on the next user interaction (depending on noice /
-    -- ext_messages timing). Clearing prevents the replay; the
-    -- install-time messages are install-time-only — they aren't useful
-    -- diagnostic state to retain after splash close.
-    pcall(vim.cmd, "messages clear")
     -- Force a full redraw + chrome re-derivation so the restored
     -- statusline / tabline / winbar render with correct highlights
     -- and segment separators. The custom Lib.statusline derives
