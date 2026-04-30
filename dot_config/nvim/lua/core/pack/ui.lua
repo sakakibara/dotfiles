@@ -1154,10 +1154,15 @@ function M.cold_install_splash(total)
     -- install-time messages are install-time-only — they aren't useful
     -- diagnostic state to retain after splash close.
     pcall(vim.cmd, "messages clear")
-    -- Force a full redraw so the restored chrome (statusline,
-    -- tabline, winbar) renders correctly. Without this the statusline
-    -- separators / segment borders can come back partially stale,
-    -- since options changed but no explicit redraw was triggered.
+    -- Force a full redraw + chrome re-derivation so the restored
+    -- statusline / tabline / winbar render with correct highlights
+    -- and segment separators. The custom Lib.statusline derives
+    -- segment highlights and caches per-buffer rendered text; without
+    -- explicit invalidation the first post-splash redraw can paint
+    -- with stale separator colors. Firing a ColorScheme event
+    -- triggers Lib.statusline's own ColorScheme autocmd which
+    -- re-defines highlights from scratch.
+    pcall(vim.api.nvim_exec_autocmds, "ColorScheme", { modeline = false })
     pcall(vim.cmd, "redrawstatus!")
     pcall(vim.cmd, "redrawtabline")
     pcall(vim.cmd, "redraw!")
