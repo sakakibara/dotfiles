@@ -765,24 +765,22 @@ function M.cold_install_splash(total)
   vim.o.statusline  = ""
   vim.o.tabline     = ""
 
-  -- Lock chrome options against re-set: plugin configs that run during
-  -- eager load may set laststatus / statusline / etc. on their own (some
-  -- statuslines force laststatus=3 in their setup). An OptionSet autocmd
-  -- snaps the value back to our suppression as long as the splash is up.
-  -- The autocmd group is cleared on :close().
-  local lock_grp = vim.api.nvim_create_augroup("PackSplashLock", { clear = true })
-  vim.api.nvim_create_autocmd("OptionSet", {
-    group   = lock_grp,
-    pattern = { "laststatus", "showtabline", "winbar", "statusline", "tabline" },
-    callback = function(args)
-      local opt = args.match
-      if opt == "laststatus"  and vim.o.laststatus  ~= 0 then vim.o.laststatus  = 0 end
-      if opt == "showtabline" and vim.o.showtabline ~= 0 then vim.o.showtabline = 0 end
-      if opt == "winbar"      and vim.o.winbar      ~= "" then vim.o.winbar    = "" end
-      if opt == "statusline"  and vim.o.statusline  ~= "" then vim.o.statusline = "" end
-      if opt == "tabline"     and vim.o.tabline     ~= "" then vim.o.tabline    = "" end
-    end,
-  })
+  -- Lock chrome options against re-set. OptionSet autocmd is unreliable
+  -- here because some plugins set the option AFTER triggering the redraw,
+  -- so even though we snap back to 0 the screen renders the intermediate
+  -- value. Brute-force: a libuv timer re-asserts every 50ms while splash
+  -- is up. The timer runs off the main thread but its callback runs on
+  -- main; with main blocked for long stretches by install work, the
+  -- callbacks queue and drain in order, eventually catching up. The
+  -- timer is stopped on :close().
+  local lock_timer = vim.uv.new_timer()
+  lock_timer:start(0, 50, vim.schedule_wrap(function()
+    if vim.o.laststatus  ~= 0  then vim.o.laststatus  = 0  end
+    if vim.o.showtabline ~= 0  then vim.o.showtabline = 0  end
+    if vim.o.winbar      ~= "" then vim.o.winbar      = "" end
+    if vim.o.statusline  ~= "" then vim.o.statusline  = "" end
+    if vim.o.tabline     ~= "" then vim.o.tabline     = "" end
+  end))
   -- cmdheight = 1 (not 0 or large): 0 guarantees press-enter on every
   -- message and the prompt blocks the main thread; large cmdheight just
   -- shrinks the floating-window editor area, leaving the cmdline visible
@@ -803,12 +801,14 @@ function M.cold_install_splash(total)
 
   local SCREEN_W = vim.o.columns
   local SCREEN_H = vim.o.lines  -- splash floats over the cmdline area too
-  local BOX_W    = 49                              -- includes borders
+  local BOX_W    = 53                              -- includes borders + gutter
   local BOX_H    = 9                               -- 7 content rows + 2 borders
   local BAR      = 25                              -- progress-bar cells
+  local GUTTER   = 2                                -- padding between border and text
   local pad_top  = math.floor((SCREEN_H - BOX_H) / 2)
   local pad_left = math.floor((SCREEN_W - BOX_W) / 2)
   local inner_w  = BOX_W - 2                        -- between the side borders
+  local text_w   = inner_w - GUTTER * 2              -- usable text area
   local done     = 0
 
   -- Phase: "install" while clones+builds are running, "setup" while
@@ -828,11 +828,17 @@ function M.cold_install_splash(total)
 
   local ns = vim.api.nvim_create_namespace("PackSplash")
 
-  -- Build a centered line of `inner_w` display cells, padded with spaces.
+  -- Build a centered line of `inner_w` display cells, with `GUTTER` cells
+  -- of padding on each side (so text never butts up against the border).
+  -- Text is centered within the text_w region between the gutters.
   local function center(text)
-    local w = vim.fn.strdisplaywidth(text)
-    local left = math.floor((inner_w - w) / 2)
-    return (" "):rep(left) .. text .. (" "):rep(inner_w - w - left)
+    local w    = vim.fn.strdisplaywidth(text)
+    local left = math.floor((text_w - w) / 2)
+    if left < 0 then left = 0 end
+    local centered = (" "):rep(left) .. text
+    local pad_right = inner_w - GUTTER - vim.fn.strdisplaywidth(centered)
+    if pad_right < GUTTER then pad_right = GUTTER end
+    return (" "):rep(GUTTER) .. centered .. (" "):rep(pad_right)
   end
 
   -- Compose the box content. Returns the buffer lines and a list of
@@ -854,9 +860,16 @@ function M.cold_install_splash(total)
       local bar_w      = BAR * vim.fn.strdisplaywidth("▰")
       count_w          = vim.fn.strdisplaywidth(count)
       local prog_text  = bar_filled .. bar_empty .. "  " .. count
-      prog_pad_left    = math.floor((inner_w - bar_w - 2 - count_w) / 2)
-      mid_line         = (" "):rep(prog_pad_left) .. prog_text
-      mid_line         = mid_line .. (" "):rep(inner_w - vim.fn.strdisplaywidth(mid_line))
+      -- Center within text_w region (gutters on either side), then pad
+      -- left edge with the gutter so it lines up with center()'d rows.
+      prog_pad_left    = math.floor((text_w - bar_w - 2 - count_w) / 2)
+      if prog_pad_left < 0 then prog_pad_left = 0 end
+      mid_line = (" "):rep(GUTTER) .. (" "):rep(prog_pad_left) .. prog_text
+      local pad_right = inner_w - GUTTER - vim.fn.strdisplaywidth(mid_line)
+      if pad_right < GUTTER then pad_right = GUTTER end
+      mid_line = mid_line .. (" "):rep(pad_right)
+      -- prog_pad_left for highlight calc: byte offset from inner start.
+      prog_pad_left = GUTTER + prog_pad_left
     else
       local spin = SPINNER[((spinner_step - 1) % #SPINNER) + 1]
       mid_line = center(spin .. "  " .. setup_status)
@@ -1071,7 +1084,9 @@ function M.cold_install_splash(total)
   -- their progress directly into the splash instead of going through
   -- nvim_echo, which would overflow the cmdline and trigger press-enter.
   function view:set_status_text(text)
-    setup_status = truncate(text or "", inner_w - 2)
+    -- Account for the spinner glyph + 2 spaces that prefix the text in
+    -- setup-phase rendering: text_w - 3 (spinner is 1 cell, 2 spaces)
+    setup_status = truncate(text or "", text_w - 3)
     render()
     pcall(vim.cmd.redraw)
     bump_idle()
@@ -1097,8 +1112,12 @@ function M.cold_install_splash(total)
       pcall(close_timer.close, close_timer)
       close_timer = nil
     end
-    -- Release the chrome-option lock.
-    pcall(vim.api.nvim_del_augroup_by_name, "PackSplashLock")
+    -- Release the chrome-option lock timer.
+    if lock_timer then
+      pcall(lock_timer.stop, lock_timer)
+      pcall(lock_timer.close, lock_timer)
+      lock_timer = nil
+    end
     if win and vim.api.nvim_win_is_valid(win) then
       pcall(vim.api.nvim_win_close, win, true)
     end
