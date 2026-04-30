@@ -1154,6 +1154,13 @@ function M.cold_install_splash(total)
     -- install-time messages are install-time-only — they aren't useful
     -- diagnostic state to retain after splash close.
     pcall(vim.cmd, "messages clear")
+    -- Force a full redraw so the restored chrome (statusline,
+    -- tabline, winbar) renders correctly. Without this the statusline
+    -- separators / segment borders can come back partially stale,
+    -- since options changed but no explicit redraw was triggered.
+    pcall(vim.cmd, "redrawstatus!")
+    pcall(vim.cmd, "redrawtabline")
+    pcall(vim.cmd, "redraw!")
     if M._active_splash == self then M._active_splash = nil end
   end
 
