@@ -764,6 +764,25 @@ function M.cold_install_splash(total)
   -- expression strings makes the suppression unconditional.
   vim.o.statusline  = ""
   vim.o.tabline     = ""
+
+  -- Lock chrome options against re-set: plugin configs that run during
+  -- eager load may set laststatus / statusline / etc. on their own (some
+  -- statuslines force laststatus=3 in their setup). An OptionSet autocmd
+  -- snaps the value back to our suppression as long as the splash is up.
+  -- The autocmd group is cleared on :close().
+  local lock_grp = vim.api.nvim_create_augroup("PackSplashLock", { clear = true })
+  vim.api.nvim_create_autocmd("OptionSet", {
+    group   = lock_grp,
+    pattern = { "laststatus", "showtabline", "winbar", "statusline", "tabline" },
+    callback = function(args)
+      local opt = args.match
+      if opt == "laststatus"  and vim.o.laststatus  ~= 0 then vim.o.laststatus  = 0 end
+      if opt == "showtabline" and vim.o.showtabline ~= 0 then vim.o.showtabline = 0 end
+      if opt == "winbar"      and vim.o.winbar      ~= "" then vim.o.winbar    = "" end
+      if opt == "statusline"  and vim.o.statusline  ~= "" then vim.o.statusline = "" end
+      if opt == "tabline"     and vim.o.tabline     ~= "" then vim.o.tabline    = "" end
+    end,
+  })
   -- cmdheight = 1 (not 0 or large): 0 guarantees press-enter on every
   -- message and the prompt blocks the main thread; large cmdheight just
   -- shrinks the floating-window editor area, leaving the cmdline visible
@@ -1078,6 +1097,8 @@ function M.cold_install_splash(total)
       pcall(close_timer.close, close_timer)
       close_timer = nil
     end
+    -- Release the chrome-option lock.
+    pcall(vim.api.nvim_del_augroup_by_name, "PackSplashLock")
     if win and vim.api.nvim_win_is_valid(win) then
       pcall(vim.api.nvim_win_close, win, true)
     end

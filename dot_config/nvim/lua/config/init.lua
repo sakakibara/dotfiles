@@ -32,17 +32,12 @@ function M.setup()
   -- which means the replay through noice doesn't re-fire vim.notify_once —
   -- we replay through `prev` directly, bypassing the cache entirely.
   vim.notify = function(msg, level, opts)
-    local lvl = type(level) == "number" and level or vim.log.levels.INFO
-    local hl = (lvl >= vim.log.levels.ERROR and "ErrorMsg")
-      or (lvl >= vim.log.levels.WARN and "WarningMsg")
-      or "Normal"
-    local text = tostring(msg or "")
-    if type(opts) == "table" and opts.title then
-      text = ("[%s] %s"):format(opts.title, text)
-    end
-    -- No kind on this echo: noice isn't attached yet, so there's no Manager
-    -- to dedup against and nothing to route. Just populate :messages.
-    pcall(vim.api.nvim_echo, { { text, hl } }, true, {})
+    -- Wrapper A no longer echoes. Echoing populates :messages but also
+    -- briefly renders to the cmdline / hit-enter-prompts on volume,
+    -- which interferes with the cold-install splash and produces the
+    -- "message flashes at top of screen then toast appears" artifact.
+    -- Just queue for diagnostic recovery; downstream wrappers (noice,
+    -- snacks) will handle visible rendering once they attach.
     table.insert(_pending, { msg = msg, level = level, opts = opts })
   end
 

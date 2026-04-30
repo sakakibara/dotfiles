@@ -66,23 +66,18 @@ return {
         callback = function()
           vim.schedule(function()
             vim.schedule(function()
-              local task = require("nvim-treesitter").install({
+              require("nvim-treesitter").install({
                 "bash", "c", "cpp", "css", "html", "javascript", "json",
                 "lua", "luadoc", "markdown", "markdown_inline", "python",
                 "query", "regex", "rust", "styled", "toml", "tsx", "typescript",
                 "vim", "vimdoc", "yaml",
               })
-              -- nvim-treesitter "main" exposes install as an async Task
-              -- with :await(cb). Close the splash the moment the task
-              -- completes (or errors) — better UX than relying on the
-              -- idle-close timer to time out after activity dies down.
-              if task and type(task.await) == "function" then
-                task:await(function()
-                  vim.schedule(function()
-                    if UI._active_splash then UI._active_splash:close() end
-                  end)
-                end)
-              end
+              -- We do NOT close the splash on treesitter task completion.
+              -- Other plugins (blink.cmp pre-built binary, mason tool
+              -- install, etc.) also do cold-init work after treesitter
+              -- finishes — closing on treesitter done would expose nvim
+              -- mid-freeze. The splash close is owned by the user via
+              -- on_key (any keystroke) plus a long safety timer.
             end)
           end)
         end,
