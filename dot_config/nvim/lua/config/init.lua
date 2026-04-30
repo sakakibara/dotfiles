@@ -6,6 +6,41 @@ local _pending = {}
 local SILENT_KIND = "lib_tee"
 
 function M.setup()
+  -- Diagnostic: capture every vim.notify and vim.api.nvim_echo call from
+  -- the very start of setup() for 5 minutes, with source-callsite
+  -- traceback. Output: /tmp/pack-flash-trace.log. Remove once the brief
+  -- top-of-screen flash source is identified.
+  do
+    local logf = io.open("/tmp/pack-flash-trace.log", "w")
+    if logf then
+      local function log(line)
+        logf:write(("[%s] %s\n"):format(os.date("%H:%M:%S"), line))
+        logf:flush()
+      end
+      log("=== flash trace started (M.setup begin) ===")
+      local orig_notify = vim.notify
+      vim.notify = function(msg, level, opts)
+        log(("notify: %s"):format(tostring(msg):sub(1, 120)))
+        log("  trace: " .. (debug.traceback("", 2):gsub("\n", " | ")))
+        return orig_notify(msg, level, opts)
+      end
+      local orig_echo = vim.api.nvim_echo
+      vim.api.nvim_echo = function(chunks, history, opts)
+        local text = ""
+        for _, c in ipairs(chunks or {}) do text = text .. (c[1] or "") end
+        log(("echo (history=%s): %s"):format(tostring(history), text:sub(1, 120)))
+        log("  trace: " .. (debug.traceback("", 2):gsub("\n", " | ")))
+        return orig_echo(chunks, history, opts)
+      end
+      vim.defer_fn(function()
+        vim.notify = orig_notify
+        vim.api.nvim_echo = orig_echo
+        log("=== flash trace ended ===")
+        logf:close()
+      end, 300000)
+    end
+  end
+
   -- Wrapper A: install vim.notify tee synchronously, BEFORE require("lib").init()
   -- and core.pack.setup — before any plugin, autocmd, or buffer load can fire
   -- vim.notify.

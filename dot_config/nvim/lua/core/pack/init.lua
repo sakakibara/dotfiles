@@ -640,40 +640,6 @@ function M.setup(cfg)
         end)
         vim.defer_fn(function() splash:close() end, 120000)
 
-        -- Diagnostic: capture every notify and msg_show event for 30s
-        -- after VeryLazy, with the source-callsite traceback. Dumped
-        -- to /tmp/pack-flash-trace.log. Helps identify the source of
-        -- the brief top-of-screen flash that has been hard to track
-        -- via static reading. Remove this block once the source is
-        -- nailed down.
-        local logf = io.open("/tmp/pack-flash-trace.log", "w")
-        if logf then
-          local function log(line)
-            logf:write(("[%s] %s\n"):format(os.date("%H:%M:%S"), line))
-            logf:flush()
-          end
-          log("=== flash trace started ===")
-          local orig_notify = vim.notify
-          vim.notify = function(msg, level, opts)
-            log(("notify: %s"):format(tostring(msg):sub(1, 100)))
-            log("  trace: " .. (debug.traceback("", 2):gsub("\n", " | ")))
-            return orig_notify(msg, level, opts)
-          end
-          local orig_echo = vim.api.nvim_echo
-          vim.api.nvim_echo = function(chunks, history, opts)
-            local text = ""
-            for _, c in ipairs(chunks or {}) do text = text .. (c[1] or "") end
-            log(("echo (history=%s): %s"):format(tostring(history), text:sub(1, 100)))
-            log("  trace: " .. (debug.traceback("", 2):gsub("\n", " | ")))
-            return orig_echo(chunks, history, opts)
-          end
-          vim.defer_fn(function()
-            vim.notify = orig_notify
-            vim.api.nvim_echo = orig_echo
-            log("=== flash trace ended ===")
-            logf:close()
-          end, 30000)
-        end
       end,
     })
   end
