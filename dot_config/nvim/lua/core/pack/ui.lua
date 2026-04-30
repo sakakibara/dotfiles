@@ -1134,9 +1134,22 @@ function M.cold_install_splash(total)
     if vim.api.nvim_buf_is_valid(buf) then
       pcall(vim.api.nvim_buf_delete, buf, { force = true })
     end
-    -- Restore the simple option saves first.
-    for _, k in ipairs({ "laststatus", "showtabline", "winbar", "statusline", "tabline", "cmdheight", "more", "shortmess", "ruler", "showcmd" }) do
+    -- Restore the simple option saves first. EXCEPT cmdheight: keep it
+    -- at 1 for an extra grace period to absorb late notifications (blink
+    -- download completion, plugin info messages on first action) that
+    -- would otherwise produce a top-of-screen "more" popup with the
+    -- user's preferred cmdheight=0. After 10s of cmdheight=1 grace, we
+    -- restore to the saved value.
+    for _, k in ipairs({ "laststatus", "showtabline", "winbar", "statusline", "tabline", "more", "shortmess", "ruler", "showcmd" }) do
       vim.o[k] = saved[k]
+    end
+    if (saved.cmdheight or 1) == 0 then
+      vim.o.cmdheight = 1
+      vim.defer_fn(function()
+        vim.o.cmdheight = saved.cmdheight
+      end, 10000)
+    else
+      vim.o.cmdheight = saved.cmdheight
     end
     -- Restore Cursor highlights (the saved hl table contains all original
     -- attributes; passing the table reinstates them as-is).
