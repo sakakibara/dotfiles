@@ -59,6 +59,15 @@ return {
         -- captures them for diagnostic inspection.
         { filter = { event = "msg_show",
           find = "^%[nvim%-treesitter/install/" }, opts = { skip = true } },
+        -- blink.cmp's pre-built-binary download notifications fire on
+        -- the first InsertEnter (when blink lazy-loads) and produce a
+        -- visible "flash at top of screen" with cmdheight=0 before
+        -- settling into a toast at top-right. Skip them — they're
+        -- transient install messages, not user-actionable.
+        { filter = { event = "notify",
+          find = "^Downloading pre%-built binary" }, opts = { skip = true } },
+        { filter = { event = "notify",
+          find = "^Downloaded pre%-built binary" }, opts = { skip = true } },
       },
     },
     config = function(_, opts)
