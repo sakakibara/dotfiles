@@ -753,12 +753,19 @@ function M.cold_install_splash(total)
     cmdheight   = vim.o.cmdheight,
     more        = vim.o.more,
     shortmess   = vim.o.shortmess,
+    ruler       = vim.o.ruler,
+    showcmd     = vim.o.showcmd,
     cursor_hl   = vim.api.nvim_get_hl(0, { name = "Cursor" }),
     lcursor_hl  = vim.api.nvim_get_hl(0, { name = "lCursor" }),
   }
   vim.o.laststatus  = 0
   vim.o.showtabline = 0
   vim.o.winbar      = ""
+  -- ruler shows "L,C  Pct" in the cmdline strip when there is no
+  -- statusline (laststatus=0). It looks like a status bar to the user;
+  -- suppress.
+  vim.o.ruler       = false
+  vim.o.showcmd     = false
   -- Some redraw paths still evaluate the `statusline` / `tabline`
   -- expressions even with laststatus=0/showtabline=0; clearing the
   -- expression strings makes the suppression unconditional.
@@ -775,11 +782,13 @@ function M.cold_install_splash(total)
   -- timer is stopped on :close().
   local lock_timer = vim.uv.new_timer()
   lock_timer:start(0, 50, vim.schedule_wrap(function()
-    if vim.o.laststatus  ~= 0  then vim.o.laststatus  = 0  end
-    if vim.o.showtabline ~= 0  then vim.o.showtabline = 0  end
-    if vim.o.winbar      ~= "" then vim.o.winbar      = "" end
-    if vim.o.statusline  ~= "" then vim.o.statusline  = "" end
-    if vim.o.tabline     ~= "" then vim.o.tabline     = "" end
+    if vim.o.laststatus  ~= 0   then vim.o.laststatus  = 0   end
+    if vim.o.showtabline ~= 0   then vim.o.showtabline = 0   end
+    if vim.o.winbar      ~= ""  then vim.o.winbar      = ""  end
+    if vim.o.statusline  ~= ""  then vim.o.statusline  = ""  end
+    if vim.o.tabline     ~= ""  then vim.o.tabline     = ""  end
+    if vim.o.ruler                then vim.o.ruler     = false end
+    if vim.o.showcmd              then vim.o.showcmd   = false end
   end))
   -- cmdheight = 1 (not 0 or large): 0 guarantees press-enter on every
   -- message and the prompt blocks the main thread; large cmdheight just
@@ -1126,7 +1135,7 @@ function M.cold_install_splash(total)
       pcall(vim.api.nvim_buf_delete, buf, { force = true })
     end
     -- Restore the simple option saves first.
-    for _, k in ipairs({ "laststatus", "showtabline", "winbar", "statusline", "tabline", "cmdheight", "more", "shortmess" }) do
+    for _, k in ipairs({ "laststatus", "showtabline", "winbar", "statusline", "tabline", "cmdheight", "more", "shortmess", "ruler", "showcmd" }) do
       vim.o[k] = saved[k]
     end
     -- Restore Cursor highlights (the saved hl table contains all original

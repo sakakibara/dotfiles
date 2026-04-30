@@ -119,38 +119,24 @@ function M.setup()
       -- dedup derivation.)
       vim.schedule(function()
         local ok_mgr, Manager = pcall(require, "noice.message.manager")
-        if not ok_mgr then return end
-
-        local orig_add = Manager.add
-        Manager.add = function(m)
-          if m.event == "msg_show" and m.kind == SILENT_KIND then
-            return
+        if ok_mgr then
+          local orig_add = Manager.add
+          Manager.add = function(m)
+            if m.event == "msg_show" and m.kind == SILENT_KIND then
+              return
+            end
+            return orig_add(m)
           end
-          return orig_add(m)
         end
-
-        local prev = vim.notify
-        vim.notify = function(msg, level, opts)
-          local lvl = type(level) == "number" and level or vim.log.levels.INFO
-          local hl = (lvl >= vim.log.levels.ERROR and "ErrorMsg")
-            or (lvl >= vim.log.levels.WARN and "WarningMsg")
-            or "Normal"
-          local text = tostring(msg or "")
-          if type(opts) == "table" and opts.title then
-            text = ("[%s] %s"):format(opts.title, text)
-          end
-          pcall(vim.api.nvim_echo, { { text, hl } }, true, { kind = SILENT_KIND })
-          return prev(msg, level, opts)
-        end
-
-        -- Drop the queue without replaying through noice. Wrapper A
-        -- already echoed each entry to :messages at capture time, so the
-        -- history is reachable via :messages. Replaying through noice
-        -- would render every queued install-time notification as a toast
-        -- after the cold-install splash closes — visible as a flurry of
-        -- "message window" popups the user has explicitly asked to avoid.
-        -- The trade-off: :Noice all only shows post-noice messages, not
-        -- the install-time queue. :messages remains the source of truth.
+        -- Wrapper B used to echo to :messages via nvim_echo with a
+        -- SILENT_KIND filter so noice would dedup. But the nvim_echo
+        -- still produced a brief cmdline flash before noice's filter
+        -- could suppress the rendering — visible as "message at top of
+        -- screen" right before the toast. snacks/noice already record
+        -- their own histories, so we drop the echo entirely. The
+        -- queued _pending list is dropped too: replaying through noice
+        -- would render every queued install-time notification as a
+        -- toast after the splash closes (an explicit non-goal).
         _pending = {}
       end)
 
