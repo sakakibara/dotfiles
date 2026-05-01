@@ -133,7 +133,7 @@ local function subcommands(Pack)
       for _, s in pairs(Pack._specs) do specs[#specs + 1] = s end
       Install.install_missing(specs, {
         open_window = true,
-        on_complete = function() vim.vim.notify("core.pack: install complete") end,
+        on_complete = function() vim.notify("core.pack: install complete") end,
       })
     end,
   }

@@ -185,7 +185,7 @@ local function install_all(specs)
         -- (top-right) instead of going through the wrapper-A cmdline echo
         -- path during the splash → snacks-load transition.
         vim.schedule(function()
-          vim.vim.notify(
+          vim.notify(
             ("core.pack: installed %d plugins"):format(installed_count),
             vim.log.levels.INFO)
         end)
