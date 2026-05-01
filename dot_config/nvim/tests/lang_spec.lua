@@ -58,8 +58,12 @@ local function with_mocks(fn)
     enable = function(name, opts)
       recorded.lsp_enable[#recorded.lsp_enable + 1] = { name = name, opts = opts }
     end,
-    on_attach = function(cb)
-      recorded.lsp_attach[#recorded.lsp_attach + 1] = cb
+    on_attach = function(name_or_fn, fn)
+      if type(name_or_fn) == "function" then
+        recorded.lsp_attach[#recorded.lsp_attach + 1] = { fn = name_or_fn }
+      else
+        recorded.lsp_attach[#recorded.lsp_attach + 1] = { name = name_or_fn, fn = fn }
+      end
     end,
   }
 
@@ -186,7 +190,7 @@ T.describe("lib.lang.setup", function()
     end)
   end)
 
-  T.it("_on_attach fires only for the matching server and is stripped from lsp config", function()
+  T.it("_on_attach is registered name-keyed and stripped from lsp config", function()
     local fired_for = {}
     with_mocks(function(rec, lang)
       lang.setup({
@@ -199,20 +203,11 @@ T.describe("lib.lang.setup", function()
       rec:drive("nvim-lspconfig")
       T.eq(rec.lsp_cfg[1].cfg._on_attach, nil, "_on_attach should be stripped")
       T.eq(#rec.lsp_attach, 1, "should register one LspAttach callback")
-
-      -- Stub vim.lsp.get_client_by_id, then drive the attach callback twice:
-      -- once with a matching client, once with a different client name.
-      local real_get = vim.lsp.get_client_by_id
-      local current_client
-      vim.lsp.get_client_by_id = function() return current_client end
-
-      current_client = { name = "srv1" }
-      rec.lsp_attach[1]({ data = { client_id = 1 }, buf = 0 })
-
-      current_client = { name = "other" }
-      rec.lsp_attach[1]({ data = { client_id = 2 }, buf = 0 })
-
-      vim.lsp.get_client_by_id = real_get
+      T.eq(rec.lsp_attach[1].name, "srv1", "callback should be name-keyed for filter dispatch")
+      -- Drive the registered callback to verify it forwards (args, client)
+      -- to the user's _on_attach. Name filtering itself is the dispatcher's
+      -- job (Lib.lsp._fire_attach), tested in lib/lsp_spec.
+      rec.lsp_attach[1].fn({ data = { client_id = 1 }, buf = 0 }, { name = "srv1" })
       T.eq(fired_for, { "srv1" })
     end)
   end)

@@ -119,12 +119,7 @@ function M.setup(spec)
         Lib.lsp.enable(name, enable_opts)
 
         if on_attach_cb then
-          local server_name = name
-          Lib.lsp.on_attach(function(args)
-            local client = vim.lsp.get_client_by_id(args.data and args.data.client_id)
-            if not client or client.name ~= server_name then return end
-            on_attach_cb(args, client)
-          end)
+          Lib.lsp.on_attach(name, on_attach_cb)
         end
       end
     end)

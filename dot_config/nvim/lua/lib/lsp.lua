@@ -4,7 +4,8 @@
 
 local M = {}
 
-local attach_callbacks = {}  -- { fn, fn, ... }
+local attach_callbacks = {}            -- { fn, fn, ... } — fired for every attach
+local attach_callbacks_by_name = {}    -- { [client_name] = { fn, ... } } — name-filtered
 
 -- Servers we wanted to enable but whose binary wasn't available at the time.
 -- Re-checked when mason-tool-installer signals completion.
@@ -123,13 +124,37 @@ function M.get_clients(buf)
   return vim.lsp.get_clients({ bufnr = buf or 0 })
 end
 
-function M.on_attach(fn)
-  table.insert(attach_callbacks, fn)
+-- Two forms:
+--   M.on_attach(fn)           — fires on every LspAttach; fn(args)
+--   M.on_attach(name, fn)     — fires only when client.name == name; fn(args, client)
+-- The name-keyed form is the preferred path: dispatcher does an O(1) lookup
+-- so N server-specific hooks don't each pay a name-filter cost on every
+-- attach. Use the unconditional form only when the hook genuinely applies
+-- to all servers.
+function M.on_attach(name_or_fn, fn)
+  if type(name_or_fn) == "function" then
+    table.insert(attach_callbacks, name_or_fn)
+  else
+    local list = attach_callbacks_by_name[name_or_fn]
+    if not list then
+      list = {}
+      attach_callbacks_by_name[name_or_fn] = list
+    end
+    table.insert(list, fn)
+  end
 end
 
 function M._fire_attach(args)
   for _, fn in ipairs(attach_callbacks) do
     local ok, err = xpcall(function() fn(args) end, debug.traceback)
+    if not ok then vim.notify("lib.lsp on_attach error: " .. err, vim.log.levels.ERROR) end
+  end
+  local client = vim.lsp.get_client_by_id(args.data and args.data.client_id)
+  if not client then return end
+  local by_name = attach_callbacks_by_name[client.name]
+  if not by_name then return end
+  for _, fn in ipairs(by_name) do
+    local ok, err = xpcall(function() fn(args, client) end, debug.traceback)
     if not ok then vim.notify("lib.lsp on_attach error: " .. err, vim.log.levels.ERROR) end
   end
 end
