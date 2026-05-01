@@ -90,6 +90,12 @@ return {
             Workspace.single(client):update()
           end
           LzdLsp.attach(client)
+          -- Send didChangeConfiguration explicitly: covers the case
+          -- where lua_ls already issued its initial config request
+          -- and got empty settings before our handler installed.
+          -- lua_ls will re-request configuration on this notification
+          -- and now get the populated ws.settings.
+          LzdLsp.update(client)
         end,
       })
     end,
