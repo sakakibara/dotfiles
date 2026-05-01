@@ -5,6 +5,18 @@
 -- main dropped the configs module; highlighting/folds/indent are wired
 -- per-filetype via native vim.treesitter APIs.
 
+-- Filetypes we install treesitter for. Module-level so `init` can use
+-- it to register tree-sitter-cli with these same fts (so the cli installs
+-- on-demand alongside the first parser, not unconditionally at startup).
+local WANTED_FTS = {
+  "bash", "c", "cpp", "css", "html",
+  "javascript", "json", "lua", "luadoc",
+  "markdown", "markdown_inline", "python",
+  "query", "regex", "rust", "styled",
+  "toml", "tsx", "typescript", "vim",
+  "vimdoc", "yaml",
+}
+
 return {
   {
     "nvim-treesitter/nvim-treesitter",
@@ -15,8 +27,10 @@ return {
     -- below already handles install/update on every nvim launch.
     init = function()
       -- main branch compiles parsers on-demand and requires tree-sitter-cli
-      -- (>= 0.26.1) on PATH. mason's registry has it.
-      Lib.mason.add("tree-sitter-cli")
+      -- (>= 0.26.1) on PATH. mason's registry has it. Tagged with the
+      -- full ft whitelist so it installs on-demand alongside the first
+      -- parser, never eagerly at startup.
+      Lib.mason.add("tree-sitter-cli", { ft = WANTED_FTS })
       -- Clean stale tree-sitter-<lang>-tmp dirs from interrupted prior
       -- installs. nvim-treesitter "main" doesn't clean these on startup,
       -- so a previously-interrupted install leaves EEXIST + truncated-
@@ -53,17 +67,10 @@ return {
         install_dir = vim.fn.stdpath("data") .. "/site",
       })
 
-      -- Parsers we care about. Treated as a whitelist: a buffer with
-      -- filetype X gets treesitter only if X is in this list. Restricts
-      -- on-demand install to languages we actually use.
-      local WANTED = {
-        bash = true, c = true, cpp = true, css = true, html = true,
-        javascript = true, json = true, lua = true, luadoc = true,
-        markdown = true, markdown_inline = true, python = true,
-        query = true, regex = true, rust = true, styled = true,
-        toml = true, tsx = true, typescript = true, vim = true,
-        vimdoc = true, yaml = true,
-      }
+      -- Whitelist set built from the module-level WANTED_FTS list. A
+      -- buffer with filetype X gets treesitter only if X is in this set.
+      local WANTED = {}
+      for _, ft in ipairs(WANTED_FTS) do WANTED[ft] = true end
 
       -- Per-lang install state to avoid duplicate concurrent installs.
       -- "installing": install task started, not yet known to be done

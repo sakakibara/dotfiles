@@ -112,7 +112,8 @@ T.describe("lib.lang.setup", function()
   T.it("registers mason tools, parsers, servers, formatters, and neotest", function()
     with_mocks(function(rec, lang)
       lang.setup({
-        mason = { "tool1", "tool2" },
+        ft      = "lang1",
+        mason   = { "tool1", "tool2" },
         parsers = { "lang1", "lang2" },
         servers = { server1 = { settings = { x = 1 } } },
         formatters = { lang1 = { "fmt1" } },

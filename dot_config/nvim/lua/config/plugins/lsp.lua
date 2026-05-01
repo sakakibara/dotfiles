@@ -58,9 +58,9 @@ return {
     config = function(_, opts)
       require("mason").setup(opts)
 
-      -- Eager tools: install at VeryLazy unconditionally (filetype-
-      -- agnostic helpers like tree-sitter-cli). Already-installed tools
-      -- are no-ops in mason's registry handling.
+      -- Install tools on first FileType match. Tracks which fts have
+      -- been seen so we only refresh / scan the registry once per ft
+      -- (mason's own install is itself idempotent).
       local function install_missing(names)
         if not names or #names == 0 then return end
         local registry = require("mason-registry")
@@ -73,11 +73,7 @@ return {
           end
         end)
       end
-      install_missing(Lib.mason.eager_list())
 
-      -- On-demand tools: install on first matching FileType. Tracks
-      -- which fts have been seen so we only refresh / scan the registry
-      -- once per ft (the actual mason install is itself idempotent).
       local seen_ft = {}
       vim.api.nvim_create_autocmd("FileType", {
         group = vim.api.nvim_create_augroup("Lib.mason.on_demand", { clear = true }),
