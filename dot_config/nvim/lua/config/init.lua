@@ -6,73 +6,28 @@ local _pending = {}
 local SILENT_KIND = "lib_tee"
 
 function M.setup()
-  -- Diagnostic: capture every vim.notify and vim.api.nvim_echo call from
-  -- the very start of setup() for 5 minutes, with source-callsite
-  -- traceback. Output: /tmp/pack-flash-trace.log. Remove once the brief
-  -- top-of-screen flash source is identified.
-  do
-    local logf = io.open("/tmp/pack-flash-trace.log", "w")
-    if logf then
-      local function log(line)
-        logf:write(("[%s] %s\n"):format(os.date("%H:%M:%S"), line))
-        logf:flush()
-      end
-      log("=== flash trace started (M.setup begin) ===")
-      local orig_notify = vim.notify
-      vim.notify = function(msg, level, opts)
-        log(("notify: %s"):format(tostring(msg):sub(1, 120)))
-        log("  trace: " .. (debug.traceback("", 2):gsub("\n", " | ")))
-        return orig_notify(msg, level, opts)
-      end
-      local orig_echo = vim.api.nvim_echo
-      vim.api.nvim_echo = function(chunks, history, opts)
-        local text = ""
-        for _, c in ipairs(chunks or {}) do text = text .. (c[1] or "") end
-        log(("echo (history=%s): %s"):format(tostring(history), text:sub(1, 120)))
-        log("  trace: " .. (debug.traceback("", 2):gsub("\n", " | ")))
-        return orig_echo(chunks, history, opts)
-      end
-      vim.defer_fn(function()
-        vim.notify = orig_notify
-        vim.api.nvim_echo = orig_echo
-        log("=== flash trace ended ===")
-        logf:close()
-      end, 300000)
-    end
-  end
-
-  -- Wrapper A: install vim.notify tee synchronously, BEFORE require("lib").init()
-  -- and core.pack.setup — before any plugin, autocmd, or buffer load can fire
-  -- vim.notify.
+  -- Wrapper A: install a queueing vim.notify synchronously, BEFORE
+  -- require("lib").init() and core.pack.setup — before any plugin, autocmd,
+  -- or buffer load can fire vim.notify.
   --
   -- The window this closes: noice's `ext_messages` attach is scheduled from
-  -- VeryLazy (noice/init.lua:~34 calls vim.schedule(load)), and wrapper B
-  -- below is also scheduled from our VeryLazy+schedule. Anything calling
-  -- vim.notify before wrapper B runs — FileType autocmds firing during cold-
-  -- boot argv reads, `:e foo.tsx` via oil while noice is mid-attach, core.pack
-  -- internals reporting keymap conflicts, etc. — bypasses noice entirely. The
-  -- historical symptom: a warning flashes in the cmdline briefly (truncated
-  -- by press-ENTER), never reaches :Noice all or toasts, and if emitted via
-  -- vim.notify_once, never fires again the rest of the session.
+  -- VeryLazy. Anything calling vim.notify before noice's attach completes
+  -- — FileType autocmds firing during cold-boot argv reads, core.pack
+  -- internals reporting keymap conflicts, etc. — would otherwise hit
+  -- nvim's cmdline backend with cmdheight=0 and trigger press-ENTER
+  -- prompts that block the main thread.
   --
-  -- Wrapper A echoes with history=true so :messages is populated immediately,
-  -- and queues {msg, level, opts}. When noice attaches (see handler below),
-  -- its `load` replaces vim.notify with noice's handler — wrapper A becomes
-  -- unreachable. Wrapper B then re-installs a tee on top of noice's vim.notify
-  -- and drains the queue through noice, so :Noice all and the toast backend
-  -- get every pre-noice message.
+  -- We just queue and rely on wrapper B (in the VeryLazy callback below)
+  -- to drain the queue once noice's ext_messages backend is live —
+  -- replaying via nvim_echo with kind=SILENT_KIND so :messages records
+  -- every pre-noice message and the SILENT_KIND filter on Manager.add
+  -- prevents noice from rendering them as duplicate toasts.
   --
   -- vim.notify_once late-binds via `vim.notify` field lookup, so wrapper A
   -- catches it too; its internal `notified[msg]` cache is set on first call,
-  -- which means the replay through noice doesn't re-fire vim.notify_once —
-  -- we replay through `prev` directly, bypassing the cache entirely.
+  -- which means the replay doesn't re-fire vim.notify_once — wrapper B
+  -- replays through `prev` directly, bypassing the cache entirely.
   vim.notify = function(msg, level, opts)
-    -- Wrapper A no longer echoes. Echoing populates :messages but also
-    -- briefly renders to the cmdline / hit-enter-prompts on volume,
-    -- which interferes with the cold-install splash and produces the
-    -- "message flashes at top of screen then toast appears" artifact.
-    -- Just queue for diagnostic recovery; downstream wrappers (noice,
-    -- snacks) will handle visible rendering once they attach.
     table.insert(_pending, { msg = msg, level = level, opts = opts })
   end
 
@@ -144,14 +99,26 @@ function M.setup()
       --      VeryLazy load_spec) — attaches ext_messages and replaces
       --      vim.notify with noice's handler, discarding wrapper A.
       --   2. this callback — captures noice's vim.notify as `prev`, wraps
-      --      with the silent-kind tee, drains _pending through `prev`.
+      --      with the silent-kind tee, drains _pending.
       --
-      -- Manager.add wrapper filters msg_show events tagged SILENT_KIND so the
-      -- tee's echo doesn't produce duplicate Manager entries / duplicate
-      -- toasts. Only the `prev(...)` call at the bottom reaches Manager as a
-      -- normal notify event, giving exactly one :Noice all entry and one
-      -- toast per vim.notify call. (See commit history on this file for the
-      -- dedup derivation.)
+      -- The Manager.add wrapper filters msg_show events tagged SILENT_KIND
+      -- so the tee's echo doesn't produce a duplicate :NoiceAll entry or a
+      -- duplicate toast. Only the `prev(...)` call reaches noice as a
+      -- normal notify event — giving exactly one :NoiceAll entry + one
+      -- toast per vim.notify call, plus one :messages history line via the
+      -- silent-kind echo.
+      --
+      -- Splash protection: with ext_messages attached by the time this
+      -- runs, nvim doesn't render to the cmdline at all — msg_show events
+      -- are emitted to noice instead, where the SILENT_KIND filter drops
+      -- them. So nvim_echo here is invisible at the UI layer; only the
+      -- :messages history is populated.
+      local function level_to_hl(level)
+        level = level or vim.log.levels.INFO
+        if level >= vim.log.levels.ERROR then return "ErrorMsg" end
+        if level >= vim.log.levels.WARN  then return "WarningMsg" end
+        return "Normal"
+      end
       vim.schedule(function()
         local ok_mgr, Manager = pcall(require, "noice.message.manager")
         if ok_mgr then
@@ -163,15 +130,28 @@ function M.setup()
             return orig_add(m)
           end
         end
-        -- Wrapper B used to echo to :messages via nvim_echo with a
-        -- SILENT_KIND filter so noice would dedup. But the nvim_echo
-        -- still produced a brief cmdline flash before noice's filter
-        -- could suppress the rendering — visible as "message at top of
-        -- screen" right before the toast. snacks/noice already record
-        -- their own histories, so we drop the echo entirely. The
-        -- queued _pending list is dropped too: replaying through noice
-        -- would render every queued install-time notification as a
-        -- toast after the splash closes (an explicit non-goal).
+
+        -- Tee subsequent vim.notify calls to :messages via SILENT_KIND echo
+        -- before forwarding to noice. The echo populates message history;
+        -- the kind filter suppresses display duplication.
+        local prev = vim.notify
+        vim.notify = function(msg, level, opts)
+          pcall(vim.api.nvim_echo,
+            { { tostring(msg), level_to_hl(level) } },
+            true,
+            { kind = SILENT_KIND })
+          return prev(msg, level, opts)
+        end
+
+        -- Drain wrapper A's queue: replay each through both the silent-kind
+        -- echo (for :messages) AND noice's prev (for :NoiceAll + display).
+        for _, m in ipairs(_pending) do
+          pcall(vim.api.nvim_echo,
+            { { tostring(m.msg), level_to_hl(m.level) } },
+            true,
+            { kind = SILENT_KIND })
+          prev(m.msg, m.level, m.opts)
+        end
         _pending = {}
       end)
 

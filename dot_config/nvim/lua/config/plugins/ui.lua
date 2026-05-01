@@ -66,11 +66,12 @@ return {
         -- the first InsertEnter (when blink lazy-loads). Route to the
         -- mini view (bottom-right, lightweight) instead of the default
         -- notify view — the default toast path was producing a brief
-        -- top-of-screen flash with cmdheight=0 before settling.
+        -- top-of-screen flash with cmdheight=0 before settling. No
+        -- start-of-string anchor: blink sometimes emits these with a
+        -- "[blink.cmp]: " prefix that would defeat `^`. Substring match
+        -- catches both "Downloading…" and "Downloaded… successfully".
         { filter = { event = "notify",
-          find = "^Downloading pre%-built binary" }, view = "mini" },
-        { filter = { event = "notify",
-          find = "^Downloaded pre%-built binary" }, view = "mini" },
+          find = "pre%-built binary" }, view = "mini" },
       },
     },
     config = function(_, opts)
