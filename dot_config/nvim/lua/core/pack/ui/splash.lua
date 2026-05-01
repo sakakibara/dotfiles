@@ -271,7 +271,14 @@ function M.cold_install_splash(total)
     vim.bo[buf].modifiable = false
     vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
     for _, h in ipairs(hls) do
-      pcall(vim.api.nvim_buf_add_highlight, buf, ns, h.hl, h.row, h.sb, h.eb)
+      -- compose() encodes "to end of line" as eb = -1 (the old
+      -- nvim_buf_add_highlight convention). Resolve to a concrete byte
+      -- offset for nvim_buf_set_extmark, which expects an actual end_col.
+      local end_col = h.eb == -1 and #lines[h.row + 1] or h.eb
+      pcall(vim.api.nvim_buf_set_extmark, buf, ns, h.row, h.sb, {
+        end_col  = end_col,
+        hl_group = h.hl,
+      })
     end
   end
 
