@@ -4,7 +4,11 @@ return {
     "neovim/nvim-lspconfig",
     name = "nvim-lspconfig",
     event = "LazyFile",
-    dependencies = { "lazydev.nvim" },
+    -- lazydev.nvim is NOT a dependency: nvim-lspconfig is the
+    -- LazyFile gate (any file), which would force lazydev to load on
+    -- every file type. lazydev has its own `ft = "lua"` trigger; we
+    -- pull it in explicitly only when lua_ls actually attaches via
+    -- the LspAttach hook below.
     init = function()
       Lib.mason.add("lua-language-server", { ft = "lua" })
     end,
@@ -72,11 +76,19 @@ return {
           local ok_ws, Workspace = pcall(require, "lazydev.workspace")
           local ok_lsp, LzdLsp   = pcall(require, "lazydev.lsp")
           if not (ok_ws and ok_lsp) then return end
-          -- Single-buffer workspace covers the common case (no
-          -- workspace folders) and matches what lazydev would build
-          -- anyway. Multi-folder clients re-resolve at request time.
-          local ws = Workspace.single(client)
-          ws:update()
+          -- Populate every workspace lua_ls might query in its
+          -- workspace/configuration request:
+          --   - Workspace.get(client, ws.name) for each workspace_folder
+          --     (lua_ls passes scopeUri = folder.uri)
+          --   - Workspace.single(client) as the no-folders fallback
+          -- Mirrors lazydev's own buf.update folder enumeration.
+          if client.workspace_folders and #client.workspace_folders > 0 then
+            for _, wsf in ipairs(client.workspace_folders) do
+              Workspace.get(client, wsf.name):update()
+            end
+          else
+            Workspace.single(client):update()
+          end
           LzdLsp.attach(client)
         end,
       })
