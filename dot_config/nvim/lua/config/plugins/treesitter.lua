@@ -47,64 +47,89 @@ return {
         install_dir = vim.fn.stdpath("data") .. "/site",
       })
 
-      -- Parsers to ensure installed (asynchronous; no-op if already
-      -- present). The install fires nvim_echo per language; without
-      -- noice attached via ext_messages those go to nvim's bare cmdline
-      -- and overflow → press-enter prompt that blocks the main thread.
-      --
-      -- Tricky timing: noice.setup() itself does vim.schedule(load), so
-      -- when pack loads noice during a VeryLazy autocmd, noice is queued
-      -- but not yet attached. A single vim.schedule from us would fire
-      -- in the SAME iteration (FIFO with noice's load) and our install
-      -- runs first because our autocmd fires before pack's lazy handler.
-      -- Nest two schedules: the outer runs in iteration N (alongside
-      -- noice's load), the inner pushes to iteration N+1 — by then noice
-      -- has attached and routes the burst quietly via the route below.
-      vim.api.nvim_create_autocmd("User", {
-        pattern  = "VeryLazy",
-        once     = true,
-        callback = function()
-          vim.schedule(function()
-            vim.schedule(function()
-              require("nvim-treesitter").install({
-                "bash", "c", "cpp", "css", "html", "javascript", "json",
-                "lua", "luadoc", "markdown", "markdown_inline", "python",
-                "query", "regex", "rust", "styled", "toml", "tsx", "typescript",
-                "vim", "vimdoc", "yaml",
-              })
-              -- We do NOT close the splash on treesitter task completion.
-              -- Other plugins (blink.cmp pre-built binary, mason tool
-              -- install, etc.) also do cold-init work after treesitter
-              -- finishes — closing on treesitter done would expose nvim
-              -- mid-freeze. The splash close is owned by the user via
-              -- on_key (any keystroke) plus a long safety timer.
-            end)
-          end)
-        end,
-      })
+      -- Parsers we care about. Treated as a whitelist: a buffer with
+      -- filetype X gets treesitter only if X is in this list. Restricts
+      -- on-demand install to languages we actually use.
+      local WANTED = {
+        bash = true, c = true, cpp = true, css = true, html = true,
+        javascript = true, json = true, lua = true, luadoc = true,
+        markdown = true, markdown_inline = true, python = true,
+        query = true, regex = true, rust = true, styled = true,
+        toml = true, tsx = true, typescript = true, vim = true,
+        vimdoc = true, yaml = true,
+      }
 
-      -- Highlight on every filetype where a parser exists.
+      -- Per-lang install state to avoid duplicate concurrent installs.
+      -- "installing": install task started, not yet known to be done
+      -- "installed":  parser file exists on disk, ready to use
+      -- nil:          not yet attempted
+      local install_state = {}
+      do
+        local ts_config = require("nvim-treesitter.config")
+        for _, lang in ipairs(ts_config.get_installed()) do
+          install_state[lang] = "installed"
+        end
+      end
+
+      -- Start treesitter on the buffer. Safe to call multiple times.
+      local function start_for_buf(bufnr)
+        if not vim.api.nvim_buf_is_valid(bufnr) then return end
+        if vim.bo[bufnr].filetype == "bigfile" then return end
+        pcall(vim.treesitter.start, bufnr)
+        pcall(function()
+          vim.wo[0][0].foldexpr   = "v:lua.vim.treesitter.foldexpr()"
+          vim.wo[0][0].foldmethod = "expr"
+        end)
+        pcall(function()
+          vim.bo[bufnr].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+        end)
+      end
+
+      -- On every FileType, install the parser if needed (async), and
+      -- start treesitter when the parser becomes available. The first
+      -- buffer of a given filetype triggers the install; subsequent
+      -- buffers either start immediately (already installed) or wait
+      -- for the in-flight install via state tracking.
       vim.api.nvim_create_autocmd("FileType", {
         group = vim.api.nvim_create_augroup("Lib.treesitter.highlight", { clear = true }),
         callback = function(args)
           local bufnr = args.buf
-          -- snacks.bigfile retags huge buffers as ft=bigfile and sets
-          -- foldmethod=manual etc. Without this gate we'd override that
-          -- and re-arm vim.treesitter.foldexpr() on a parser-less buffer,
-          -- which evaluates on every fold event and freezes the editor
-          -- on multi-MB files (panic logs, minified bundles).
-          if vim.bo[bufnr].filetype == "bigfile" then return end
-          -- vim.treesitter.start handles its own parser availability check
-          pcall(vim.treesitter.start, bufnr)
-          -- Enable tree-sitter folds
-          pcall(function()
-            vim.wo[0][0].foldexpr   = "v:lua.vim.treesitter.foldexpr()"
-            vim.wo[0][0].foldmethod = "expr"
-          end)
-          -- Enable tree-sitter indent (experimental per docs)
-          pcall(function()
-            vim.bo[bufnr].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
-          end)
+          local ft = vim.bo[bufnr].filetype
+          if ft == "" or ft == "bigfile" or not WANTED[ft] then return end
+
+          local state = install_state[ft]
+          if state == "installed" then
+            start_for_buf(bufnr)
+            return
+          end
+          if state == "installing" then
+            -- An earlier buffer kicked off the install; the completion
+            -- callback already has logic to reapply to all matching
+            -- bufs. Nothing to do here.
+            return
+          end
+
+          install_state[ft] = "installing"
+          local task = require("nvim-treesitter").install({ ft })
+          if task and type(task.await) == "function" then
+            task:await(function()
+              vim.schedule(function()
+                install_state[ft] = "installed"
+                -- Apply to every loaded buffer of this filetype, not
+                -- just the one that triggered (more buffers may have
+                -- been opened while we were installing).
+                for _, b in ipairs(vim.api.nvim_list_bufs()) do
+                  if vim.api.nvim_buf_is_loaded(b) and vim.bo[b].filetype == ft then
+                    start_for_buf(b)
+                  end
+                end
+              end)
+            end)
+          else
+            -- Older/unexpected API shape: assume sync, mark installed.
+            install_state[ft] = "installed"
+            start_for_buf(bufnr)
+          end
         end,
       })
     end,

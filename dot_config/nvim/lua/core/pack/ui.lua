@@ -854,8 +854,8 @@ function M.cold_install_splash(total)
   -- {row, col_start_byte, col_end_byte, hl_group} highlight ranges.
   local function compose()
     local title    = phase == "install"
-      and "core.pack · first-run install"
-      or  "core.pack · loading"
+      and "core.pack · downloading plugins"
+      or  "core.pack · loading plugins"
 
     -- Middle row content depends on phase:
     --   install: progress bar with N/M counter
