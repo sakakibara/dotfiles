@@ -865,9 +865,14 @@ function M.cold_install_splash(total)
       filled = (total > 0) and math.floor(done * BAR / total) or 0
       local bar_filled = ("▰"):rep(filled)
       local bar_empty  = ("▱"):rep(BAR - filled)
-      local count      = ("%d/%d"):format(done, total)
-      local bar_w      = BAR * vim.fn.strdisplaywidth("▰")
-      count_w          = vim.fn.strdisplaywidth(count)
+      -- Pad `done` digits to the width of `total`, so the count column
+      -- has constant width regardless of how far we've progressed —
+      -- otherwise prog_pad_left changes when `done` crosses 10/100,
+      -- visibly shifting the entire bar by one cell every decade.
+      local digits = #tostring(total)
+      local count = ("%" .. digits .. "d/%d"):format(done, total)
+      local bar_w = BAR * vim.fn.strdisplaywidth("▰")
+      count_w     = vim.fn.strdisplaywidth(count)
       local prog_text  = bar_filled .. bar_empty .. "  " .. count
       -- Build the prog row: GUTTER + center-pad + prog_text + fill to inner_w.
       prog_pad_left    = math.floor((text_w - bar_w - 2 - count_w) / 2)
