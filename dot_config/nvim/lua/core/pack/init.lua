@@ -497,7 +497,7 @@ local function install_all(specs)
     local ok, err = pcall(Install.install_missing, to_install, {
       -- Splash takes over the prominent indicator role; the corner fidget
       -- would just be a redundant second progress widget on cold start.
-      -- :PackInstall (user-invoked) still gets the fidget.
+      -- :Pack install (user-invoked) still gets the fidget.
       open_window = false,
       on_failed = function(name, _msg) failed[name] = true end,
       on_progress = function(d, _t, _last) splash:update(d) end,
@@ -881,7 +881,7 @@ function M._structured_status(filter_pattern)
 
   -- Trigger column gets remainder. Fixed prefix bytes:
   --   2 (lead) + 4 (padded glyph) + 2 + name_max + 2 + 8 (state) + 2 + 9 (load) + 2 = 29 + name_max
-  -- Use a generous default of 180 chars since :PackStatus renders before the
+  -- Use a generous default of 180 chars since :Pack status renders before the
   -- window is open and can't know the actual width at that point.
   local trigger_max = 180 - (28 + name_max)
   if trigger_max < 30 then trigger_max = 30 end

@@ -29,7 +29,7 @@ end
 -- check it out directly so cold installs are reproducible across
 -- machines. Falls back to a fresh resolve when the lock entry is
 -- missing or the SHA isn't in the cloned repo (force-pushed branch,
--- removed commit, etc.) — `:PackUpdate` is what recomputes.
+-- removed commit, etc.) — `:Pack update` is what recomputes.
 local function pin_to_version(spec, dir)
   local locked = Lock.get(spec.name)
   if locked and type(locked.rev) == "string"

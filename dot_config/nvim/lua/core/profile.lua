@@ -148,14 +148,4 @@ function M.lookup(name)
   return found and total or nil
 end
 
-vim.api.nvim_create_user_command("PackProfile", function()
-  local UI = require("core.pack.ui")
-  local data = M._structured_report()
-  UI.status(data.lines, {
-    title = "core.pack: profile",
-    highlights = data.highlights,
-    filetype = "PackProfile",
-  })
-end, { desc = "Show pack startup profile in a scratch buffer" })
-
 return M
