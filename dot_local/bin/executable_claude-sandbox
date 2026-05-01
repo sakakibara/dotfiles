@@ -164,6 +164,18 @@ _run_args() {
     -v "$HOME/.gitconfig":/home/claude/.gitconfig:ro
     -w "$repo"
   )
+
+  # Bind-mount $HOME/.claude.json (the live config file separate from
+  # the .claude/ directory) for default + worktree. Touch it first if
+  # missing so docker doesn't auto-create a directory at the bind path.
+  # For strict mode, the file is seeded into the cl_volume during
+  # _ensure_strict_volumes; the entrypoint symlinks it into place so
+  # writes persist in the volume.
+  if [[ "$mode" != "strict" ]]; then
+    [[ -e "$HOME/.claude.json" ]] || touch "$HOME/.claude.json"
+    args+=( -v "$HOME/.claude.json":/home/claude/.claude.json )
+  fi
+
   case "$mode" in
     default)
       args+=( -v "$repo":"$repo"
@@ -238,6 +250,18 @@ _ensure_strict_volumes() {
         -v "$cl":/dst \
         "$IMAGE" \
         sh -c 'cp -a /src/. /dst/' >/dev/null
+    fi
+    # Also seed ~/.claude.json into the volume root as `.csb-claude.json`.
+    # The entrypoint symlinks `$HOME/.claude.json` to it so reads/writes
+    # by claude inside the sandbox persist in the volume rather than
+    # bouncing off the ephemeral image filesystem.
+    if [[ -f "$HOME/.claude.json" ]]; then
+      _info "seeding $cl with ~/.claude.json (as .csb-claude.json)"
+      docker run --rm \
+        -v "$HOME":/host:ro \
+        -v "$cl":/dst \
+        "$IMAGE" \
+        sh -c 'cp /host/.claude.json /dst/.csb-claude.json' >/dev/null
     fi
   fi
 }
