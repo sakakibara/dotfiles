@@ -99,20 +99,23 @@ function M.setup()
       --      VeryLazy load_spec) — attaches ext_messages and replaces
       --      vim.notify with noice's handler, discarding wrapper A.
       --   2. this callback — captures noice's vim.notify as `prev`, wraps
-      --      with the silent-kind tee, drains _pending.
+      --      with the silent-kind tee, drains _pending into :messages.
       --
       -- The Manager.add wrapper filters msg_show events tagged SILENT_KIND
-      -- so the tee's echo doesn't produce a duplicate :NoiceAll entry or a
-      -- duplicate toast. Only the `prev(...)` call reaches noice as a
-      -- normal notify event — giving exactly one :NoiceAll entry + one
-      -- toast per vim.notify call, plus one :messages history line via the
-      -- silent-kind echo.
+      -- so the silent-kind echo (which only exists to populate :messages
+      -- history) doesn't produce a duplicate :NoiceAll entry or toast.
       --
-      -- Splash protection: with ext_messages attached by the time this
-      -- runs, nvim doesn't render to the cmdline at all — msg_show events
-      -- are emitted to noice instead, where the SILENT_KIND filter drops
-      -- them. So nvim_echo here is invisible at the UI layer; only the
-      -- :messages history is populated.
+      -- Splash protection: while the cold-install splash is up, the post-
+      -- noice tee skips the prev() forward — :messages still records via
+      -- the silent-kind echo, but no top-right toast is rendered against
+      -- the splash overlay. This preserves the original splash contract
+      -- (no chrome competing with the centered box).
+      --
+      -- Queue drain (pre-noice messages): :messages-only via SILENT_KIND.
+      -- We deliberately do NOT replay through prev: replaying every queued
+      -- install-time notification as a toast burst after splash closes is
+      -- an explicit non-goal. Stock noice doesn't backfill :NoiceAll with
+      -- pre-attach history either, so :messages-only matches that contract.
       local function level_to_hl(level)
         level = level or vim.log.levels.INFO
         if level >= vim.log.levels.ERROR then return "ErrorMsg" end
@@ -131,26 +134,24 @@ function M.setup()
           end
         end
 
-        -- Tee subsequent vim.notify calls to :messages via SILENT_KIND echo
-        -- before forwarding to noice. The echo populates message history;
-        -- the kind filter suppresses display duplication.
         local prev = vim.notify
         vim.notify = function(msg, level, opts)
           pcall(vim.api.nvim_echo,
             { { tostring(msg), level_to_hl(level) } },
             true,
             { kind = SILENT_KIND })
+          local ok_ui, UI = pcall(require, "core.pack.ui")
+          if ok_ui and UI._active_splash then
+            return  -- splash up: :messages-only, no toast competing with overlay
+          end
           return prev(msg, level, opts)
         end
 
-        -- Drain wrapper A's queue: replay each through both the silent-kind
-        -- echo (for :messages) AND noice's prev (for :NoiceAll + display).
         for _, m in ipairs(_pending) do
           pcall(vim.api.nvim_echo,
             { { tostring(m.msg), level_to_hl(m.level) } },
             true,
             { kind = SILENT_KIND })
-          prev(m.msg, m.level, m.opts)
         end
         _pending = {}
       end)
