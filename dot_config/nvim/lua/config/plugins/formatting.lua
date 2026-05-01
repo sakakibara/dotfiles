@@ -48,14 +48,12 @@ return {
     "mfussenegger/nvim-lint",
     name = "nvim-lint",
     event = "LazyFile",
-    init = function()
-      Lib.mason.add("selene", { ft = "lua" })
-    end,
     config = function()
       local lint = require("lint")
-      lint.linters_by_ft = {
-        lua = { "selene" },
-      }
+      -- lua linting is owned by lua_ls (sumneko); a second linter
+      -- (selene) duplicates work and complains about `vim` being
+      -- undefined unless given a custom selene.toml + nvim std lib.
+      lint.linters_by_ft = {}
       local grp = vim.api.nvim_create_augroup("Lib.lint", { clear = true })
       local debounce_ms = 200
 
