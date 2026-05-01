@@ -611,7 +611,7 @@ function M.setup()
   -- "" via nvim_set_option_value with scope=local makes the local empty;
   -- to inherit the global expression for normal windows, we never touch
   -- their winbar (it stays unset = inherits global).
-  vim.api.nvim_create_autocmd({ "BufWinEnter", "TermOpen", "FileType" }, {
+  vim.api.nvim_create_autocmd({ "BufWinEnter", "TermOpen" }, {
     group = vim.api.nvim_create_augroup("Lib.winbar.disable_special", { clear = true }),
     callback = function(args)
       local win = vim.api.nvim_get_current_win()
