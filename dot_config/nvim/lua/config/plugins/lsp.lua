@@ -24,7 +24,12 @@ return {
             runtime = { version = "LuaJIT" },
             workspace = {
               checkThirdParty = false,
-              library = { vim.env.VIMRUNTIME .. "/lua" },
+              -- All rtp paths so lua_ls finds nvim's API stubs
+              -- (lua/vim/_meta — defines `vim`, `vim.api`, `vim.fn`,
+              -- etc.) plus every loaded plugin's lua/. lazydev's
+              -- workspace/didChangeConfiguration push extends this
+              -- with plugin-specific paths from the lazydev opts.
+              library = vim.api.nvim_get_runtime_file("", true),
             },
             codeLens = { enable = true },
             completion = { callSnippet = "Replace" },
