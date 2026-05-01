@@ -58,16 +58,26 @@ return {
     config = function(_, opts)
       require("mason").setup(opts)
 
+      -- Drain Lib.lsp's pending-enable queue when an install finishes.
+      -- Lib.lsp.enable queues servers whose binary wasn't yet on PATH
+      -- and listens for the MasonToolsUpdateCompleted user event to
+      -- retry. We removed mason-tool-installer (which used to emit it)
+      -- so we have to emit it ourselves on every install-complete.
+      local function drain_pending_lsps()
+        vim.schedule(function()
+          pcall(vim.api.nvim_exec_autocmds, "User", {
+            pattern  = "MasonToolsUpdateCompleted",
+            modeline = false,
+          })
+        end)
+      end
+
       -- Re-fire FileType for every loaded buffer of `ft` so plugins
-      -- that listen on FileType (nvim-lspconfig's vim.lsp.enable, etc.)
-      -- get a second chance to attach now that the binary is available.
-      -- Their original attempt at the user's first file open ran before
-      -- mason finished installing the LSP, so it failed silently.
+      -- that listen on FileType (filetype-scoped LSP attaches, etc.)
+      -- get a second chance now that the binary is available.
       local function refire_filetype(ft)
         for _, buf in ipairs(vim.api.nvim_list_bufs()) do
           if vim.api.nvim_buf_is_loaded(buf) and vim.bo[buf].filetype == ft then
-            -- Setting the option to itself triggers FileType handlers,
-            -- which is exactly what we want.
             vim.api.nvim_buf_call(buf, function()
               vim.cmd("doautocmd FileType")
             end)
@@ -83,9 +93,10 @@ return {
         local registry = require("mason-registry")
         registry.refresh(function()
           local pending = 0
-          local function maybe_refire()
+          local function on_install_done()
             if pending == 0 then
-              vim.schedule(function() refire_filetype(ft) end)
+              drain_pending_lsps()
+              refire_filetype(ft)
             end
           end
           for _, name in ipairs(names) do
@@ -100,16 +111,16 @@ return {
                 pending = pending - 1
                 pcall(pkg.off, pkg, "install:success", handler)
                 pcall(pkg.off, pkg, "install:failed",  handler)
-                maybe_refire()
+                on_install_done()
               end
               pcall(pkg.on, pkg, "install:success", handler)
               pcall(pkg.on, pkg, "install:failed",  handler)
               pkg:install()
             end
           end
-          -- If everything was already installed, still refire once to
+          -- If everything was already installed, still drain once to
           -- recover any earlier missed attaches.
-          maybe_refire()
+          on_install_done()
         end)
       end
 
