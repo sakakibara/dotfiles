@@ -1,0 +1,60 @@
+#compdef claude-sandbox
+# Completion for claude-sandbox. Container name completions filter by
+# the wrapper's name convention `claude-sandbox-<base>-<hash>[-mode]`.
+
+_claude_sandbox() {
+  local -a subcommands
+  subcommands=(
+    'start:start detached'
+    'attach:attach to a running sandbox'
+    'stop:stop and remove'
+    'export:export strict-mode volume to host repo'
+    'list:all sandboxes'
+    'info:image + sandbox status'
+    'rebuild:docker build --no-cache'
+    'enable-autostart:LaunchAgent: start at login'
+    'disable-autostart:remove LaunchAgent'
+    'help:usage'
+  )
+
+  _arguments -C \
+    '--auto[auto permission mode]' \
+    '--bypass[bypass permission mode (default)]' \
+    '--worktree[isolate via git worktree]' \
+    '--strict[isolate via docker volumes]' \
+    '1: :->cmd' \
+    '*::arg:->args'
+
+  case "$state" in
+    cmd)
+      _describe 'subcommand' subcommands
+      ;;
+    args)
+      case "$words[1]" in
+        attach)
+          local -a running
+          running=(${(f)"$(docker ps --filter 'name=^claude-sandbox-' --format '{{.Names}}' 2>/dev/null)"})
+          _describe 'running sandbox' running
+          ;;
+        stop)
+          _arguments \
+            '--all[stop every sandbox]' \
+            '--purge[also remove worktree / volumes]'
+          local -a all
+          all=(${(f)"$(docker ps -a --filter 'name=^claude-sandbox-' --format '{{.Names}}' 2>/dev/null)"})
+          _describe 'sandbox' all
+          ;;
+        export)
+          local -a strict
+          strict=(${(f)"$(docker ps -a --filter 'name=^claude-sandbox-.*-strict$' --format '{{.Names}}' 2>/dev/null)"})
+          _describe 'strict sandbox' strict
+          ;;
+        enable-autostart|disable-autostart|start)
+          _files -/
+          ;;
+      esac
+      ;;
+  esac
+}
+
+_claude_sandbox "$@"
