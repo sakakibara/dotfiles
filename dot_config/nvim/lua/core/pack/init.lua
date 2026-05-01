@@ -454,6 +454,12 @@ local function install_spec_stubs(spec)
   end
 end
 
+local triggers = require("core.pack.triggers").create({
+  load_spec = load_spec,
+  install_spec_stubs = install_spec_stubs,
+})
+M._schedule_refire = triggers.schedule_refire  -- exposed for tests
+
 local function install_all(specs)
   local Lock    = require("core.pack.lock")
   local Install = require("core.pack.install")
@@ -608,7 +614,7 @@ function M.setup(cfg)
     load_spec(s)
   end
 
-  M._register_triggers(ordered)
+  triggers.register(ordered)
 
   -- Close the splash either on first user input OR after a stretch of
   -- "no status updates" (idle). The idle timer is preferable to a fixed
@@ -633,173 +639,6 @@ function M.setup(cfg)
         end)
         vim.defer_fn(function() splash:close() end, 120000)
 
-      end,
-    })
-  end
-end
-
--- Deferred re-fire of a lazy-trigger event, so plugin autocmds registered
--- during load_spec see the current buffer.
---
--- Grouping in _register_triggers (one autocmd per event, not per spec)
--- prevents fan-out at the source: N specs sharing BufWritePre produce 1
--- re-fire, not N. The dedup/guard/retry below are defense-in-depth for
--- edge cases:
---
--- - Dedup: two different trigger sites (e.g. cascaded BufReadPre→BufReadPost)
---   scheduling the same-key refire in one tick collapse to one.
--- - Re-entrancy guard: `vim.schedule` alone does NOT break autocmd nesting
---   when a handler pumps the event loop (BufWritePre → conform.format →
---   vim.wait(1000) — libuv runs pending schedule callbacks during that
---   wait). Guard short-circuits any same-key recursion.
--- - Retry slot: a schedule arriving while active must not be dropped —
---   park it and replay after active clears.
---
--- Keyed by (event, buffer, pattern): different buffers/patterns are
--- independent work and must not block each other.
-M._refire_pending = {}  -- scheduled, not yet run
-M._refire_active  = {}  -- currently running
-M._refire_retry   = {}  -- request made while active: latest opts to replay
-local _refire_pending = M._refire_pending
-local _refire_active  = M._refire_active
-local _refire_retry   = M._refire_retry
-local schedule_refire
-schedule_refire = function(event, opts)
-  local key = event .. "\0" .. (opts.buffer or 0) .. "\0" .. (opts.pattern or "")
-  if _refire_active[key] then
-    -- Park the request — we'll replay once active clears. Latest-wins is
-    -- correct for lazy-load: each call carries opts from one original
-    -- event fire, and the re-fire just needs to give handlers a chance
-    -- to catch up on the current state.
-    _refire_retry[key] = { event = event, opts = opts }
-    return
-  end
-  if _refire_pending[key] then return end
-  _refire_pending[key] = true
-  vim.schedule(function()
-    _refire_pending[key] = nil
-    _refire_active[key] = true
-    local ok, err = pcall(vim.api.nvim_exec_autocmds, event, opts)
-    _refire_active[key] = nil
-    if not ok then
-      notify(("core.pack refire(%s): %s"):format(event, err), vim.log.levels.ERROR)
-    end
-    local retry = _refire_retry[key]
-    if retry then
-      _refire_retry[key] = nil
-      schedule_refire(retry.event, retry.opts)
-    end
-  end)
-end
-M._schedule_refire = schedule_refire  -- exposed for tests
-
-function M._register_triggers(specs)
-  local event = require("core.event")
-
-  -- Group specs by triggering event/pattern/ft. Matches lazy.nvim's design:
-  -- one once=true autocmd per trigger group loads all specs registered to
-  -- it, so N specs sharing BufWritePre fan into 1 handler, not N. Prevents
-  -- the E218 nesting class of bugs at the structural level — no runtime
-  -- dedup needed for the common case.
-  local user_groups  = {}  -- [pattern] -> { specs = {...} }
-  local event_groups = {}  -- [event]   -> { specs = {...} }
-  local ft_groups    = {}  -- [ft]      -> { specs = {...} }
-
-  local function push(map, key, spec)
-    local g = map[key]
-    if not g then
-      g = { specs = {} }
-      map[key] = g
-    end
-    table.insert(g.specs, spec)
-  end
-
-  for _, spec in ipairs(specs) do
-    if spec.lazy and spec.event then
-      for _, e in ipairs(event.expand(spec.event)) do
-        if e == "VeryLazy" then
-          event.on("VeryLazy", function() load_spec(spec) end)
-        elseif e:match("^User ") then
-          push(user_groups, e:sub(6), spec)
-        else
-          push(event_groups, e, spec)
-        end
-      end
-    end
-
-    if spec.lazy and spec.ft then
-      local fts = type(spec.ft) == "table" and spec.ft or { spec.ft }
-      for _, ft in ipairs(fts) do push(ft_groups, ft, spec) end
-    end
-
-    -- cmd (lazy only) — registered per-command, not per-spec, so no
-    -- grouping concern; two specs binding the same command is already a
-    -- user error caught at vim.api.nvim_create_user_command.
-    if spec.lazy and spec.cmd then
-      local cmds = type(spec.cmd) == "table" and spec.cmd or { spec.cmd }
-      for _, c in ipairs(cmds) do
-        vim.api.nvim_create_user_command(c, function(opts)
-          pcall(vim.api.nvim_del_user_command, c)
-          load_spec(spec)
-          vim.api.nvim_cmd({
-            cmd = c,
-            bang = opts.bang,
-            args = opts.fargs,
-            range = opts.range > 0 and { opts.line1, opts.line2 } or nil,
-            count = opts.count >= 0 and opts.count or nil,
-            mods = opts.smods,
-          }, {})
-        end, { bang = true, nargs = "*", range = true, desc = "lazy: " .. spec.name })
-      end
-    end
-
-    -- keys: lazy plugins get stubs here. Eager plugins already had their
-    -- real mappings installed in load_spec -> install_spec_keys during the
-    -- eager-load pass; skipping avoids a spurious conflict warning and
-    -- overhead.
-    if spec.lazy and spec.keys then
-      install_spec_stubs(spec)
-    end
-  end
-
-  local function group_desc(group)
-    local names = {}
-    for _, s in ipairs(group.specs) do names[#names + 1] = s.name end
-    return "lazy: " .. table.concat(names, ", ")
-  end
-
-  local function load_group(group)
-    for _, s in ipairs(group.specs) do load_spec(s) end
-  end
-
-  for pat, group in pairs(user_groups) do
-    vim.api.nvim_create_autocmd("User", {
-      once = true, pattern = pat, desc = group_desc(group),
-      callback = function(args)
-        load_group(group)
-        schedule_refire("User", { pattern = pat, data = args.data, modeline = false })
-      end,
-    })
-  end
-
-  for e, group in pairs(event_groups) do
-    vim.api.nvim_create_autocmd(e, {
-      once = true, desc = group_desc(group),
-      callback = function(args)
-        load_group(group)
-        schedule_refire(args.event, {
-          buffer = args.buf, data = args.data, modeline = false,
-        })
-      end,
-    })
-  end
-
-  for ft, group in pairs(ft_groups) do
-    vim.api.nvim_create_autocmd("FileType", {
-      once = true, pattern = ft, desc = group_desc(group),
-      callback = function(args)
-        load_group(group)
-        schedule_refire("FileType", { buffer = args.buf, modeline = false })
       end,
     })
   end
@@ -843,94 +682,6 @@ function M.add_keys(name, keys)
     end
   end
   if M._loaded[name] then install() else M.on_load(name, install) end
-end
-
-function M._structured_status(filter_pattern)
-  local Profile = require("core.profile")
-  local names = vim.tbl_keys(M._specs)
-  table.sort(names)
-  if filter_pattern and filter_pattern ~= "" then
-    local fp = filter_pattern:lower()
-    local filtered = {}
-    for _, n in ipairs(names) do
-      if n:lower():find(fp, 1, true) then filtered[#filtered + 1] = n end
-    end
-    names = filtered
-  end
-
-  local loaded_count = 0
-  local lazy_count = 0
-  for _, n in ipairs(names) do
-    if M._loaded[n] then loaded_count = loaded_count + 1
-    elseif M._specs[n].lazy then lazy_count = lazy_count + 1 end
-  end
-
-  -- Name column: longest actual name, floor 16, cap 50.
-  local name_max = 16
-  for _, n in ipairs(names) do name_max = math.max(name_max, #n) end
-  if name_max > 50 then name_max = 50 end
-
-  local LOAD_W = 9
-
-  -- Trigger column gets remainder. Fixed prefix bytes:
-  --   2 (lead) + 4 (padded glyph) + 2 + name_max + 2 + 8 (state) + 2 + 9 (load) + 2 = 29 + name_max
-  -- Use a generous default of 180 chars since :Pack status renders before the
-  -- window is open and can't know the actual width at that point.
-  local trigger_max = 180 - (28 + name_max)
-  if trigger_max < 30 then trigger_max = 30 end
-
-  local total_load_ms = 0
-  for _, n in ipairs(names) do
-    local lt = Profile.lookup(n)
-    if lt then total_load_ms = total_load_ms + lt end
-  end
-  local lines = {
-    ("core.pack: %d registered (%d lazy, %d loaded, %.0f ms total load)"):format(#names, lazy_count, loaded_count, total_load_ms),
-    "",
-  }
-  local highlights = { { 0, 0, #lines[1], "Title" } }
-
-  for _, n in ipairs(names) do
-    local s = M._specs[n]
-    local state, glyph, glyph_hl
-    if M._loaded[n] then
-      state, glyph, glyph_hl = "loaded", "*", "Special"
-    elseif s.lazy then
-      state, glyph, glyph_hl = "lazy", "~", "Identifier"
-    else
-      state, glyph, glyph_hl = "pending", ".", "Comment"
-    end
-
-    local trigger = s.event and ("event=" .. vim.inspect(s.event):gsub("\n%s*", ""))
-        or s.ft and ("ft=" .. vim.inspect(s.ft))
-        or s.cmd and ("cmd=" .. vim.inspect(s.cmd))
-        or s.keys and "keys"
-        or ("priority=" .. s.priority)
-
-    local name_truncated = n
-    if #name_truncated > name_max then name_truncated = name_truncated:sub(1, name_max - 1) .. "…" end
-    local name_padded = ("%-" .. name_max .. "s"):format(name_truncated)
-    local state_padded = ("%-8s"):format(state)
-    local load_ms = Profile.lookup(n)
-    local load_str = load_ms and ("%6.2f ms"):format(load_ms) or "       - "
-    local load_padded = ("%-" .. LOAD_W .. "s"):format(load_str)
-    local trigger_truncated = trigger
-    if #trigger_truncated > trigger_max then trigger_truncated = trigger_truncated:sub(1, trigger_max - 1) .. "…" end
-    local line = ("  %s  %s  %s  %s  %s"):format(glyph, name_padded, state_padded, load_padded, trigger_truncated)
-    local row = #lines
-
-    -- col offsets (glyph is always 1 cell wide)
-    local col = 2
-    table.insert(highlights, { row, col, col + #glyph, glyph_hl }); col = col + #glyph + 2
-    table.insert(highlights, { row, col, col + #name_padded, "Identifier" }); col = col + #name_padded + 2
-    table.insert(highlights, { row, col, col + #state_padded, "Type" }); col = col + #state_padded + 2
-    table.insert(highlights, { row, col, col + #load_padded, "Number" }); col = col + #load_padded + 2
-    table.insert(highlights, { row, col, col + #trigger_truncated, "Comment" })
-
-    lines[#lines + 1] = line
-  end
-
-  return { lines = lines, highlights = highlights }
 end
 
 require("core.pack.commands").setup(M)
