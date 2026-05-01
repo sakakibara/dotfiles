@@ -58,11 +58,17 @@ return {
     config = function(_, opts)
       require("mason").setup(opts)
 
-      -- Drain Lib.lsp's pending-enable queue when an install finishes.
-      -- Lib.lsp.enable queues servers whose binary wasn't yet on PATH
-      -- and listens for the MasonToolsUpdateCompleted user event to
-      -- retry. We removed mason-tool-installer (which used to emit it)
-      -- so we have to emit it ourselves on every install-complete.
+      -- After every install finishes, fire MasonToolsUpdateCompleted
+      -- so Lib.lsp's pending-enable queue drains and calls
+      -- vim.lsp.enable(name) for any LSP whose binary is now present.
+      -- vim.lsp.enable internally does doautoall('nvim.lsp.enable
+      -- FileType') for all loaded buffers, which calls the callback
+      -- that spawns the server and attaches to matching buffers.
+      --
+      -- The autocmd dispatch is scheduled (not immediate) so the
+      -- mason install hook returns first; nvim then processes the
+      -- User event on the next tick, well after the package is
+      -- registered on PATH.
       local function drain_pending_lsps()
         vim.schedule(function()
           pcall(vim.api.nvim_exec_autocmds, "User", {
@@ -72,40 +78,20 @@ return {
         end)
       end
 
-      -- Re-fire FileType for every loaded buffer of `ft` so plugins
-      -- that listen on FileType (filetype-scoped LSP attaches, etc.)
-      -- get a second chance now that the binary is available.
-      local function refire_filetype(ft)
-        for _, buf in ipairs(vim.api.nvim_list_bufs()) do
-          if vim.api.nvim_buf_is_loaded(buf) and vim.bo[buf].filetype == ft then
-            vim.api.nvim_buf_call(buf, function()
-              vim.cmd("doautocmd FileType")
-            end)
-          end
-        end
-      end
-
-      -- Install tools on first FileType match. Tracks which fts have
-      -- been seen so we only refresh / scan the registry once per ft.
-      -- After install completes, re-fire FileType so LSPs etc. retry.
-      local function install_missing(names, ft)
+      -- Install tools on first FileType match. After all installs in
+      -- the batch complete, drain pending LSPs once.
+      local function install_missing(names)
         if not names or #names == 0 then return end
         local registry = require("mason-registry")
         registry.refresh(function()
           local pending = 0
           local function on_install_done()
-            if pending == 0 then
-              drain_pending_lsps()
-              refire_filetype(ft)
-            end
+            if pending == 0 then drain_pending_lsps() end
           end
           for _, name in ipairs(names) do
             local ok, pkg = pcall(registry.get_package, name)
             if ok and pkg and not pkg:is_installed() then
               pending = pending + 1
-              -- mason packages emit an event when install completes.
-              -- pkg:install() returns the package; the "install:success"
-              -- and "install:failed" events fire on the package.
               local handler
               handler = function()
                 pending = pending - 1
@@ -118,8 +104,8 @@ return {
               pkg:install()
             end
           end
-          -- If everything was already installed, still drain once to
-          -- recover any earlier missed attaches.
+          -- If everything was already installed, still drain once
+          -- to flush any earlier deferrals.
           on_install_done()
         end)
       end
