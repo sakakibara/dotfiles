@@ -1211,3 +1211,170 @@ T.describe("core.pack.lock: pretty-printed write", function()
     Lock._path_override = nil
   end)
 end)
+
+-- Drive install_all by stubbing Install.install_missing + UI.cold_install_splash.
+-- Specifically catches reference bugs in the synchronous on_complete callback
+-- (the historical "vim.vim.notify" typo lived here for a session because no
+-- spec drove the actual install pipeline through pack.setup).
+T.describe("core.pack install_all on_complete callback", function()
+  local function with_install_stub(fn)
+    package.loaded["core.pack.install"] = nil
+    local Install = require("core.pack.install")
+    local orig = {
+      install_missing = Install.install_missing,
+      install_dir     = Install.install_dir,
+    }
+    local captured
+    Install.install_dir = function() return "/nonexistent" end  -- so spec is "missing"
+    Install.install_missing = function(specs, opts)
+      captured = { specs = specs, opts = opts }
+      if opts.on_progress then opts.on_progress(1, #specs, specs[1] and specs[1].name) end
+      if opts.on_complete then opts.on_complete() end  -- the line under test
+    end
+
+    -- Stub UI.cold_install_splash so install_all doesn't try to open a real
+    -- floating window inside the test runner.
+    package.loaded["core.pack.ui"] = nil
+    local UI = require("core.pack.ui")
+    local orig_splash = UI.cold_install_splash
+    UI.cold_install_splash = function(_total)
+      return {
+        update                = function() end,
+        enter_setup_phase     = function() end,
+        set_setup_status      = function() end,
+        set_status_text       = function() end,
+        start_idle_close      = function() end,
+        close                 = function() end,
+      }
+    end
+
+    -- pack.install_all uses vim.wait + vim.schedule. Drain them synchronously
+    -- so the test sees the on_complete-side effects.
+    local orig_schedule = vim.schedule
+    vim.schedule = function(f) f() end
+
+    local ok, err = pcall(fn, captured, function() return captured end)
+
+    vim.schedule = orig_schedule
+    UI.cold_install_splash = orig_splash
+    Install.install_missing = orig.install_missing
+    Install.install_dir     = orig.install_dir
+
+    if not ok then error(err) end
+  end
+
+  T.it("on_complete fires without indexing-nil errors when install runs", function()
+    local pack = reset_pack()
+    local notifications = {}
+    local orig_notify = vim.notify
+    vim.notify = function(msg, _lvl) notifications[#notifications + 1] = tostring(msg) end
+    with_install_stub(function()
+      -- Non-dev + lazy spec so install_all is exercised but the eager-load
+      -- phase doesn't try to packadd a plugin that isn't really on disk.
+      local ok, err = pcall(pack.setup, {
+        specs = { { src = "file:///fake/repo", name = "stub-plugin",
+                    lazy = true, event = "VeryLazy" } },
+      })
+      T.eq(ok, true, "pack.setup should not raise: " .. tostring(err))
+    end)
+    vim.notify = orig_notify
+    -- Find the on_complete vim.notify among all collected notifications.
+    local matched
+    for _, m in ipairs(notifications) do
+      if m:match("installed %d+ plugins") then matched = m; break end
+    end
+    T.truthy(matched,
+      "expected 'installed N plugins' notification, got: " .. vim.inspect(notifications))
+  end)
+
+  T.it("on_complete reports the correct count when one of N installs fails", function()
+    local pack = reset_pack()
+    local notifications = {}
+    local orig_notify = vim.notify
+    vim.notify = function(msg, _lvl) notifications[#notifications + 1] = tostring(msg) end
+
+    package.loaded["core.pack.install"] = nil
+    local Install = require("core.pack.install")
+    local orig_im, orig_id = Install.install_missing, Install.install_dir
+    Install.install_dir = function() return "/nonexistent" end
+    Install.install_missing = function(specs, opts)
+      -- Mark first as failed via on_failed; let on_complete fire.
+      if opts.on_failed then opts.on_failed(specs[1].name, "stubbed failure") end
+      if opts.on_complete then opts.on_complete() end
+    end
+    package.loaded["core.pack.ui"] = nil
+    local UI = require("core.pack.ui")
+    local orig_splash = UI.cold_install_splash
+    UI.cold_install_splash = function(_)
+      return { update=function() end, enter_setup_phase=function() end,
+        set_setup_status=function() end, set_status_text=function() end,
+        start_idle_close=function() end, close=function() end }
+    end
+    local orig_schedule = vim.schedule
+    vim.schedule = function(f) f() end
+
+    pack.setup({
+      specs = {
+        { src = "file:///fake/a", name = "a", lazy = true, event = "VeryLazy" },
+        { src = "file:///fake/b", name = "b", lazy = true, event = "VeryLazy" },
+      },
+    })
+
+    vim.schedule = orig_schedule
+    UI.cold_install_splash = orig_splash
+    Install.install_missing = orig_im
+    Install.install_dir     = orig_id
+    vim.notify = orig_notify
+
+    -- 2 specs total, 1 failed → message says "installed 1 plugins"
+    local matched
+    for _, m in ipairs(notifications) do
+      if m:match("installed 1 plugins") then matched = m; break end
+    end
+    T.truthy(matched,
+      "expected 'installed 1 plugins', got: " .. vim.inspect(notifications))
+  end)
+end)
+
+-- Drive :Pack install through the dispatcher into a stubbed Install. The
+-- dispatcher's on_complete callback (commands.lua) is the analogue of the
+-- install_all bug above and would silently break the same way without
+-- this coverage.
+T.describe("core.pack :Pack install dispatcher on_complete callback", function()
+  T.it(":Pack install fires on_complete via vim.notify without errors", function()
+    local pack = reset_pack()
+    -- Register a dev spec so Pack._specs has at least one entry. Install
+    -- itself is stubbed, so the spec contents don't matter beyond name.
+    pack.setup({
+      specs = { { dev = true, name = "stubbed", config = function() end } },
+    })
+
+    package.loaded["core.pack.install"] = nil
+    local Install = require("core.pack.install")
+    local orig_im = Install.install_missing
+    Install.install_missing = function(_specs, opts)
+      if opts.on_complete then opts.on_complete() end
+    end
+
+    -- Capture the registered :Pack callback and drive it.
+    local registered
+    local real_create = vim.api.nvim_create_user_command
+    vim.api.nvim_create_user_command = function(name, cb, opts)
+      if name == "Pack" then registered = cb end
+    end
+    package.loaded["core.pack.commands"] = nil
+    require("core.pack.commands").setup(pack)
+    vim.api.nvim_create_user_command = real_create
+
+    local notified
+    local orig_notify = vim.notify
+    vim.notify = function(msg) notified = tostring(msg) end
+    local ok, err = pcall(registered, { fargs = { "install" }, bang = false })
+    vim.notify = orig_notify
+    Install.install_missing = orig_im
+
+    T.eq(ok, true, ":Pack install must not raise: " .. tostring(err))
+    T.truthy(notified and notified:match("install complete"),
+      "expected 'install complete', got: " .. tostring(notified))
+  end)
+end)
