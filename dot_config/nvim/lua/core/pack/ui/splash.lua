@@ -71,11 +71,14 @@ function M.cold_install_splash(total)
   -- shrinks the floating-window editor area, leaving the cmdline visible
   -- below the splash. 1 lets each truncated message slot in cleanly with
   -- no hit-enter, and the cmdline strip at the bottom of the screen is
-  -- usually unobtrusive against the splash. shortmess "aT" forces
-  -- single-line truncation so multi-line messages can't overflow.
+  -- usually unobtrusive against the splash. shortmess "aTF" forces
+  -- single-line truncation so multi-line messages can't overflow, and
+  -- suppresses the "filename Nl, Mb" file-info message that nvim emits
+  -- on every :edit (including the argv buffer at startup) — which would
+  -- otherwise flash briefly in the bottom-left strip during splash.
   vim.o.cmdheight   = 1
   vim.o.more        = false
-  vim.opt.shortmess:append("aT")
+  vim.opt.shortmess:append("aTF")
   -- Hide the terminal cursor via DECTCEM (CSI ?25 l). The TUI cursor is
   -- ultimately rendered by the terminal, not nvim, so highlight tweaks
   -- and `guicursor` settings only affect shape/color — not visibility.
