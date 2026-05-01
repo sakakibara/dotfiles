@@ -157,7 +157,7 @@ return {
     branch = "main",
     lazy = false,
     dependencies = { "nvim-treesitter" },
-    -- Note: af/if/ac/ic/aa/ia are provided by mini.ai (see editor.lua)
+    -- Note: af/if/ac/ic/aa/ia are provided by mini.ai (see editor/text.lua)
     -- via treesitter gen_spec; only jump motions live here.
     keys = {
       { "]f", function() require("nvim-treesitter-textobjects.move").goto_next_start("@function.outer", "textobjects") end,     desc = "Next function start" },

@@ -1,4 +1,4 @@
--- lua/core/pack.lua
+-- lua/core/pack/init.lua
 local M = {}
 
 local Spec = require("core.pack.spec")
@@ -223,11 +223,6 @@ function M.setup(cfg)
   M._specs = {}
   M._loaded = {}
   M._opts = {}
-  M._key_registry = {}
-  M._warned_conflicts = {}
-  M._installed_global = {}
-  M._warned_external = {}
-  M._warned_external_ft = {}
   -- NOTE: do NOT reset M._on_load here. Plugin spec files call
   -- Lib.plugin.on_load(...) as side effects at require-time, and
   -- require("config.plugins") runs as setup's argument — before setup's
