@@ -1,4 +1,28 @@
 -- lua/config/plugins/coding.lua
+
+-- Replace blink.cmp.lib.utils.notify with a splash-aware version. The
+-- stock notify uses vim.api.nvim_echo with history=true; with our
+-- cmdheight=0 that produces a brief "more"-style popup at the top of
+-- the screen plus a duplicated toast. Our replacement:
+--   - During cold-install splash → splash status_text (centered box)
+--   - Otherwise → vim.notify (route via the noice mini route to
+--     bottom-right strip; no top-of-screen flash)
+local function patch_utils_notify(utils)
+  utils.notify = function(msg, lvl)
+    local out = {}
+    for _, chunk in ipairs(msg or {}) do
+      out[#out + 1] = chunk[1] or ""
+    end
+    local text = table.concat(out)
+    local ok_ui, UI = pcall(require, "core.pack.ui")
+    if ok_ui and UI._active_splash then
+      UI._active_splash:set_status_text(text)
+    else
+      vim.notify(text, lvl)
+    end
+  end
+end
+
 return {
   {
     "saghen/blink.cmp",
@@ -23,21 +47,8 @@ return {
           if not (ok_ui and UI._active_splash) then return end
 
           pcall(vim.cmd, "packadd blink.cmp")
-          -- Apply the utils.notify monkey-patch BEFORE triggering the
-          -- download so the download's notifications route via
-          -- vim.notify (and our noice mini-view route) rather than
-          -- nvim_echo. See the same patch in config() for the
-          -- explanatory comment.
           local ok_utils, utils = pcall(require, "blink.cmp.lib.utils")
-          if ok_utils then
-            utils.notify = function(msg, lvl)
-              local out = {}
-              for _, chunk in ipairs(msg or {}) do
-                out[#out + 1] = chunk[1] or ""
-              end
-              vim.notify(table.concat(out), lvl)
-            end
-          end
+          if ok_utils then patch_utils_notify(utils) end
           pcall(function()
             require("blink.cmp.fuzzy.download").ensure_downloaded(function() end)
           end)
@@ -45,17 +56,9 @@ return {
       })
     end,
     config = function(_, opts)
-      -- Re-apply the utils.notify monkey-patch in case blink loads
-      -- via its `event` trigger before our init's VeryLazy autocmd
-      -- has fired (e.g., if user types `i` before VeryLazy).
-      local utils = require("blink.cmp.lib.utils")
-      utils.notify = function(msg, lvl)
-        local out = {}
-        for _, chunk in ipairs(msg or {}) do
-          out[#out + 1] = chunk[1] or ""
-        end
-        vim.notify(table.concat(out), lvl)
-      end
+      -- Re-apply the utils.notify patch in case blink loads via its
+      -- `event` trigger before our init's VeryLazy autocmd has fired.
+      patch_utils_notify(require("blink.cmp.lib.utils"))
       require("blink.cmp").setup(opts)
     end,
     opts = {
