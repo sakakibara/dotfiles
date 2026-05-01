@@ -12,8 +12,6 @@
 
 local M = {}
 
-local notify = require("core.pack.util").notify
-
 local function base_map_opts(k)
   return {
     desc    = k.desc,
@@ -69,14 +67,14 @@ function M.create(deps)
         and existing_target.buffer == 1
     end
     if target_busy then
-      notify(
+      vim.notify(
         ("core.pack: '%s' preserve target already in use (mode=%s)"):format(target_lhs, mode),
         vim.log.levels.WARN)
       return false
     end
 
     if not (existing.callback or (existing.rhs and existing.rhs ~= "")) then
-      notify(
+      vim.notify(
         ("core.pack: cannot preserve '%s' (no rhs/callback)"):format(source_lhs),
         vim.log.levels.WARN)
       return false
@@ -93,7 +91,7 @@ function M.create(deps)
     local rhs = existing.callback or existing.rhs
     local ok, err = pcall(vim.keymap.set, mode, target_lhs, rhs, opts)
     if not ok then
-      notify(
+      vim.notify(
         ("core.pack: cannot preserve '%s' to '%s': %s")
           :format(source_lhs, target_lhs, tostring(err)),
         vim.log.levels.WARN)
@@ -127,7 +125,7 @@ function M.create(deps)
       local where = (existing.desc and existing.desc ~= "") and existing.desc
         or (existing.rhs and existing.rhs ~= "" and existing.rhs:sub(1, 60))
         or "<lua callback>"
-      notify(
+      vim.notify(
         ("core.pack: '%s' (mode=%s, ft=%s, buf=%d) on '%s' overrides existing mapping (was: %s)")
           :format(lhs, mode, tostring(k.ft), buf, spec.name, where),
         vim.log.levels.WARN)
@@ -146,7 +144,7 @@ function M.create(deps)
       local warn_key = sig .. "|" .. a .. "|" .. b
       if not warned_conflicts[warn_key] then
         warned_conflicts[warn_key] = true
-        notify(
+        vim.notify(
           ("core.pack: keymap conflict '%s' (mode=%s, ft=%s): '%s' vs '%s'")
             :format(lhs, mode, tostring(ft or "*"), owner, spec.name),
           vim.log.levels.WARN)
@@ -175,25 +173,25 @@ function M.create(deps)
     -- offending field is dropped; processing continues.
     local k_local = k and vim.deepcopy(k) or nil
     if k_local and k_local.preserve ~= nil and type(k_local.preserve) ~= "string" then
-      notify(
+      vim.notify(
         ("core.pack: invalid preserve on '%s' (mode=%s); expected string lhs"):format(lhs, mode),
         vim.log.levels.WARN)
       k_local.preserve = nil
     end
     if k_local and k_local.override ~= nil and type(k_local.override) ~= "boolean" then
-      notify(
+      vim.notify(
         ("core.pack: invalid override on '%s' (mode=%s); expected boolean"):format(lhs, mode),
         vim.log.levels.WARN)
       k_local.override = nil
     end
     if k_local and k_local.preserve and k_local.override then
-      notify(
+      vim.notify(
         ("core.pack: preserve and override are mutually exclusive on '%s' (mode=%s); using preserve"):format(lhs, mode),
         vim.log.levels.WARN)
       k_local.override = nil
     end
     if k_local and k_local.preserve == lhs then
-      notify(
+      vim.notify(
         ("core.pack: preserve target equals source on '%s' (mode=%s); ignoring"):format(lhs, mode),
         vim.log.levels.WARN)
       k_local.preserve = nil
@@ -217,7 +215,7 @@ function M.create(deps)
     local where = (existing.desc and existing.desc ~= "") and existing.desc
       or (existing.rhs and existing.rhs ~= "" and existing.rhs:sub(1, 60))
       or "<lua callback>"
-    notify(
+    vim.notify(
       ("core.pack: '%s' (mode=%s) on '%s' overrides existing mapping (was: %s)")
         :format(lhs, mode, spec.name, where),
       vim.log.levels.WARN)
@@ -268,7 +266,7 @@ function M.create(deps)
     local rhs = k[2]
     if type(rhs) ~= "string" or not rhs:match("^<Plug>") then return end
     if vim.fn.maparg(rhs, m) == "" then
-      notify(
+      vim.notify(
         ("core.pack: unresolved <Plug> rhs for '%s' -> '%s' (mode=%s, spec=%s)")
           :format(k[1] or k.lhs, rhs, m, spec.name),
         vim.log.levels.WARN)

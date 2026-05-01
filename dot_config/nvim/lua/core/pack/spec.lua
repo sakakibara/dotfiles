@@ -1,7 +1,6 @@
 -- lua/core/pack/spec.lua
 local M = {}
 
-local notify = require("core.pack.util").notify
 
 local ALLOWED_FIELDS = {
   [1] = true, src = true, name = true, version = true, branch = true,
@@ -29,7 +28,7 @@ function M.normalize(spec)
 
   for k in pairs(spec) do
     if type(k) == "string" and not ALLOWED_FIELDS[k] then
-      notify(("core.pack: unknown field '%s' on spec '%s'"):format(k, name), vim.log.levels.WARN)
+      vim.notify(("core.pack: unknown field '%s' on spec '%s'"):format(k, name), vim.log.levels.WARN)
     end
   end
 

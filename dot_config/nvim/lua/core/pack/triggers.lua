@@ -24,8 +24,6 @@
 
 local M = {}
 
-local notify = require("core.pack.util").notify
-
 -- Build a trigger registrar bound to dependencies (load_spec,
 -- install_spec_stubs) from core.pack.init. Returns the schedule_refire
 -- closure (so init.lua can expose it as M._schedule_refire for tests) and
@@ -57,7 +55,7 @@ function M.create(deps)
       local ok, err = pcall(vim.api.nvim_exec_autocmds, event, opts)
       active[key]  = nil
       if not ok then
-        notify(("core.pack refire(%s): %s"):format(event, err), vim.log.levels.ERROR)
+        vim.notify(("core.pack refire(%s): %s"):format(event, err), vim.log.levels.ERROR)
       end
       local r = retry[key]
       if r then

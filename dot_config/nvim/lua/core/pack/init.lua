@@ -13,15 +13,6 @@ M._on_load = {}     -- { [name] = { fn, ... } }
 -- Closure-captured by reference — assignment below populates the upvalue.
 local load_spec
 
--- Notify with guaranteed :messages persistence. config/init.lua's wrapper A
--- normally tees vim.notify into :messages history, but snacks.notifier loads
--- eagerly inside pack.setup and replaces vim.notify with its own (toast-only,
--- no :messages echo) — so any warning emitted from this file *after* snacks
--- loads would otherwise vanish from history. core.pack.util.notify echoes
--- to :messages directly in addition to calling vim.notify, regardless of
--- which provider currently owns it.
-local notify = require("core.pack.util").notify
-
 local function _norm_modname(s)
   return s:lower()
     :gsub("nvim", "")
@@ -84,12 +75,12 @@ local function run_config(spec)
   end)
 
   if not ok then
-    notify(("core.pack config(%s): %s"):format(spec.name, err), vim.log.levels.ERROR)
+    vim.notify(("core.pack config(%s): %s"):format(spec.name, err), vim.log.levels.ERROR)
   end
 
   for _, fn in ipairs(M._on_load[spec.name] or {}) do
     local okfn, errfn = xpcall(fn, debug.traceback)
-    if not okfn then notify(("on_load(%s): %s"):format(spec.name, errfn), vim.log.levels.ERROR) end
+    if not okfn then vim.notify(("on_load(%s): %s"):format(spec.name, errfn), vim.log.levels.ERROR) end
   end
   M._on_load[spec.name] = nil
 end
@@ -100,7 +91,7 @@ local function packadd(spec)
   require("core.profile").span("packadd:" .. spec.name, "packadd", function()
     local ok, err = pcall(vim.cmd, "packadd " .. spec.name)
     if not ok then
-      notify(("core.pack packadd(%s) failed: %s"):format(spec.name, err), vim.log.levels.ERROR)
+      vim.notify(("core.pack packadd(%s) failed: %s"):format(spec.name, err), vim.log.levels.ERROR)
     end
   end)
 end
@@ -117,7 +108,7 @@ local _loading = {}  -- cycle-detection guard: names currently mid-load
 load_spec = function(spec)
   if M._loaded[spec.name] then return end
   if _loading[spec.name] then
-    notify(("core.pack: dependency cycle detected at '%s'"):format(spec.name), vim.log.levels.ERROR)
+    vim.notify(("core.pack: dependency cycle detected at '%s'"):format(spec.name), vim.log.levels.ERROR)
     return
   end
   _loading[spec.name] = true
@@ -126,7 +117,7 @@ load_spec = function(spec)
     if dep then
       load_spec(dep)
     else
-      notify(("core.pack: unknown dependency '%s' for '%s'"):format(dep_name, spec.name), vim.log.levels.WARN)
+      vim.notify(("core.pack: unknown dependency '%s' for '%s'"):format(dep_name, spec.name), vim.log.levels.WARN)
     end
   end
   packadd(spec)
@@ -194,7 +185,7 @@ local function install_all(specs)
         -- (top-right) instead of going through the wrapper-A cmdline echo
         -- path during the splash → snacks-load transition.
         vim.schedule(function()
-          vim.notify(
+          vim.vim.notify(
             ("core.pack: installed %d plugins"):format(installed_count),
             vim.log.levels.INFO)
         end)
@@ -203,7 +194,7 @@ local function install_all(specs)
     })
     if not ok then
       splash:close(); splash = nil
-      notify("core.pack: install failed: " .. tostring(err), vim.log.levels.ERROR)
+      vim.notify("core.pack: install failed: " .. tostring(err), vim.log.levels.ERROR)
       return {}, nil  -- treat as no failures from a registry-pruning standpoint
     end
     vim.wait(180000, function() return done end, 50)
@@ -231,7 +222,7 @@ function M.setup(cfg)
 
   local resolved, warnings = Spec.resolve(specs)
   for _, w in ipairs(warnings) do
-    notify("core.pack: " .. w, vim.log.levels.WARN)
+    vim.notify("core.pack: " .. w, vim.log.levels.WARN)
   end
   local ordered = {}
   for _, spec in ipairs(resolved) do
@@ -241,7 +232,7 @@ function M.setup(cfg)
       ordered[#ordered + 1] = spec
       if spec.init then
         local ok, err = xpcall(spec.init, debug.traceback, spec)
-        if not ok then notify(("init(%s): %s"):format(spec.name, err), vim.log.levels.ERROR) end
+        if not ok then vim.notify(("init(%s): %s"):format(spec.name, err), vim.log.levels.ERROR) end
       end
     end
   end
@@ -352,7 +343,7 @@ end
 function M.add_keys(name, keys)
   local spec = M._specs[name]
   if not spec then
-    notify(("core.pack: add_keys unknown spec '%s'"):format(name), vim.log.levels.WARN)
+    vim.notify(("core.pack: add_keys unknown spec '%s'"):format(name), vim.log.levels.WARN)
     return
   end
   local function install()

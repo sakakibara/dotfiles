@@ -1,7 +1,5 @@
 local M = {}
 
-local notify = require("core.pack.util").notify
-
 local function name_complete(Pack, arglead, predicate)
   local out = {}
   for n, s in pairs(Pack._specs) do
@@ -135,7 +133,7 @@ local function subcommands(Pack)
       for _, s in pairs(Pack._specs) do specs[#specs + 1] = s end
       Install.install_missing(specs, {
         open_window = true,
-        on_complete = function() vim.notify("core.pack: install complete") end,
+        on_complete = function() vim.vim.notify("core.pack: install complete") end,
       })
     end,
   }
@@ -183,7 +181,7 @@ local function subcommands(Pack)
       local History = require("core.pack.history")
       local UI = require("core.pack.ui")
       local entries = History.list()
-      if #entries == 0 then notify("core.pack: no snapshots", vim.log.levels.WARN); return end
+      if #entries == 0 then vim.notify("core.pack: no snapshots", vim.log.levels.WARN); return end
 
       -- Enrich with plugin counts (cheap: read each snapshot JSON).
       for _, e in ipairs(entries) do
@@ -199,15 +197,15 @@ local function subcommands(Pack)
 
       local function apply(snapshot)
         local data = History.restore(snapshot.ts)
-        if not data then notify("core.pack: restore failed", vim.log.levels.ERROR); return end
-        notify(("core.pack: restored snapshot %s — run :Pack update! to apply"):format(snapshot.iso))
+        if not data then vim.notify("core.pack: restore failed", vim.log.levels.ERROR); return end
+        vim.notify(("core.pack: restored snapshot %s — run :Pack update! to apply"):format(snapshot.iso))
       end
 
       -- Numeric arg = direct index (1 = newest).
       local idx = tonumber(opts.fargs[1])
       if idx then
         local e = entries[idx]
-        if not e then notify(("core.pack: no snapshot at index %d"):format(idx), vim.log.levels.WARN); return end
+        if not e then vim.notify(("core.pack: no snapshot at index %d"):format(idx), vim.log.levels.WARN); return end
         apply(e)
         return
       end
@@ -225,7 +223,7 @@ local function subcommands(Pack)
       local UI = require("core.pack.ui")
       local limit = tonumber(opts.fargs[1]) or 50
       local entries = Log.list({ limit = limit })
-      if #entries == 0 then notify("core.pack: no log entries"); return end
+      if #entries == 0 then vim.notify("core.pack: no log entries"); return end
 
       local lines = { ("core.pack log — last %d entries"):format(#entries), "" }
       local highlights = { { 0, 0, #lines[1], "Title" } }
@@ -293,7 +291,7 @@ local function subcommands(Pack)
         if s.build and (target == nil or s.name == target) then total = total + 1 end
       end
       if total == 0 then
-        notify(target and ("core.pack: no build hook for " .. target) or "core.pack: no plugins with build hooks")
+        vim.notify(target and ("core.pack: no build hook for " .. target) or "core.pack: no plugins with build hooks")
         fidget:close()
         return
       end
@@ -317,11 +315,11 @@ local function subcommands(Pack)
     end,
     run = function(opts)
       local name = opts.fargs[1]
-      if not name then notify("core.pack: usage :Pack load <name>", vim.log.levels.WARN); return end
-      if not Pack.has(name) then notify(("core.pack: unknown plugin '%s'"):format(name), vim.log.levels.WARN); return end
-      if Pack.loaded(name) then notify(("core.pack: %s already loaded"):format(name)); return end
+      if not name then vim.notify("core.pack: usage :Pack load <name>", vim.log.levels.WARN); return end
+      if not Pack.has(name) then vim.notify(("core.pack: unknown plugin '%s'"):format(name), vim.log.levels.WARN); return end
+      if Pack.loaded(name) then vim.notify(("core.pack: %s already loaded"):format(name)); return end
       Pack.load(name)
-      notify(("core.pack: loaded %s"):format(name))
+      vim.notify(("core.pack: loaded %s"):format(name))
     end,
   }
 
@@ -351,7 +349,7 @@ function M.setup(Pack)
     local handler = subs[sub_name]
     if not handler then
       local names = vim.tbl_keys(subs); table.sort(names)
-      notify(("core.pack: unknown subcommand '%s' (available: %s)")
+      vim.notify(("core.pack: unknown subcommand '%s' (available: %s)")
         :format(sub_name, table.concat(names, ", ")), vim.log.levels.WARN)
       return
     end

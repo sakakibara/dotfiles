@@ -20,7 +20,6 @@ function M.install_dir(name)
   return install_root() .. "/" .. name
 end
 
-local notify = require("core.pack.util").notify
 
 -- Resolve and check out the right ref for a freshly-cloned plugin.
 -- Lockfile takes precedence: if a SHA is recorded for this plugin we
@@ -35,7 +34,7 @@ local function pin_to_version(spec, dir)
   then
     local r = Git.checkout_sha(dir, locked.rev)
     if r.ok then return locked.rev end
-    notify(
+    vim.notify(
       ("core.pack: %s: locked rev %s not in remote; resolving fresh"):format(
         spec.name, locked.rev:sub(1, 8)),
       vim.log.levels.WARN)
@@ -76,12 +75,12 @@ function M.run_build(spec, path, opts)
     local r = vim.system({ "sh", "-c", b }, { cwd = path, text = true }):wait()
     ok, err = (r.code == 0), r.stderr
   else
-    notify(("core.pack: %s has unsupported build type %s"):format(spec.name, type(b)),
+    vim.notify(("core.pack: %s has unsupported build type %s"):format(spec.name, type(b)),
       vim.log.levels.WARN)
     return
   end
   if not ok then
-    notify(("core.pack: %s: build failed: %s"):format(spec.name, tostring(err)),
+    vim.notify(("core.pack: %s: build failed: %s"):format(spec.name, tostring(err)),
       vim.log.levels.ERROR)
     if opts and opts.on_failed then opts.on_failed(spec.name, "build failed: " .. tostring(err)) end
   end
@@ -111,7 +110,7 @@ function M.install_missing(specs, opts)
           tag = spec.name,
           on_done = function(r)
             if r.code ~= 0 then
-              notify(("core.pack: %s: clone failed: %s"):format(spec.name, r.stderr),
+              vim.notify(("core.pack: %s: clone failed: %s"):format(spec.name, r.stderr),
                 vim.log.levels.ERROR)
               if opts.on_failed then opts.on_failed(spec.name, "clone failed: " .. r.stderr) end
               return
@@ -119,7 +118,7 @@ function M.install_missing(specs, opts)
             local rev, err = pin_to_version(spec, dir)
             if not rev then
               vim.fn.delete(dir, "rf")
-              notify(("core.pack: %s"):format(err), vim.log.levels.ERROR)
+              vim.notify(("core.pack: %s"):format(err), vim.log.levels.ERROR)
               if opts.on_failed then
                 -- err is "<name>: <message>"; strip the name prefix since on_failed
                 -- receives name separately.
@@ -238,7 +237,7 @@ local function apply_pending(pending, opts)
       tag = p.spec.name,
       on_done = function(r)
         if r.code ~= 0 then
-          notify(("core.pack: %s: update failed: %s"):format(p.spec.name, r.stderr),
+          vim.notify(("core.pack: %s: update failed: %s"):format(p.spec.name, r.stderr),
             vim.log.levels.ERROR)
           return
         end
@@ -288,7 +287,7 @@ function M.update(specs, names, opts)
   end
 
   if #targets == 0 then
-    notify("core.pack: nothing to update")
+    vim.notify("core.pack: nothing to update")
     vim.schedule(function() if opts.on_complete then opts.on_complete() end end)
     return
   end
@@ -358,7 +357,7 @@ function M.update(specs, names, opts)
               if opts.target == "lockfile" then
                 local entry = Lock.get(t.name)
                 if not entry then
-                  notify(("core.pack: %s not in lockfile — skipping"):format(t.name), vim.log.levels.WARN)
+                  vim.notify(("core.pack: %s not in lockfile — skipping"):format(t.name), vim.log.levels.WARN)
                 else
                   t.target_rev = entry.rev
                   t.checkout_ref = entry.rev
@@ -395,7 +394,7 @@ function M.update(specs, names, opts)
               end
 
               if #pending == 0 then
-                notify("core.pack: nothing to update")
+                vim.notify("core.pack: nothing to update")
                 if fidget then fidget:close() end
                 if opts.on_complete then opts.on_complete() end
                 return
@@ -501,13 +500,13 @@ function M.clean(specs, opts)
       Lock.delete(item.name)
       removed[#removed + 1] = item.name
     end
-    if #removed > 0 then notify("core.pack: removed " .. table.concat(removed, ", ")) end
+    if #removed > 0 then vim.notify("core.pack: removed " .. table.concat(removed, ", ")) end
     if opts.on_complete then vim.schedule(opts.on_complete) end
     return removed
   end
 
   if #orphans == 0 then
-    notify("core.pack: nothing to clean")
+    vim.notify("core.pack: nothing to clean")
     if opts.on_complete then vim.schedule(opts.on_complete) end
     return {}
   end
