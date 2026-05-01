@@ -60,14 +60,14 @@ return {
         { filter = { event = "msg_show",
           find = "^%[nvim%-treesitter/install/" }, opts = { skip = true } },
         -- blink.cmp's pre-built-binary download notifications fire on
-        -- the first InsertEnter (when blink lazy-loads) and produce a
-        -- visible "flash at top of screen" with cmdheight=0 before
-        -- settling into a toast at top-right. Skip them — they're
-        -- transient install messages, not user-actionable.
+        -- the first InsertEnter (when blink lazy-loads). Route to the
+        -- mini view (bottom-right, lightweight) instead of the default
+        -- notify view — the default toast path was producing a brief
+        -- top-of-screen flash with cmdheight=0 before settling.
         { filter = { event = "notify",
-          find = "^Downloading pre%-built binary" }, opts = { skip = true } },
+          find = "^Downloading pre%-built binary" }, view = "mini" },
         { filter = { event = "notify",
-          find = "^Downloaded pre%-built binary" }, opts = { skip = true } },
+          find = "^Downloaded pre%-built binary" }, view = "mini" },
       },
     },
     config = function(_, opts)
