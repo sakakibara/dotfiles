@@ -3,6 +3,15 @@ add_newline = false
 
 [directory]
 truncate_to_repo = false
+
+# Visible indicator that this shell is inside a claude-sandbox container.
+# The container's entrypoint sets CLAUDE_SANDBOX=1; everywhere else the
+# var is unset and the segment is hidden.
+[custom.sandbox]
+command = "echo '🛡 sandbox'"
+when = '''test -n "$CLAUDE_SANDBOX"'''
+format = "[$output]($style) "
+style = "bold red"
 {{ if (and (env "WSL_DISTRO_NAME") (lookPath "starship.exe")) }}
 [git_status]
 windows_starship = "{{ lookPath "starship.exe" }}"

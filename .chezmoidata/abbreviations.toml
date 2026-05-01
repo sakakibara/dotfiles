@@ -136,3 +136,8 @@ when = "timew"
 key = "ti"
 expansion = "taskwarrior-tui"
 when = "taskwarrior-tui"
+
+[[abbreviations]]
+key = "csb"
+expansion = "claude-sandbox"
+when = "claude-sandbox"

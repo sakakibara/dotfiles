@@ -1,0 +1,652 @@
+#!/usr/bin/env bash
+# claude-sandbox — Docker-isolated Claude Code, one container per repo.
+#
+# Default behaviour: in a repo, `claude-sandbox` starts a container with
+# `claude --remote-control --dangerously-skip-permissions` inside and
+# attaches an interactive TTY. Detach with Ctrl-p Ctrl-q to leave the
+# container running so you can drive the same session from claude.ai/code
+# or the Claude mobile app — `--remote-control` polls the Anthropic API
+# outbound, no inbound port is opened.
+#
+# Subcommands:
+#   claude-sandbox [--auto|--bypass] [repo]   start + attach (default; bypass)
+#   claude-sandbox start [--auto] [repo]      start detached (no TTY)
+#   claude-sandbox attach [name]              attach to a running sandbox
+#   claude-sandbox stop [name|--all]          stop & remove
+#   claude-sandbox list                       all sandboxes (running + stopped)
+#   claude-sandbox info                       image + sandbox status
+#   claude-sandbox rebuild                    docker build --no-cache
+#   claude-sandbox enable-autostart [repo]    LaunchAgent: start at login
+#   claude-sandbox disable-autostart [repo]
+#   claude-sandbox help
+
+set -euo pipefail
+
+# ANSI color helpers — only when stdout is a TTY (matches the dotfiles
+# wrapper's pattern).
+if [[ -t 1 ]]; then
+  C_DIM=$'\033[2m'
+  C_BOLD=$'\033[1m'
+  C_RED=$'\033[31m'
+  C_YELLOW=$'\033[33m'
+  C_RESET=$'\033[0m'
+else
+  C_DIM=""; C_BOLD=""; C_RED=""; C_YELLOW=""; C_RESET=""
+fi
+
+_die()  { printf '%sclaude-sandbox: %s%s\n' "$C_RED" "$*" "$C_RESET" >&2; exit 1; }
+_warn() { printf '%sclaude-sandbox: %s%s\n' "$C_YELLOW" "$*" "$C_RESET" >&2; }
+_info() { printf '%sclaude-sandbox:%s %s\n' "$C_DIM" "$C_RESET" "$*"; }
+_row()  { printf '%s%-7s%s %s\n' "$C_BOLD" "$1" "$C_RESET" "$2"; }
+
+IMAGE="claude-sandbox:latest"
+NAME_PREFIX="claude-sandbox"
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/claude-sandbox"
+
+_require_docker() {
+  command -v docker >/dev/null 2>&1 \
+    || _die "docker not found on PATH (install OrbStack via brew)"
+  docker info >/dev/null 2>&1 \
+    || _die "docker daemon unreachable (is OrbStack running?)"
+}
+
+_chezmoi_source() {
+  command -v chezmoi >/dev/null 2>&1 || _die "chezmoi not found on PATH"
+  chezmoi source-path 2>/dev/null || _die "could not resolve chezmoi source"
+}
+
+_dockerfile_dir() { printf '%s/etc/sandbox\n' "$(_chezmoi_source)"; }
+
+# Hash of Dockerfile + entrypoint — used to detect when a rebuild is needed.
+_dockerfile_hash() {
+  local dir; dir=$(_dockerfile_dir)
+  [[ -f "$dir/Dockerfile" ]]   || _die "Dockerfile not found at $dir/Dockerfile"
+  [[ -f "$dir/entrypoint.sh" ]] || _die "entrypoint.sh not found at $dir/entrypoint.sh"
+  cat "$dir/Dockerfile" "$dir/entrypoint.sh" | shasum -a 256 | cut -d' ' -f1
+}
+
+_built_hash_file() { printf '%s/built-hash\n' "$CACHE_DIR"; }
+_image_built()     { docker image inspect "$IMAGE" >/dev/null 2>&1; }
+
+# Container name: claude-sandbox-<sanitized-basename>-<8-char-path-hash>[-mode].
+# Hash disambiguates same-named repos at different paths; basename keeps
+# `docker ps` output skimmable. Mode suffix (`-wt`, `-strict`) keeps the
+# isolation-mode containers separate from the default-mode container so
+# reattach is consistent within a mode and never crosses modes.
+_container_name() {
+  local repo="$1" mode="${2:-default}"
+  local abs base hash suffix=""
+  abs=$(cd "$repo" && pwd -P)
+  base=$(basename "$abs" | tr -c 'A-Za-z0-9_.-' '_')
+  hash=$(printf '%s' "$abs" | shasum -a 256 | cut -c1-8)
+  case "$mode" in
+    worktree) suffix="-wt" ;;
+    strict)   suffix="-strict" ;;
+  esac
+  printf '%s-%s-%s%s\n' "$NAME_PREFIX" "$base" "$hash" "$suffix"
+}
+
+# Worktree path for --worktree mode. Lives under the cache dir so it's
+# obviously throwaway (never inside the user's project tree).
+_worktree_path() {
+  local repo="$1"
+  local abs base hash
+  abs=$(cd "$repo" && pwd -P)
+  base=$(basename "$abs" | tr -c 'A-Za-z0-9_.-' '_')
+  hash=$(printf '%s' "$abs" | shasum -a 256 | cut -c1-8)
+  printf '%s/worktrees/%s-%s\n' "$CACHE_DIR" "$base" "$hash"
+}
+
+_worktree_branch() {
+  local repo="$1"
+  local hash; hash=$(printf '%s' "$(cd "$repo" && pwd -P)" | shasum -a 256 | cut -c1-8)
+  printf 'claude-sandbox/%s\n' "$hash"
+}
+
+# Volume names for --strict mode. The label on the workspace volume
+# records the host repo path so `claude-sandbox export` can find it
+# without the user re-typing.
+_strict_ws_volume() { printf '%s-ws\n'  "$(_container_name "$1" strict)"; }
+_strict_cl_volume() { printf '%s-cl\n'  "$(_container_name "$1" strict)"; }
+
+_container_exists()  { docker container inspect "$1" >/dev/null 2>&1; }
+_container_running() {
+  [[ "$(docker container inspect -f '{{.State.Running}}' "$1" 2>/dev/null)" == "true" ]]
+}
+
+# Resolve the target repo: explicit arg if given, else git toplevel of
+# cwd, else cwd. Returns absolute path.
+_resolve_repo() {
+  local arg="${1:-}"
+  if [[ -n "$arg" ]]; then
+    [[ -d "$arg" ]] || _die "no such directory: $arg"
+    (cd "$arg" && pwd -P)
+    return
+  fi
+  local top
+  if top=$(git rev-parse --show-toplevel 2>/dev/null); then
+    printf '%s\n' "$top"
+  else
+    pwd -P
+  fi
+}
+
+_claude_args() {
+  local mode="$1"
+  local args=( --remote-control )
+  case "$mode" in
+    auto)   args+=( --permission-mode acceptEdits ) ;;
+    bypass) args+=( --dangerously-skip-permissions ) ;;
+    *)      _die "unknown permission mode: $mode" ;;
+  esac
+  printf '%s\n' "${args[@]}"
+}
+
+# Build the docker run mount/env arg list for a given mode.
+#
+# default:  bind-mount cwd as /workspace, RW ~/.claude, RO ~/.gitconfig.
+# worktree: same shape, but /workspace is a fresh git worktree (caller
+#           is responsible for `_ensure_worktree` first). Main checkout
+#           is unreachable.
+# strict:   /workspace is a docker volume (seeded once from host repo);
+#           ~/.claude is a docker volume (seeded once from host
+#           ~/.claude). Host filesystem is not bind-mounted into the
+#           long-running container at all. Export verb required to flow
+#           changes back to the host.
+_run_args() {
+  local repo="$1" name="$2" mode="${3:-default}"
+  local args=(
+    --name     "$name"
+    --hostname "$name"
+    -e CLAUDE_SANDBOX=1
+    -v "$HOME/.gitconfig":/home/claude/.gitconfig:ro
+    -w /workspace
+  )
+  case "$mode" in
+    default)
+      args+=( -v "$repo":/workspace
+              -v "$HOME/.claude":/home/claude/.claude )
+      ;;
+    worktree)
+      local wt; wt=$(_worktree_path "$repo")
+      args+=( -v "$wt":/workspace
+              -v "$HOME/.claude":/home/claude/.claude )
+      ;;
+    strict)
+      args+=( -v "$(_strict_ws_volume "$repo")":/workspace
+              -v "$(_strict_cl_volume "$repo")":/home/claude/.claude )
+      ;;
+    *) _die "unknown isolation mode: $mode" ;;
+  esac
+  printf '%s\n' "${args[@]}"
+}
+
+# --worktree: create a fresh git worktree on a throwaway branch so
+# Claude works in a checkout that's disjoint from the user's main one.
+_ensure_worktree() {
+  local repo="$1"
+  [[ -d "$repo/.git" || -f "$repo/.git" ]] || _die "$repo is not a git repo (--worktree requires git)"
+  local wt branch
+  wt=$(_worktree_path "$repo")
+  branch=$(_worktree_branch "$repo")
+  if [[ -d "$wt" ]]; then return 0; fi
+  mkdir -p "$(dirname "$wt")"
+  # If the branch already exists (from a prior worktree that was rm'd
+  # without `git worktree remove`), reuse it instead of erroring.
+  if git -C "$repo" show-ref --verify --quiet "refs/heads/$branch"; then
+    git -C "$repo" worktree add "$wt" "$branch"
+  else
+    git -C "$repo" worktree add -b "$branch" "$wt"
+  fi
+  _info "worktree: $wt (branch $branch)"
+}
+
+# --strict: ensure both volumes exist and are seeded. Seeding only
+# happens once (when the volume is first created); subsequent starts
+# reuse the volume so Claude's in-progress work survives container
+# recreation.
+_ensure_strict_volumes() {
+  local repo="$1"
+  local ws cl
+  ws=$(_strict_ws_volume "$repo")
+  cl=$(_strict_cl_volume "$repo")
+
+  if ! docker volume inspect "$ws" >/dev/null 2>&1; then
+    _info "creating + seeding $ws from $repo"
+    docker volume create \
+      --label "claude-sandbox.host-repo=${repo}" \
+      --label "claude-sandbox.kind=workspace" \
+      "$ws" >/dev/null
+    docker run --rm \
+      -v "$repo":/src:ro \
+      -v "$ws":/dst \
+      "$IMAGE" \
+      sh -c 'cp -a /src/. /dst/' >/dev/null
+  fi
+
+  if ! docker volume inspect "$cl" >/dev/null 2>&1; then
+    _info "creating $cl"
+    docker volume create \
+      --label "claude-sandbox.kind=claude-home" \
+      "$cl" >/dev/null
+    if [[ -d "$HOME/.claude" ]]; then
+      _info "seeding $cl from ~/.claude (one time only)"
+      docker run --rm \
+        -v "$HOME/.claude":/src:ro \
+        -v "$cl":/dst \
+        "$IMAGE" \
+        sh -c 'cp -a /src/. /dst/' >/dev/null
+    fi
+  fi
+}
+
+_ensure_image() {
+  mkdir -p "$CACHE_DIR"
+  local current built
+  current=$(_dockerfile_hash)
+  built=$(cat "$(_built_hash_file)" 2>/dev/null || echo "")
+
+  if ! _image_built; then
+    _info "image $IMAGE not built yet — building"
+    _build_image
+    return
+  fi
+
+  if [[ "$current" != "$built" ]]; then
+    _warn "Dockerfile changed since last build."
+    if [[ -t 0 ]]; then
+      printf 'Rebuild now? [Y/n] '
+      local ans; read -r ans
+      if [[ -z "$ans" || "$ans" =~ ^[Yy] ]]; then
+        _build_image
+      else
+        _info "skipping rebuild; using stale image"
+      fi
+    else
+      _info "non-interactive; skipping rebuild"
+    fi
+  fi
+}
+
+_build_image() {
+  local dir; dir=$(_dockerfile_dir)
+  _info "docker build -t $IMAGE $dir"
+  docker build -t "$IMAGE" "$dir"
+  _dockerfile_hash > "$(_built_hash_file)"
+}
+
+# ── subcommands ────────────────────────────────────────────────────────
+
+# Parse common flags: permission mode + isolation mode. Sets the
+# globals PERM_MODE and ISO_MODE; consumed positional args are shifted
+# off via the caller. Stops at the first non-flag argument.
+_parse_common_flags() {
+  PERM_MODE="bypass"
+  ISO_MODE="default"
+  while (($#)); do
+    case "$1" in
+      --auto)     PERM_MODE="auto";   shift ;;
+      --bypass)   PERM_MODE="bypass"; shift ;;
+      --worktree) ISO_MODE="worktree"; shift ;;
+      --strict)   ISO_MODE="strict";  shift ;;
+      --) shift; break ;;
+      -*) _die "unknown option: $1" ;;
+      *)  break ;;
+    esac
+  done
+  REMAINING=( "$@" )
+}
+
+cmd_default() {
+  _parse_common_flags "$@"
+  local repo; repo=$(_resolve_repo "${REMAINING[0]:-}")
+  _require_docker
+  _ensure_image
+
+  case "$ISO_MODE" in
+    worktree) _ensure_worktree "$repo" ;;
+    strict)   _ensure_strict_volumes "$repo" ;;
+  esac
+
+  local name; name=$(_container_name "$repo" "$ISO_MODE")
+
+  if _container_running "$name"; then
+    _info "attaching to $name (Ctrl-p Ctrl-q to detach)"
+    exec docker attach "$name"
+  fi
+
+  if _container_exists "$name"; then
+    _info "starting stopped $name"
+    docker start "$name" >/dev/null
+    exec docker attach "$name"
+  fi
+
+  _info "creating $name (perm=$PERM_MODE iso=$ISO_MODE)"
+  local run_args=() c_args=()
+  mapfile -t run_args < <(_run_args "$repo" "$name" "$ISO_MODE")
+  mapfile -t c_args   < <(_claude_args "$PERM_MODE")
+  exec docker run -it "${run_args[@]}" "$IMAGE" claude "${c_args[@]}"
+}
+
+cmd_start() {
+  _parse_common_flags "$@"
+  local repo; repo=$(_resolve_repo "${REMAINING[0]:-}")
+  _require_docker
+  _ensure_image
+
+  case "$ISO_MODE" in
+    worktree) _ensure_worktree "$repo" ;;
+    strict)   _ensure_strict_volumes "$repo" ;;
+  esac
+
+  local name; name=$(_container_name "$repo" "$ISO_MODE")
+
+  if _container_running "$name"; then _info "$name already running"; return 0; fi
+
+  if _container_exists "$name"; then
+    _info "starting stopped $name"
+    docker start "$name" >/dev/null
+    return 0
+  fi
+
+  _info "creating detached $name (perm=$PERM_MODE iso=$ISO_MODE)"
+  local run_args=() c_args=()
+  mapfile -t run_args < <(_run_args "$repo" "$name" "$ISO_MODE")
+  mapfile -t c_args   < <(_claude_args "$PERM_MODE")
+  docker run -d "${run_args[@]}" "$IMAGE" claude "${c_args[@]}" >/dev/null
+  _info "started $name"
+}
+
+cmd_attach() {
+  _require_docker
+  local name="${1:-}"
+  if [[ -z "$name" ]]; then
+    name=$(_pick_running) || return 0
+  fi
+  _container_running "$name" || _die "$name not running"
+  exec docker attach "$name"
+}
+
+# fzf-driven picker over running sandboxes (mirrors the `tm` helper).
+_pick_running() {
+  local list; list=$(docker ps --filter "name=^${NAME_PREFIX}-" --format '{{.Names}}')
+  if [[ -z "$list" ]]; then
+    _info "no running sandboxes"
+    return 1
+  fi
+  if [[ $(printf '%s\n' "$list" | wc -l | tr -d ' ') == "1" ]]; then
+    printf '%s' "$list"
+    return 0
+  fi
+  command -v fzf >/dev/null 2>&1 \
+    || _die "multiple running sandboxes; install fzf or pass a name"
+  printf '%s\n' "$list" | fzf --height 40% --reverse --prompt 'sandbox> '
+}
+
+cmd_stop() {
+  _require_docker
+  local purge=0
+  if [[ "${1:-}" == "--purge" ]]; then purge=1; shift; fi
+
+  local arg="${1:-}"
+  if [[ "$arg" == "--all" ]]; then
+    local containers; containers=$(docker ps -aq --filter "name=^${NAME_PREFIX}-")
+    if [[ -z "$containers" ]]; then _info "no sandboxes to stop"; return 0; fi
+    docker rm -f $containers >/dev/null
+    _info "stopped all sandboxes"
+    return 0
+  fi
+
+  # Resolve name. If unspecified, try (default mode → worktree mode →
+  # strict mode) for the cwd repo and pick whichever exists.
+  local name="$arg" repo=""
+  if [[ -z "$name" ]]; then
+    repo=$(_resolve_repo)
+    for m in default worktree strict; do
+      local n; n=$(_container_name "$repo" "$m")
+      if _container_exists "$n"; then name="$n"; break; fi
+    done
+    [[ -n "$name" ]] || _die "no sandbox for $repo"
+  fi
+
+  _container_exists "$name" || _die "$name does not exist"
+  docker rm -f "$name" >/dev/null
+  _info "stopped $name"
+
+  # Purge: remove the worktree and/or strict volumes too. Without
+  # --purge, those persist so a later `claude-sandbox` reattaches to
+  # the same state (--strict's whole point) or the same worktree.
+  if (( purge )); then
+    case "$name" in
+      *-wt)
+        # Recover the original repo from worktree metadata.
+        if [[ -z "$repo" ]]; then
+          # Best effort: ask the user to pass the path; we don't store it.
+          _warn "purge: pass the repo path via 'claude-sandbox stop --purge <name>' from inside the repo"
+        else
+          local wt; wt=$(_worktree_path "$repo")
+          if [[ -d "$wt" ]]; then
+            git -C "$repo" worktree remove --force "$wt" 2>/dev/null \
+              || rm -rf "$wt"
+            _info "removed worktree $wt"
+          fi
+        fi
+        ;;
+      *-strict)
+        local ws cl
+        if [[ -n "$repo" ]]; then
+          ws=$(_strict_ws_volume "$repo")
+          cl=$(_strict_cl_volume "$repo")
+        else
+          # Reverse-engineer volume names from the container name suffix.
+          ws="${name}-ws"
+          cl="${name}-cl"
+        fi
+        docker volume rm "$ws" "$cl" 2>/dev/null || true
+        _info "removed volumes $ws $cl"
+        ;;
+    esac
+  fi
+}
+
+# --strict export: git-fetch the volume's branches into the host repo
+# under refs/sandbox-export/* so the user can review and merge at their
+# own pace. Only committed history transfers; uncommitted working-tree
+# changes do not (commit them first inside the sandbox).
+cmd_export() {
+  _require_docker
+  local name="${1:-}"
+  if [[ -z "$name" ]]; then
+    name=$(_container_name "$(_resolve_repo)" "strict")
+  fi
+  case "$name" in
+    *-strict) ;;
+    *) _die "export only applies to --strict sandboxes; '$name' is not one" ;;
+  esac
+  local ws="${name}-ws"
+  docker volume inspect "$ws" >/dev/null 2>&1 || _die "volume $ws not found"
+
+  local host_repo
+  host_repo=$(docker volume inspect "$ws" -f '{{ index .Labels "claude-sandbox.host-repo" }}' 2>/dev/null)
+  [[ -n "$host_repo" && -d "$host_repo/.git" ]] \
+    || _die "could not resolve host repo from $ws label, or repo is not a git repo"
+
+  if _container_running "$name"; then
+    _warn "container $name is running; export reflects only committed history"
+  fi
+
+  _info "fetching from $ws into $host_repo as refs/sandbox-export/*"
+  docker run --rm \
+    -v "$host_repo":/host \
+    -v "$ws":/sandbox:ro \
+    "$IMAGE" \
+    git -C /host fetch /sandbox 'refs/heads/*:refs/sandbox-export/*' --tags --force --no-write-fetch-head
+
+  _info "review:  git -C $host_repo for-each-ref refs/sandbox-export/"
+  _info "diff:    git -C $host_repo diff <branch>..refs/sandbox-export/<branch>"
+  _info "merge:   git -C $host_repo merge refs/sandbox-export/<branch>"
+  _info "drop:    git -C $host_repo for-each-ref --format='delete %(refname)' refs/sandbox-export/ | git -C $host_repo update-ref --stdin"
+}
+
+cmd_list() {
+  _require_docker
+  local out
+  out=$(docker ps -a --filter "name=^${NAME_PREFIX}-" \
+    --format '{{.Names}}\t{{.Status}}\t{{.RunningFor}}')
+  if [[ -z "$out" ]]; then _info "no sandboxes"; return 0; fi
+  printf '%s%-50s %-25s %s%s\n' "$C_BOLD" NAME STATUS UPTIME "$C_RESET"
+  printf '%s\n' "$out" | column -t -s $'\t'
+}
+
+cmd_info() {
+  _row "Image:"  "$IMAGE"
+  if _image_built; then
+    local id; id=$(docker image inspect -f '{{.Id}}' "$IMAGE" 2>/dev/null | cut -c8-19)
+    _row "Built:" "$id"
+  else
+    _row "Built:" "${C_YELLOW}not built${C_RESET}"
+  fi
+  local current stored
+  current=$(_dockerfile_hash 2>/dev/null || echo "?")
+  stored=$(cat "$(_built_hash_file)" 2>/dev/null || echo "?")
+  if [[ "$current" == "$stored" ]]; then
+    _row "Hash:"  "$current"
+  else
+    _row "Hash:"  "${C_YELLOW}$current (current) ≠ $stored (built)${C_RESET}"
+  fi
+  _row "Cache:" "$CACHE_DIR"
+  echo
+  cmd_list
+}
+
+cmd_rebuild() {
+  _require_docker
+  local dir; dir=$(_dockerfile_dir)
+  _info "docker build --no-cache -t $IMAGE $dir"
+  docker build --no-cache -t "$IMAGE" "$dir"
+  _dockerfile_hash > "$(_built_hash_file)"
+}
+
+# LaunchAgent path: per-repo, keyed by an 8-char path hash so multiple
+# repos can be autostarted independently.
+_plist_path() {
+  local repo="$1"
+  local hash; hash=$(printf '%s' "$repo" | shasum -a 256 | cut -c1-8)
+  printf '%s/Library/LaunchAgents/dev.sakakibara.claude-sandbox.%s.plist\n' "$HOME" "$hash"
+}
+
+cmd_enable_autostart() {
+  local repo plist self
+  repo=$(_resolve_repo "${1:-}")
+  plist=$(_plist_path "$repo")
+  self=$(command -v claude-sandbox) || _die "claude-sandbox not on PATH"
+  mkdir -p "$(dirname "$plist")" "$CACHE_DIR"
+
+  cat > "$plist" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>$(basename "$plist" .plist)</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>$self</string>
+    <string>start</string>
+    <string>$repo</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>$CACHE_DIR/autostart.log</string>
+  <key>StandardErrorPath</key>
+  <string>$CACHE_DIR/autostart.log</string>
+</dict>
+</plist>
+EOF
+  launchctl load "$plist" 2>/dev/null || true
+  _info "autostart enabled for $repo"
+  _info "plist: $plist"
+}
+
+cmd_disable_autostart() {
+  local repo plist
+  repo=$(_resolve_repo "${1:-}")
+  plist=$(_plist_path "$repo")
+  if [[ -f "$plist" ]]; then
+    launchctl unload "$plist" 2>/dev/null || true
+    rm -f "$plist"
+    _info "autostart disabled for $repo"
+  else
+    _info "no autostart plist for $repo"
+  fi
+}
+
+cmd_help() {
+  cat <<'EOF'
+claude-sandbox — Docker-isolated Claude Code, one container per repo.
+
+Usage:
+  claude-sandbox [PERM] [ISO] [repo]        start + attach (default mode)
+  claude-sandbox start [PERM] [ISO] [repo]  start detached (no TTY)
+  claude-sandbox attach [name]              attach to a running sandbox
+  claude-sandbox stop [--purge] [name|--all]  stop & remove
+  claude-sandbox export [name]              --strict only: git-fetch volume
+                                            branches into the host repo
+                                            as refs/sandbox-export/*
+  claude-sandbox list                       all sandboxes
+  claude-sandbox info                       image + sandbox status
+  claude-sandbox rebuild                    docker build --no-cache
+  claude-sandbox enable-autostart [repo]    LaunchAgent: start at login
+  claude-sandbox disable-autostart [repo]
+  claude-sandbox help
+
+Permission modes (PERM):
+  --bypass    (default) no permission prompts; the sandbox is the firewall
+  --auto      acceptEdits mode; some prompts on high-risk operations
+
+Isolation modes (ISO):
+  (default)   bind-mount cwd as /workspace, ~/.claude RW.
+              Risk: Claude can rm -rf the cwd; ~/.claude can be corrupted.
+              Host filesystem outside those two mounts: 0% risk.
+
+  --worktree  bind-mount a fresh `git worktree add` (under cache dir)
+              instead of cwd. Main checkout is unreachable from the
+              container. ~/.claude RW (same as default).
+              Cheap "just in case" upgrade; one extra arg.
+
+  --strict    /workspace is a docker volume seeded once from the cwd repo.
+              ~/.claude is a docker volume seeded once from host ~/.claude.
+              The long-running container has NO host bind mounts (except
+              ~/.gitconfig RO for commit identity). Host repo and host
+              ~/.claude cannot be touched by the container at all.
+              Use `claude-sandbox export` to git-fetch changes back to
+              the host repo as refs/sandbox-export/*; review and merge
+              at your own pace.
+
+Detach without stopping: Ctrl-p Ctrl-q.
+
+Drive any running sandbox from your phone via claude.ai/code or the
+Claude mobile app — `claude --remote-control` polls the Anthropic API
+outbound; no inbound port is opened.
+EOF
+}
+
+main() {
+  local sub="${1:-}"
+  case "$sub" in
+    start)              shift; cmd_start "$@" ;;
+    attach)             shift; cmd_attach "$@" ;;
+    stop)               shift; cmd_stop "$@" ;;
+    export)             shift; cmd_export "$@" ;;
+    list|ls)            shift; cmd_list "$@" ;;
+    info|status)        shift; cmd_info "$@" ;;
+    rebuild)            shift; cmd_rebuild "$@" ;;
+    enable-autostart)   shift; cmd_enable_autostart "$@" ;;
+    disable-autostart)  shift; cmd_disable_autostart "$@" ;;
+    help|-h|--help)     cmd_help ;;
+    *)                  cmd_default "$@" ;;
+  esac
+}
+
+main "$@"
