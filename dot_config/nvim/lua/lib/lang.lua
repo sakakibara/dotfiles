@@ -74,14 +74,33 @@ function M.setup(spec)
   end
 
   if (spec.parsers and #spec.parsers > 0) or spec.parsers_setup then
-    local parsers = spec.parsers
-    local parsers_setup = spec.parsers_setup
-    Lib.plugin.on_load("nvim-treesitter", function()
-      if parsers_setup then parsers_setup() end
-      if parsers and #parsers > 0 then
-        require("nvim-treesitter").install(parsers)
+    -- Register parsers in the per-ft on-demand registry. The treesitter
+    -- spec's FileType autocmd reads the registry and installs the
+    -- parsers the first time a buffer of that ft opens. parsers_setup
+    -- is still fired at nvim-treesitter load time (rare; for parsers
+    -- that need extra wiring beyond install).
+    if spec.parsers and #spec.parsers > 0 then
+      -- Use the same ft we resolved for mason.
+      local parser_ft = spec.ft
+      if not parser_ft then
+        for level = 2, 8 do
+          local info = debug.getinfo(level, "S")
+          if not info then break end
+          local src = info.source or ""
+          local lang_match = src:match("/config/plugins/lang/([%w_]+)%.lua$")
+          if lang_match then parser_ft = lang_match; break end
+        end
       end
-    end)
+      if not parser_ft then
+        error("Lib.lang.setup: cannot determine ft for parsers (set spec.ft)")
+      end
+      for _, parser in ipairs(spec.parsers) do
+        Lib.parsers.add(parser, { ft = parser_ft })
+      end
+    end
+    if spec.parsers_setup then
+      Lib.plugin.on_load("nvim-treesitter", spec.parsers_setup)
+    end
   end
 
   if spec.servers then

@@ -5,6 +5,7 @@ local T = require("tests.helpers")
 -- closures inside setup() see the current mocks.
 local real = {
   mason   = Lib.mason,
+  parsers = Lib.parsers,
   neotest = Lib.neotest,
   plugin  = Lib.plugin,
   lsp     = Lib.lsp,
@@ -12,7 +13,8 @@ local real = {
 
 local function with_mocks(fn)
   local recorded = {
-    mason       = {},
+    mason       = {},   -- list of tool names
+    parsers     = {},   -- list of parser names
     neotest     = {},   -- {name=, factory=}
     on_load     = {},   -- {plugin=, fn=}
     lsp_cfg     = {},   -- {name=, cfg=}
@@ -21,13 +23,22 @@ local function with_mocks(fn)
   }
 
   Lib.mason = {
-    -- New API: variadic names, optional trailing opts table.
+    -- New API: variadic names, trailing opts table with ft.
     -- Record only the string names so existing assertions (which check
     -- recorded.mason against a list of names) keep passing.
     add = function(...)
       for _, t in ipairs({ ... }) do
         if type(t) == "string" then
           recorded.mason[#recorded.mason + 1] = t
+        end
+      end
+    end,
+  }
+  Lib.parsers = {
+    add = function(...)
+      for _, t in ipairs({ ... }) do
+        if type(t) == "string" then
+          recorded.parsers[#recorded.parsers + 1] = t
         end
       end
     end,
@@ -86,6 +97,7 @@ local function with_mocks(fn)
   package.loaded["lint"] = prev_lint
   vim.lsp.config = real_lsp_config
   Lib.mason = real.mason
+  Lib.parsers = real.parsers
   Lib.neotest = real.neotest
   Lib.plugin = real.plugin
   Lib.lsp = real.lsp
@@ -121,13 +133,15 @@ T.describe("lib.lang.setup", function()
       })
 
       T.eq(rec.mason, { "tool1", "tool2" })
+      T.eq(rec.parsers, { "lang1", "lang2" })
       T.eq(#rec.neotest, 1)
       T.eq(rec.neotest[1].name, "adapter1")
 
-      -- on_load entries: nvim-treesitter, nvim-lspconfig, conform.nvim
+      -- on_load entries: nvim-lspconfig, conform.nvim. nvim-treesitter
+      -- is only registered when parsers_setup is set (covered by a
+      -- separate test); plain parsers list goes to Lib.parsers.add.
       local plugins_seen = {}
       for _, e in ipairs(rec.on_load) do plugins_seen[e.plugin] = e.fn end
-      T.truthy(plugins_seen["nvim-treesitter"], "missing nvim-treesitter on_load")
       T.truthy(plugins_seen["nvim-lspconfig"], "missing nvim-lspconfig on_load")
       T.truthy(plugins_seen["conform.nvim"], "missing conform.nvim on_load")
 
@@ -220,24 +234,19 @@ T.describe("lib.lang.setup", function()
     end)
   end)
 
-  T.it("parsers_setup runs before install inside the nvim-treesitter on_load", function()
-    local order = {}
+  T.it("parsers list goes to Lib.parsers, parsers_setup runs on nvim-treesitter load", function()
     with_mocks(function(rec, lang)
+      local setup_fired = false
       lang.setup({
-        parsers = { "nu" },
-        parsers_setup = function() order[#order + 1] = "setup" end,
+        ft            = "nu",
+        parsers       = { "nu" },
+        parsers_setup = function() setup_fired = true end,
       })
-      -- Stub require("nvim-treesitter") so .install() can be observed.
-      local prev_ts = package.loaded["nvim-treesitter"]
-      package.loaded["nvim-treesitter"] = {
-        install = function(p)
-          order[#order + 1] = "install"
-          T.eq(p, { "nu" })
-        end,
-      }
+      -- Parsers list went to Lib.parsers (recorded by mock), not to install.
+      T.eq(rec.parsers, { "nu" })
+      -- parsers_setup is registered as a nvim-treesitter on_load callback.
       rec:drive("nvim-treesitter")
-      package.loaded["nvim-treesitter"] = prev_ts
-      T.eq(order, { "setup", "install" })
+      T.eq(setup_fired, true)
     end)
   end)
 

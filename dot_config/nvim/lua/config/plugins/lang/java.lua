@@ -4,9 +4,7 @@ if vim.fn.executable("java") == 0 then return {} end
 Lib.mason.add("jdtls",                            { ft = "java" })
 Lib.mason.add("java-debug-adapter", "java-test",  { ft = "java" })
 
-Lib.plugin.on_load("nvim-treesitter", function()
-  require("nvim-treesitter").install({ "java" })
-end)
+Lib.parsers.add("java", { ft = "java" })
 
 -- nvim-jdtls owns jdtls startup entirely; no nvim-lspconfig registration.
 

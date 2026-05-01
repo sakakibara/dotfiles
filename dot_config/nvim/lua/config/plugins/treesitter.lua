@@ -4,18 +4,22 @@
 -- legacy branch for Nvim 0.11 — it has the iter_matches API mismatch.
 -- main dropped the configs module; highlighting/folds/indent are wired
 -- per-filetype via native vim.treesitter APIs.
+--
+-- Parsers themselves are registered via Lib.parsers.add(...) by lang
+-- spec files and the call below for editor-baseline parsers. The
+-- FileType autocmd in config() reads the registry and installs the
+-- right parser(s) the first time a buffer of that ft opens.
 
--- Filetypes we install treesitter for. Module-level so `init` can use
--- it to register tree-sitter-cli with these same fts (so the cli installs
--- on-demand alongside the first parser, not unconditionally at startup).
-local WANTED_FTS = {
-  "bash", "c", "cpp", "css", "html",
-  "javascript", "json", "lua", "luadoc",
-  "markdown", "markdown_inline", "python",
-  "query", "regex", "rust", "styled",
-  "toml", "tsx", "typescript", "vim",
-  "vimdoc", "yaml",
-}
+-- Editor-baseline parsers — these aren't tied to a single lang/*.lua
+-- but are useful across the editor (own config files, embedded snippets,
+-- chrome-side rendering). Tagged with their natural fts.
+Lib.parsers.add("lua",     { ft = "lua" })
+Lib.parsers.add("luadoc",  { ft = "lua" })
+Lib.parsers.add("vim",     { ft = "vim" })
+Lib.parsers.add("vimdoc",  { ft = "help" })
+Lib.parsers.add("query",   { ft = "query" })
+Lib.parsers.add("regex",   { ft = "regex" })
+Lib.parsers.add("bash",    { ft = { "bash", "sh", "zsh" } })
 
 return {
   {
@@ -27,10 +31,10 @@ return {
     -- below already handles install/update on every nvim launch.
     init = function()
       -- main branch compiles parsers on-demand and requires tree-sitter-cli
-      -- (>= 0.26.1) on PATH. mason's registry has it. Tagged with the
-      -- full ft whitelist so it installs on-demand alongside the first
-      -- parser, never eagerly at startup.
-      Lib.mason.add("tree-sitter-cli", { ft = WANTED_FTS })
+      -- (>= 0.26.1) on PATH. mason's registry has it. Tag tree-sitter-cli
+      -- with every ft we have a registered parser for, so the cli
+      -- installs alongside the first parser request, never eagerly.
+      Lib.mason.add("tree-sitter-cli", { ft = Lib.parsers.fts() })
       -- Clean stale tree-sitter-<lang>-tmp dirs from interrupted prior
       -- installs. nvim-treesitter "main" doesn't clean these on startup,
       -- so a previously-interrupted install leaves EEXIST + truncated-
@@ -67,20 +71,21 @@ return {
         install_dir = vim.fn.stdpath("data") .. "/site",
       })
 
-      -- Whitelist set built from the module-level WANTED_FTS list. A
-      -- buffer with filetype X gets treesitter only if X is in this set.
-      local WANTED = {}
-      for _, ft in ipairs(WANTED_FTS) do WANTED[ft] = true end
-
-      -- Per-lang install state to avoid duplicate concurrent installs.
-      -- "installing": install task started, not yet known to be done
-      -- "installed":  parser file exists on disk, ready to use
-      -- nil:          not yet attempted
-      local install_state = {}
+      -- Track which fts have already had their parser-install attempted
+      -- so we don't re-fire on every buffer of the same filetype.
+      local install_state = {} -- ft → "installing" | "installed"
+      -- Seed with parsers already on disk: any ft whose Lib.parsers
+      -- entries are all installed is marked "installed".
       do
         local ts_config = require("nvim-treesitter.config")
-        for _, lang in ipairs(ts_config.get_installed()) do
-          install_state[lang] = "installed"
+        local installed_set = {}
+        for _, p in ipairs(ts_config.get_installed()) do installed_set[p] = true end
+        for _, ft in ipairs(Lib.parsers.fts()) do
+          local all_present = true
+          for _, p in ipairs(Lib.parsers.list_for_ft(ft)) do
+            if not installed_set[p] then all_present = false; break end
+          end
+          if all_present then install_state[ft] = "installed" end
         end
       end
 
@@ -98,17 +103,19 @@ return {
         end)
       end
 
-      -- On every FileType, install the parser if needed (async), and
-      -- start treesitter when the parser becomes available. The first
-      -- buffer of a given filetype triggers the install; subsequent
-      -- buffers either start immediately (already installed) or wait
-      -- for the in-flight install via state tracking.
+      -- On every FileType, look up parsers registered for that ft via
+      -- Lib.parsers. If any aren't installed, kick off install async
+      -- and start treesitter on completion. If all already installed,
+      -- start immediately.
       vim.api.nvim_create_autocmd("FileType", {
         group = vim.api.nvim_create_augroup("Lib.treesitter.highlight", { clear = true }),
         callback = function(args)
           local bufnr = args.buf
           local ft = vim.bo[bufnr].filetype
-          if ft == "" or ft == "bigfile" or not WANTED[ft] then return end
+          if ft == "" or ft == "bigfile" then return end
+
+          local parsers = Lib.parsers.list_for_ft(ft)
+          if #parsers == 0 then return end  -- no parsers wanted for this ft
 
           local state = install_state[ft]
           if state == "installed" then
@@ -116,21 +123,17 @@ return {
             return
           end
           if state == "installing" then
-            -- An earlier buffer kicked off the install; the completion
-            -- callback already has logic to reapply to all matching
-            -- bufs. Nothing to do here.
+            -- An earlier buffer kicked off the install; its completion
+            -- callback applies to every matching buffer. Nothing to do.
             return
           end
 
           install_state[ft] = "installing"
-          local task = require("nvim-treesitter").install({ ft })
+          local task = require("nvim-treesitter").install(parsers)
           if task and type(task.await) == "function" then
             task:await(function()
               vim.schedule(function()
                 install_state[ft] = "installed"
-                -- Apply to every loaded buffer of this filetype, not
-                -- just the one that triggered (more buffers may have
-                -- been opened while we were installing).
                 for _, b in ipairs(vim.api.nvim_list_bufs()) do
                   if vim.api.nvim_buf_is_loaded(b) and vim.bo[b].filetype == ft then
                     start_for_buf(b)
@@ -139,7 +142,6 @@ return {
               end)
             end)
           else
-            -- Older/unexpected API shape: assume sync, mark installed.
             install_state[ft] = "installed"
             start_for_buf(bufnr)
           end

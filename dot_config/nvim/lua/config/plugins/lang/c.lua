@@ -4,9 +4,8 @@ if vim.fn.executable("gcc") == 0 then return {} end
 Lib.mason.add("clangd",   { ft = { "c", "cpp" } })
 Lib.mason.add("codelldb", { ft = { "c", "cpp" } })
 
-Lib.plugin.on_load("nvim-treesitter", function()
-  require("nvim-treesitter").install({ "cpp" })
-end)
+Lib.parsers.add("c",   { ft = "c" })
+Lib.parsers.add("cpp", { ft = { "c", "cpp" } })
 
 Lib.plugin.on_load("nvim-dap", function()
   local dap = require("dap")

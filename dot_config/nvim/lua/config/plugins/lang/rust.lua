@@ -9,9 +9,7 @@ Lib.mason.add("codelldb", { ft = "rust" })
 
 Lib.neotest.add("rustaceanvim", function() return require("rustaceanvim.neotest") end)
 
-Lib.plugin.on_load("nvim-treesitter", function()
-  require("nvim-treesitter").install({ "rust", "ron" })
-end)
+Lib.parsers.add("rust", "ron", { ft = "rust" })
 
 -- NOTE: no vim.lsp.config for rust_analyzer — rustaceanvim owns it entirely.
 -- NOTE: bacon_ls fallback (old config gated it on `diagnostics == "bacon-ls"`)

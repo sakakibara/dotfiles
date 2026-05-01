@@ -3,9 +3,7 @@ if vim.fn.executable("helm") == 0 then return {} end
 
 Lib.mason.add("helm-ls", { ft = "helm" })
 
-Lib.plugin.on_load("nvim-treesitter", function()
-  require("nvim-treesitter").install({ "helm" })
-end)
+Lib.parsers.add("helm", { ft = "helm" })
 
 Lib.plugin.on_load("nvim-lspconfig", function()
   vim.lsp.config("helm_ls", { capabilities = Lib.lsp.capabilities() })
