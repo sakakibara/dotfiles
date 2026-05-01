@@ -46,7 +46,17 @@ RUN npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}
 
 # uid 1000: OrbStack on macOS translates ownership at the bind-mount
 # layer so files written here appear owned by the host user on disk.
-RUN useradd --create-home --shell /bin/bash --uid 1000 claude
+# Pre-create ~/.local/{bin,share}: trixie-slim's useradd + the mise
+# install script don't agree on home dir permissions, and the mise
+# installer fails with EACCES on mkdir without these dirs already in
+# place with explicit claude ownership.
+RUN useradd --create-home --shell /bin/bash --uid 1000 claude \
+    && install -d -o claude -g claude -m 0755 \
+       /home/claude/.local \
+       /home/claude/.local/bin \
+       /home/claude/.local/share \
+       /home/claude/.cache \
+       /home/claude/.config
 
 COPY entrypoint.sh /usr/local/bin/claude-sandbox-entrypoint
 RUN chmod 755 /usr/local/bin/claude-sandbox-entrypoint
