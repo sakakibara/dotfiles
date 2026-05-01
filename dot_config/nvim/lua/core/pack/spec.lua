@@ -1,14 +1,7 @@
 -- lua/core/pack/spec.lua
 local M = {}
 
-local function notify(msg, level)
-  level = level or vim.log.levels.INFO
-  local hl = (level >= vim.log.levels.ERROR and "ErrorMsg")
-    or (level >= vim.log.levels.WARN and "WarningMsg")
-    or "Normal"
-  pcall(vim.api.nvim_echo, { { tostring(msg), hl } }, true, {})
-  vim.notify(msg, level)
-end
+local notify = require("core.pack.util").notify
 
 local ALLOWED_FIELDS = {
   [1] = true, src = true, name = true, version = true, branch = true,

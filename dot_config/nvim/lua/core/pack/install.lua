@@ -20,9 +20,7 @@ function M.install_dir(name)
   return install_root() .. "/" .. name
 end
 
-local function notify(msg, level)
-  vim.notify(msg, level or vim.log.levels.INFO)
-end
+local notify = require("core.pack.util").notify
 
 -- Resolve and check out the right ref for a freshly-cloned plugin.
 -- Lockfile takes precedence: if a SHA is recorded for this plugin we
