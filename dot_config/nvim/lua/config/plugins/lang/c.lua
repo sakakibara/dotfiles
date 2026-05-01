@@ -1,12 +1,7 @@
 -- lua/config/plugins/lang/c.lua
-if vim.fn.executable("gcc") == 0 then return {} end
 
-Lib.mason.add("clangd",   { ft = { "c", "cpp" } })
-Lib.mason.add("codelldb", { ft = { "c", "cpp" } })
-
-Lib.parsers.add("c",   { ft = "c" })
-Lib.parsers.add("cpp", { ft = { "c", "cpp" } })
-
+-- DAP adapter + per-language configurations. Registered unconditionally;
+-- adapters/configurations only fire when the user starts a debug session.
 Lib.plugin.on_load("nvim-dap", function()
   local dap = require("dap")
   if not dap.adapters["codelldb"] then
@@ -42,45 +37,8 @@ Lib.plugin.on_load("nvim-dap", function()
   end
 end)
 
-Lib.plugin.on_load("nvim-lspconfig", function()
-  vim.lsp.config("clangd", {
-    capabilities = vim.tbl_deep_extend(
-      "force",
-      Lib.lsp.capabilities(),
-      { offsetEncoding = { "utf-16" } }
-    ),
-    cmd = {
-      "clangd",
-      "--background-index",
-      "--clang-tidy",
-      "--header-insertion=iwyu",
-      "--completion-style=detailed",
-      "--function-arg-placeholders",
-      "--fallback-style=llvm",
-    },
-    init_options = {
-      usePlaceholders = true,
-      completeUnimported = true,
-      clangdFileStatus = true,
-    },
-    root_dir = function(bufnr, on_dir)
-      local fname = vim.api.nvim_buf_get_name(bufnr)
-      local root = vim.fs.root(fname, {
-        "Makefile",
-        "configure.ac",
-        "configure.in",
-        "config.h.in",
-        "meson.build",
-        "meson_options.txt",
-        "build.ninja",
-      }) or vim.fs.root(fname, { "compile_commands.json", "compile_flags.txt" }) or vim.fs.root(fname, { ".git" })
-      if root then on_dir(root) end
-    end,
-  })
-  Lib.lsp.enable("clangd")
-end)
-
--- Header/source switch keymap (C/C++ buffers).
+-- Header/source switch keymap (C/C++ buffers). The keymap calls clangd's
+-- LSP command; if clangd isn't running, the command fails harmlessly.
 vim.api.nvim_create_autocmd("FileType", {
   pattern = { "c", "cpp", "h", "hpp" },
   callback = function(args)
@@ -93,34 +51,72 @@ vim.api.nvim_create_autocmd("FileType", {
   end,
 })
 
-return {
-  {
-    "p00f/clangd_extensions.nvim",
-    name = "clangd_extensions.nvim",
-    ft = { "c", "cpp", "h", "hpp" },
-    opts = {
-      inlay_hints = {
-        inline = false,
+return Lib.lang.setup({
+  ft = { "c", "cpp" },
+  cmd = "gcc",
+  mason = { "clangd", "codelldb" },
+  parsers = { "c", "cpp" },
+  servers = {
+    clangd = {
+      capabilities = { offsetEncoding = { "utf-16" } },
+      cmd = {
+        "clangd",
+        "--background-index",
+        "--clang-tidy",
+        "--header-insertion=iwyu",
+        "--completion-style=detailed",
+        "--function-arg-placeholders",
+        "--fallback-style=llvm",
       },
-      ast = {
-        role_icons = {
-          type = "",
-          declaration = "",
-          expression = "",
-          specifier = "",
-          statement = "",
-          ["template argument"] = "",
+      init_options = {
+        usePlaceholders = true,
+        completeUnimported = true,
+        clangdFileStatus = true,
+      },
+      root_dir = function(bufnr, on_dir)
+        local fname = vim.api.nvim_buf_get_name(bufnr)
+        local root = vim.fs.root(fname, {
+          "Makefile",
+          "configure.ac",
+          "configure.in",
+          "config.h.in",
+          "meson.build",
+          "meson_options.txt",
+          "build.ninja",
+        }) or vim.fs.root(fname, { "compile_commands.json", "compile_flags.txt" }) or vim.fs.root(fname, { ".git" })
+        if root then on_dir(root) end
+      end,
+    },
+  },
+  plugins = {
+    {
+      "p00f/clangd_extensions.nvim",
+      name = "clangd_extensions.nvim",
+      ft = { "c", "cpp", "h", "hpp" },
+      opts = {
+        inlay_hints = {
+          inline = false,
         },
-        kind_icons = {
-          Compound = "",
-          Recovery = "",
-          TranslationUnit = "",
-          PackExpansion = "",
-          TemplateTypeParm = "",
-          TemplateTemplateParm = "",
-          TemplateParamObject = "",
+        ast = {
+          role_icons = {
+            type = "",
+            declaration = "",
+            expression = "",
+            specifier = "",
+            statement = "",
+            ["template argument"] = "",
+          },
+          kind_icons = {
+            Compound = "",
+            Recovery = "",
+            TranslationUnit = "",
+            PackExpansion = "",
+            TemplateTypeParm = "",
+            TemplateTemplateParm = "",
+            TemplateParamObject = "",
+          },
         },
       },
     },
   },
-}
+})

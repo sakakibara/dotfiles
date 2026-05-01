@@ -1,29 +1,6 @@
 -- lua/config/plugins/lang/go.lua
-if vim.fn.executable("go") == 0 then return {} end
-
--- Populate semanticTokensProvider from negotiated capabilities if the server
--- didn't advertise one — matches the old setup() hook behavior.
-Lib.lsp.on_attach(function(args)
-  local client = vim.lsp.get_client_by_id(args.data and args.data.client_id)
-  if not client or client.name ~= "gopls" then return end
-  if not client.server_capabilities.semanticTokensProvider then
-    local semantic = client.config.capabilities
-      and client.config.capabilities.textDocument
-      and client.config.capabilities.textDocument.semanticTokens
-    if semantic then
-      client.server_capabilities.semanticTokensProvider = {
-        full = true,
-        legend = {
-          tokenTypes = semantic.tokenTypes,
-          tokenModifiers = semantic.tokenModifiers,
-        },
-        range = true,
-      }
-    end
-  end
-end)
-
 return Lib.lang.setup({
+  cmd = "go",
   mason = { "gopls", "goimports", "gofumpt", "delve" },
   parsers = { "go", "gomod", "gowork", "gosum" },
   servers = {
@@ -64,6 +41,25 @@ return Lib.lang.setup({
           semanticTokens = true,
         },
       },
+      -- Populate semanticTokensProvider from negotiated capabilities if the
+      -- server didn't advertise one — matches the old setup() hook behavior.
+      _on_attach = function(_args, client)
+        if not client.server_capabilities.semanticTokensProvider then
+          local semantic = client.config.capabilities
+            and client.config.capabilities.textDocument
+            and client.config.capabilities.textDocument.semanticTokens
+          if semantic then
+            client.server_capabilities.semanticTokensProvider = {
+              full = true,
+              legend = {
+                tokenTypes = semantic.tokenTypes,
+                tokenModifiers = semantic.tokenModifiers,
+              },
+              range = true,
+            }
+          end
+        end
+      end,
     },
   },
   formatters = { go = { "goimports", "gofumpt" } },
