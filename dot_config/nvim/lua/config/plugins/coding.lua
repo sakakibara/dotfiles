@@ -32,13 +32,7 @@ return {
     dependencies = { "friendly-snippets", "lazydev.nvim" },
     init = function()
       -- Pre-download blink's Rust binary during the cold-install splash
-      -- window so it's ready by the time the user starts typing. Only
-      -- fires when the cold-install splash is actually up — i.e., this
-      -- is a first-run / fresh-state-dir startup. On every subsequent
-      -- startup the binary is already on disk and blink's lazy load
-      -- handles the no-op `ensure_downloaded` itself; we don't even
-      -- packadd here. Gated on UI._active_splash so the work is
-      -- exclusive to the first-run scenario the user wants it for.
+      -- window so it's ready by the time the user starts typing.
       vim.api.nvim_create_autocmd("User", {
         pattern  = "VeryLazy",
         once     = true,
@@ -49,9 +43,38 @@ return {
           pcall(vim.cmd, "packadd blink.cmp")
           local ok_utils, utils = pcall(require, "blink.cmp.lib.utils")
           if ok_utils then patch_utils_notify(utils) end
-          pcall(function()
-            require("blink.cmp.fuzzy.download").ensure_downloaded(function() end)
-          end)
+
+          -- Wrap ensure_downloaded so our pre-download AND blink's
+          -- own setup-time call coalesce into a single in-flight
+          -- download. Without this, blink's setup() (fired by the
+          -- InsertEnter lazy trigger) calls ensure_downloaded a
+          -- second time while ours is still downloading — sees no
+          -- binary yet, kicks off a duplicate download with its own
+          -- "Downloading pre-built binary" notification.
+          local ok_dl, dl = pcall(require, "blink.cmp.fuzzy.download")
+          if not ok_dl then return end
+          local orig = dl.ensure_downloaded
+          local state = "idle"  -- "idle" | "running" | "done"
+          local pending = {}    -- callbacks to fire when state == "done"
+          dl.ensure_downloaded = function(cb)
+            if state == "done" then
+              -- Already finished; deliver immediately.
+              vim.schedule(function() if cb then cb(nil, "rust") end end)
+              return
+            end
+            if cb then pending[#pending + 1] = cb end
+            if state == "running" then return end
+            state = "running"
+            orig(function(err, impl)
+              state = "done"
+              local cbs = pending; pending = {}
+              for _, fn in ipairs(cbs) do
+                pcall(fn, err, impl)
+              end
+            end)
+          end
+          -- Kick off the pre-download immediately.
+          dl.ensure_downloaded(function() end)
         end,
       })
     end,
