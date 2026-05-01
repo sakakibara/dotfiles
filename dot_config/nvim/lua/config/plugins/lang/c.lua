@@ -1,8 +1,8 @@
 -- lua/config/plugins/lang/c.lua
 if vim.fn.executable("gcc") == 0 then return {} end
 
-Lib.mason.add("clangd")
-Lib.mason.add("codelldb")
+Lib.mason.add("clangd",   { ft = { "c", "cpp" } })
+Lib.mason.add("codelldb", { ft = { "c", "cpp" } })
 
 Lib.plugin.on_load("nvim-treesitter", function()
   require("nvim-treesitter").install({ "cpp" })

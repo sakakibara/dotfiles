@@ -21,8 +21,15 @@ local function with_mocks(fn)
   }
 
   Lib.mason = {
+    -- New API: variadic names, optional trailing opts table.
+    -- Record only the string names so existing assertions (which check
+    -- recorded.mason against a list of names) keep passing.
     add = function(...)
-      for _, t in ipairs({ ... }) do recorded.mason[#recorded.mason + 1] = t end
+      for _, t in ipairs({ ... }) do
+        if type(t) == "string" then
+          recorded.mason[#recorded.mason + 1] = t
+        end
+      end
     end,
   }
   Lib.neotest = {

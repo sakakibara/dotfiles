@@ -45,8 +45,29 @@ function M.setup(spec)
   end
 
   if spec.mason then
+    -- Derive on-demand ft for mason tools. Priority:
+    --   1. spec.ft           — explicit override (e.g. multi-ft langs)
+    --   2. caller's filename — lang/<x>.lua → "<x>"  (covers most specs)
+    --   3. nil               — eager install (no ft tag)
+    local ft = spec.ft
+    if not ft then
+      -- Walk the call stack until we find a frame whose source is a
+      -- lang/*.lua file; that frame's filename basename becomes the ft.
+      for level = 2, 8 do
+        local info = debug.getinfo(level, "S")
+        if not info then break end
+        local src = info.source or ""
+        local lang_match = src:match("/config/plugins/lang/([%w_]+)%.lua$")
+        if lang_match then ft = lang_match; break end
+      end
+    end
+    local opts = ft and { ft = ft } or nil
     for _, tool in ipairs(spec.mason) do
-      Lib.mason.add(tool)
+      if opts then
+        Lib.mason.add(tool, opts)
+      else
+        Lib.mason.add(tool)
+      end
     end
   end
 

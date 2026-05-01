@@ -5,7 +5,7 @@ if vim.fn.executable("rustc") == 0 then return {} end
 --   rustup component add rust-analyzer
 
 -- codelldb is shared with c.lua; Lib.mason.add is idempotent.
-Lib.mason.add("codelldb")
+Lib.mason.add("codelldb", { ft = "rust" })
 
 Lib.neotest.add("rustaceanvim", function() return require("rustaceanvim.neotest") end)
 

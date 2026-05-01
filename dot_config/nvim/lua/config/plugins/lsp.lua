@@ -6,7 +6,7 @@ return {
     event = "LazyFile",
     dependencies = { "lazydev.nvim" },
     init = function()
-      Lib.mason.add("lua-language-server")
+      Lib.mason.add("lua-language-server", { ft = "lua" })
     end,
     config = function()
       local caps = Lib.lsp.capabilities()
@@ -55,20 +55,39 @@ return {
     opts = {
       ui = { border = "rounded" },
     },
-  },
+    config = function(_, opts)
+      require("mason").setup(opts)
 
-  {
-    "WhoIsSethDaniel/mason-tool-installer.nvim",
-    name = "mason-tool-installer.nvim",
-    event = "VeryLazy",
-    dependencies = { "mason.nvim" },
-    config = function()
-      require("mason-tool-installer").setup({
-        ensure_installed = Lib.mason.list(),
-        auto_update = false,
-        run_on_start = true,
-        start_delay = 3000,
-        debounce_hours = 5,
+      -- Eager tools: install at VeryLazy unconditionally (filetype-
+      -- agnostic helpers like tree-sitter-cli). Already-installed tools
+      -- are no-ops in mason's registry handling.
+      local function install_missing(names)
+        if not names or #names == 0 then return end
+        local registry = require("mason-registry")
+        registry.refresh(function()
+          for _, name in ipairs(names) do
+            local ok, pkg = pcall(registry.get_package, name)
+            if ok and pkg and not pkg:is_installed() then
+              pkg:install()
+            end
+          end
+        end)
+      end
+      install_missing(Lib.mason.eager_list())
+
+      -- On-demand tools: install on first matching FileType. Tracks
+      -- which fts have been seen so we only refresh / scan the registry
+      -- once per ft (the actual mason install is itself idempotent).
+      local seen_ft = {}
+      vim.api.nvim_create_autocmd("FileType", {
+        group = vim.api.nvim_create_augroup("Lib.mason.on_demand", { clear = true }),
+        callback = function(args)
+          local ft = vim.bo[args.buf].filetype
+          if ft == "" or seen_ft[ft] then return end
+          seen_ft[ft] = true
+          local tools = Lib.mason.list_for_ft(ft)
+          if #tools > 0 then install_missing(tools) end
+        end,
       })
     end,
   },

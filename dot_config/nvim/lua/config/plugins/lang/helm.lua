@@ -1,7 +1,7 @@
 -- lua/config/plugins/lang/helm.lua
 if vim.fn.executable("helm") == 0 then return {} end
 
-Lib.mason.add("helm-ls")
+Lib.mason.add("helm-ls", { ft = "helm" })
 
 Lib.plugin.on_load("nvim-treesitter", function()
   require("nvim-treesitter").install({ "helm" })

@@ -6,7 +6,7 @@ return {
     event = { "BufWritePre" },
     cmd = "ConformInfo",
     init = function()
-      Lib.mason.add("stylua")
+      Lib.mason.add("stylua", { ft = "lua" })
       -- Register as a primary format source. Done in init (pre-load) so
       -- Lib.format.resolve sees conform before the first BufWritePre fires.
       -- sources() uses list_formatters (configured, regardless of binary
@@ -49,7 +49,7 @@ return {
     name = "nvim-lint",
     event = "LazyFile",
     init = function()
-      Lib.mason.add("selene")
+      Lib.mason.add("selene", { ft = "lua" })
     end,
     config = function()
       local lint = require("lint")
