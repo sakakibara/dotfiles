@@ -32,6 +32,25 @@ return {
         },
       })
       Lib.lsp.enable("lua_ls")
+
+      -- After lua_ls attaches, push lazydev's workspace library via
+      -- didChangeConfiguration so lua_ls re-analyzes with the vim
+      -- runtime types in scope. lua_ls's first pass on the buffer
+      -- happens before lazydev's library is wired up; without this
+      -- push, vim symbols stay flagged as undefined until the user
+      -- triggers a fresh content sync (`:e` etc.). The push is
+      -- idempotent — calling it after lazydev has already updated
+      -- settings is a no-op.
+      vim.api.nvim_create_autocmd("LspAttach", {
+        callback = function(args)
+          local client = vim.lsp.get_client_by_id(args.data.client_id)
+          if not client or client.name ~= "lua_ls" then return end
+          vim.schedule(function()
+            local ok_buf, lzd_buf = pcall(require, "lazydev.buf")
+            if ok_buf and lzd_buf.update then lzd_buf.update() end
+          end)
+        end,
+      })
     end,
   },
 
