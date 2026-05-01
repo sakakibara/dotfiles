@@ -13,28 +13,11 @@ return {
       Lib.mason.add("lua-language-server", { ft = "lua" })
     end,
     config = function()
-      local caps = Lib.lsp.capabilities()
-
-      -- lua_ls
       vim.lsp.config("lua_ls", {
-        capabilities = caps,
+        capabilities = Lib.lsp.capabilities(),
         settings = {
           Lua = {
-            -- Baseline runtime + library so `vim` is defined from the
-            -- initial lua_ls attach, before lazydev has a chance to
-            -- inject via workspace/didChangeConfiguration. lazydev
-            -- still runs and adds plugin-specific paths
-            -- (snacks.nvim, lazy.nvim) on top.
-            runtime = { version = "LuaJIT" },
-            workspace = {
-              checkThirdParty = false,
-              -- All rtp paths so lua_ls finds nvim's API stubs
-              -- (lua/vim/_meta — defines `vim`, `vim.api`, `vim.fn`,
-              -- etc.) plus every loaded plugin's lua/. lazydev's
-              -- workspace/didChangeConfiguration push extends this
-              -- with plugin-specific paths from the lazydev opts.
-              library = vim.api.nvim_get_runtime_file("", true),
-            },
+            workspace = { checkThirdParty = false },
             codeLens = { enable = true },
             completion = { callSnippet = "Replace" },
             doc = { privateName = { "^_" } },
@@ -50,54 +33,6 @@ return {
         },
       })
       Lib.lsp.enable("lua_ls")
-
-      -- Populate lazydev's per-workspace settings + install its
-      -- workspace/configuration handler synchronously on lua_ls
-      -- attach, BEFORE lua_ls sends its first workspace/configuration
-      -- request.
-      --
-      -- The race we're closing: lazydev replaces the
-      -- workspace/configuration handler to return ws.settings (a
-      -- per-workspace table built from client.settings + lazydev's
-      -- library injections). ws.settings starts empty {}; it's only
-      -- populated by workspace:update(). lazydev's own LspAttach hook
-      -- triggers update via a debounced (uv timer + vim.schedule_wrap)
-      -- path, which runs at least one tick after attach. lua_ls
-      -- typically sends workspace/configuration BEFORE that tick →
-      -- handler returns empty Lua section → lua_ls processes the
-      -- buffer with no library → "vim is not defined" diagnostics.
-      --
-      -- We bypass the debounce by calling workspace:update + Lsp.attach
-      -- (the handler installer) directly. Synchronous, idempotent.
-      vim.api.nvim_create_autocmd("LspAttach", {
-        callback = function(args)
-          local client = vim.lsp.get_client_by_id(args.data.client_id)
-          if not client or client.name ~= "lua_ls" then return end
-          local ok_ws, Workspace = pcall(require, "lazydev.workspace")
-          local ok_lsp, LzdLsp   = pcall(require, "lazydev.lsp")
-          if not (ok_ws and ok_lsp) then return end
-          -- Populate every workspace lua_ls might query in its
-          -- workspace/configuration request:
-          --   - Workspace.get(client, ws.name) for each workspace_folder
-          --     (lua_ls passes scopeUri = folder.uri)
-          --   - Workspace.single(client) as the no-folders fallback
-          -- Mirrors lazydev's own buf.update folder enumeration.
-          if client.workspace_folders and #client.workspace_folders > 0 then
-            for _, wsf in ipairs(client.workspace_folders) do
-              Workspace.get(client, wsf.name):update()
-            end
-          else
-            Workspace.single(client):update()
-          end
-          LzdLsp.attach(client)
-          -- Send didChangeConfiguration explicitly: covers the case
-          -- where lua_ls already issued its initial config request
-          -- and got empty settings before our handler installed.
-          -- lua_ls will re-request configuration on this notification
-          -- and now get the populated ws.settings.
-          LzdLsp.update(client)
-        end,
-      })
     end,
   },
 
