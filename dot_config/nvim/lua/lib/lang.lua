@@ -9,6 +9,21 @@
 
 local M = {}
 
+-- Walk up the Lua call stack looking for a `/config/plugins/lang/<x>.lua`
+-- frame. Used as a default ft for mason/parsers when the caller doesn't
+-- pass spec.ft explicitly. Match-on-path is what matters; level numbers
+-- shift with helper depth, so we just scan a generous range.
+local function caller_ft()
+  for level = 1, 16 do
+    local info = debug.getinfo(level, "S")
+    if not info then break end
+    local src = info.source or ""
+    local lang_match = src:match("/config/plugins/lang/([%w_]+)%.lua$")
+    if lang_match then return lang_match end
+  end
+  return nil
+end
+
 -- spec fields, all optional:
 --   cmd        string                    — executable name; if missing, return early
 --   mason      {string,...}              — mason-tool-installer ensure_installed entries
@@ -49,16 +64,7 @@ function M.setup(spec)
     --   1. spec.ft           — explicit override (e.g. multi-ft langs)
     --   2. caller's filename — lang/<x>.lua → "<x>"  (covers most specs)
     -- A ft must be resolvable; mason install is on-demand only.
-    local ft = spec.ft
-    if not ft then
-      for level = 2, 8 do
-        local info = debug.getinfo(level, "S")
-        if not info then break end
-        local src = info.source or ""
-        local lang_match = src:match("/config/plugins/lang/([%w_]+)%.lua$")
-        if lang_match then ft = lang_match; break end
-      end
-    end
+    local ft = spec.ft or caller_ft()
     if not ft then
       error("Lib.lang.setup: cannot determine ft for mason tools (set spec.ft explicitly)")
     end
@@ -81,16 +87,7 @@ function M.setup(spec)
     -- that need extra wiring beyond install).
     if spec.parsers and #spec.parsers > 0 then
       -- Use the same ft we resolved for mason.
-      local parser_ft = spec.ft
-      if not parser_ft then
-        for level = 2, 8 do
-          local info = debug.getinfo(level, "S")
-          if not info then break end
-          local src = info.source or ""
-          local lang_match = src:match("/config/plugins/lang/([%w_]+)%.lua$")
-          if lang_match then parser_ft = lang_match; break end
-        end
-      end
+      local parser_ft = spec.ft or caller_ft()
       if not parser_ft then
         error("Lib.lang.setup: cannot determine ft for parsers (set spec.ft)")
       end
