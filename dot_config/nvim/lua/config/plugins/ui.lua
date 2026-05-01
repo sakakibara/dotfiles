@@ -52,13 +52,16 @@ return {
           { find = "; after #%d+" },
           { find = "; before #%d+" },
         } }, view = "mini" },
-        -- nvim-treesitter "main" branch fires a vim.notify per language
-        -- during async install (50+ at once with our parser list). The
-        -- long_message_to_split preset routes that burst into a split
-        -- window. Skip the noice rendering entirely — :messages still
-        -- captures them for diagnostic inspection.
-        { filter = { event = "msg_show",
-          find = "^%[nvim%-treesitter/install/" }, opts = { skip = true } },
+        -- nvim-treesitter info messages (parser install / compile /
+        -- language installed) are routed via vim.notify when the
+        -- cold-install splash isn't open. Send them to the mini view
+        -- (bottom-right, lightweight) instead of the default toast
+        -- (top-right) so on-demand parser installs don't compete with
+        -- regular notifications for screen real estate.
+        { filter = { event = "notify",
+          find = "^%[install/" }, view = "mini" },
+        { filter = { event = "notify",
+          find = "^%[uninstall/" }, view = "mini" },
         -- blink.cmp's pre-built-binary download notifications fire on
         -- the first InsertEnter (when blink lazy-loads). Route to the
         -- mini view (bottom-right, lightweight) instead of the default

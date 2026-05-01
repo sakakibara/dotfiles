@@ -28,18 +28,24 @@ return {
       end
     end,
     config = function()
-      -- Reroute nvim-treesitter's info-level logger from nvim_echo (which
-      -- bursts to the cmdline and triggers press-enter when the install
-      -- queues many parsers in succession) to the cold-install splash
-      -- when it's open. After the splash closes, the messages are
-      -- silently dropped. warn/error are untouched so real failures
-      -- still surface via their normal echo path.
+      -- Reroute nvim-treesitter's info-level logger from nvim_echo
+      -- (which bursts to the cmdline and triggers press-enter when
+      -- the install queues many parsers in succession) to whatever
+      -- surface is most appropriate:
+      --   - Splash open  → splash status line (cold-install context)
+      --   - Splash closed → vim.notify (toast) so on-demand parser
+      --     installs (e.g., first time opening a Python buffer)
+      --     give visible feedback
+      -- warn/error are untouched so real failures still surface via
+      -- their normal echo path.
       local ts_log = require("nvim-treesitter.log")
       local UI = require("core.pack.ui")
       ts_log.Logger.info = function(self, m, ...)
         local text = ("[%s] %s"):format(self.ctx or "?", m:format(...))
         if UI._active_splash then
           UI._active_splash:set_status_text(text)
+        else
+          vim.notify(text, vim.log.levels.INFO)
         end
       end
 
