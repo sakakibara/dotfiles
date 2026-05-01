@@ -44,6 +44,10 @@ dofile(vim.fn.getcwd() .. "/tests/pack/spec_spec.lua")
 dofile(vim.fn.getcwd() .. "/tests/pack/refs_spec.lua")
 dofile(vim.fn.getcwd() .. "/tests/pack/commands_spec.lua")
 
+dofile(vim.fn.getcwd() .. "/tests/lib/path_spec.lua")
+dofile(vim.fn.getcwd() .. "/tests/lib/mason_spec.lua")
+dofile(vim.fn.getcwd() .. "/tests/lib/parsers_spec.lua")
+
 dofile(vim.fn.getcwd() .. "/tests/lib/colors/init_spec.lua")
 dofile(vim.fn.getcwd() .. "/tests/lib/colors/color_spec.lua")
 dofile(vim.fn.getcwd() .. "/tests/lib/colors/parse_spec.lua")

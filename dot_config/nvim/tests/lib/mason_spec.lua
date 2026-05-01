@@ -1,0 +1,77 @@
+local T = require("tests.helpers")
+
+local function fresh()
+  package.loaded["lib.mason"] = nil
+  local M = require("lib.mason")
+  M._reset()
+  return M
+end
+
+T.describe("lib.mason", function()
+  T.it("registers a single tool against one filetype", function()
+    local M = fresh()
+    M.add("stylua", { ft = "lua" })
+    T.eq(M.list_for_ft("lua"), { "stylua" })
+  end)
+
+  T.it("registers many tools in one call (variadic)", function()
+    local M = fresh()
+    M.add("gopls", "goimports", "gofumpt", { ft = "go" })
+    T.eq(M.list_for_ft("go"), { "gofumpt", "goimports", "gopls" })
+  end)
+
+  T.it("registers one tool against multiple filetypes via ft = { ... }", function()
+    local M = fresh()
+    M.add("clangd", { ft = { "c", "cpp" } })
+    T.eq(M.list_for_ft("c"),   { "clangd" })
+    T.eq(M.list_for_ft("cpp"), { "clangd" })
+  end)
+
+  T.it("dedupes identical (tool, ft) pairs across calls", function()
+    local M = fresh()
+    M.add("codelldb", { ft = "rust" })
+    M.add("codelldb", { ft = "rust" })
+    T.eq(M.list_for_ft("rust"), { "codelldb" })
+  end)
+
+  T.it("list_for_ft returns sorted results", function()
+    local M = fresh()
+    M.add("zoo", "alpha", "mid", { ft = "x" })
+    T.eq(M.list_for_ft("x"), { "alpha", "mid", "zoo" })
+  end)
+
+  T.it("list_for_ft returns empty table for unknown filetype", function()
+    local M = fresh()
+    T.eq(M.list_for_ft("nonexistent"), {})
+  end)
+
+  T.it("list returns the union across all filetypes, sorted and deduped", function()
+    local M = fresh()
+    M.add("clangd", { ft = { "c", "cpp" } })
+    M.add("stylua", { ft = "lua" })
+    M.add("gopls",  { ft = "go" })
+    T.eq(M.list(), { "clangd", "gopls", "stylua" })
+  end)
+
+  T.it("errors when ft is omitted", function()
+    local M = fresh()
+    local ok, err = pcall(M.add, "x")
+    T.eq(ok, false)
+    T.truthy(tostring(err):find("ft is required"))
+  end)
+
+  T.it("errors when opts table lacks ft", function()
+    local M = fresh()
+    local ok, err = pcall(M.add, "x", {})
+    T.eq(ok, false)
+    T.truthy(tostring(err):find("ft is required"))
+  end)
+
+  T.it("_reset clears the registry", function()
+    local M = fresh()
+    M.add("stylua", { ft = "lua" })
+    M._reset()
+    T.eq(M.list_for_ft("lua"), {})
+    T.eq(M.list(), {})
+  end)
+end)
