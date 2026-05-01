@@ -16,7 +16,16 @@ return {
         capabilities = caps,
         settings = {
           Lua = {
-            workspace = { checkThirdParty = false },
+            -- Baseline runtime + library so `vim` is defined from the
+            -- initial lua_ls attach, before lazydev has a chance to
+            -- inject via workspace/didChangeConfiguration. lazydev
+            -- still runs and adds plugin-specific paths
+            -- (snacks.nvim, lazy.nvim) on top.
+            runtime = { version = "LuaJIT" },
+            workspace = {
+              checkThirdParty = false,
+              library = { vim.env.VIMRUNTIME .. "/lua" },
+            },
             codeLens = { enable = true },
             completion = { callSnippet = "Replace" },
             doc = { privateName = { "^_" } },
