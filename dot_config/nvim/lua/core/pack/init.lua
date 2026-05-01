@@ -17,17 +17,10 @@ M._warned_external_ft = {} -- { [mode..":"..lhs..":"..bufnr] = true } — ft-sco
 -- normally tees vim.notify into :messages history, but snacks.notifier loads
 -- eagerly inside pack.setup and replaces vim.notify with its own (toast-only,
 -- no :messages echo) — so any warning emitted from this file *after* snacks
--- loads would otherwise vanish from history. Echo to :messages directly here
--- in addition to calling vim.notify, regardless of which provider currently
--- owns it.
-local function notify(msg, level)
-  level = level or vim.log.levels.INFO
-  local hl = (level >= vim.log.levels.ERROR and "ErrorMsg")
-    or (level >= vim.log.levels.WARN and "WarningMsg")
-    or "Normal"
-  pcall(vim.api.nvim_echo, { { tostring(msg), hl } }, true, {})
-  vim.notify(msg, level)
-end
+-- loads would otherwise vanish from history. core.pack.util.notify echoes
+-- to :messages directly in addition to calling vim.notify, regardless of
+-- which provider currently owns it.
+local notify = require("core.pack.util").notify
 
 -- Keymaps. Two phases: (1) load_spec installs the real mapping after
 -- run_config — zero wrapper overhead on every subsequent press. (2) For
