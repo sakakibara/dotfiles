@@ -7,19 +7,21 @@ return {
     event = { "InsertEnter", "CmdlineEnter" },
     dependencies = { "friendly-snippets", "lazydev.nvim" },
     init = function()
-      -- Fire blink's pre-built Rust binary download during the cold-
-      -- install splash window instead of waiting for InsertEnter, so
-      -- the download is already complete (or in-flight) by the time
-      -- the user starts typing. blink stays lazy in every other
-      -- respect — its full setup() still runs on InsertEnter via
-      -- the spec's `event` trigger; we only kick off the download
-      -- early. Registered as a VeryLazy autocmd because blink's
-      -- modules aren't require-able until pack has cloned + packadd'd
-      -- the plugin (which happens before VeryLazy).
+      -- Pre-download blink's Rust binary during the cold-install splash
+      -- window so it's ready by the time the user starts typing. Only
+      -- fires when the cold-install splash is actually up — i.e., this
+      -- is a first-run / fresh-state-dir startup. On every subsequent
+      -- startup the binary is already on disk and blink's lazy load
+      -- handles the no-op `ensure_downloaded` itself; we don't even
+      -- packadd here. Gated on UI._active_splash so the work is
+      -- exclusive to the first-run scenario the user wants it for.
       vim.api.nvim_create_autocmd("User", {
         pattern  = "VeryLazy",
         once     = true,
         callback = function()
+          local ok_ui, UI = pcall(require, "core.pack.ui")
+          if not (ok_ui and UI._active_splash) then return end
+
           pcall(vim.cmd, "packadd blink.cmp")
           -- Apply the utils.notify monkey-patch BEFORE triggering the
           -- download so the download's notifications route via
