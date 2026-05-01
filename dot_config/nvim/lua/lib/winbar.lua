@@ -601,6 +601,28 @@ function M.setup()
     callback = function(args) scope_cache[args.buf] = nil end,
   })
 
+  -- Disable the winbar entirely (no line allocated) for special-purpose
+  -- windows. The global `winbar = "%!Lib.winbar.render()"` would otherwise
+  -- leave a blank line at the top of these windows: render() returns ""
+  -- for special buftypes, but the option itself is still non-empty, so
+  -- nvim allocates the bar and just paints empty content. Setting the
+  -- window-local option to "" disables the bar for that window outright.
+  --
+  -- "" via nvim_set_option_value with scope=local makes the local empty;
+  -- to inherit the global expression for normal windows, we never touch
+  -- their winbar (it stays unset = inherits global).
+  vim.api.nvim_create_autocmd({ "BufWinEnter", "TermOpen", "FileType" }, {
+    group = vim.api.nvim_create_augroup("Lib.winbar.disable_special", { clear = true }),
+    callback = function(args)
+      local win = vim.api.nvim_get_current_win()
+      if vim.api.nvim_win_get_buf(win) ~= args.buf then return end
+      local bt = vim.bo[args.buf].buftype
+      if bt == "nofile" or bt == "prompt" or bt == "terminal" or bt == "quickfix" then
+        vim.wo[win].winbar = ""
+      end
+    end,
+  })
+
   -- Redraw on cursor move (scope updates live) or window resize (the
   -- adaptive path trim needs to re-evaluate budget). Symbol-trail cache
   -- short-circuits treesitter work when nothing relevant changed.
