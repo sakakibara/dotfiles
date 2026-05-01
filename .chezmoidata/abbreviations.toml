@@ -138,6 +138,10 @@ expansion = "taskwarrior-tui"
 when = "taskwarrior-tui"
 
 [[abbreviations]]
+# No `when` filter: claude-sandbox is installed by chezmoi itself (via
+# dot_local/bin/executable_claude-sandbox), and the abbreviation
+# template's `lookPath` runs before chezmoi has copied the file into
+# place — gating on it would skip the abbreviation on first apply and
+# only re-include it on a second apply.
 key = "csb"
 expansion = "claude-sandbox"
-when = "claude-sandbox"

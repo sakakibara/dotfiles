@@ -144,15 +144,17 @@ _claude_args() {
 
 # Build the docker run mount/env arg list for a given mode.
 #
-# default:  bind-mount cwd as /workspace, RW ~/.claude, RO ~/.gitconfig.
-# worktree: same shape, but /workspace is a fresh git worktree (caller
-#           is responsible for `_ensure_worktree` first). Main checkout
-#           is unreachable.
-# strict:   /workspace is a docker volume (seeded once from host repo);
-#           ~/.claude is a docker volume (seeded once from host
-#           ~/.claude). Host filesystem is not bind-mounted into the
-#           long-running container at all. Export verb required to flow
-#           changes back to the host.
+# default:  bind-mount the repo at its host path inside the container.
+#           Mirroring the path matters because Claude's per-project
+#           session memory is keyed at ~/.claude/projects/<path>/ — if
+#           we mounted at /workspace the in-sandbox memory would split
+#           into a separate dir from the host's. Mirroring keeps memory
+#           continuous between sandbox and non-sandbox sessions.
+# worktree: the git worktree is mounted at the *host repo's* path so
+#           memory keys to the project, not the throwaway worktree.
+# strict:   the workspace volume is also mounted at the host repo's
+#           path — the volume's contents diverge from host but the path
+#           encoding stays consistent inside the container.
 _run_args() {
   local repo="$1" name="$2" mode="${3:-default}"
   local args=(
@@ -160,20 +162,20 @@ _run_args() {
     --hostname "$name"
     -e CLAUDE_SANDBOX=1
     -v "$HOME/.gitconfig":/home/claude/.gitconfig:ro
-    -w /workspace
+    -w "$repo"
   )
   case "$mode" in
     default)
-      args+=( -v "$repo":/workspace
+      args+=( -v "$repo":"$repo"
               -v "$HOME/.claude":/home/claude/.claude )
       ;;
     worktree)
       local wt; wt=$(_worktree_path "$repo")
-      args+=( -v "$wt":/workspace
+      args+=( -v "$wt":"$repo"
               -v "$HOME/.claude":/home/claude/.claude )
       ;;
     strict)
-      args+=( -v "$(_strict_ws_volume "$repo")":/workspace
+      args+=( -v "$(_strict_ws_volume "$repo")":"$repo"
               -v "$(_strict_cl_volume "$repo")":/home/claude/.claude )
       ;;
     *) _die "unknown isolation mode: $mode" ;;
