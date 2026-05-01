@@ -114,6 +114,19 @@ _container_running() {
   [[ "$(docker container inspect -f '{{.State.Running}}' "$1" 2>/dev/null)" == "true" ]]
 }
 
+# True when the container was created from an older image than the
+# current $IMAGE. Bind-mount specs are baked in at create time, so a
+# stale container won't pick up new -v args after a rebuild — `start`
+# would resurrect it with old mounts. Detecting this lets us remove +
+# recreate cleanly.
+_container_stale() {
+  local name="$1"
+  local container_image current_image
+  container_image=$(docker container inspect -f '{{.Image}}' "$name" 2>/dev/null) || return 1
+  current_image=$(docker image inspect -f '{{.Id}}' "$IMAGE" 2>/dev/null) || return 1
+  [[ "$container_image" != "$current_image" ]]
+}
+
 # Resolve the target repo: explicit arg if given, else git toplevel of
 # cwd, else cwd. Returns absolute path.
 _resolve_repo() {
@@ -279,7 +292,7 @@ _ensure_image() {
   fi
 
   if [[ "$current" != "$built" ]]; then
-    _warn "Dockerfile changed since last build."
+    _warn "image inputs (Dockerfile or entrypoint.sh) changed since last build."
     if [[ -t 0 ]]; then
       printf 'Rebuild now? [Y/n] '
       local ans; read -r ans
@@ -336,6 +349,12 @@ cmd_default() {
 
   local name; name=$(_container_name "$repo" "$ISO_MODE")
 
+  # Stale container (older image): remove so we create fresh with new mounts.
+  if _container_exists "$name" && _container_stale "$name"; then
+    _info "container $name was built from an older image; recreating"
+    docker rm -f "$name" >/dev/null
+  fi
+
   if _container_running "$name"; then
     _info "attaching to $name (Ctrl-p Ctrl-q to detach)"
     exec docker attach "$name"
@@ -366,6 +385,11 @@ cmd_start() {
   esac
 
   local name; name=$(_container_name "$repo" "$ISO_MODE")
+
+  if _container_exists "$name" && _container_stale "$name"; then
+    _info "container $name was built from an older image; recreating"
+    docker rm -f "$name" >/dev/null
+  fi
 
   if _container_running "$name"; then _info "$name already running"; return 0; fi
 
