@@ -72,7 +72,19 @@ function M.enable(name, opts)
   install_pending_hook()
 end
 
+-- Memoized result. The cache is invalidated when blink's load state flips,
+-- so the first batch of server configs (registered before blink loads, when
+-- lspconfig fires on LazyFile) gets caps without blink, and any later call —
+-- after blink finishes loading on InsertEnter — recomputes once with blink.
+local _caps_cache = nil
+local _caps_has_blink = false
+
 function M.capabilities()
+  local ok, blink = pcall(require, "blink.cmp")
+  local has_blink = ok and type(blink.get_lsp_capabilities) == "function"
+  if _caps_cache and _caps_has_blink == has_blink then
+    return _caps_cache
+  end
   local caps = vim.lsp.protocol.make_client_capabilities()
   caps = vim.tbl_deep_extend("force", caps, {
     textDocument = {
@@ -94,11 +106,11 @@ function M.capabilities()
       foldingRange = { dynamicRegistration = false, lineFoldingOnly = true },
     },
   })
-  -- blink.cmp contributes additional capabilities when loaded
-  local ok, blink = pcall(require, "blink.cmp")
-  if ok and type(blink.get_lsp_capabilities) == "function" then
+  if has_blink then
     caps = blink.get_lsp_capabilities(caps)
   end
+  _caps_cache = caps
+  _caps_has_blink = has_blink
   return caps
 end
 
