@@ -33,27 +33,7 @@ return {
     name = "snacks.nvim",
     priority = 900,
     lazy = false,  -- keys spec below would flip us to lazy; keep snacks eager (Snacks global needed by many)
-    config = function(_, opts)
-      require("snacks").setup(opts)
-      -- Diagnostic: wrap snacks notifier to log every notification call.
-      -- vim.notify gets replaced by snacks itself, so wrapping at the
-      -- vim.notify level (in config/init.lua) doesn't catch post-snacks
-      -- calls. Wrap snacks's own notify entrypoint instead.
-      pcall(function()
-        local snacks_notif = require("snacks.notifier")
-        local orig = snacks_notif.notify
-        local logf = io.open("/tmp/pack-flash-trace.log", "a")
-        if logf then
-          snacks_notif.notify = function(msg, level, nopts)
-            logf:write(("[%s] snacks.notify: %s\n"):format(
-              os.date("%H:%M:%S"),
-              tostring(msg):sub(1, 120)))
-            logf:flush()
-            return orig(msg, level, nopts)
-          end
-        end
-      end)
-    end,
+    config = function(_, opts) require("snacks").setup(opts) end,
     opts = {
       bigfile   = {
         enabled = true,
