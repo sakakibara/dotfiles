@@ -144,6 +144,28 @@ _resolve_repo() {
   fi
 }
 
+# Visible cues that this terminal is inside a sandbox. starship's
+# [custom.sandbox] indicator only renders in shell prompts — but
+# claude-sandbox drops straight into Claude's UI, no shell visible.
+# A printed banner is wiped by Claude's first redraw; the terminal
+# title (OSC 0) survives because Claude doesn't manage it.
+_print_banner() {
+  local name="$1" repo="$2" perm="${3:-?}" iso="${4:-?}"
+  if [[ -t 1 ]]; then
+    # OSC 0: set both window title and icon name. Persists in the
+    # terminal's title bar regardless of how Claude redraws.
+    printf '\033]0;🛡 claude-sandbox · %s\007' "$name"
+  fi
+  printf '%s━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━%s\n' "$C_DIM" "$C_RESET"
+  printf '%s🛡  claude-sandbox%s · %s\n' "$C_BOLD" "$C_RESET" "$name"
+  printf '   workspace: %s\n' "$repo"
+  if [[ "$perm" != "?" || "$iso" != "?" ]]; then
+    printf '   mode:      perm=%s iso=%s\n' "$perm" "$iso"
+  fi
+  printf '   detach:    Ctrl-p Ctrl-q (container keeps running)\n'
+  printf '%s━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━%s\n' "$C_DIM" "$C_RESET"
+}
+
 _claude_args() {
   local mode="$1"
   local args=( --remote-control )
@@ -173,6 +195,8 @@ _run_args() {
   local args=(
     --name     "$name"
     --hostname "$name"
+    --label    "claude-sandbox.workspace=$repo"
+    --label    "claude-sandbox.iso=$mode"
     -e CLAUDE_SANDBOX=1
     -v "$HOME/.gitconfig":/home/claude/.gitconfig:ro
     -w "$repo"
@@ -356,13 +380,14 @@ cmd_default() {
   fi
 
   if _container_running "$name"; then
-    _info "attaching to $name (Ctrl-p Ctrl-q to detach)"
+    _print_banner "$name" "$repo"
     exec docker attach "$name"
   fi
 
   if _container_exists "$name"; then
     _info "starting stopped $name"
     docker start "$name" >/dev/null
+    _print_banner "$name" "$repo"
     exec docker attach "$name"
   fi
 
@@ -370,6 +395,7 @@ cmd_default() {
   local run_args=() c_args=()
   mapfile -t run_args < <(_run_args "$repo" "$name" "$ISO_MODE")
   mapfile -t c_args   < <(_claude_args "$PERM_MODE")
+  _print_banner "$name" "$repo" "$PERM_MODE" "$ISO_MODE"
   exec docker run -it "${run_args[@]}" "$IMAGE" claude "${c_args[@]}"
 }
 
@@ -414,6 +440,12 @@ cmd_attach() {
     name=$(_pick_running) || return 0
   fi
   _container_running "$name" || _die "$name not running"
+  # Read the workspace label set at creation time; falls back to "(unknown)"
+  # for older containers created before labels were stored.
+  local repo
+  repo=$(docker container inspect -f '{{ index .Config.Labels "claude-sandbox.workspace" }}' "$name" 2>/dev/null)
+  [[ -z "$repo" ]] && repo="(unknown)"
+  _print_banner "$name" "$repo"
   exec docker attach "$name"
 }
 
