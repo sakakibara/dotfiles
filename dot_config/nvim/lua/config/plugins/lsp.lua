@@ -47,22 +47,37 @@ return {
       })
       Lib.lsp.enable("lua_ls")
 
-      -- After lua_ls attaches, push lazydev's workspace library via
-      -- didChangeConfiguration so lua_ls re-analyzes with the vim
-      -- runtime types in scope. lua_ls's first pass on the buffer
-      -- happens before lazydev's library is wired up; without this
-      -- push, vim symbols stay flagged as undefined until the user
-      -- triggers a fresh content sync (`:e` etc.). The push is
-      -- idempotent — calling it after lazydev has already updated
-      -- settings is a no-op.
+      -- Populate lazydev's per-workspace settings + install its
+      -- workspace/configuration handler synchronously on lua_ls
+      -- attach, BEFORE lua_ls sends its first workspace/configuration
+      -- request.
+      --
+      -- The race we're closing: lazydev replaces the
+      -- workspace/configuration handler to return ws.settings (a
+      -- per-workspace table built from client.settings + lazydev's
+      -- library injections). ws.settings starts empty {}; it's only
+      -- populated by workspace:update(). lazydev's own LspAttach hook
+      -- triggers update via a debounced (uv timer + vim.schedule_wrap)
+      -- path, which runs at least one tick after attach. lua_ls
+      -- typically sends workspace/configuration BEFORE that tick →
+      -- handler returns empty Lua section → lua_ls processes the
+      -- buffer with no library → "vim is not defined" diagnostics.
+      --
+      -- We bypass the debounce by calling workspace:update + Lsp.attach
+      -- (the handler installer) directly. Synchronous, idempotent.
       vim.api.nvim_create_autocmd("LspAttach", {
         callback = function(args)
           local client = vim.lsp.get_client_by_id(args.data.client_id)
           if not client or client.name ~= "lua_ls" then return end
-          vim.schedule(function()
-            local ok_buf, lzd_buf = pcall(require, "lazydev.buf")
-            if ok_buf and lzd_buf.update then lzd_buf.update() end
-          end)
+          local ok_ws, Workspace = pcall(require, "lazydev.workspace")
+          local ok_lsp, LzdLsp   = pcall(require, "lazydev.lsp")
+          if not (ok_ws and ok_lsp) then return end
+          -- Single-buffer workspace covers the common case (no
+          -- workspace folders) and matches what lazydev would build
+          -- anyway. Multi-folder clients re-resolve at request time.
+          local ws = Workspace.single(client)
+          ws:update()
+          LzdLsp.attach(client)
         end,
       })
     end,
