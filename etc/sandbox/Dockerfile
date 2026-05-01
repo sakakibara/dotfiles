@@ -27,11 +27,16 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 # System packages: git/curl/build-essential for tool use; ripgrep+fd for
 # Claude's codebase searches; tini as PID 1 so docker stop terminates the
-# tree cleanly; locales so LANG/LC_ALL above work.
+# tree cleanly; locales so LANG/LC_ALL above work; sudo so Claude can
+# self-install repo-specific tools (nvim, emacs, compilers, etc.) without
+# a host rebuild. The container is already the security boundary; passwordless
+# sudo inside it doesn't change the threat model versus the host.
 RUN apt-get update && apt-get install -y --no-install-recommends \
       git curl ca-certificates build-essential pkg-config \
       locales jq ripgrep fd-find less man-db openssh-client \
-      python3 python3-pip xz-utils tini gnupg \
+      python3 python3-pip xz-utils tini gnupg sudo \
+    && echo 'claude ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/claude \
+    && chmod 0440 /etc/sudoers.d/claude \
     && rm -rf /var/lib/apt/lists/*
 
 RUN sed -i '/^# en_US.UTF-8/s/^# //' /etc/locale.gen && locale-gen
