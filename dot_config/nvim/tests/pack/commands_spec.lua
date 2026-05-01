@@ -176,3 +176,339 @@ T.describe("core.pack.commands :Pack dispatcher", function()
     end)
   end)
 end)
+
+-- Stub UI for the duration of `fn` with a noop-but-introspectable mock.
+-- Provides every method the subcommand handlers might call so a single
+-- preload covers all subcommands' rendering paths without cross-test leakage.
+local function with_ui_stub(overrides, fn)
+  package.loaded["core.pack.ui"] = nil
+  package.preload["core.pack.ui"] = function()
+    local stub = {
+      status         = function() return { close = function() end } end,
+      clean_review   = function() return { close = function() end } end,
+      rollback_review = function() return { close = function() end } end,
+      fidget         = function()
+        return {
+          set_status = function() end,
+          done       = function() end,
+          error      = function() end,
+          close      = function() end,
+        }
+      end,
+      _active_splash = nil,
+    }
+    for k, v in pairs(overrides or {}) do stub[k] = v end
+    return stub
+  end
+  local ok, err = pcall(fn)
+  package.preload["core.pack.ui"] = nil
+  package.loaded["core.pack.ui"] = nil
+  if not ok then error(err) end
+end
+
+local function capture_notifies(fn)
+  local notifications = {}
+  local orig = vim.notify
+  vim.notify = function(msg, lvl) notifications[#notifications + 1] = { msg = tostring(msg), level = lvl } end
+  local ok, err = pcall(fn, notifications)
+  vim.notify = orig
+  if not ok then error(err) end
+  return notifications
+end
+
+T.describe("core.pack.commands :Pack clean", function()
+  T.it("on_review fires UI.clean_review whose on_apply forwards to do_remove", function()
+    with_stubbed_command(function(get)
+      local Install = require("core.pack.install")
+      local orig_clean = Install.clean
+      local removed_with
+      Install.clean = function(_specs, opts)
+        local sample_orphans = { { name = "ghost", size_kb = 100 } }
+        opts.on_review(sample_orphans, function(list) removed_with = list end)
+      end
+      with_ui_stub({
+        clean_review = function(orphans, ropts)
+          ropts.on_apply(orphans)  -- simulate user pressing apply
+          return { close = function() end }
+        end,
+      }, function()
+        fresh_commands().setup(fake_pack())
+        local ok, err = pcall(get().callback, { fargs = { "clean" }, bang = false })
+        T.eq(ok, true, ":Pack clean must not raise: " .. tostring(err))
+      end)
+      Install.clean = orig_clean
+      T.truthy(removed_with, "do_remove should have been called via on_apply")
+      T.eq(#removed_with, 1)
+      T.eq(removed_with[1].name, "ghost")
+    end)
+  end)
+end)
+
+T.describe("core.pack.commands :Pack rollback", function()
+  T.it("warns when there are no snapshots", function()
+    with_stubbed_command(function(get)
+      package.loaded["core.pack.history"] = nil
+      package.preload["core.pack.history"] = function() return { list = function() return {} end } end
+      with_ui_stub({}, function()
+        fresh_commands().setup(fake_pack())
+        local notes = capture_notifies(function()
+          local ok, err = pcall(get().callback, { fargs = { "rollback" }, bang = false })
+          T.eq(ok, true, ":Pack rollback must not raise: " .. tostring(err))
+        end)
+        local found
+        for _, n in ipairs(notes) do
+          if n.msg:match("no snapshots") then found = n; break end
+        end
+        T.truthy(found, "expected 'no snapshots' notify, got: " .. vim.inspect(notes))
+        T.eq(found.level, vim.log.levels.WARN)
+      end)
+      package.preload["core.pack.history"] = nil
+      package.loaded["core.pack.history"] = nil
+    end)
+  end)
+
+  T.it("numeric arg restores the snapshot at that index", function()
+    with_stubbed_command(function(get)
+      local restored_ts
+      package.loaded["core.pack.history"] = nil
+      package.preload["core.pack.history"] = function()
+        return {
+          list = function()
+            return { { ts = 1700000000, iso = "2024-01-01", path = "/dev/null" } }
+          end,
+          restore = function(ts) restored_ts = ts; return { plugins = {} } end,
+        }
+      end
+      with_ui_stub({}, function()
+        fresh_commands().setup(fake_pack())
+        capture_notifies(function()
+          local ok, err = pcall(get().callback, { fargs = { "rollback", "1" }, bang = false })
+          T.eq(ok, true, ":Pack rollback 1 must not raise: " .. tostring(err))
+        end)
+      end)
+      package.preload["core.pack.history"] = nil
+      package.loaded["core.pack.history"] = nil
+      T.eq(restored_ts, 1700000000)
+    end)
+  end)
+
+  T.it("warns when numeric arg is out of range", function()
+    with_stubbed_command(function(get)
+      package.loaded["core.pack.history"] = nil
+      package.preload["core.pack.history"] = function()
+        return {
+          list = function()
+            return { { ts = 1, iso = "x", path = "/dev/null" } }
+          end,
+          restore = function() return { plugins = {} } end,
+        }
+      end
+      with_ui_stub({}, function()
+        fresh_commands().setup(fake_pack())
+        local notes = capture_notifies(function()
+          local ok, err = pcall(get().callback, { fargs = { "rollback", "99" }, bang = false })
+          T.eq(ok, true)
+        end)
+        local found
+        for _, n in ipairs(notes) do
+          if n.msg:match("no snapshot at index") then found = n; break end
+        end
+        T.truthy(found, "expected 'no snapshot at index' notify, got: " .. vim.inspect(notes))
+      end)
+      package.preload["core.pack.history"] = nil
+      package.loaded["core.pack.history"] = nil
+    end)
+  end)
+
+  T.it("UI on_select callback restores the chosen snapshot", function()
+    with_stubbed_command(function(get)
+      local restored_ts
+      package.loaded["core.pack.history"] = nil
+      package.preload["core.pack.history"] = function()
+        return {
+          list = function()
+            return { { ts = 42, iso = "iso", path = "/dev/null" } }
+          end,
+          restore = function(ts) restored_ts = ts; return { plugins = {} } end,
+        }
+      end
+      with_ui_stub({
+        rollback_review = function(entries, ropts)
+          ropts.on_select(entries[1])  -- simulate user selecting first entry
+          return { close = function() end }
+        end,
+      }, function()
+        fresh_commands().setup(fake_pack())
+        capture_notifies(function()
+          local ok, err = pcall(get().callback, { fargs = { "rollback" }, bang = false })
+          T.eq(ok, true, ":Pack rollback must not raise: " .. tostring(err))
+        end)
+      end)
+      package.preload["core.pack.history"] = nil
+      package.loaded["core.pack.history"] = nil
+      T.eq(restored_ts, 42)
+    end)
+  end)
+end)
+
+T.describe("core.pack.commands :Pack build", function()
+  T.it("notifies when no plugins with build hooks", function()
+    with_stubbed_command(function(get)
+      local p = fake_pack()
+      -- Strip build hooks to make total=0 path fire.
+      p._specs["plugin-a"].build = nil
+      with_ui_stub({}, function()
+        fresh_commands().setup(p)
+        local notes = capture_notifies(function()
+          local ok, err = pcall(get().callback, { fargs = { "build" }, bang = false })
+          T.eq(ok, true, ":Pack build must not raise: " .. tostring(err))
+        end)
+        local found
+        for _, n in ipairs(notes) do
+          if n.msg:match("no plugins with build hooks") then found = n; break end
+        end
+        T.truthy(found, "expected 'no plugins with build hooks' notify, got: " .. vim.inspect(notes))
+      end)
+    end)
+  end)
+
+  T.it("invokes Install.run_build for each spec with a build hook", function()
+    with_stubbed_command(function(get)
+      local Install = require("core.pack.install")
+      local orig_rb, orig_id = Install.run_build, Install.install_dir
+      local built = {}
+      Install.run_build = function(spec, _dir, _opts) built[#built + 1] = spec.name end
+      Install.install_dir = function(name) return "/tmp/" .. name end
+      with_ui_stub({}, function()
+        fresh_commands().setup(fake_pack())
+        capture_notifies(function()
+          local ok, err = pcall(get().callback, { fargs = { "build" }, bang = false })
+          T.eq(ok, true, ":Pack build must not raise: " .. tostring(err))
+        end)
+      end)
+      Install.run_build, Install.install_dir = orig_rb, orig_id
+      T.eq(built, { "plugin-a" })  -- only plugin-a has a build hook in fake_pack
+    end)
+  end)
+
+  T.it("notifies when target name has no build hook", function()
+    with_stubbed_command(function(get)
+      with_ui_stub({}, function()
+        fresh_commands().setup(fake_pack())
+        local notes = capture_notifies(function()
+          -- plugin-b has no build hook
+          local ok, err = pcall(get().callback, { fargs = { "build", "plugin-b" }, bang = false })
+          T.eq(ok, true)
+        end)
+        local found
+        for _, n in ipairs(notes) do
+          if n.msg:match("no build hook for plugin%-b") then found = n; break end
+        end
+        T.truthy(found, "expected 'no build hook for plugin-b' notify, got: " .. vim.inspect(notes))
+      end)
+    end)
+  end)
+end)
+
+T.describe("core.pack.commands :Pack log", function()
+  T.it("notifies when there are no log entries", function()
+    with_stubbed_command(function(get)
+      package.loaded["core.pack.log"] = nil
+      package.preload["core.pack.log"] = function() return { list = function() return {} end } end
+      with_ui_stub({}, function()
+        fresh_commands().setup(fake_pack())
+        local notes = capture_notifies(function()
+          local ok, err = pcall(get().callback, { fargs = { "log" }, bang = false })
+          T.eq(ok, true, ":Pack log must not raise: " .. tostring(err))
+        end)
+        local found
+        for _, n in ipairs(notes) do
+          if n.msg:match("no log entries") then found = n; break end
+        end
+        T.truthy(found, "expected 'no log entries' notify, got: " .. vim.inspect(notes))
+      end)
+      package.preload["core.pack.log"] = nil
+      package.loaded["core.pack.log"] = nil
+    end)
+  end)
+
+  T.it("renders log entries through UI.status", function()
+    with_stubbed_command(function(get)
+      package.loaded["core.pack.log"] = nil
+      package.preload["core.pack.log"] = function()
+        return {
+          list = function() return {
+            { name = "p", from = "abcdef0", to = "1234567", count = 1, subject = "x", ts = os.time() },
+          } end,
+        }
+      end
+      local status_called_with
+      with_ui_stub({
+        status = function(lines, opts) status_called_with = { lines = lines, opts = opts }; return { close = function() end } end,
+      }, function()
+        fresh_commands().setup(fake_pack())
+        capture_notifies(function()
+          local ok, err = pcall(get().callback, { fargs = { "log" }, bang = false })
+          T.eq(ok, true, ":Pack log must not raise: " .. tostring(err))
+        end)
+      end)
+      package.preload["core.pack.log"] = nil
+      package.loaded["core.pack.log"] = nil
+      T.truthy(status_called_with, "UI.status should have been invoked")
+      T.truthy(status_called_with.lines[1]:match("last %d+ entries"),
+        "log header should mention entry count")
+    end)
+  end)
+end)
+
+T.describe("core.pack.commands :Pack sync", function()
+  T.it("delegates to update then clean via vim.cmd", function()
+    with_stubbed_command(function(get)
+      local cmds = {}
+      local orig = vim.cmd
+      -- vim.cmd can be invoked as a callable or via fields; we override the
+      -- callable form which is what the dispatcher uses.
+      vim.cmd = function(c) cmds[#cmds + 1] = tostring(c) end
+      with_ui_stub({}, function()
+        fresh_commands().setup(fake_pack())
+        local ok, err = pcall(get().callback, { fargs = { "sync" }, bang = false })
+        T.eq(ok, true, ":Pack sync must not raise: " .. tostring(err))
+      end)
+      vim.cmd = orig
+      T.eq(cmds, { "Pack update", "Pack clean" })
+    end)
+  end)
+end)
+
+T.describe("core.pack.commands :Pack profile", function()
+  T.it("renders profile data through UI.status", function()
+    with_stubbed_command(function(get)
+      package.loaded["core.profile"] = nil
+      package.preload["core.profile"] = function()
+        return {
+          start             = function() end,
+          dump              = function() end,
+          lookup            = function() return nil end,
+          _structured_report = function()
+            return { lines = { "profile header" }, highlights = {} }
+          end,
+        }
+      end
+      local rendered
+      with_ui_stub({
+        status = function(lines, opts) rendered = { lines = lines, opts = opts }; return { close = function() end } end,
+      }, function()
+        fresh_commands().setup(fake_pack())
+        capture_notifies(function()
+          local ok, err = pcall(get().callback, { fargs = { "profile" }, bang = false })
+          T.eq(ok, true, ":Pack profile must not raise: " .. tostring(err))
+        end)
+      end)
+      package.preload["core.profile"] = nil
+      package.loaded["core.profile"] = nil
+      T.truthy(rendered, "UI.status should have been called")
+      T.eq(rendered.lines[1], "profile header")
+      T.eq(rendered.opts.filetype, "PackProfile")
+    end)
+  end)
+end)
