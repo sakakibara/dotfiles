@@ -23,8 +23,11 @@ function M.fidget(opts)
     local lines = {}
     for i, r in ipairs(rows) do
       local glyph
-      if r.status == "done" then glyph = Lib.icons.status.Success
-      elseif r.status == "error" then glyph = Lib.icons.status.Failure
+      -- Lib.icons.status.* include a baked-in trailing space for inline
+      -- decorator use; strip it so the spinner / done / error glyphs all
+      -- contribute the same effective width.
+      if r.status == "done" then glyph = (Lib.icons.status.Success):gsub("%s+$", "")
+      elseif r.status == "error" then glyph = (Lib.icons.status.Failure):gsub("%s+$", "")
       else glyph = SPINNER[((spinner_step - 1) % #SPINNER) + 1]
       end
       lines[i] = (" %s %s  %s"):format(glyph, r.name, r.text or "")
