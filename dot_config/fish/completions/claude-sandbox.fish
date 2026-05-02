@@ -15,10 +15,12 @@ complete -c claude-sandbox -f -n '__fish_use_subcommand' -a help              -d
 function __fish_csb_takes_run_flags
     __fish_use_subcommand; or __fish_seen_subcommand_from start
 end
-complete -c claude-sandbox -f -n __fish_csb_takes_run_flags -l auto     -d 'auto permission mode'
-complete -c claude-sandbox -f -n __fish_csb_takes_run_flags -l bypass   -d 'bypass permission mode (default)'
-complete -c claude-sandbox -f -n __fish_csb_takes_run_flags -l worktree -d 'isolate via git worktree'
-complete -c claude-sandbox -f -n __fish_csb_takes_run_flags -l strict   -d 'isolate via docker volumes'
+complete -c claude-sandbox -f -n __fish_csb_takes_run_flags -l auto      -d 'auto permission mode'
+complete -c claude-sandbox -f -n __fish_csb_takes_run_flags -l bypass    -d 'bypass permission mode (default)'
+complete -c claude-sandbox -f -n __fish_csb_takes_run_flags -l worktree  -d 'isolate via git worktree'
+complete -c claude-sandbox -f -n __fish_csb_takes_run_flags -l strict    -d 'isolate via docker volumes'
+complete -c claude-sandbox -F -n __fish_csb_takes_run_flags -l workspace -d 'mount one or more repos (default iso only)'
+complete -c claude-sandbox -F -n __fish_csb_takes_run_flags -l name      -d 'named slot (overrides auto-bumped suffix)'
 
 # Container name completions for the verbs that target one. The filters
 # rely on the wrapper's name convention `claude-sandbox-<base>-<hash>[-mode]`.

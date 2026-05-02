@@ -22,6 +22,8 @@ _claude_sandbox() {
     '--bypass[bypass permission mode (default)]' \
     '--worktree[isolate via git worktree]' \
     '--strict[isolate via docker volumes]' \
+    '*--workspace[mount one or more repos (default iso only)]:repo:_files -/' \
+    '--name[named slot (overrides auto-bumped suffix)]:name:' \
     '1: :->cmd' \
     '*::arg:->args'
 

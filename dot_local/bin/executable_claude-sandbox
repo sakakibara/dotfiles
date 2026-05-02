@@ -43,6 +43,15 @@ IMAGE="claude-sandbox:latest"
 NAME_PREFIX="claude-sandbox"
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/claude-sandbox"
 
+# Multi-workspace state. Populated either by `--workspace path1 path2 ...`
+# (slurps positional paths until the next --flag) or by _finalize_workspaces
+# falling back to the single-repo positional / cwd. WORKSPACES[0] is the
+# primary path: it sets the container name, the cwd inside the container,
+# and the iOS session label. WS_LABEL is the docker-label-friendly join of
+# all paths (newline-separated) used for cross-invocation matching.
+WORKSPACES=()
+WS_LABEL=""
+
 _require_docker() {
   command -v docker >/dev/null 2>&1 \
     || _die "docker not found on PATH (install OrbStack via brew)"
@@ -132,7 +141,7 @@ _containers_for_target() {
     [[ -z "$name" ]] && continue
     [[ "$name" =~ $pattern ]] || continue
     local ws; ws=$(_container_workspace_label "$name")
-    [[ -z "$ws" || "$ws" == "$repo" ]] && printf '%s\n' "$name"
+    [[ -z "$ws" || "$ws" == "$WS_LABEL" ]] && printf '%s\n' "$name"
   done < <(docker ps -a --filter "name=^${NAME_PREFIX}-" --format '{{.Names}}' 2>/dev/null)
 }
 
@@ -150,7 +159,7 @@ _next_free_name() {
     fi
     local ws; ws=$(_container_workspace_label "$candidate")
     # Belongs to us OR is a legacy (no label) container we'll claim.
-    if [[ -z "$ws" || "$ws" == "$repo" ]]; then
+    if [[ -z "$ws" || "$ws" == "$WS_LABEL" ]]; then
       printf '%s\n' "$candidate"; return
     fi
     n=$((n + 1)); candidate="${base}-${n}"
@@ -169,7 +178,7 @@ _resolve_target() {
   if [[ -n "$name_override" ]]; then
     if _container_exists "$base"; then
       local ws; ws=$(_container_workspace_label "$base")
-      if [[ -z "$ws" || "$ws" == "$repo" ]]; then
+      if [[ -z "$ws" || "$ws" == "$WS_LABEL" ]]; then
         printf '%s\tattach\n' "$base"; return
       fi
       _die "name '$name_override' is already used by another repo: $ws
@@ -296,7 +305,15 @@ _print_banner() {
   fi
   printf '%s━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━%s\n' "$C_DIM" "$C_RESET"
   printf '%s🛡  claude-sandbox%s · %s\n' "$C_BOLD" "$C_RESET" "$name"
-  printf '   workspace: %s\n' "$repo"
+  if [[ ${#WORKSPACES[@]} -gt 1 ]]; then
+    printf '   workspace: %s (primary)\n' "${WORKSPACES[0]}"
+    local i
+    for ((i = 1; i < ${#WORKSPACES[@]}; i++)); do
+      printf '              %s\n' "${WORKSPACES[i]}"
+    done
+  else
+    printf '   workspace: %s\n' "$repo"
+  fi
   [[ -n "$label" ]] && printf '   ios label: %s\n' "$label"
   if [[ "$perm" != "?" || "$iso" != "?" ]]; then
     printf '   mode:      perm=%s iso=%s\n' "$perm" "$iso"
@@ -351,7 +368,7 @@ _run_args() {
   local args=(
     --name     "$name"
     --hostname "$name"
-    --label    "claude-sandbox.workspace=$repo"
+    --label    "claude-sandbox.workspace=$WS_LABEL"
     --label    "claude-sandbox.iso=$mode"
     -e CLAUDE_SANDBOX=1
     -v "$HOME/.gitconfig":/home/claude/.gitconfig:ro
@@ -371,8 +388,13 @@ _run_args() {
 
   case "$mode" in
     default)
-      args+=( -v "$repo":"$repo"
-              -v "$HOME/.claude":/home/claude/.claude )
+      # One bind per workspace path (single-element WORKSPACES = single
+      # repo; multi-element = the --workspace multi-mount case).
+      local ws
+      for ws in "${WORKSPACES[@]}"; do
+        args+=( -v "$ws":"$ws" )
+      done
+      args+=( -v "$HOME/.claude":/home/claude/.claude )
       ;;
     worktree)
       local wt; wt=$(_worktree_path "$repo")
@@ -503,6 +525,7 @@ _parse_common_flags() {
   PERM_MODE="bypass"
   ISO_MODE="default"
   NAME_OVERRIDE=""
+  WORKSPACES=()
   while (($#)); do
     case "$1" in
       --auto)     PERM_MODE="auto";   shift ;;
@@ -511,12 +534,39 @@ _parse_common_flags() {
       --strict)   ISO_MODE="strict";  shift ;;
       --name)     NAME_OVERRIDE="${2:-}"; [[ -z "$NAME_OVERRIDE" ]] && _die "--name requires an argument"; shift 2 ;;
       --name=*)   NAME_OVERRIDE="${1#--name=}"; shift ;;
+      --workspace)
+        shift
+        # Slurp positional paths until the next flag or end. Use `--` after
+        # the last workspace path if you also want to pass a positional repo
+        # (rare; --workspace and the [repo] positional don't normally mix).
+        while (($#)) && [[ "$1" != -* ]]; do
+          [[ -d "$1" ]] || _die "--workspace path doesn't exist: $1"
+          WORKSPACES+=( "$(cd "$1" && pwd -P)" )
+          shift
+        done
+        [[ ${#WORKSPACES[@]} -gt 0 ]] || _die "--workspace requires at least one path"
+        ;;
       --) shift; break ;;
       -*) _die "unknown option: $1" ;;
       *)  break ;;
     esac
   done
   REMAINING=( "$@" )
+
+  if [[ ${#WORKSPACES[@]} -gt 1 ]] && [[ "$ISO_MODE" != "default" ]]; then
+    _die "--workspace with multiple paths is only supported in default iso mode (no --worktree / --strict)"
+  fi
+}
+
+# Populate WORKSPACES (from positional / cwd if --workspace was not given)
+# and compute WS_LABEL. Call this after _parse_common_flags in every
+# cmd_* that needs to act on a repo path.
+_finalize_workspaces() {
+  if [[ ${#WORKSPACES[@]} -eq 0 ]]; then
+    WORKSPACES=( "$(_resolve_repo "${REMAINING[0]:-}")" )
+  fi
+  local IFS=$'\n'
+  WS_LABEL="${WORKSPACES[*]}"
 }
 
 # cmd_default — smart attach-or-create.
@@ -528,7 +578,8 @@ _parse_common_flags() {
 cmd_default() {
   local force_new="${FORCE_NEW:-}"
   _parse_common_flags "$@"
-  local repo; repo=$(_resolve_repo "${REMAINING[0]:-}")
+  _finalize_workspaces
+  local repo="${WORKSPACES[0]}"
   _require_docker
   _ensure_image
 
@@ -575,7 +626,8 @@ cmd_new() { FORCE_NEW=1 cmd_default "$@"; }
 
 cmd_start() {
   _parse_common_flags "$@"
-  local repo; repo=$(_resolve_repo "${REMAINING[0]:-}")
+  _finalize_workspaces
+  local repo="${WORKSPACES[0]}"
   _require_docker
   _ensure_image
 
@@ -923,6 +975,19 @@ Naming:
 Permission modes (PERM):
   --bypass    (default) no permission prompts; the sandbox is the firewall
   --auto      acceptEdits mode; some prompts on high-risk operations
+
+Multi-repo (default mode only):
+  --workspace PATH [PATH ...]   bind-mount each PATH at its host path
+                                inside the container. The first path is
+                                primary (cwd inside the container, container-
+                                name source, iOS label source). All
+                                subsequent paths are slurped until the next
+                                --flag (use `--` to terminate before a
+                                positional). Order matters for matching:
+                                same paths in same order reattach to the
+                                same container; different order = different
+                                container. Not compatible with --worktree
+                                or --strict.
 
 Isolation modes (ISO):
   (default)   bind-mount cwd as /workspace, ~/.claude RW.
