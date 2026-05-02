@@ -104,18 +104,24 @@ else
   skips+=("luajit")
 fi
 
-# Everything else (wezterm.lua + any future Lua-5.4 consumer) → lua5.4.
-# Detect via $() capture + bash string match, not `cmd | grep -q`. With
-# `set -o pipefail`, grep -q closing the pipe on first match can flag a
-# SIGPIPE on the producer and fail the conditional — masking a working
-# Lua 5.4 install as "not found".
+# Everything else (wezterm.lua + any future Lua-5.4+ consumer) → stock
+# Lua 5.4 or newer. Brew currently ships 5.5 so we accept any 5.4+ — the
+# wezterm.lua syntax we're checking is forward-compatible. Detect via $()
+# capture + bash regex, not `cmd | grep -q`: with `set -o pipefail`,
+# grep -q closing the pipe on first match can flag a SIGPIPE on the
+# producer and fail the conditional, masking a working install as
+# "not found".
 _lua54=""
-for _cmd in lua5.4 lua; do
+for _cmd in lua5.5 lua5.4 lua; do
   if command -v "$_cmd" >/dev/null 2>&1; then
     _ver=$("$_cmd" -v 2>&1 || true)
-    if [[ "$_ver" == *"Lua 5.4"* ]]; then
-      _lua54="$_cmd"
-      break
+    if [[ "$_ver" =~ ^Lua\ ([0-9]+)\.([0-9]+) ]]; then
+      _major="${BASH_REMATCH[1]}"
+      _minor="${BASH_REMATCH[2]}"
+      if (( _major > 5 || (_major == 5 && _minor >= 4) )); then
+        _lua54="$_cmd"
+        break
+      fi
     fi
   fi
 done

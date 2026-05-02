@@ -19,7 +19,7 @@ jobs:
       - name: Install zsh + fish + luajit + lua5.4 (Linux)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y zsh fish luajit lua5.4
-      - name: Install fish + luajit + lua (macOS — brew lua is 5.4)
+      - name: Install fish + luajit + lua (macOS)
         if: runner.os == 'macOS'
         run: brew install fish luajit lua
       - run: bash etc/ci/syntax.sh
