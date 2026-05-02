@@ -84,6 +84,18 @@ map("n", "<Leader>un", function()
   pcall(vim.cmd, "Noice dismiss")
 end, { desc = "Dismiss all notifications" })
 
+-- Pack subcommand picker. nvim's user-command rule forces `:Pack` to start
+-- uppercase, so `:p<Tab>` autocompletes `packadd` rather than our `:Pack`.
+-- This skips the cmdline entirely: pick a subcommand from a fuzzy list and
+-- run it. The list is sourced from the same getcompletion path the cmdline
+-- uses, so commands.lua remains the single source of truth.
+map("n", "<Leader>up", function()
+  local subs = vim.fn.getcompletion("Pack ", "cmdline")
+  Snacks.picker.select(subs, { prompt = "Pack: " }, function(choice)
+    if choice and choice ~= "" then vim.cmd("Pack " .. choice) end
+  end)
+end, { desc = "Pack subcommand" })
+
 -- single-chord fast-access (skip a keystroke for the daily-driver ops)
 map("n", "<Leader><Space>", function() Snacks.picker.smart()            end, { desc = "Smart find (files)" })
 map("n", "<Leader>,",       function() Snacks.picker.buffers()          end, { desc = "Buffers" })

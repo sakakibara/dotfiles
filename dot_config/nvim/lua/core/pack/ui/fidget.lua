@@ -23,8 +23,8 @@ function M.fidget(opts)
     local lines = {}
     for i, r in ipairs(rows) do
       local glyph
-      if r.status == "done" then glyph = "v"
-      elseif r.status == "error" then glyph = "x"
+      if r.status == "done" then glyph = Lib.icons.status.Success
+      elseif r.status == "error" then glyph = Lib.icons.status.Failure
       else glyph = SPINNER[((spinner_step - 1) % #SPINNER) + 1]
       end
       lines[i] = (" %s %s  %s"):format(glyph, r.name, r.text or "")
