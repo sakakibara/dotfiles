@@ -1,0 +1,18 @@
+# SSH commit signing via 1Password.
+#
+# One-time bootstrap (do these three things once, ever, across all machines):
+#   1. In 1Password: New Item > SSH Key > generate (it produces ed25519).
+#   2. Copy the resulting public key string and paste it as `public_key`
+#      below. Public keys are non-secret by design; safe to commit.
+#   3. On GitHub: Settings > SSH and GPG keys > New SSH key, type
+#      "Signing Key", paste the same string.
+#
+# Per-machine bootstrap (once per machine):
+#   1. Install 1Password and sign in.
+#   2. Settings > Developer > "Use the SSH agent" -> on.
+#   3. chezmoi apply.
+#
+# Empty `public_key` disables the signing block in .gitconfig (so a fresh
+# machine without 1Password configured won't fail every commit).
+[signing]
+public_key = ""

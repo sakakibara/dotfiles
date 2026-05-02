@@ -65,12 +65,31 @@
 {{- if (index . "email") }}
 	email = {{ .email }}
 {{- end }}
+{{- if .signing.public_key }}
+	signingkey = {{ .signing.public_key }}
+{{- end }}
 [credential "https://github.com"]
 	helper =
 	helper = !gh auth git-credential
 [credential "https://gist.github.com"]
 	helper =
 	helper = !gh auth git-credential
+{{- if .signing.public_key }}
+[gpg]
+	format = ssh
+[gpg "ssh"]
+{{- if eq .chezmoi.os "darwin" }}
+	program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
+{{- else if eq .chezmoi.os "linux" }}
+	program = /opt/1Password/op-ssh-sign
+{{- else if eq .chezmoi.os "windows" }}
+	program = "C:/Users/{{ .chezmoi.username }}/AppData/Local/1Password/app/8/op-ssh-sign.exe"
+{{- end }}
+[commit]
+	gpgsign = true
+[tag]
+	gpgsign = true
+{{- end }}
 
 {{- if ne $proxy_url "" }}
 [http]
