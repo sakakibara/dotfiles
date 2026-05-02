@@ -17,6 +17,7 @@ file="etc/linux/packages-${distro}.txt"
 [[ -f "$file" ]] || { echo "no $file" >&2; exit 1; }
 
 fails=0
+checked=0
 kind=""; name=""
 while IFS=$'\t' read -r kind name; do
   [[ -z "$name" ]] && continue
@@ -55,10 +56,19 @@ while IFS=$'\t' read -r kind name; do
       exit 1
       ;;
   esac
+  checked=$((checked + 1))
 done < <(packages::all "$file" pkg)
+
+# Guard against silent zero-iteration "success" (file empty, parser broke,
+# packages::all returned nothing). The package list is large; legitimately
+# zero entries would be a regression, not a steady state.
+if [[ $checked -eq 0 ]]; then
+  echo "FAIL: 0 packages checked from $file" >&2
+  exit 1
+fi
 
 if [[ $fails -gt 0 ]]; then
   echo "$fails missing package(s) in $distro repos" >&2
   exit 1
 fi
-echo "all packages found in $distro repos"
+printf 'all packages found in %s repos (%d checked)\n' "$distro" "$checked"

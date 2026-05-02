@@ -58,34 +58,50 @@ _render_init() {
   fi
 }
 
-# Shell templates (rendered + syntax-checked)
-_render dot_zshrc.tmpl                                       zsh
-_render dot_config/fish/config.fish.tmpl                     fish
-_render dot_config/fish/conf.d/abbreviations.fish.tmpl       fish
-_render .chezmoiscripts/run_once_install-1-brew.sh.tmpl            bash
-_render .chezmoiscripts/run_once_install-1-linux-packages.sh.tmpl  bash
-_render .chezmoiscripts/run_once_install-2-mise.sh.tmpl            bash
-_render .chezmoiscripts/run_once_install-3-extras.sh.tmpl          bash
-_render .chezmoiscripts/run_once_install-4-hive.sh.tmpl            bash
-_render .chezmoiscripts/run_once_setup-theme.sh.tmpl               bash
+# Glob over every *.tmpl in the repo. Type for post-render syntax check is
+# derived from the second extension (e.g., `foo.toml.tmpl` → toml). Files
+# without a recognized type get rendered but skip the syntax check —
+# acceptable for gitconfig/zabbr-style formats we don't validate.
+#
+# A static list previously drifted out of sync — three Windows install
+# templates were never being rendered. Globbing avoids the drift entirely.
+checked=0
+while IFS= read -r -d '' file; do
+  case "$file" in
+    ./.chezmoi.toml.tmpl)
+      _render_init "$file"
+      ;;
+    *dot_zshrc.tmpl)
+      _render "$file" zsh
+      ;;
+    *.bash.tmpl|*.sh.tmpl)
+      _render "$file" bash
+      ;;
+    *.fish.tmpl)
+      _render "$file" fish
+      ;;
+    *.toml.tmpl)
+      _render "$file" toml
+      ;;
+    *.lua.tmpl)
+      _render "$file" lua
+      ;;
+    *)
+      # Render-only (PowerShell, gitconfig, zabbr, etc.) — render must
+      # still succeed; we just don't have a parser available on Linux CI.
+      _render "$file"
+      ;;
+  esac
+  checked=$((checked + 1))
+done < <(find . -name '*.tmpl' -not -path './.git/*' -print0 2>/dev/null)
 
-# Non-shell templates with format-specific post-render checks
-_render dot_config/starship.toml.tmpl                        toml
-_render dot_config/mise/config.toml.tmpl                     toml
-_render dot_config/hive/config.toml.tmpl                     toml
-_render dot_config/nvim/lua/lib/role.lua.tmpl                lua
-
-# Render-only (no clean format syntax we check yet — gitconfig/zabbr custom)
-_render dot_zabbr.tmpl
-_render dot_gitconfig.tmpl
-_render_init .chezmoi.toml.tmpl
-
-# Windows-specific (PowerShell .tmpl rendering still works on Linux)
-_render .chezmoiscripts/windows/run_after_hide-dotfiles.ps1.tmpl
-_render .chezmoiscripts/windows/run_once_setup-theme.ps1.tmpl
+if [[ $checked -eq 0 ]]; then
+  echo "FAIL: 0 templates rendered (find returned nothing)" >&2
+  exit 1
+fi
 
 if [[ $fails -gt 0 ]]; then
   printf '\n%d render/syntax failure(s)\n' "$fails" >&2
   exit 1
 fi
-echo "all renders + syntax checks passed"
+printf 'all renders + syntax checks passed (%d templates)\n' "$checked"
