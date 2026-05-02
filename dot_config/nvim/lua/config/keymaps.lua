@@ -27,6 +27,10 @@ map("n", "<C-Right>", "<Cmd>vertical resize +2<CR>", { desc = "Resize right" })
 -- clear search highlight
 map({ "i", "n" }, "<Esc>", "<Cmd>noh<CR><Esc>", { desc = "Escape + clear hlsearch" })
 
+-- leave terminal mode. <C-q> instead of <Esc>: <Esc><Esc> would impose a
+-- timeoutlen wait on every plain <Esc> inside TUI apps (fzf, lazygit, htop).
+map("t", "<C-q>", "<C-\\><C-n>", { desc = "Leave terminal mode" })
+
 -- better paste/indent
 map("v", "<", "<gv")
 map("v", ">", ">gv")

@@ -116,3 +116,37 @@ au("TextYankPost", {
   group = grp,
   callback = function() vim.highlight.on_yank() end,
 })
+
+-- `q` closes transient/read-only popup buffers. Excludes `qf` (quickfix) on
+-- purpose — quickfix supports :cdo-style edit workflows where `q` needs to
+-- record macros. ftplugin sets some of these (help, man) on its own; setting
+-- ours via vim.schedule wins regardless of order.
+au("FileType", {
+  group = grp,
+  pattern = {
+    "PlenaryTestPopup",
+    "checkhealth",
+    "dbout",
+    "gitsigns-blame",
+    "grug-far",
+    "help",
+    "lspinfo",
+    "neotest-output",
+    "neotest-output-panel",
+    "neotest-summary",
+    "notify",
+    "snacks_win",
+    "spectre_panel",
+    "startuptime",
+    "tsplayground",
+  },
+  callback = function(ev)
+    vim.bo[ev.buf].buflisted = false
+    vim.schedule(function()
+      vim.keymap.set("n", "q", function()
+        vim.cmd("close")
+        pcall(vim.api.nvim_buf_delete, ev.buf, { force = true })
+      end, { buffer = ev.buf, silent = true, desc = "Quit buffer" })
+    end)
+  end,
+})
