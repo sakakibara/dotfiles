@@ -28,6 +28,33 @@ sh -c "$(wget -qO- get.chezmoi.io/lb)" -- init --apply sakakibara
 '$params = "-BinDir ~/.local/bin -ExecArgs init, --apply, sakakibara"', (irm -useb https://get.chezmoi.io/ps1) | powershell -c -
 ```
 
+## Manual per-machine setup
+
+A handful of steps can't be automated through chezmoi because they require GUI interaction or local-only credential bootstrap. Do these once per new machine.
+
+### Commit signing (1Password SSH agent)
+
+Commit signing uses an SSH key stored in 1Password. The public-key string and the gitconfig template are committed to this repo, but each machine needs 1Password installed and the SSH agent toggled on:
+
+1. Install 1Password (via brew/scoop/distro package, or downloaded from 1password.com).
+2. Sign in to your 1Password account.
+3. Open 1Password -> **Settings -> Developer -> "Use the SSH agent"** -> toggle on. (1Password's setup wizard may also offer to write an `IdentityAgent` line into `~/.ssh/config`. **Decline.** Our chezmoi-managed `~/.ssh/config` handles that gated behind `signing.use_1password_ssh_agent` in `.chezmoidata/signing.toml`.)
+4. `chezmoi apply` (if not already done).
+
+After that, every commit gets signed; the green "Verified" badge appears on GitHub. `git log --show-signature` works locally too.
+
+If you skip this on a machine, commits still work but go out unsigned. Nothing fails; you just don't get the badge for that machine's commits.
+
+### One-time, ever (already done; documented for future reference)
+
+These were done once globally and don't repeat per-machine:
+
+- Generated the SSH key in 1Password (item: "GitHub Signing Key").
+- Pasted the public key string into `.chezmoidata/signing.toml` (`signing.public_key`).
+- Registered the same public key on GitHub (Settings -> SSH and GPG keys, type "Signing Key").
+
+To rotate the key in the future: regenerate in 1Password, replace `signing.public_key`, register the new public key on GitHub, optionally remove the old one.
+
 ## After install
 
 `chezmoi apply` runs a set of per-step `run_once_` scripts after the file deploy. Each is hash-triggered against its own inputs — the brew script re-fires when `etc/darwin/packages.txt`, the blacklist, or the bash libraries it sources change; the mise script when its config template changes; and so on:
