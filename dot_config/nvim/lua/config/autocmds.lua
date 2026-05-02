@@ -116,18 +116,3 @@ au("TextYankPost", {
   group = grp,
   callback = function() vim.highlight.on_yank() end,
 })
-
--- organ.nvim's ftplugin sets `foldexpr = v:lua.vim.treesitter.foldexpr()`
--- on every org buffer. Vim re-evaluates foldexpr per visible line on
--- cursor moves, and the bundled tree-sitter grammar exhibits
--- catastrophic parse time on plain cursor navigation (editor freezes).
--- Override to manual folds for org until the grammar's worst-case is
--- bounded; folds inside org are still cycled via organ.fold keymaps.
-au("FileType", {
-  group = grp,
-  pattern = "org",
-  callback = function()
-    vim.opt_local.foldmethod = "manual"
-    vim.opt_local.foldexpr   = ""
-  end,
-})
