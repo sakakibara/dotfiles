@@ -18,8 +18,8 @@ Lib.parsers.add("luadoc",  { ft = "lua" })
 Lib.parsers.add("vim",     { ft = "vim" })
 Lib.parsers.add("vimdoc",  { ft = "help" })
 Lib.parsers.add("query",   { ft = "query" })
-Lib.parsers.add("regex",   { ft = "regex" })
-Lib.parsers.add("bash",    { ft = { "bash", "sh", "zsh" } })
+Lib.parsers.add("regex",   { ft = "regex", eager = true })
+Lib.parsers.add("bash",    { ft = { "bash", "sh", "zsh" }, eager = true })
 
 return {
   {
@@ -74,11 +74,9 @@ return {
       -- Track which fts have already had their parser-install attempted
       -- so we don't re-fire on every buffer of the same filetype.
       local install_state = {} -- ft → "installing" | "installed"
-      -- Seed with parsers already on disk: any ft whose Lib.parsers
-      -- entries are all installed is marked "installed".
+      local installed_set = {}
       do
         local ts_config = require("nvim-treesitter.config")
-        local installed_set = {}
         for _, p in ipairs(ts_config.get_installed()) do installed_set[p] = true end
         for _, ft in ipairs(Lib.parsers.fts()) do
           local all_present = true
@@ -86,6 +84,21 @@ return {
             if not installed_set[p] then all_present = false; break end
           end
           if all_present then install_state[ft] = "installed" end
+        end
+      end
+
+      -- Eager parsers (regex, bash) — install at startup regardless of ft
+      -- because cross-cutting consumers (noice cmdline regex highlighting,
+      -- snacks.picker) need them present without a corresponding buffer.
+      do
+        local missing = {}
+        for _, p in ipairs(Lib.parsers.eager_list()) do
+          if not installed_set[p] then missing[#missing + 1] = p end
+        end
+        if #missing > 0 then
+          vim.schedule(function()
+            pcall(function() require("nvim-treesitter").install(missing) end)
+          end)
         end
       end
 

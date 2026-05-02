@@ -8,6 +8,7 @@ local M = {}
 
 local by_ft = {} -- ft → list of parser names
 local seen  = {} -- (ft .. ":" .. name) → true
+local eager = {} -- name → true (parsers to install at startup, ft-independent)
 
 local function add_for_ft(name, ft)
   by_ft[ft] = by_ft[ft] or {}
@@ -19,7 +20,10 @@ end
 
 -- Lib.parsers.add(name1, name2, ..., { ft = "ts" })
 -- Lib.parsers.add(name, { ft = { "tsx", "typescript" } })
--- Trailing opts table with `ft` is required.
+-- Lib.parsers.add(name, { ft = "regex", eager = true })
+-- `eager = true` also installs the parser at startup regardless of ft —
+-- needed for parsers that serve cross-cutting consumers (noice cmdline
+-- regex highlighting, snacks.picker) rather than a buffer of that ft.
 function M.add(...)
   local args = { ... }
   local last = args[#args]
@@ -33,8 +37,16 @@ function M.add(...)
   for _, name in ipairs(args) do
     if type(name) == "string" then
       for _, ft in ipairs(fts) do add_for_ft(name, ft) end
+      if opts.eager then eager[name] = true end
     end
   end
+end
+
+function M.eager_list()
+  local out = {}
+  for name in pairs(eager) do out[#out + 1] = name end
+  table.sort(out)
+  return out
 end
 
 function M.list_for_ft(ft)
@@ -55,7 +67,7 @@ function M.fts()
 end
 
 function M._reset()
-  by_ft, seen = {}, {}
+  by_ft, seen, eager = {}, {}, {}
 end
 
 return M
