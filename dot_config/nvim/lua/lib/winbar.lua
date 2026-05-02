@@ -616,6 +616,10 @@ function M.setup()
     callback = function(args)
       local win = vim.api.nvim_get_current_win()
       if vim.api.nvim_win_get_buf(win) ~= args.buf then return end
+      -- Buffer-local opt-out: a creator that wants to render its own
+      -- winbar on a special buffer sets b:lib_winbar_keep before this
+      -- autocmd has a chance to clobber the local winbar option.
+      if vim.b[args.buf].lib_winbar_keep then return end
       local bt = vim.bo[args.buf].buftype
       if bt == "nofile" or bt == "prompt" or bt == "terminal" or bt == "quickfix" then
         vim.wo[win].winbar = ""

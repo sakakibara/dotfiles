@@ -5,7 +5,7 @@ local function render(buf, win, pending, marked, expanded)
   local lines = {}
   local marked_count = 0
   for i = 1, #pending do if marked[i] then marked_count = marked_count + 1 end end
-  lines[#lines + 1] = ("core.pack: %d of %d marked   <Tab> toggle  a all  u none  <C-d> expand  <CR> apply  q cancel")
+  local header = ("core.pack: %d of %d marked   <Tab> toggle  a all  u none  <C-d> expand  <CR> apply  q cancel")
     :format(marked_count, #pending)
 
   local row_to_index = {}  -- buffer row → pending index (for keymap targeting)
@@ -25,7 +25,7 @@ local function render(buf, win, pending, marked, expanded)
     subject_max = 200  -- headless tests: wide enough not to truncate
   end
 
-  local row = 2  -- 1-indexed; row 1 is header
+  local row = 1
 
   for i, p in ipairs(pending) do
     local glyph = C.pad_glyph(marked[i] and C.STATUS_MARKED or C.STATUS_UNMARKED)
@@ -76,12 +76,15 @@ local function render(buf, win, pending, marked, expanded)
   vim.bo[buf].modifiable = false
 
   vim.api.nvim_buf_clear_namespace(buf, C.NS, 0, -1)
-  -- Header highlight (line 0).
-  vim.api.nvim_buf_set_extmark(buf, C.NS, 0, 0, { end_col = #lines[1], hl_group = "Title" })
   for _, hl in ipairs(highlights) do
     vim.api.nvim_buf_set_extmark(buf, C.NS, hl[1], hl[2], { end_col = hl[3], hl_group = hl[4] })
   end
-  return row_to_index
+
+  if win and vim.api.nvim_win_is_valid(win) then
+    vim.wo[win].winbar = "%#Title#" .. header:gsub("%%", "%%%%")
+  end
+
+  return row_to_index, header
 end
 
 -- update_review(pending, opts)
@@ -93,6 +96,9 @@ function M.update_review(pending, opts)
   vim.bo[buf].buftype = "nofile"
   vim.bo[buf].swapfile = false
   vim.bo[buf].bufhidden = "wipe"
+  -- Marker must be set before any window assignment fires BufWinEnter, so
+  -- Lib.winbar's disable_special autocmd lets the local winbar through.
+  vim.b[buf].lib_winbar_keep = true
   if opts.open_window == false then vim.bo[buf].filetype = "PackReview" end
   pcall(vim.api.nvim_buf_set_name, buf, "core.pack: update review")
 
@@ -102,7 +108,7 @@ function M.update_review(pending, opts)
 
   local win  -- declared early so render closures can read its width
 
-  local row_to_index = render(buf, win, pending, marked, expanded)
+  local row_to_index, header = render(buf, win, pending, marked, expanded)
 
   if opts.open_window ~= false then
     vim.cmd("topleft 18split")
@@ -110,7 +116,7 @@ function M.update_review(pending, opts)
     vim.api.nvim_win_set_buf(win, buf)
     vim.bo[buf].filetype = "PackReview"  -- after win_set_buf so ftdetect doesn't clear
     C.lock_pack_window(buf, win)
-    vim.api.nvim_win_set_cursor(win, { 2, 0 })
+    vim.api.nvim_win_set_cursor(win, { 1, 0 })
     -- Force normal mode in case user was in insert in another buffer.
     -- modifiable=false alone doesn't help if the user is already mid-insert.
     vim.cmd("stopinsert")
@@ -119,21 +125,21 @@ function M.update_review(pending, opts)
       callback = function() vim.cmd("stopinsert") end,
     })
     -- Re-render now that we have the real window width for subject truncation.
-    row_to_index = render(buf, win, pending, marked, expanded)
+    row_to_index, header = render(buf, win, pending, marked, expanded)
   end
 
-  local view = { buf = buf, win = win }
+  local view = { buf = buf, win = win, header = header }
 
   function view:toggle_at(row)
     local i = row_to_index[row]
     if not i then return end
     marked[i] = not marked[i]
-    row_to_index = render(buf, win, pending, marked, expanded)
+    row_to_index, self.header = render(buf, win, pending, marked, expanded)
   end
 
   function view:set_all(value)
     for i = 1, #pending do marked[i] = value end
-    row_to_index = render(buf, win, pending, marked, expanded)
+    row_to_index, self.header = render(buf, win, pending, marked, expanded)
   end
 
   function view:toggle_expand(row)
@@ -144,12 +150,12 @@ function M.update_review(pending, opts)
       opts.on_expand(pending[i].name, function(log)
         pending[i]._log = log or {}
         expanded[i] = true
-        row_to_index = render(buf, win, pending, marked, expanded)
+        row_to_index, self.header = render(buf, win, pending, marked, expanded)
       end)
       return
     end
     expanded[i] = not expanded[i]
-    row_to_index = render(buf, win, pending, marked, expanded)
+    row_to_index, self.header = render(buf, win, pending, marked, expanded)
   end
 
   function view:apply()

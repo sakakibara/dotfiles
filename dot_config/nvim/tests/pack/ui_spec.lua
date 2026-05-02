@@ -10,12 +10,12 @@ T.describe("core.pack.ui.update_review", function()
     }
     local view = UI.update_review(pending, { open_window = false, on_apply = function() end })
     local lines = vim.api.nvim_buf_get_lines(view.buf, 0, -1, false)
-    -- Header line summarizes counts + keymap legend.
-    T.truthy(lines[1]:match("2 of 2 marked"))
-    T.truthy(lines[1]:match("<Tab> toggle"))
+    -- Header (in winbar) summarizes counts + keymap legend.
+    T.truthy(view.header:match("2 of 2 marked"))
+    T.truthy(view.header:match("<Tab> toggle"))
     -- Per-row format: status glyph + name + from..to + count + subject.
-    T.truthy(lines[2]:match("%[x%]") and lines[2]:match("a") and lines[2]:match("abc1234..def8901") and lines[2]:match("3 commits") and lines[2]:match("feat: x"))
-    T.truthy(lines[3]:match("%[x%]") and lines[3]:match("b") and lines[3]:match("1 commit") and lines[3]:match("fix: y"))
+    T.truthy(lines[1]:match("%[x%]") and lines[1]:match("a") and lines[1]:match("abc1234..def8901") and lines[1]:match("3 commits") and lines[1]:match("feat: x"))
+    T.truthy(lines[2]:match("%[x%]") and lines[2]:match("b") and lines[2]:match("1 commit") and lines[2]:match("fix: y"))
     view:close()
   end)
 
@@ -23,11 +23,11 @@ T.describe("core.pack.ui.update_review", function()
     local UI = fresh()
     local pending = { { name = "a", from = "1", to = "2", count = 1, subject = "x" }, { name = "b", from = "3", to = "4", count = 2, subject = "y" } }
     local view = UI.update_review(pending, { open_window = false, on_apply = function() end })
-    view:toggle_at(2)
+    view:toggle_at(1)
     local lines = vim.api.nvim_buf_get_lines(view.buf, 0, -1, false)
-    T.truthy(lines[1]:match("1 of 2 marked"))
-    T.truthy(lines[2]:match("%[ %]"))
-    T.truthy(lines[3]:match("%[x%]"))
+    T.truthy(view.header:match("1 of 2 marked"))
+    T.truthy(lines[1]:match("%[ %]"))
+    T.truthy(lines[2]:match("%[x%]"))
     view:close()
   end)
 
@@ -36,7 +36,7 @@ T.describe("core.pack.ui.update_review", function()
     local pending = { { name = "a", from = "1", to = "2", count = 1, subject = "x" }, { name = "b", from = "3", to = "4", count = 1, subject = "y" } }
     local got
     local view = UI.update_review(pending, { open_window = false, on_apply = function(list) got = list end })
-    view:toggle_at(3)  -- unmark b
+    view:toggle_at(2)  -- unmark b
     view:apply()
     T.eq(#got, 1)
     T.eq(got[1].name, "a")
@@ -48,11 +48,9 @@ T.describe("core.pack.ui.update_review", function()
     local pending = { { name = "a", from = "1", to = "2", count = 1, subject = "x" }, { name = "b", from = "3", to = "4", count = 1, subject = "y" } }
     local view = UI.update_review(pending, { open_window = false, on_apply = function() end })
     view:set_all(false)
-    local lines = vim.api.nvim_buf_get_lines(view.buf, 0, -1, false)
-    T.truthy(lines[1]:match("0 of 2 marked"))
+    T.truthy(view.header:match("0 of 2 marked"))
     view:set_all(true)
-    lines = vim.api.nvim_buf_get_lines(view.buf, 0, -1, false)
-    T.truthy(lines[1]:match("2 of 2 marked"))
+    T.truthy(view.header:match("2 of 2 marked"))
     view:close()
   end)
 
@@ -68,10 +66,10 @@ T.describe("core.pack.ui.update_review", function()
         cb({ { sha = "abcdef0", subject = "test commit" } })
       end,
     })
-    view:toggle_expand(2)
+    view:toggle_expand(1)
     T.eq(expand_called_for, "a")
     local lines = vim.api.nvim_buf_get_lines(view.buf, 0, -1, false)
-    T.truthy(lines[3]:match("abcdef0") and lines[3]:match("test commit"), "expanded log line not rendered")
+    T.truthy(lines[2]:match("abcdef0") and lines[2]:match("test commit"), "expanded log line not rendered")
     view:close()
   end)
 
@@ -142,9 +140,9 @@ T.describe("core.pack.ui.clean_review", function()
     }
     local view = UI.clean_review(items, { open_window = false, on_apply = function() end })
     local lines = vim.api.nvim_buf_get_lines(view.buf, 0, -1, false)
-    T.truthy(lines[1]:match("2 of 2 marked") and lines[1]:match("MB"))
-    T.truthy(lines[2]:match("%[x%]") and lines[2]:match("old%-a") and lines[2]:match("MB"))
-    T.truthy(lines[3]:match("%[x%]") and lines[3]:match("old%-b"))
+    T.truthy(view.header:match("2 of 2 marked") and view.header:match("MB"))
+    T.truthy(lines[1]:match("%[x%]") and lines[1]:match("old%-a") and lines[1]:match("MB"))
+    T.truthy(lines[2]:match("%[x%]") and lines[2]:match("old%-b"))
     view:close()
   end)
 
@@ -152,9 +150,9 @@ T.describe("core.pack.ui.clean_review", function()
     local UI = fresh()
     local items = { { name = "a", dir = "/tmp/a" } }
     local view = UI.clean_review(items, { open_window = false, on_apply = function() end })
-    view:toggle_at(2)
+    view:toggle_at(1)
     local lines = vim.api.nvim_buf_get_lines(view.buf, 0, -1, false)
-    T.truthy(lines[2]:match("%[ %]"))
+    T.truthy(lines[1]:match("%[ %]"))
     view:close()
   end)
 
@@ -163,7 +161,7 @@ T.describe("core.pack.ui.clean_review", function()
     local items = { { name = "a", dir = "/tmp/a" }, { name = "b", dir = "/tmp/b" } }
     local got
     local view = UI.clean_review(items, { open_window = false, on_apply = function(list) got = list end })
-    view:toggle_at(3)  -- unmark b
+    view:toggle_at(2)  -- unmark b
     view:apply()
     T.eq(#got, 1)
     T.eq(got[1].name, "a")
@@ -180,9 +178,9 @@ T.describe("core.pack.ui.rollback_review", function()
     }
     local view = UI.rollback_review(snapshots, { open_window = false, on_select = function() end })
     local lines = vim.api.nvim_buf_get_lines(view.buf, 0, -1, false)
-    T.truthy(lines[1]:match("2 snapshots"))
-    T.truthy(lines[3]:match("2026%-04%-28") and lines[3]:match("88"))
-    T.truthy(lines[4]:match("2026%-04%-27") and lines[4]:match("87"))
+    T.truthy(view.header:match("2 snapshots"))
+    T.truthy(lines[1]:match("2026%-04%-28") and lines[1]:match("88"))
+    T.truthy(lines[2]:match("2026%-04%-27") and lines[2]:match("87"))
     view:close()
   end)
 
@@ -194,7 +192,7 @@ T.describe("core.pack.ui.rollback_review", function()
     }
     local got
     local view = UI.rollback_review(snapshots, { open_window = false, on_select = function(s) got = s end })
-    view:select_at(4)  -- second snapshot row (header + blank + first + second)
+    view:select_at(2)  -- second snapshot row
     T.eq(got and got.ts, 1714207200)
     view:close()
   end)

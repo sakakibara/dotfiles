@@ -29,6 +29,8 @@ M.keymaps = {
 -- autocmds elsewhere in the user's config (e.g., toggling relativenumber on InsertEnter).
 -- The buffer-local autocmd reasserts these options on BufEnter/WinEnter/ModeChanged.
 function M.lock_pack_window(buf, win)
+  -- winbar is owned by Lib.winbar.disable_special (with b:lib_winbar_keep
+  -- as the per-buffer opt-out) — don't reassert it here.
   local function apply()
     if win == nil or not vim.api.nvim_win_is_valid(win) then return end
     vim.wo[win].number = false
@@ -37,10 +39,6 @@ function M.lock_pack_window(buf, win)
     vim.wo[win].signcolumn = "no"
     vim.wo[win].wrap = false
     vim.wo[win].cursorline = true
-    -- Window-local "" actually disables the bar (no line allocated).
-    -- The global `winbar = "%!..."` would otherwise leave a blank line
-    -- here even though Lib.winbar.render() returns "" for nofile.
-    vim.wo[win].winbar = ""
   end
   apply()
 
@@ -57,7 +55,6 @@ function M.lock_pack_window(buf, win)
       vim.wo[w].signcolumn = "no"
       vim.wo[w].wrap = false
       vim.wo[w].cursorline = true
-      vim.wo[w].winbar = ""
     end,
   })
 end

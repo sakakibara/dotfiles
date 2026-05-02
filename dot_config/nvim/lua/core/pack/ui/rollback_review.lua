@@ -1,14 +1,12 @@
 local C = require("core.pack.ui._common")
 local M = {}
 
-local function render(buf, snapshots)
-  local lines = {
-    ("core.pack: %d snapshots   <CR> restore  q cancel"):format(#snapshots),
-    "",
-  }
-  local highlights = { { 0, 0, #lines[1], "Title" } }
+local function render(buf, win, snapshots)
+  local header = ("core.pack: %d snapshots   <CR> restore  q cancel"):format(#snapshots)
+  local lines = {}
+  local highlights = {}
   local row_to_index = {}
-  local row = 3
+  local row = 1
 
   for i, s in ipairs(snapshots) do
     local idx_str = ("%2d"):format(i)
@@ -33,7 +31,12 @@ local function render(buf, snapshots)
   for _, hl in ipairs(highlights) do
     vim.api.nvim_buf_set_extmark(buf, C.NS, hl[1], hl[2], { end_col = hl[3], hl_group = hl[4] })
   end
-  return row_to_index
+
+  if win and vim.api.nvim_win_is_valid(win) then
+    vim.wo[win].winbar = "%#Title#" .. header:gsub("%%", "%%%%")
+  end
+
+  return row_to_index, header
 end
 
 function M.rollback_review(snapshots, opts)
@@ -42,27 +45,29 @@ function M.rollback_review(snapshots, opts)
   vim.bo[buf].buftype = "nofile"
   vim.bo[buf].swapfile = false
   vim.bo[buf].bufhidden = "wipe"
+  vim.b[buf].lib_winbar_keep = true
   if opts.open_window == false then vim.bo[buf].filetype = "PackRollback" end
   pcall(vim.api.nvim_buf_set_name, buf, "core.pack: rollback")
 
-  local row_to_index = render(buf, snapshots)
-
   local win
+  local row_to_index, header = render(buf, nil, snapshots)
+
   if opts.open_window ~= false then
     vim.cmd("topleft 14split")
     win = vim.api.nvim_get_current_win()
     vim.api.nvim_win_set_buf(win, buf)
     vim.bo[buf].filetype = "PackRollback"  -- after win_set_buf so ftdetect doesn't clear
     C.lock_pack_window(buf, win)
-    vim.api.nvim_win_set_cursor(win, { 3, 0 })  -- first snapshot row
+    vim.api.nvim_win_set_cursor(win, { 1, 0 })
     vim.cmd("stopinsert")
     vim.api.nvim_create_autocmd("InsertEnter", {
       buffer = buf,
       callback = function() vim.cmd("stopinsert") end,
     })
+    row_to_index, header = render(buf, win, snapshots)
   end
 
-  local view = { buf = buf, win = win }
+  local view = { buf = buf, win = win, header = header }
 
   function view:select_at(row)
     local i = row_to_index[row]

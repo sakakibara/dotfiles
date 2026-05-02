@@ -1,7 +1,7 @@
 local C = require("core.pack.ui._common")
 local M = {}
 
-local function render(buf, _win, items, marked)
+local function render(buf, win, items, marked)
   local lines = {}
   local marked_count = 0
   local total_kb = 0
@@ -9,12 +9,12 @@ local function render(buf, _win, items, marked)
     if marked[i] then marked_count = marked_count + 1 end
     total_kb = total_kb + (items[i].size_kb or 0)
   end
-  lines[#lines + 1] = ("core.pack: %d of %d marked   %s total   <Tab> toggle  a all  u none  <CR> remove  q cancel")
+  local header = ("core.pack: %d of %d marked   %s total   <Tab> toggle  a all  u none  <CR> remove  q cancel")
     :format(marked_count, #items, C.fmt_size_kb(total_kb))
 
   local row_to_index = {}
   local highlights = {}
-  local row = 2
+  local row = 1
 
   -- Name column: longest actual name, floor 16, cap 50.
   local name_max = 16
@@ -43,11 +43,15 @@ local function render(buf, _win, items, marked)
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
   vim.bo[buf].modifiable = false
   vim.api.nvim_buf_clear_namespace(buf, C.NS, 0, -1)
-  vim.api.nvim_buf_set_extmark(buf, C.NS, 0, 0, { end_col = #lines[1], hl_group = "Title" })
   for _, hl in ipairs(highlights) do
     vim.api.nvim_buf_set_extmark(buf, C.NS, hl[1], hl[2], { end_col = hl[3], hl_group = hl[4] })
   end
-  return row_to_index
+
+  if win and vim.api.nvim_win_is_valid(win) then
+    vim.wo[win].winbar = "%#Title#" .. header:gsub("%%", "%%%%")
+  end
+
+  return row_to_index, header
 end
 
 function M.clean_review(items, opts)
@@ -56,6 +60,7 @@ function M.clean_review(items, opts)
   vim.bo[buf].buftype = "nofile"
   vim.bo[buf].swapfile = false
   vim.bo[buf].bufhidden = "wipe"
+  vim.b[buf].lib_winbar_keep = true
   if opts.open_window == false then vim.bo[buf].filetype = "PackClean" end
   pcall(vim.api.nvim_buf_set_name, buf, "core.pack: clean review")
 
@@ -63,7 +68,7 @@ function M.clean_review(items, opts)
   for i = 1, #items do marked[i] = true end
 
   local win  -- declared early so render closures can read its width
-  local row_to_index = render(buf, nil, items, marked)
+  local row_to_index, header = render(buf, nil, items, marked)
 
   if opts.open_window ~= false then
     vim.cmd("topleft 14split")
@@ -71,28 +76,28 @@ function M.clean_review(items, opts)
     vim.api.nvim_win_set_buf(win, buf)
     vim.bo[buf].filetype = "PackClean"  -- after win_set_buf so ftdetect doesn't clear
     C.lock_pack_window(buf, win)
-    vim.api.nvim_win_set_cursor(win, { 2, 0 })
+    vim.api.nvim_win_set_cursor(win, { 1, 0 })
     vim.cmd("stopinsert")
     vim.api.nvim_create_autocmd("InsertEnter", {
       buffer = buf,
       callback = function() vim.cmd("stopinsert") end,
     })
     -- Re-render now that we have the real window width for dir truncation.
-    row_to_index = render(buf, win, items, marked)
+    row_to_index, header = render(buf, win, items, marked)
   end
 
-  local view = { buf = buf, win = win }
+  local view = { buf = buf, win = win, header = header }
 
   function view:toggle_at(row)
     local i = row_to_index[row]
     if not i then return end
     marked[i] = not marked[i]
-    row_to_index = render(buf, win, items, marked)
+    row_to_index, self.header = render(buf, win, items, marked)
   end
 
   function view:set_all(value)
     for i = 1, #items do marked[i] = value end
-    row_to_index = render(buf, win, items, marked)
+    row_to_index, self.header = render(buf, win, items, marked)
   end
 
   function view:apply()
