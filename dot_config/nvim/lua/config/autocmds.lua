@@ -117,31 +117,15 @@ au("TextYankPost", {
   callback = function() vim.highlight.on_yank() end,
 })
 
--- `q` closes transient/read-only popup buffers. Excludes `qf` (quickfix) on
--- purpose — quickfix supports :cdo-style edit workflows where `q` needs to
--- record macros. ftplugin sets some of these (help, man) on its own; setting
--- ours via vim.schedule wins regardless of order.
+-- `q` closes transient/read-only popup buffers. Excludes `qf` so quickfix
+-- can record macros. Plugins that manage their own dismiss UI (snacks_win,
+-- noice notify, neotest, spectre, grug-far, gitsigns-blame, dbout) are
+-- intentionally omitted — overriding q on their buffers can interfere with
+-- their internal lifecycle.
 au("FileType", {
   group = grp,
-  pattern = {
-    "PlenaryTestPopup",
-    "checkhealth",
-    "dbout",
-    "gitsigns-blame",
-    "grug-far",
-    "help",
-    "lspinfo",
-    "neotest-output",
-    "neotest-output-panel",
-    "neotest-summary",
-    "notify",
-    "snacks_win",
-    "spectre_panel",
-    "startuptime",
-    "tsplayground",
-  },
+  pattern = { "PlenaryTestPopup", "checkhealth", "help", "lspinfo", "startuptime", "tsplayground" },
   callback = function(ev)
-    vim.bo[ev.buf].buflisted = false
     vim.schedule(function()
       vim.keymap.set("n", "q", function()
         vim.cmd("close")
@@ -150,3 +134,4 @@ au("FileType", {
     end)
   end,
 })
+
