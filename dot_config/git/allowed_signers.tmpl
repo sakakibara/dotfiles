@@ -1,0 +1,11 @@
+{{- /*
+   Trusted SSH public keys for verifying commit signatures locally.
+   Format: <principal-pattern> namespaces=<list> <key-type> <key>
+   See `man ssh-keygen` ALLOWED SIGNERS section.
+
+   Empty file when signing isn't configured (signing.public_key blank
+   in .chezmoidata/signing.toml). Git tolerates empty allowedSignersFile.
+*/ -}}
+{{- if and .signing.public_key (index . "email") -}}
+{{ index . "email" }} namespaces="git" {{ .signing.public_key }}
+{{ end -}}

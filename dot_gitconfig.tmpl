@@ -85,6 +85,7 @@
 {{- else if eq .chezmoi.os "windows" }}
 	program = "C:/Users/{{ .chezmoi.username }}/AppData/Local/1Password/app/8/op-ssh-sign.exe"
 {{- end }}
+	allowedSignersFile = ~/.config/git/allowed_signers
 [commit]
 	gpgsign = true
 [tag]
