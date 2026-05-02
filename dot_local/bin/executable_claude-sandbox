@@ -68,6 +68,17 @@ _dockerfile_hash() {
 _built_hash_file() { printf '%s/built-hash\n' "$CACHE_DIR"; }
 _image_built()     { docker image inspect "$IMAGE" >/dev/null 2>&1; }
 
+# Sanitized basename of a repo path, suitable for use in container/volume
+# names. Pure bash — avoids `basename ... | tr` because basename emits a
+# trailing newline that tr converts to '_', leaving spurious underscores
+# at the end of the result (the visible bug: `organ.nvim_`).
+_sanitize_basename() {
+  local repo="$1"
+  local abs; abs=$(cd "$repo" && pwd -P)
+  local base="${abs##*/}"
+  printf '%s\n' "${base//[^A-Za-z0-9_.-]/_}"
+}
+
 # Container name policy:
 #   <base> = sanitized repo basename
 #   suffix order: [-mode][-name | -N]
@@ -82,7 +93,7 @@ _image_built()     { docker image inspect "$IMAGE" >/dev/null 2>&1; }
 # wrapper auto-bumps to the next free integer suffix.
 _container_name_base() {
   local repo="$1" mode="${2:-default}" name_override="${3:-}"
-  local base; base=$(basename "$(cd "$repo" && pwd -P)" | tr -c 'A-Za-z0-9_.-' '_')
+  local base; base=$(_sanitize_basename "$repo")
   local mode_suffix="" name_suffix=""
   case "$mode" in
     worktree) mode_suffix="-wt" ;;
@@ -206,7 +217,7 @@ _worktree_path() {
   local repo="$1"
   local abs base hash
   abs=$(cd "$repo" && pwd -P)
-  base=$(basename "$abs" | tr -c 'A-Za-z0-9_.-' '_')
+  base=$(_sanitize_basename "$repo")
   hash=$(printf '%s' "$abs" | shasum -a 256 | cut -c1-8)
   printf '%s/worktrees/%s-%s\n' "$CACHE_DIR" "$base" "$hash"
 }
@@ -215,7 +226,7 @@ _worktree_path() {
 # needs to be unique within that one repo. No cross-repo hash needed.
 _worktree_branch() {
   local repo="$1"
-  local base; base=$(basename "$(cd "$repo" && pwd -P)" | tr -c 'A-Za-z0-9_.-' '_')
+  local base; base=$(_sanitize_basename "$repo")
   printf 'claude-sandbox/%s\n' "$base"
 }
 
