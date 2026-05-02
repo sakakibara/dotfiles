@@ -2,7 +2,16 @@ README.md
 LICENSE
 mise.toml
 etc/**
-.ssh/**
+# Block dangerous SSH file patterns from ever being applied. The real
+# leak guard is .gitignore's default-deny on dot_ssh/*; this is a second
+# layer in case anything slipped through and ended up in the source.
+.ssh/id_*
+.ssh/*.pem
+.ssh/*.key
+.ssh/known_hosts
+.ssh/known_hosts.old
+.ssh/authorized_keys
+.ssh/agent.sock
 **/.git
 **/.claude
 .config/kitty/current-theme.conf

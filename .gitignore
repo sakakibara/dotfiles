@@ -1,2 +1,8 @@
 Brewfile.lock.json
 flycheck_*
+
+# Belt-and-suspenders: never commit anything under dot_ssh/ except the
+# config template. Even if .chezmoiignore would prevent application, we
+# don't want raw key material reaching the repo at all.
+dot_ssh/*
+!dot_ssh/config.tmpl

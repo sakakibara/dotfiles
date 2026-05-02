@@ -1,0 +1,39 @@
+{{- if lookPath "orb" -}}
+# Added by OrbStack: 'orb' SSH host for Linux machines
+# This only works if it's at the top of ssh_config (before any Host blocks).
+# This won't be added again if you remove it.
+Include ~/.orbstack/ssh/config
+
+{{ end -}}
+# Vagrant private-network VMs. StrictHostKeyChecking=no is appropriate
+# here because vagrant VMs are ephemeral and their host keys legitimately
+# churn on every `vagrant destroy && up`. UserKnownHostsFile=/dev/null
+# keeps known_hosts from filling with throwaway entries.
+Host 192.168.33.* *.loc
+  StrictHostKeyChecking no
+  UserKnownHostsFile /dev/null
+  LogLevel ERROR
+{{- if .signing.use_1password_ssh_agent }}
+  # Vagrant uses its own per-VM keys, not 1Password's vault. Disable
+  # the agent for these hosts so ssh falls back to IdentityFile lookup.
+  IdentityAgent none
+{{- end }}
+
+# Catch-all defaults. Specific Host blocks above take precedence per
+# SSH's first-match-wins rule.
+Host *
+  # `accept-new` (OpenSSH 7.6+) auto-adds first-connect host keys but
+  # still rejects changed keys. The blanket `no` we used previously
+  # silently accepted MITM, which is what `accept-new` fixes.
+  StrictHostKeyChecking accept-new
+  AddKeysToAgent yes
+  ServerAliveInterval 60
+{{- if .signing.use_1password_ssh_agent }}
+{{- if eq .chezmoi.os "darwin" }}
+  IdentityAgent "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+{{- else if eq .chezmoi.os "linux" }}
+  IdentityAgent ~/.1password/agent.sock
+{{- else if eq .chezmoi.os "windows" }}
+  IdentityAgent \\.\pipe\openssh-ssh-agent
+{{- end }}
+{{- end }}

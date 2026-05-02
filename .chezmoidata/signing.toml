@@ -15,4 +15,11 @@
 # Empty `public_key` disables the signing block in .gitconfig (so a fresh
 # machine without 1Password configured won't fail every commit).
 [signing]
-public_key = ""
+public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIC1HaB5DIRwgKQ2E35VSiESgSwtVwCIpvyOFo8tq6WCd"
+
+# Route all SSH auth (cloning git@github.com, sshing into servers, etc.)
+# through the 1Password agent. Off by default: enabling overrides any
+# keys you currently have in ~/.ssh/id_* — they become invisible to
+# OpenSSH unless also imported into 1Password. Commit signing via
+# op-ssh-sign works regardless of this flag.
+use_1password_ssh_agent = false
