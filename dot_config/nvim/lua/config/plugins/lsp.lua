@@ -102,7 +102,13 @@ return {
               end
               pcall(pkg.on, pkg, "install:success", handler)
               pcall(pkg.on, pkg, "install:failed",  handler)
-              pkg:install()
+              -- Skip the install() call when another trigger has already
+              -- kicked it off (e.g. a tool shared between two filetypes).
+              -- pkg:install() asserts on re-entry, so we must guard. Our
+              -- handler still fires when the in-flight install completes.
+              if not pkg:is_installing() then
+                pkg:install()
+              end
             end
           end
           -- If everything was already installed, still drain once
