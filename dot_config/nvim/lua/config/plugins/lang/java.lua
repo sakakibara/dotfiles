@@ -89,6 +89,13 @@ return Lib.lang.setup({
             local map = function(mode, lhs, rhs, desc)
               vim.keymap.set(mode, lhs, rhs, { buffer = args.buf, desc = desc })
             end
+            local ok_wk, wk = pcall(require, "which-key")
+            if ok_wk then
+              wk.add({
+                { "<Leader>cg", group = "goto",    buffer = args.buf },
+                { "<Leader>cx", group = "extract", buffer = args.buf },
+              })
+            end
             map("n", "<Leader>co", jdtls.organize_imports, "Organize Imports")
             map("n", "<Leader>cxv", jdtls.extract_variable_all, "Extract Variable")
             map("n", "<Leader>cxc", jdtls.extract_constant, "Extract Constant")

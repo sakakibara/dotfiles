@@ -44,6 +44,10 @@ return Lib.lang.setup({
             vim.keymap.set("n", "<Leader>mc", function()
               require("metals").compile_cascade()
             end, { buffer = args.buf, desc = "Metals Compile Cascade" })
+            local ok_wk, wk = pcall(require, "which-key")
+            if ok_wk then
+              wk.add({ { "<Leader>m", group = "metals", buffer = args.buf } })
+            end
           end,
         })
       end,
