@@ -5,6 +5,7 @@
 
 set -uo pipefail
 fails=0
+skips=()  # tools expected but missing — promoted to failures under CI=true
 
 _check() {
   local interp="$1" file="$2"
@@ -68,6 +69,7 @@ if command -v zsh >/dev/null 2>&1; then
   )
 else
   echo "skip: zsh not on PATH" >&2
+  skips+=("zsh")
 fi
 
 # Fish files
@@ -77,6 +79,7 @@ if command -v fish >/dev/null 2>&1; then
   )
 else
   echo "skip: fish not on PATH" >&2
+  skips+=("fish")
 fi
 
 # Lua files. Different consumers in this repo use different Lua runtimes:
@@ -85,9 +88,12 @@ fi
 # Using the wrong parser produces false positives (LuaJIT rejects `<close>`,
 # Lua 5.4 rejects some LuaJIT extensions) — pick the right one per location.
 
-# nvim's lua → luajit
+# nvim's lua → luajit. `mapfile` is bash 4+; macOS ships bash 3.2 — using
+# it there silently dropped through and reported "all checks passed"
+# without running anything. Portable while-loop array build instead.
 if command -v luajit >/dev/null 2>&1; then
-  mapfile -d '' -t _luajit_files < <(
+  _luajit_files=()
+  while IFS= read -r -d '' f; do _luajit_files+=("$f"); done < <(
     find dot_config/nvim -type f -name '*.lua' -not -name '*.tmpl' -print0 2>/dev/null
   )
   if [[ ${#_luajit_files[@]} -gt 0 ]]; then
@@ -95,18 +101,27 @@ if command -v luajit >/dev/null 2>&1; then
   fi
 else
   echo "skip: luajit not on PATH (nvim lua files)" >&2
+  skips+=("luajit")
 fi
 
-# Everything else (wezterm.lua + any future Lua-5.4 consumer) → lua5.4
+# Everything else (wezterm.lua + any future Lua-5.4 consumer) → lua5.4.
+# Detect via $() capture + bash string match, not `cmd | grep -q`. With
+# `set -o pipefail`, grep -q closing the pipe on first match can flag a
+# SIGPIPE on the producer and fail the conditional — masking a working
+# Lua 5.4 install as "not found".
 _lua54=""
 for _cmd in lua5.4 lua; do
-  if command -v "$_cmd" >/dev/null 2>&1 && "$_cmd" -v 2>&1 | grep -q 'Lua 5\.4'; then
-    _lua54="$_cmd"
-    break
+  if command -v "$_cmd" >/dev/null 2>&1; then
+    _ver=$("$_cmd" -v 2>&1 || true)
+    if [[ "$_ver" == *"Lua 5.4"* ]]; then
+      _lua54="$_cmd"
+      break
+    fi
   fi
 done
 if [[ -n "$_lua54" ]]; then
-  mapfile -d '' -t _lua54_files < <(
+  _lua54_files=()
+  while IFS= read -r -d '' f; do _lua54_files+=("$f"); done < <(
     find . -type f -name '*.lua' \
       -not -path './dot_config/nvim/*' \
       -not -path './.git/*' \
@@ -117,6 +132,7 @@ if [[ -n "$_lua54" ]]; then
   fi
 else
   echo "skip: Lua 5.4 not on PATH (wezterm + other lua files)" >&2
+  skips+=("lua5.4")
 fi
 
 # TOML files (non-templated; rendered .toml.tmpl handled by render.sh).
@@ -127,6 +143,7 @@ if python3 -c 'import tomllib' 2>/dev/null; then
   )
 else
   echo "skip: python3 tomllib not available" >&2
+  skips+=("python3-tomllib")
 fi
 
 # YAML files. Use Ruby's stdlib YAML — no extra dep on standard CI runners.
@@ -137,6 +154,7 @@ if command -v ruby >/dev/null 2>&1; then
   )
 else
   echo "skip: ruby not on PATH" >&2
+  skips+=("ruby")
 fi
 
 # JSON files (excluding chezmoi-generated lockfiles, etc).
@@ -147,6 +165,15 @@ if command -v python3 >/dev/null 2>&1; then
   )
 else
   echo "skip: python3 not on PATH" >&2
+  skips+=("python3")
+fi
+
+# In CI all expected tooling must be installed by the workflow's setup
+# steps. A "skip" message there means the install step is broken — promote
+# to a failure so it doesn't ride along under "all checks passed".
+if [[ "${CI:-}" == "true" ]] && [[ ${#skips[@]} -gt 0 ]]; then
+  printf 'FAIL: skipped checks not allowed in CI: %s\n' "${skips[*]}" >&2
+  fails=$((fails + ${#skips[@]}))
 fi
 
 if [[ $fails -gt 0 ]]; then
