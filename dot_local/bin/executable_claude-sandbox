@@ -57,6 +57,14 @@ SANDBOX_AGENT_PORT="${SANDBOX_AGENT_PORT:-19988}"
 WORKSPACES=()
 WS_LABEL=""
 
+# External-symlink auto-mounts. Populated by _scan_external_symlinks
+# from the workspace contents: any symlink that resolves to a target
+# outside the workspace (and isn't on the deny-list) gets bind-mounted
+# at its host path so the sandbox can follow the symlink. Surface via
+# banner so the user can see what was added implicitly.
+EXTRA_MOUNTS=()
+DENIED_SYMLINKS=()
+
 _require_docker() {
   command -v docker >/dev/null 2>&1 \
     || _die "docker not found on PATH (install OrbStack via brew)"
@@ -276,19 +284,24 @@ _container_stale() {
 }
 
 # Resolve the target repo: explicit arg if given, else git toplevel of
-# cwd, else cwd. Returns absolute path.
+# cwd, else cwd. Returns absolute LOGICAL path (preserves symlinks in
+# the path the user typed). Matches host claude-code's path-keying
+# convention: ~/.claude/projects/ entries reflect the path as invoked,
+# not the physical resolution. Keeping our path consistent means
+# host-claude and sandbox-claude share per-project memory rather than
+# fragmenting it.
 _resolve_repo() {
   local arg="${1:-}"
   if [[ -n "$arg" ]]; then
     [[ -d "$arg" ]] || _die "no such directory: $arg"
-    (cd "$arg" && pwd -P)
+    (cd "$arg" && pwd)
     return
   fi
   local top
   if top=$(git rev-parse --show-toplevel 2>/dev/null); then
     printf '%s\n' "$top"
   else
-    pwd -P
+    pwd
   fi
 }
 
@@ -318,6 +331,20 @@ _print_banner() {
     done
   else
     printf '   workspace: %s\n' "$repo"
+  fi
+  if [[ ${#EXTRA_MOUNTS[@]} -gt 0 ]]; then
+    printf '   linked:    %s\n' "${EXTRA_MOUNTS[0]}"
+    local j
+    for ((j = 1; j < ${#EXTRA_MOUNTS[@]}; j++)); do
+      printf '              %s\n' "${EXTRA_MOUNTS[j]}"
+    done
+  fi
+  if [[ ${#DENIED_SYMLINKS[@]} -gt 0 ]]; then
+    printf '%s   warning:   %d symlink target(s) refused (security):%s\n' "$C_YELLOW" "${#DENIED_SYMLINKS[@]}" "$C_RESET"
+    local k
+    for ((k = 0; k < ${#DENIED_SYMLINKS[@]}; k++)); do
+      printf '              %s\n' "${DENIED_SYMLINKS[k]}"
+    done
   fi
   [[ -n "$label" ]] && printf '   ios label: %s\n' "$label"
   if [[ "$perm" != "?" || "$iso" != "?" ]]; then
@@ -431,10 +458,16 @@ _run_args() {
   case "$mode" in
     default)
       # One bind per workspace path (single-element WORKSPACES = single
-      # repo; multi-element = the --workspace multi-mount case).
+      # repo; multi-element = the --workspace multi-mount case). Then
+      # any auto-detected external symlink targets, mounted at their
+      # host paths so symlinks-pointing-outside-cwd resolve correctly.
       local ws
       for ws in "${WORKSPACES[@]}"; do
         args+=( -v "$ws":"$ws" )
+      done
+      local extra
+      for extra in "${EXTRA_MOUNTS[@]}"; do
+        args+=( -v "$extra":"$extra" )
       done
       args+=( -v "$HOME/.claude":/home/claude/.claude )
       ;;
@@ -501,6 +534,57 @@ _ensure_signing_relay() {
     sleep 0.2
   done
   _warn "agent relay didn't come up within 1s (see $logdir/relay.log); commits inside sandbox may be unsigned"
+}
+
+# Deny-list for external symlink targets. Returns 0 (true) if the
+# target is sensitive enough that we refuse to auto-mount it; warn
+# instead. Most paths are fine to mount; a small list of secret /
+# system / OS-internal locations are blocked.
+_is_denied_symlink_target() {
+  local t="$1"
+  case "$t" in
+    "$HOME/.ssh"|"$HOME/.ssh"/*) return 0 ;;
+    "$HOME/.gnupg"|"$HOME/.gnupg"/*) return 0 ;;
+    "$HOME/.aws"|"$HOME/.aws"/*) return 0 ;;
+    "$HOME/.config/1Password"|"$HOME/.config/1Password"/*) return 0 ;;
+    "$HOME/Library/Keychains"|"$HOME/Library/Keychains"/*) return 0 ;;
+    /etc|/etc/*|/var|/var/*|/usr|/usr/*|/sys|/sys/*|/proc|/proc/*|/dev|/dev/*) return 0 ;;
+  esac
+  return 1
+}
+
+# Scan workspaces for symlinks whose target lives outside any workspace.
+# Targets that aren't deny-listed get appended to EXTRA_MOUNTS for
+# bind-mounting at their host path. Deny-listed ones go to
+# DENIED_SYMLINKS for the banner to warn about. Find depth is capped to
+# avoid pathological scans on huge trees; -L is intentional so the test
+# is "is this entry, after symlink resolution, a thing that exists?".
+_scan_external_symlinks() {
+  local ws symlink target inside w m already
+  for ws in "${WORKSPACES[@]}"; do
+    while IFS= read -r symlink; do
+      [[ -z "$symlink" ]] && continue
+      target=$(readlink -f "$symlink" 2>/dev/null) || continue
+      [[ -z "$target" || ! -e "$target" ]] && continue
+      inside=0
+      for w in "${WORKSPACES[@]}"; do
+        case "$target" in
+          "$w"|"$w"/*) inside=1; break ;;
+        esac
+      done
+      ((inside)) && continue
+      if _is_denied_symlink_target "$target"; then
+        DENIED_SYMLINKS+=( "$symlink -> $target" )
+        continue
+      fi
+      already=0
+      for m in "${EXTRA_MOUNTS[@]}"; do
+        [[ "$m" == "$target" ]] && { already=1; break; }
+      done
+      ((already)) && continue
+      EXTRA_MOUNTS+=( "$target" )
+    done < <(find "$ws" -maxdepth 6 -type l 2>/dev/null)
+  done
 }
 
 # --worktree: create a fresh git worktree on a throwaway branch so
@@ -634,7 +718,7 @@ _parse_common_flags() {
         # (rare; --workspace and the [repo] positional don't normally mix).
         while (($#)) && [[ "$1" != -* ]]; do
           [[ -d "$1" ]] || _die "--workspace path doesn't exist: $1"
-          WORKSPACES+=( "$(cd "$1" && pwd -P)" )
+          WORKSPACES+=( "$(cd "$1" && pwd)" )
           shift
         done
         [[ ${#WORKSPACES[@]} -gt 0 ]] || _die "--workspace requires at least one path"
@@ -676,6 +760,7 @@ cmd_default() {
   _require_docker
   _ensure_image
   _ensure_signing_relay
+  _scan_external_symlinks
 
   case "$ISO_MODE" in
     worktree) _ensure_worktree "$repo" ;;
@@ -725,6 +810,7 @@ cmd_start() {
   _require_docker
   _ensure_image
   _ensure_signing_relay
+  _scan_external_symlinks
 
   case "$ISO_MODE" in
     worktree) _ensure_worktree "$repo" ;;
