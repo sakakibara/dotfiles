@@ -47,6 +47,13 @@ return {
         long_message_to_split = false,
       },
       routes = {
+        -- list-style command output (`:Inspect`, `:ls`, `:command`,
+        -- `:digraphs`, etc.) emits msg_show with kind=list_cmd via
+        -- nvim_echo(..., false, ...) — add_to_history=false. With
+        -- cmdheight=0, the default cmdline path can't render it
+        -- reliably; route to a persistent popup so output shows every
+        -- invocation rather than flashing transiently.
+        { filter = { event = "msg_show", kind = "list_cmd" }, view = "popup" },
         { filter = { event = "msg_show", any = {
           { find = "%d+L, %d+B" },
           { find = "; after #%d+" },
