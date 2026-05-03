@@ -63,7 +63,16 @@ function M.run_build(spec, path, opts)
   if opts.fidget then opts.fidget:set_status("core.pack", "building " .. spec.name) end
   local ok, err
   if type(b) == "function" then
+    -- Function-style builds typically need to `require` the plugin's
+    -- own lua modules to invoke an installer (e.g. organ.nvim's
+    -- `require("organ.grammar_install").install()`). The plugin isn't
+    -- on rtp yet at install time (packadd happens later, on first use),
+    -- so prepend its directory transiently — matches lazy.nvim's
+    -- behavior. Restore after to avoid polluting rtp until packadd runs.
+    local prev_rtp = vim.o.runtimepath
+    vim.opt.runtimepath:prepend(path)
     ok, err = pcall(b, { name = spec.name, path = path, spec = spec })
+    vim.o.runtimepath = prev_rtp
   elseif type(b) == "string" and b:sub(1, 1) == ":" then
     local prev = vim.fn.getcwd()
     ok, err = pcall(function()
@@ -80,9 +89,15 @@ function M.run_build(spec, path, opts)
     return
   end
   if not ok then
+    -- Build failure is reported but does NOT mark the plugin as
+    -- failed-to-install. Clone succeeded; the Lua modules are present;
+    -- the plugin should still load. Build artifacts (e.g. compiled
+    -- treesitter parsers) can be regenerated separately by re-running
+    -- the install hook. Marking the spec as failed would silently
+    -- disable the plugin entirely on next startup — far more disruptive
+    -- than the build failure (which the user will see and can address).
     vim.notify(("core.pack: %s: build failed: %s"):format(spec.name, tostring(err)),
       vim.log.levels.ERROR)
-    if opts and opts.on_failed then opts.on_failed(spec.name, "build failed: " .. tostring(err)) end
   end
 end
 
@@ -476,6 +491,33 @@ function M.update(specs, names, opts)
       })
     end,
   })
+end
+
+-- Uninstall named plugins: remove their on-disk dirs and lockfile
+-- entries. The spec itself stays in the dotfiles config — running
+-- :Pack install (or just relaunching nvim) will reinstall. Useful as
+-- a wipe-and-refresh when a plugin's state is broken or its build
+-- artifacts need regenerating.
+function M.uninstall(names)
+  local removed = {}
+  local missing = {}
+  for _, name in ipairs(names) do
+    local dir = M.install_dir(name)
+    if vim.fn.isdirectory(dir) == 1 then
+      vim.fn.delete(dir, "rf")
+      Lock.delete(name)
+      removed[#removed + 1] = name
+    else
+      missing[#missing + 1] = name
+    end
+  end
+  if #removed > 0 then
+    vim.notify("core.pack: uninstalled " .. table.concat(removed, ", "))
+  end
+  if #missing > 0 then
+    vim.notify("core.pack: not installed: " .. table.concat(missing, ", "), vim.log.levels.WARN)
+  end
+  return removed
 end
 
 function M.clean(specs, opts)

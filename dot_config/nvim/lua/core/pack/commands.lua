@@ -138,6 +138,18 @@ local function subcommands(Pack)
     end,
   }
 
+  subs.uninstall = {
+    desc = "uninstall plugin(s) from disk + lockfile (specs stay; reinstall via :Pack install)",
+    complete = function(arglead) return name_complete(Pack, arglead) end,
+    run = function(opts)
+      if #opts.fargs == 0 then
+        vim.notify("core.pack: usage: :Pack uninstall <name> [<name>...]", vim.log.levels.ERROR)
+        return
+      end
+      require("core.pack.install").uninstall(opts.fargs)
+    end,
+  }
+
   subs.update = {
     desc = "update plugin(s); ! = target lockfile revs (use after :Pack rollback)",
     complete = function(arglead) return name_complete(Pack, arglead) end,
@@ -366,9 +378,13 @@ function M.setup(Pack)
       local args_str = cmdline:gsub("^Pack!?%s*", "", 1)
       local tokens = vim.split(args_str, "%s+", { trimempty = false })
       if #tokens <= 1 then
+        -- Prefix match for subcommands (rather than substring): "inst"
+        -- matches "install" but not "uninstall". Keeps tab-completion
+        -- behaviour predictable when subcommand names share substrings.
+        local lead = arglead:lower()
         local out = {}
         for name in pairs(subs) do
-          if name:lower():find(arglead:lower(), 1, true) then out[#out + 1] = name end
+          if name:lower():sub(1, #lead) == lead then out[#out + 1] = name end
         end
         table.sort(out)
         return out

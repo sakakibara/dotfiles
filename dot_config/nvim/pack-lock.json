@@ -63,7 +63,7 @@
     "oil.nvim": {"rev":"0fcc83805ad11cf714a949c98c605ed717e0b83e","src":"https://github.com/stevearc/oil.nvim"},
     "omnisharp-extended-lsp.nvim": {"rev":"51e407a46ddb15e49727139b5b1ae3650cd6a069","src":"https://github.com/Hoffs/omnisharp-extended-lsp.nvim"},
     "one-small-step-for-vimkind": {"rev":"1af6ffb9b5229a856e8090fa2f690e0931a5aace","src":"https://github.com/jbyuki/one-small-step-for-vimkind"},
-    "organ.nvim": {"rev":"2e4a7ae29d4e209bf52faf49ca59fadd049e24f7","src":"https://github.com/sakakibara/organ.nvim"},
+    "organ.nvim": {"rev":"005c77bcad6af5a6598542246a4292fe692b2bd3","src":"https://github.com/sakakibara/organ.nvim"},
     "overseer.nvim": {"rev":"f818eefff81f4b12fb7cf236f1b6c16768a2fcbc","src":"https://github.com/stevearc/overseer.nvim"},
     "plantuml-syntax": {"rev":"9d4900aa16674bf5bb8296a72b975317d573b547","src":"https://github.com/aklt/plantuml-syntax"},
     "plenary.nvim": {"rev":"74b06c6c75e4eeb3108ec01852001636d85a932b","src":"https://github.com/nvim-lua/plenary.nvim"},
