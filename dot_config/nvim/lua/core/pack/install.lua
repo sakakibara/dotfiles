@@ -63,12 +63,22 @@ function M.run_build(spec, path, opts)
   if opts.fidget then opts.fidget:set_status("core.pack", "building " .. spec.name) end
   local ok, err
   if type(b) == "function" then
-    -- Function-style builds typically need to `require` the plugin's
-    -- own lua modules to invoke an installer (e.g. organ.nvim's
-    -- `require("organ.grammar_install").install()`). The plugin isn't
-    -- on rtp yet at install time (packadd happens later, on first use),
-    -- so prepend its directory transiently — matches lazy.nvim's
-    -- behavior. Restore after to avoid polluting rtp until packadd runs.
+    -- Function-style builds need the plugin on rtp so `require()` can
+    -- resolve the plugin's own modules (e.g. organ.nvim's
+    -- `require("organ.grammar_install").install()`). Prepend transiently;
+    -- restore after to avoid polluting rtp until packadd runs.
+    --
+    -- ALSO clear package.loaded entries for the plugin's namespace.
+    -- Without this, an update that just checked out new code would have
+    -- its build hook see the cached PREVIOUS version of the module
+    -- (Lua require caches by module name; updating the file on disk
+    -- doesn't invalidate the cache).
+    local mod = spec.name:gsub("%.nvim$", "")
+    for k in pairs(package.loaded) do
+      if k == mod or k:sub(1, #mod + 1) == mod .. "." then
+        package.loaded[k] = nil
+      end
+    end
     local prev_rtp = vim.o.runtimepath
     vim.opt.runtimepath:prepend(path)
     ok, err = pcall(b, { name = spec.name, path = path, spec = spec })
