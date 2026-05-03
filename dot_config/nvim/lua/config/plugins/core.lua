@@ -134,6 +134,7 @@ return {
         { "<Leader>f",  group = "file / find" },
         { "<Leader>g",  group = "git" },
         { "<Leader>gh", group = "git hunk" },
+        { "<Leader>o",  group = "org (organ)" },
         { "<Leader>q",  group = "quit" },
         { "<Leader>s",  group = "search" },
         { "<Leader>t",  group = "test" },

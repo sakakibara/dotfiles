@@ -51,9 +51,10 @@ map("n", "[w", diag(false, "WARN"),  { desc = "Prev warning" })
 map("n", "<Leader>fy", function() Lib.keymaps.yank_relative_path() end, { desc = "Yank relative path" })
 map("n", "<Leader>fY", function() Lib.keymaps.yank_full_path()     end, { desc = "Yank absolute path" })
 
--- empty line above/below (preserves cursor, count supported via v:count1)
-map("n", "<Leader>o", function() Lib.keymaps.put_empty_line(false) end, { desc = "Put empty line below" })
-map("n", "<Leader>O", function() Lib.keymaps.put_empty_line(true)  end, { desc = "Put empty line above" })
+-- empty line above/below (vim-unimpaired-style; preserves cursor, count
+-- supported via v:count1).
+map("n", "]<Space>", function() Lib.keymaps.put_empty_line(false) end, { desc = "Put empty line below" })
+map("n", "[<Space>", function() Lib.keymaps.put_empty_line(true)  end, { desc = "Put empty line above" })
 
 -- save / quit
 map({ "i", "x", "n", "s" }, "<C-s>", "<Cmd>w<CR><Esc>", { desc = "Save" })
