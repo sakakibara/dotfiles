@@ -41,7 +41,9 @@ _claude_sandbox() {
         stop)
           _arguments \
             '--all[stop every sandbox]' \
-            '--purge[also remove worktree / volumes]'
+            '--all-here[stop sandboxes for cwd repo]' \
+            '--purge[also remove worktree / volumes]' \
+            '--relay[stop the 1password agent relay]'
           local -a all
           all=(${(f)"$(docker ps -a --filter 'name=^claude-sandbox-' --format '{{.Names}}' 2>/dev/null)"})
           _describe 'sandbox' all

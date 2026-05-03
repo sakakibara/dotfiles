@@ -45,6 +45,17 @@ After that, every commit gets signed; the green "Verified" badge appears on GitH
 
 If you skip this on a machine, commits still work but go out unsigned. Nothing fails; you just don't get the badge for that machine's commits.
 
+### Commit signing inside claude-sandbox containers
+
+The same 1Password key signs commits made inside `claude-sandbox` containers, so sandbox commits also get the Verified badge. Setup is automatic on macOS and Linux; one extra setting on Windows + WSL.
+
+- **macOS host**: nothing extra. claude-sandbox starts a tiny `socat` relay on `127.0.0.1:19988` on first launch (1Password's macOS Unix socket can't be bind-mounted directly into Linux containers; the relay bridges via TCP). socat is installed via `etc/darwin/packages.txt`.
+- **Linux host**: nothing extra. claude-sandbox bind-mounts `~/.1password/agent.sock` into the container directly (Linux-to-Linux Unix sockets work). Make sure `socat` is installed (used inside the container; the package is in the sandbox image).
+- **Windows + WSL2 host**: enable 1Password's WSL integration in the Windows 1Password app: **Settings -> Developer -> Integrate with WSL** -> on. After that, `~/.1password/agent.sock` exists inside WSL and the Linux branch of claude-sandbox handles it transparently. Run claude-sandbox from inside WSL (it's a bash script and won't run from PowerShell or git-bash).
+- **Native Windows (no WSL)**: claude-sandbox itself doesn't run there. Out of scope.
+
+The 1Password SSH agent only exposes keys listed in `~/.config/1Password/ssh/agent.toml` (chezmoi-managed). The whitelist contains only the GitHub signing key, so a compromised container can request a signature with that one key (each request fires a host-side biometric prompt) but cannot enumerate or use any other vault key.
+
 ### One-time, ever (already done; documented for future reference)
 
 These were done once globally and don't repeat per-machine:

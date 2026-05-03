@@ -34,7 +34,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 RUN apt-get update && apt-get install -y --no-install-recommends \
       git curl ca-certificates build-essential pkg-config \
       locales jq ripgrep fd-find less man-db openssh-client \
-      python3 python3-pip xz-utils tini gnupg sudo \
+      python3 python3-pip xz-utils tini gnupg sudo socat \
     && echo 'claude ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/claude \
     && chmod 0440 /etc/sudoers.d/claude \
     && rm -rf /var/lib/apt/lists/*
@@ -56,6 +56,7 @@ RUN npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}
 # installer fails with EACCES on mkdir without these dirs already in
 # place with explicit claude ownership.
 RUN useradd --create-home --shell /bin/bash --uid 1000 claude \
+    && chown claude:claude /home/claude \
     && install -d -o claude -g claude -m 0755 \
        /home/claude/.local \
        /home/claude/.local/bin \

@@ -43,6 +43,11 @@ IMAGE="claude-sandbox:latest"
 NAME_PREFIX="claude-sandbox"
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/claude-sandbox"
 
+# Port the 1Password-agent TCP relay listens on (host's 127.0.0.1).
+# Containers reach it via host.docker.internal. Picked obscure enough to
+# avoid common service collisions; override by exporting in your shell.
+SANDBOX_AGENT_PORT="${SANDBOX_AGENT_PORT:-19988}"
+
 # Multi-workspace state. Populated either by `--workspace path1 path2 ...`
 # (slurps positional paths until the next --flag) or by _finalize_workspaces
 # falling back to the single-repo positional / cwd. WORKSPACES[0] is the
@@ -371,9 +376,46 @@ _run_args() {
     --label    "claude-sandbox.workspace=$WS_LABEL"
     --label    "claude-sandbox.iso=$mode"
     -e CLAUDE_SANDBOX=1
-    -v "$HOME/.gitconfig":/home/claude/.gitconfig:ro
+    # Mount under .gitconfig.host so the entrypoint can compose a
+    # container-side ~/.gitconfig that includes it AND clears the host's
+    # gpg.ssh.program (op-ssh-sign is macOS-only and can't run inside).
+    -v "$HOME/.gitconfig":/home/claude/.gitconfig.host:ro
     -w "$repo"
   )
+
+  # SSH commit-signing via the host's 1Password agent. Two transports:
+  #
+  #   macOS host: TCP relay (host-side socat started in
+  #               _ensure_signing_relay forwards 127.0.0.1:PORT ->
+  #               1Password Unix socket). Container reaches via
+  #               host.docker.internal and starts its own socat in
+  #               entrypoint.sh to re-present TCP as a Unix socket
+  #               for ssh-keygen. Bind-mounting macOS Unix sockets
+  #               into Linux containers fails the connect step.
+  #
+  #   Linux host: direct Unix socket bind-mount. Linux-to-Linux Unix
+  #               sockets carry the connection just fine; no relay or
+  #               in-container socat needed.
+  #
+  # Skipped silently when 1Password's agent isn't running (commits
+  # go out unsigned, same as a host without 1Password).
+  local op_sock; op_sock=$(_op_agent_socket)
+  if [[ -n "$op_sock" && -S "$op_sock" ]]; then
+    case "$(uname)" in
+      Darwin)
+        args+=(
+          -e "SANDBOX_AGENT_HOST=host.docker.internal"
+          -e "SANDBOX_AGENT_PORT=${SANDBOX_AGENT_PORT}"
+        )
+        ;;
+      Linux)
+        args+=(
+          -v "$op_sock":/run/host-1password-agent.sock
+          -e "SANDBOX_AGENT_SOCK=/run/host-1password-agent.sock"
+        )
+        ;;
+    esac
+  fi
 
   # Bind-mount $HOME/.claude.json (the live config file separate from
   # the .claude/ directory) for default + worktree. Touch it first if
@@ -408,6 +450,57 @@ _run_args() {
     *) _die "unknown isolation mode: $mode" ;;
   esac
   printf '%s\n' "${args[@]}"
+}
+
+# Resolve the host's 1Password SSH agent socket per-OS. Empty string
+# when 1Password isn't running (or not installed). Linux and macOS
+# place the socket at different documented paths.
+_op_agent_socket() {
+  case "$(uname)" in
+    Darwin) printf '%s\n' "$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock" ;;
+    Linux)  printf '%s\n' "$HOME/.1password/agent.sock" ;;
+    *)      printf '\n' ;;
+  esac
+}
+
+# macOS-only: bridge 1Password's Unix agent socket to TCP
+# 127.0.0.1:$SANDBOX_AGENT_PORT so containers can reach it via
+# host.docker.internal. Bind-mounting macOS sockets directly into
+# Linux containers doesn't carry the protocol (the file mounts but
+# `Connection refused` on connect); TCP relay sidesteps the VM
+# boundary. Started lazily on first sandbox launch and persists
+# across invocations. Stop with: pkill -f "socat.*${SANDBOX_AGENT_PORT}".
+#
+# Linux hosts skip this entirely — the wrapper bind-mounts the agent
+# socket directly into the container instead, since Linux-to-Linux
+# Unix socket forwarding works fine.
+_ensure_signing_relay() {
+  [[ "$(uname)" == "Darwin" ]] || return 0
+  local op_sock; op_sock=$(_op_agent_socket)
+  [[ -S "$op_sock" ]] || return 0
+  command -v socat >/dev/null 2>&1 || {
+    _warn "socat not installed; sandbox commits will be unsigned (brew install socat)"
+    return 0
+  }
+  if lsof -nP -iTCP:"$SANDBOX_AGENT_PORT" -sTCP:LISTEN >/dev/null 2>&1; then
+    return 0
+  fi
+  local logdir="$CACHE_DIR/relay"
+  mkdir -p "$logdir"
+  nohup socat \
+    "TCP-LISTEN:${SANDBOX_AGENT_PORT},bind=127.0.0.1,fork,reuseaddr" \
+    "UNIX-CONNECT:${op_sock}" \
+    >"$logdir/relay.log" 2>&1 &
+  disown
+  local i
+  for i in 1 2 3 4 5; do
+    if lsof -nP -iTCP:"$SANDBOX_AGENT_PORT" -sTCP:LISTEN >/dev/null 2>&1; then
+      _info "started 1password agent relay on 127.0.0.1:${SANDBOX_AGENT_PORT}"
+      return 0
+    fi
+    sleep 0.2
+  done
+  _warn "agent relay didn't come up within 1s (see $logdir/relay.log); commits inside sandbox may be unsigned"
 }
 
 # --worktree: create a fresh git worktree on a throwaway branch so
@@ -582,6 +675,7 @@ cmd_default() {
   local repo="${WORKSPACES[0]}"
   _require_docker
   _ensure_image
+  _ensure_signing_relay
 
   case "$ISO_MODE" in
     worktree) _ensure_worktree "$repo" ;;
@@ -630,6 +724,7 @@ cmd_start() {
   local repo="${WORKSPACES[0]}"
   _require_docker
   _ensure_image
+  _ensure_signing_relay
 
   case "$ISO_MODE" in
     worktree) _ensure_worktree "$repo" ;;
@@ -695,16 +790,30 @@ _pick_running() {
 }
 
 cmd_stop() {
-  _require_docker
-  local purge=0 scope="" arg=""
+  local purge=0 scope="" arg="" stop_relay=0
   while (($#)); do
     case "$1" in
       --purge)     purge=1; shift ;;
       --all)       scope="all"; shift ;;
       --all-here)  scope="here"; shift ;;
+      --relay)     stop_relay=1; shift ;;
       *)           arg="$1"; shift; break ;;
     esac
   done
+
+  # --relay: kill the host-side 1Password agent socat relay. Doesn't
+  # touch any containers. The relay is a persistent service started
+  # lazily by _ensure_signing_relay; this is the explicit stop.
+  if (( stop_relay )); then
+    if pkill -f "socat.*${SANDBOX_AGENT_PORT}.*UNIX-CONNECT" >/dev/null 2>&1; then
+      _info "stopped 1password agent relay on 127.0.0.1:${SANDBOX_AGENT_PORT}"
+    else
+      _info "no 1password agent relay running"
+    fi
+    return 0
+  fi
+
+  _require_docker
 
   if [[ "$scope" == "all" ]]; then
     local containers; containers=$(docker ps -aq --filter "name=^${NAME_PREFIX}-")
@@ -949,6 +1058,10 @@ Usage:
   claude-sandbox stop [--purge] [name]      stop & remove (cwd-scoped picker
   claude-sandbox stop --all-here              for cwd repo, with mode
   claude-sandbox stop --all                   --all-here / --all variants)
+  claude-sandbox stop --relay               stop the host-side 1Password
+                                            agent socat relay (persists
+                                            across sandboxes by default;
+                                            this is the explicit stop)
   claude-sandbox export [name]              --strict only: git-fetch volume
                                             branches into the host repo
                                             as refs/sandbox-export/*

@@ -37,5 +37,7 @@ end
 complete -c claude-sandbox -f -n '__fish_seen_subcommand_from attach' -a '(__fish_csb_running)'
 complete -c claude-sandbox -f -n '__fish_seen_subcommand_from stop'   -a '(__fish_csb_all)'
 complete -c claude-sandbox -f -n '__fish_seen_subcommand_from stop'   -l all   -d 'stop every sandbox'
+complete -c claude-sandbox -f -n '__fish_seen_subcommand_from stop'   -l all-here -d 'stop sandboxes for cwd repo'
 complete -c claude-sandbox -f -n '__fish_seen_subcommand_from stop'   -l purge -d 'also remove worktree / volumes'
+complete -c claude-sandbox -f -n '__fish_seen_subcommand_from stop'   -l relay -d 'stop the 1password agent relay'
 complete -c claude-sandbox -f -n '__fish_seen_subcommand_from export' -a '(__fish_csb_strict)'
