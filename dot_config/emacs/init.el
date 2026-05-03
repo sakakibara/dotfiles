@@ -3946,3 +3946,8 @@ in some cases."
   :config
   (setq vbnet-namespace-face 'font-lock-constant-face)
   (setq vbnet-funcall-face 'font-lock-function-call-face))
+
+;; Block init.el on the queue: without this, packages finish loading
+;; after `after-init-hook' and race the first user command (vertico
+;; missing minibuffer activation, etc.).
+(elpaca-wait)
