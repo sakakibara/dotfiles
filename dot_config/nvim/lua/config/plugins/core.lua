@@ -33,7 +33,6 @@ return {
     name = "snacks.nvim",
     priority = 900,
     lazy = false,  -- keys spec below would flip us to lazy; keep snacks eager (Snacks global needed by many)
-    config = function(_, opts) require("snacks").setup(opts) end,
     opts = {
       bigfile   = {
         enabled = true,

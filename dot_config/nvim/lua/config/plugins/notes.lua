@@ -57,7 +57,6 @@ return {
         auto_attach = { enabled = true, filetypes = { "markdown" } },
       },
     },
-    config = function(_, opts) require("zk").setup(opts) end,
   },
 
   {
@@ -67,7 +66,6 @@ return {
     opts  = {
       org_dir = vim.fn.expand("~/org"),
     },
-    config = function(_, opts) require("organ").setup(opts) end,
   },
 
 }
