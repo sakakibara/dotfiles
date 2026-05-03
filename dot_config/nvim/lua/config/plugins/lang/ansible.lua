@@ -13,7 +13,7 @@ return Lib.lang.setup({
         {
           "<Leader>ta",
           function() require("ansible").run() end,
-          desc = "Ansible Run Playbook/Role",
+          desc = "Ansible run playbook/role",
           silent = true,
         },
       },

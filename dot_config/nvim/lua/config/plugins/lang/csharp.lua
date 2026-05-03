@@ -17,7 +17,7 @@ local plugins = Lib.lang.setup({
       _on_attach = function(args, _)
         vim.keymap.set("n", "gd", function()
           require("omnisharp_extended").lsp_definitions()
-        end, { buffer = args.buf, desc = "Goto Definition" })
+        end, { buffer = args.buf, desc = "Goto definition" })
       end,
     },
   },

@@ -52,13 +52,13 @@ return Lib.lang.setup({
               { "n", "v" },
               "[c",
               "<Cmd>call search('^; -\\+$', 'bw')<CR>",
-              { silent = true, buffer = true, desc = "Jumps to the beginning of previous evaluation output." }
+              { silent = true, buffer = true, desc = "Prev eval output" }
             )
             vim.keymap.set(
               { "n", "v" },
               "]c",
               "<Cmd>call search('^; -\\+$', 'w')<CR>",
-              { silent = true, buffer = true, desc = "Jumps to the beginning of next evaluation output." }
+              { silent = true, buffer = true, desc = "Next eval output" }
             )
           end,
         })

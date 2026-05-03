@@ -18,7 +18,7 @@ return Lib.lang.setup({
             apply = true,
             context = { only = { "source.organizeImports" }, diagnostics = {} },
           })
-        end, { buffer = args.buf, desc = "Organize Imports" })
+        end, { buffer = args.buf, desc = "Organize imports" })
       end,
     },
   },

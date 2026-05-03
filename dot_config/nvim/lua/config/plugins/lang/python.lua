@@ -26,7 +26,7 @@ return Lib.lang.setup({
       branch = "regexp",
       cmd = "VenvSelect",
       ft = "python",
-      keys = { { "<Leader>cv", "<Cmd>VenvSelect<CR>", desc = "Select Virtualenv", ft = "python" } },
+      keys = { { "<Leader>cv", "<Cmd>VenvSelect<CR>", desc = "Select virtualenv", ft = "python" } },
       opts = {
         settings = {
           options = {

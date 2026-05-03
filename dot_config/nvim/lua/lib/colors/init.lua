@@ -139,7 +139,7 @@ function M.setup(opts)
   })
 
   vim.api.nvim_create_user_command("ColorPick", function() M.pick() end, {
-    desc = "Open Lib.colors picker on color under cursor",
+    desc = "Color picker (cursor)",
   })
 
   vim.api.nvim_create_user_command("ColorsToggle", function(cmd)
@@ -150,7 +150,7 @@ function M.setup(opts)
       M.toggle(0)
     end
   end, {
-    desc     = "Toggle Lib.colors highlights for current buffer (or global)",
+    desc     = "Toggle color highlights (buffer / global)",
     nargs    = "?",
     complete = function() return { "global" } end,
   })
@@ -159,14 +159,14 @@ function M.setup(opts)
   vim.api.nvim_create_user_command("ColorConvert", function(cmd)
     M.convert(cmd.fargs[1])
   end, {
-    desc     = "Rewrite the color literal under the cursor in <fmt>",
+    desc     = "Convert color under cursor to <fmt>",
     nargs    = 1,
     complete = fmt_complete,
   })
   vim.api.nvim_create_user_command("ColorYank", function(cmd)
     M.yank(cmd.fargs[1])
   end, {
-    desc     = "Yank the color under the cursor in <fmt> to the + register",
+    desc     = "Yank color under cursor as <fmt>",
     nargs    = 1,
     complete = fmt_complete,
   })
@@ -174,13 +174,13 @@ function M.setup(opts)
     local on = require("lib.colors.contrast").toggle(0)
     vim.notify("Contrast hints " .. (on and "on" or "off"), vim.log.levels.INFO)
   end, {
-    desc = "Toggle WCAG contrast ratio virt-text for the current buffer",
+    desc = "Toggle contrast swatch",
   })
   vim.api.nvim_create_user_command("ColorGradient", function()
     local on = require("lib.colors.gradient").toggle(0)
     vim.notify("Gradient swatches " .. (on and "on" or "off"), vim.log.levels.INFO)
   end, {
-    desc = "Toggle multi-stop gradient swatch virt-text for the current buffer",
+    desc = "Toggle gradient swatch",
   })
 end
 

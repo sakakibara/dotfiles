@@ -121,7 +121,7 @@ function M.create(deps)
               count = opts.count >= 0 and opts.count or nil,
               mods = opts.smods,
             }, {})
-          end, { bang = true, nargs = "*", range = true, desc = "lazy: " .. spec.name })
+          end, { bang = true, nargs = "*", range = true, desc = "Lazy: " .. spec.name })
         end
       end
 

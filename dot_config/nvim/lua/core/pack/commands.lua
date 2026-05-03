@@ -106,7 +106,7 @@ local function subcommands(Pack)
   local subs = {}
 
   subs.status = {
-    desc = "list registered plugin specs (f to filter, F to clear)",
+    desc = "List registered plugin specs (f to filter, F to clear)",
     run = function()
       local UI = require("core.pack.ui")
       local function render(filter_pattern)
@@ -126,7 +126,7 @@ local function subcommands(Pack)
   }
 
   subs.install = {
-    desc = "install any plugins missing on disk",
+    desc = "Install any plugins missing on disk",
     run = function()
       local Install = require("core.pack.install")
       local specs = {}
@@ -139,7 +139,7 @@ local function subcommands(Pack)
   }
 
   subs.uninstall = {
-    desc = "uninstall plugin(s) from disk + lockfile (specs stay; reinstall via :Pack install)",
+    desc = "Uninstall plugin(s) from disk + lockfile (specs stay; reinstall via :Pack install)",
     complete = function(arglead) return name_complete(Pack, arglead) end,
     run = function(opts)
       if #opts.fargs == 0 then
@@ -151,7 +151,7 @@ local function subcommands(Pack)
   }
 
   subs.update = {
-    desc = "update plugin(s); ! = target lockfile revs (use after :Pack rollback)",
+    desc = "Update plugin(s); ! = target lockfile revs (use after :Pack rollback)",
     complete = function(arglead) return name_complete(Pack, arglead) end,
     run = function(opts)
       local Install = require("core.pack.install")
@@ -163,7 +163,7 @@ local function subcommands(Pack)
   }
 
   subs.clean = {
-    desc = "remove plugins not in spec (with confirmation buffer)",
+    desc = "Remove plugins not in spec (with confirmation buffer)",
     run = function()
       local Install = require("core.pack.install")
       local UI = require("core.pack.ui")
@@ -180,7 +180,7 @@ local function subcommands(Pack)
   }
 
   subs.sync = {
-    desc = "update then clean",
+    desc = "Update then clean",
     run = function()
       vim.cmd("Pack update")
       vim.cmd("Pack clean")
@@ -188,7 +188,7 @@ local function subcommands(Pack)
   }
 
   subs.rollback = {
-    desc = "rollback lockfile to a previous snapshot (run :Pack update! to apply)",
+    desc = "Rollback lockfile to a previous snapshot (run :Pack update! to apply)",
     run = function(opts)
       local History = require("core.pack.history")
       local UI = require("core.pack.ui")
@@ -229,7 +229,7 @@ local function subcommands(Pack)
   }
 
   subs.log = {
-    desc = "show recent pack update log entries",
+    desc = "Show recent pack update log entries",
     run = function(opts)
       local Log = require("core.pack.log")
       local UI = require("core.pack.ui")
@@ -289,7 +289,7 @@ local function subcommands(Pack)
   }
 
   subs.build = {
-    desc = "re-run plugin build hooks (one or all)",
+    desc = "Re-run plugin build hooks (one or all)",
     complete = function(arglead)
       return name_complete(Pack, arglead, function(_n, s) return s.build ~= nil end)
     end,
@@ -321,7 +321,7 @@ local function subcommands(Pack)
   }
 
   subs.load = {
-    desc = "manually load a lazy plugin by name",
+    desc = "Manually load a lazy plugin by name",
     complete = function(arglead)
       return name_complete(Pack, arglead, function(n) return not Pack._loaded[n] end)
     end,
@@ -336,7 +336,7 @@ local function subcommands(Pack)
   }
 
   subs.profile = {
-    desc = "show pack startup profile in a scratch buffer",
+    desc = "Show pack startup profile in a scratch buffer",
     run = function()
       local Profile = require("core.profile")
       local UI = require("core.pack.ui")
@@ -393,7 +393,7 @@ function M.setup(Pack)
       if handler and handler.complete then return handler.complete(arglead) end
       return {}
     end,
-    desc = "core.pack — :Pack {install|update|status|log|build|load|rollback|clean|sync|profile}",
+    desc = "core.pack: :Pack {install|update|status|log|build|load|rollback|clean|sync|profile}",
   })
 end
 

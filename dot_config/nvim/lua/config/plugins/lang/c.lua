@@ -46,7 +46,7 @@ vim.api.nvim_create_autocmd("FileType", {
       "n",
       "<Leader>ch",
       "<Cmd>LspClangdSwitchSourceHeader<CR>",
-      { buffer = args.buf, desc = "Switch Source/Header (C/C++)" }
+      { buffer = args.buf, desc = "Switch source/header (C/C++)" }
     )
   end,
 })

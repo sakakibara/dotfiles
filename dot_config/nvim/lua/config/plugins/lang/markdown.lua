@@ -34,7 +34,7 @@ return Lib.lang.setup({
       cmd = { "MarkdownPreviewToggle", "MarkdownPreview", "MarkdownPreviewStop" },
       ft = "markdown",
       keys = {
-        { "<Leader>cp", "<Cmd>MarkdownPreviewToggle<CR>", ft = "markdown", desc = "Markdown Preview" },
+        { "<Leader>cp", "<Cmd>MarkdownPreviewToggle<CR>", ft = "markdown", desc = "Markdown preview" },
       },
       -- NOTE: requires `cd app && npm install` in the plugin dir on first install,
       -- or `:call mkdp#util#install()`. Not auto-run — `build` isn't a core.pack field.
