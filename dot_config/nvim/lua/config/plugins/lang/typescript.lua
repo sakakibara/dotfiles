@@ -59,7 +59,6 @@ local plugins = Lib.lang.setup({
   plugins = {
     {
       "mxsdev/nvim-dap-vscode-js",
-      name = "nvim-dap-vscode-js",
       ft = { "javascript", "typescript", "typescriptreact", "javascriptreact" },
       dependencies = { "nvim-dap" },
       opts = {

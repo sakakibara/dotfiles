@@ -2,7 +2,6 @@
 return {
   {
     "nvim-neotest/neotest",
-    name = "neotest",
     dependencies = { "nvim-nio", "plenary.nvim", "trouble.nvim" },
     keys = {
       { "<Leader>tt", function() require("neotest").run.run() end, desc = "Run nearest" },
@@ -34,7 +33,6 @@ return {
 
   {
     "folke/trouble.nvim",
-    name = "trouble.nvim",
     cmd = "Trouble",
     keys = {
       { "<Leader>xx", "<Cmd>Trouble diagnostics toggle<CR>", desc = "Diagnostics (Trouble)" },

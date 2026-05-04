@@ -8,7 +8,6 @@ return {
   -- Surround operators: gsa / gsd / gsr / gsf / gsF / gsh
   {
     "echasnovski/mini.surround",
-    name = "mini.surround",
     keys = {
       { "gsa", desc = "Add surround",         mode = { "n", "v" } },
       { "gsd", desc = "Delete surround" },
@@ -33,7 +32,6 @@ return {
   -- Better text objects — treesitter-aware function / class / block regions
   {
     "echasnovski/mini.ai",
-    name = "mini.ai",
     event = "VeryLazy",
     dependencies = { "nvim-treesitter-textobjects" },
     config = function()
@@ -108,7 +106,6 @@ return {
   -- double-quote inside docstrings, etc.
   {
     "windwp/nvim-autopairs",
-    name = "nvim-autopairs",
     event = "InsertEnter",
     opts = {
       check_ts        = true,
@@ -124,7 +121,6 @@ return {
   -- Extended matchpair: `%` jumps if/else/end, function/end, HTML tags
   {
     "andymass/vim-matchup",
-    name = "vim-matchup",
     event = "LazyFile",
     init = function()
       vim.g.matchup_matchparen_offscreen = { method = "popup" }
@@ -141,7 +137,6 @@ return {
   -- and cycling.
   {
     "gbprod/yanky.nvim",
-    name = "yanky.nvim",
     event = "LazyFile",
     keys = {
       { "p",          "<Plug>(YankyPutAfter)",                           mode = { "n", "x" }, desc = "Put after" },
@@ -166,7 +161,6 @@ return {
   -- Smart <C-a>/<C-x>: integers, hex, dates, booleans, semver, and/or, &&/||
   {
     "monaqa/dial.nvim",
-    name = "dial.nvim",
     keys = {
       { "<C-a>",  function() return require("dial.map").inc_normal()  end, mode = "n", expr = true, desc = "Increment" },
       { "<C-x>",  function() return require("dial.map").dec_normal()  end, mode = "n", expr = true, desc = "Decrement" },
@@ -198,12 +192,11 @@ return {
   },
 
   -- Auto-detect buffer indentation (tabstop, expandtab) from file content
-  { "tpope/vim-sleuth", name = "vim-sleuth", event = "LazyFile" },
+  { "tpope/vim-sleuth", event = "LazyFile" },
 
   -- Auto-insert `end` / `endif` / `fi` after the opening keyword
   {
     "RRethy/nvim-treesitter-endwise",
-    name = "nvim-treesitter-endwise",
     event = "InsertEnter",
     dependencies = { "nvim-treesitter" },
   },
@@ -214,7 +207,6 @@ return {
   -- declares the plugin + its loader; the keymap lives with the LSP setup.
   {
     "smjonas/inc-rename.nvim",
-    name = "inc-rename.nvim",
     cmd  = "IncRename",
     opts = {},
   },
@@ -223,7 +215,6 @@ return {
   -- uppercase variants rename via LSP across workspace.
   {
     "johmsalas/text-case.nvim",
-    name = "text-case.nvim",
     dependencies = { "plenary.nvim" },
     cmd  = { "TextCaseOpenTelescope", "Subs" },
     keys = (function()
@@ -250,12 +241,11 @@ return {
   },
 
   -- Align operators (mini.align defaults: gai / gaw / etc.)
-  { "echasnovski/mini.align", name = "mini.align", event = "VeryLazy", opts = {} },
+  { "echasnovski/mini.align", event = "VeryLazy", opts = {} },
 
   -- Split/join structures (arg lists, tables) across lines: gS
   {
     "echasnovski/mini.splitjoin",
-    name = "mini.splitjoin",
     keys = { { "gS", desc = "Split/join toggle", mode = { "n", "x" } } },
     opts = { mappings = { toggle = "gS" } },
   },
@@ -263,7 +253,6 @@ return {
   -- Trim trailing whitespace
   {
     "echasnovski/mini.trailspace",
-    name = "mini.trailspace",
     event = "LazyFile",
     keys = {
       { "<Leader>uw", function() require("mini.trailspace").trim()            end, desc = "Trim trailing whitespace" },
@@ -275,7 +264,6 @@ return {
   -- jk chord → <Esc> in insert + cmdline
   {
     "max397574/better-escape.nvim",
-    name = "better-escape.nvim",
     event = { "InsertEnter", "CmdlineEnter" },
     opts = {
       default_mappings = false,
@@ -287,15 +275,14 @@ return {
   },
 
   -- Readline bindings (C-a/C-e/C-w/M-b/M-f) in insert + cmdline
-  { "tpope/vim-rsi", name = "vim-rsi", event = { "InsertEnter", "CmdlineEnter" } },
+  { "tpope/vim-rsi", event = { "InsertEnter", "CmdlineEnter" } },
 
   -- Treesitter-aware commentstring (JSX/Vue embedded langs pick right syntax)
-  { "folke/ts-comments.nvim", name = "ts-comments.nvim", event = "VeryLazy", opts = {} },
+  { "folke/ts-comments.nvim", event = "VeryLazy", opts = {} },
 
   -- TODO / FIXME / NOTE / HACK highlight + navigation
   {
     "folke/todo-comments.nvim",
-    name = "todo-comments.nvim",
     event = "LazyFile",
     cmd  = { "TodoTrouble", "TodoTelescope", "TodoQuickFix", "TodoLocList" },
     opts = {},

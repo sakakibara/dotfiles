@@ -26,7 +26,6 @@ end
 return {
   {
     "saghen/blink.cmp",
-    name = "blink.cmp",
     version = "1.*",  -- uses released prebuilt Rust binary
     event = { "InsertEnter", "CmdlineEnter" },
     dependencies = { "friendly-snippets", "lazydev.nvim" },
@@ -113,9 +112,9 @@ return {
   },
 
   -- Community snippet collection (vscode-style snippets)
-  { "rafamadriz/friendly-snippets", name = "friendly-snippets", lazy = true },
+  { "rafamadriz/friendly-snippets", lazy = true },
 
   -- Icon provider: alternative to nvim-web-devicons. Kept available for
   -- plugins that prefer it; web-devicons remains the primary.
-  { "echasnovski/mini.icons", name = "mini.icons", lazy = true, opts = {} },
+  { "echasnovski/mini.icons", lazy = true, opts = {} },
 }

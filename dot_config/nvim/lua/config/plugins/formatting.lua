@@ -2,7 +2,6 @@
 return {
   {
     "stevearc/conform.nvim",
-    name = "conform.nvim",
     event = { "BufWritePre" },
     cmd = "ConformInfo",
     init = function()
@@ -46,7 +45,6 @@ return {
 
   {
     "mfussenegger/nvim-lint",
-    name = "nvim-lint",
     event = "LazyFile",
     config = function()
       local lint = require("lint")

@@ -22,7 +22,6 @@ return Lib.lang.setup({
   plugins = {
     {
       "linux-cultist/venv-selector.nvim",
-      name = "venv-selector.nvim",
       branch = "regexp",
       cmd = "VenvSelect",
       ft = "python",
@@ -37,7 +36,6 @@ return Lib.lang.setup({
     },
     {
       "mfussenegger/nvim-dap-python",
-      name = "nvim-dap-python",
       ft = "python",
       dependencies = { "nvim-dap" },
       config = function()
@@ -46,7 +44,6 @@ return Lib.lang.setup({
     },
     {
       "nvim-neotest/neotest-python",
-      name = "neotest-python",
       ft = "python",
       dependencies = { "neotest" },
     },

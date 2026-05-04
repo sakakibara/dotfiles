@@ -13,7 +13,6 @@ return Lib.lang.setup({
   plugins = {
     {
       "mrcjkb/rustaceanvim",
-      name = "rustaceanvim",
       ft = { "rust" },
       init = function()
         -- Resolve codelldb adapter via rustaceanvim's built-in helper. Platform
@@ -83,7 +82,6 @@ return Lib.lang.setup({
 
     {
       "saecki/crates.nvim",
-      name = "crates.nvim",
       -- Load on any TOML file; crates.nvim internally activates only for
       -- Cargo.toml buffers. The pack framework's event trigger doesn't
       -- support pattern-qualified events like "BufRead Cargo.toml".

@@ -9,13 +9,11 @@ return Lib.lang.setup({
   plugins = {
     {
       "nvim-lua/plenary.nvim",
-      name = "plenary.nvim",
       lazy = true,
     },
 
     {
       "akinsho/flutter-tools.nvim",
-      name = "flutter-tools.nvim",
       ft = "dart",
       cmd = {
         "FlutterRun",

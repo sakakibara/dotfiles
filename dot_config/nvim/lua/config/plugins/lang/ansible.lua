@@ -7,7 +7,6 @@ return Lib.lang.setup({
   plugins = {
     {
       "mfussenegger/nvim-ansible",
-      name = "nvim-ansible",
       ft = {},
       keys = {
         {

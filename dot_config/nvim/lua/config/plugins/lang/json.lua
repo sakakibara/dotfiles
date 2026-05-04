@@ -22,6 +22,6 @@ return Lib.lang.setup({
     end,
   },
   plugins = {
-    { "b0o/SchemaStore.nvim", name = "SchemaStore.nvim", lazy = true },
+    { "b0o/SchemaStore.nvim", lazy = true },
   },
 })

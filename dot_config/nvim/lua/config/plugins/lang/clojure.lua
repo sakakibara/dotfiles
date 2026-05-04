@@ -7,7 +7,6 @@ return Lib.lang.setup({
   plugins = {
       {
       "m00qek/baleia.nvim",
-      name = "baleia.nvim",
       lazy = true,
       config = function()
         local opts = { line_starts_at = 3 }
@@ -23,7 +22,6 @@ return Lib.lang.setup({
 
     {
       "Olical/conjure",
-      name = "conjure",
       ft = { "clojure", "fennel", "scheme", "janet", "lisp", "racket" },
       config = function()
         require("conjure.main").main()
@@ -70,7 +68,6 @@ return Lib.lang.setup({
 
     {
       "PaterJason/nvim-treesitter-sexp",
-      name = "nvim-treesitter-sexp",
       ft = { "clojure", "fennel", "scheme", "janet", "lisp", "racket" },
       opts = {},
     },

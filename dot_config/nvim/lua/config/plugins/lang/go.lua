@@ -67,14 +67,12 @@ return Lib.lang.setup({
   plugins = {
     {
       "leoluz/nvim-dap-go",
-      name = "nvim-dap-go",
       ft = "go",
       dependencies = { "nvim-dap" },
       config = function() require("dap-go").setup() end,
     },
     {
       "nvim-neotest/neotest-go",
-      name = "neotest-go",
       ft = "go",
       dependencies = { "neotest" },
     },

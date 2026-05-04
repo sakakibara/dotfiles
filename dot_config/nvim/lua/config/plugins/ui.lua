@@ -6,7 +6,6 @@ return {
   -- fail before the plugin is packadd-ed and leave icons blank.
   {
     "nvim-tree/nvim-web-devicons",
-    name = "nvim-web-devicons",
     lazy = false,
     priority = 950,
   },
@@ -17,7 +16,6 @@ return {
   -- lets ext_messages swallow those before they hit the message history.
   {
     "folke/noice.nvim",
-    name = "noice.nvim",
     event = "VeryLazy",
     dependencies = { "nui.nvim" },
     opts = {
@@ -102,12 +100,11 @@ return {
     end,
   },
 
-  { "MunifTanjim/nui.nvim", name = "nui.nvim", lazy = true },
+  { "MunifTanjim/nui.nvim", lazy = true },
 
   -- Fades the colorcolumn into view only as you approach `textwidth`
   {
     "Bekaboo/deadcolumn.nvim",
-    name = "deadcolumn.nvim",
     event = "LazyFile",
     opts = {},
   },
@@ -115,7 +112,6 @@ return {
   -- nvim-ufo: modern folding with preview (zp) and LSP/treesitter providers
   {
     "kevinhwang91/nvim-ufo",
-    name = "nvim-ufo",
     dependencies = { "promise-async" },
     event = "LazyFile",
     keys = {
@@ -167,12 +163,11 @@ return {
       end,
     },
   },
-  { "kevinhwang91/promise-async", name = "promise-async", lazy = true },
+  { "kevinhwang91/promise-async", lazy = true },
 
   -- indent-blankline (ibl)
   {
     "lukas-reineke/indent-blankline.nvim",
-    name = "indent-blankline.nvim",
     main = "ibl",
     event = "LazyFile",
     opts = {

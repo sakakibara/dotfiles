@@ -30,7 +30,6 @@ return {
 
   {
     "folke/snacks.nvim",
-    name = "snacks.nvim",
     priority = 900,
     lazy = false,  -- keys spec below would flip us to lazy; keep snacks eager (Snacks global needed by many)
     opts = {
@@ -126,7 +125,6 @@ return {
 
   {
     "folke/which-key.nvim",
-    name = "which-key.nvim",
     event = "VeryLazy",
     opts = function()
       -- Byte-escaped nerd-font glyphs (PUA codepoints survive edits

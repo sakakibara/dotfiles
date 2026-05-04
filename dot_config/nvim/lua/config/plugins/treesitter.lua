@@ -24,7 +24,6 @@ Lib.parsers.add("bash",    { ft = { "bash", "sh", "zsh" }, eager = true })
 return {
   {
     "nvim-treesitter/nvim-treesitter",
-    name = "nvim-treesitter",
     branch = "main",
     lazy = false,  -- main explicitly does NOT support lazy loading
     -- No `build`: `require("nvim-treesitter").install(...)` in config
@@ -166,7 +165,6 @@ return {
   -- Textobjects — has a main branch that pairs with nvim-treesitter main
   {
     "nvim-treesitter/nvim-treesitter-textobjects",
-    name = "nvim-treesitter-textobjects",
     branch = "main",
     lazy = false,
     dependencies = { "nvim-treesitter" },
@@ -182,7 +180,6 @@ return {
 
   {
     "nvim-treesitter/nvim-treesitter-context",
-    name = "nvim-treesitter-context",
     event = "LazyFile",
     opts = {
       max_lines = 3,
@@ -193,7 +190,6 @@ return {
 
   {
     "windwp/nvim-ts-autotag",
-    name = "nvim-ts-autotag",
     ft = { "html", "xml", "jsx", "tsx", "vue", "svelte", "astro", "markdown" },
     opts = {},
   },

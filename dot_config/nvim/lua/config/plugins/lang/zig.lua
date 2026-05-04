@@ -8,7 +8,6 @@ return Lib.lang.setup({
   plugins = {
     {
       "lawrence-laz/neotest-zig",
-      name = "neotest-zig",
       ft = "zig",
       dependencies = { "neotest" },
     },

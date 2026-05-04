@@ -20,7 +20,6 @@ return Lib.lang.setup({
   plugins = {
     {
       "lervag/vimtex",
-      name = "vimtex",
       -- vimtex ships ftplugin/ files and needs to load before the first tex
       -- buffer to register filetype detection/autocommands.
       lazy = false,

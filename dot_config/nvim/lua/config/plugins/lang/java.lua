@@ -7,7 +7,6 @@ return Lib.lang.setup({
   plugins = {
     {
       "mfussenegger/nvim-jdtls",
-      name = "nvim-jdtls",
       ft = "java",
       config = function()
         -- Build DAP bundles from mason paths (java-debug-adapter + java-test).

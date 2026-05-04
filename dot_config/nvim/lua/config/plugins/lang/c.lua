@@ -91,7 +91,6 @@ return Lib.lang.setup({
   plugins = {
     {
       "p00f/clangd_extensions.nvim",
-      name = "clangd_extensions.nvim",
       ft = { "c", "cpp", "h", "hpp" },
       opts = {
         inlay_hints = {

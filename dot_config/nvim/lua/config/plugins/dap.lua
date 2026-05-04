@@ -2,7 +2,6 @@
 return {
   {
     "mfussenegger/nvim-dap",
-    name = "nvim-dap",
     dependencies = { "nvim-dap-ui", "nvim-nio", "nvim-dap-virtual-text" },
     keys = {
       { "<Leader>db", function() require("dap").toggle_breakpoint() end, desc = "Toggle breakpoint" },
@@ -39,14 +38,13 @@ return {
       vim.fn.sign_define("DapBreakpointRejected",  { text = D.BreakpointRejected[1], texthl = D.BreakpointRejected[2] })
     end,
   },
-  { "rcarriga/nvim-dap-ui", name = "nvim-dap-ui", lazy = true },
-  { "nvim-neotest/nvim-nio", name = "nvim-nio", lazy = true },
-  { "theHamsta/nvim-dap-virtual-text", name = "nvim-dap-virtual-text", lazy = true },
+  { "rcarriga/nvim-dap-ui", lazy = true },
+  { "nvim-neotest/nvim-nio", lazy = true },
+  { "theHamsta/nvim-dap-virtual-text", lazy = true },
 
   -- Lua DAP adapter (let nvim debug nvim plugins/config)
   {
     "jbyuki/one-small-step-for-vimkind",
-    name = "one-small-step-for-vimkind",
     dependencies = { "nvim-dap" },
     keys = {
       {
@@ -77,7 +75,6 @@ return {
   -- mason bridge: `:MasonToolsInstall` picks up DAP adapters registered here
   {
     "jay-babu/mason-nvim-dap.nvim",
-    name = "mason-nvim-dap.nvim",
     dependencies = { "nvim-dap" },
     cmd  = { "DapInstall", "DapUninstall" },
     opts = {

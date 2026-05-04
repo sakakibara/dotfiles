@@ -10,6 +10,6 @@ return Lib.lang.setup({
     },
   },
   plugins = {
-    { "sakakibara/vim-ps1", name = "vim-ps1", ft = "ps1" },
+    { "sakakibara/vim-ps1", ft = "ps1" },
   },
 })

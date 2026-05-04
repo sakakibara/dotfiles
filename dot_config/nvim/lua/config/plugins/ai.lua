@@ -2,7 +2,6 @@
 return {
   {
     "yetone/avante.nvim",
-    name = "avante.nvim",
     event = "VeryLazy",
     build = "make",
     dependencies = {

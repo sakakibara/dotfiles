@@ -30,7 +30,6 @@ return Lib.lang.setup({
   plugins = {
     {
       "iamcco/markdown-preview.nvim",
-      name = "markdown-preview.nvim",
       cmd = { "MarkdownPreviewToggle", "MarkdownPreview", "MarkdownPreviewStop" },
       ft = "markdown",
       keys = {
@@ -52,7 +51,6 @@ return Lib.lang.setup({
 
     {
       "MeanderingProgrammer/render-markdown.nvim",
-      name = "render-markdown.nvim",
       ft = { "markdown" },
       opts = {
         heading = {
@@ -64,7 +62,6 @@ return Lib.lang.setup({
     -- Due dates: highlights `@due(YYYY-MM-DD)` style annotations
     {
       "nfrid/due.nvim",
-      name = "due.nvim",
       ft   = "markdown",
       opts = {},
     },

@@ -6,7 +6,6 @@ return {
   -- File explorer with inline-editable buffer: `-` opens parent dir
   {
     "stevearc/oil.nvim",
-    name = "oil.nvim",
     lazy = false,  -- needed so `nvim <dir>` opens oil instead of netrw
     keys = {
       { "-", function() require("oil").open() end, desc = "Open parent directory" },
@@ -44,7 +43,6 @@ return {
   -- LSP file operations: oil rename/move → workspace/didRename to server
   {
     "antosha417/nvim-lsp-file-operations",
-    name = "nvim-lsp-file-operations",
     dependencies = { "plenary.nvim" },
     event = "LazyFile",
     opts = {},
@@ -53,7 +51,6 @@ return {
   -- Open URL / file path / issue reference under cursor
   {
     "chrishrb/gx.nvim",
-    name = "gx.nvim",
     keys = { { "gx", "<Cmd>Browse<CR>", mode = { "n", "x" }, desc = "Open URL / path", override = true } },
     cmd  = { "Browse" },
     init = function() vim.g.netrw_nogx = 1 end,
@@ -63,7 +60,6 @@ return {
   -- Search & replace across the workspace with live preview
   {
     "MagicDuck/grug-far.nvim",
-    name = "grug-far.nvim",
     cmd  = "GrugFar",
     keys = {
       { "<Leader>sr", "<Cmd>GrugFar<CR>",             desc = "Search & replace" },
@@ -75,7 +71,6 @@ return {
   -- Chezmoi dotfile picker — source files only, skips template render detours
   {
     "xvzc/chezmoi.nvim",
-    name = "chezmoi.nvim",
     cmd  = { "ChezmoiEdit", "ChezmoiList" },
     keys = {
       { "<Leader>sz", function() vim.cmd("ChezmoiList") end, desc = "Chezmoi files" },
@@ -84,5 +79,5 @@ return {
   },
 
   -- Sudo read / write: :SudaRead, :SudaWrite
-  { "lambdalisue/suda.vim", name = "suda.vim", cmd = { "SudaRead", "SudaWrite" } },
+  { "lambdalisue/suda.vim", cmd = { "SudaRead", "SudaWrite" } },
 }

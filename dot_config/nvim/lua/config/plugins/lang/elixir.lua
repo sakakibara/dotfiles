@@ -13,7 +13,6 @@ return Lib.lang.setup({
   plugins = {
     {
       "jfpedroza/neotest-elixir",
-      name = "neotest-elixir",
       ft = "elixir",
       dependencies = { "neotest" },
     },

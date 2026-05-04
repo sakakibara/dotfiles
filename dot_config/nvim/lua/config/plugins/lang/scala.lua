@@ -9,7 +9,6 @@ return Lib.lang.setup({
   plugins = {
     {
       "scalameta/nvim-metals",
-      name = "nvim-metals",
       ft = { "scala", "sbt" },
       config = function()
         local metals = require("metals")

@@ -2,7 +2,6 @@
 return {
   {
     "neovim/nvim-lspconfig",
-    name = "nvim-lspconfig",
     event = "LazyFile",
     -- lazydev.nvim is NOT a dependency: nvim-lspconfig is the
     -- LazyFile gate (any file), which would force lazydev to load on
@@ -38,7 +37,6 @@ return {
 
   {
     "folke/lazydev.nvim",
-    name = "lazydev.nvim",
     ft = "lua",
     opts = {
       library = {
@@ -51,7 +49,6 @@ return {
 
   {
     "mason-org/mason.nvim",
-    name = "mason.nvim",
     event = "VeryLazy",
     opts = {
       ui = { border = "rounded" },

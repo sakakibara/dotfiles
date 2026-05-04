@@ -19,14 +19,12 @@ return Lib.lang.setup({
   plugins = {
     {
       "suketa/nvim-dap-ruby",
-      name = "nvim-dap-ruby",
       ft = "ruby",
       dependencies = { "nvim-dap" },
       config = function() require("dap-ruby").setup() end,
     },
     {
       "olimorris/neotest-rspec",
-      name = "neotest-rspec",
       ft = "ruby",
       dependencies = { "neotest" },
     },

@@ -8,7 +8,6 @@ return {
   -- results into a quickfix list via the on_output_quickfix component.
   {
     "stevearc/overseer.nvim",
-    name = "overseer.nvim",
     cmd  = { "OverseerOpen", "OverseerClose", "OverseerToggle", "OverseerRun", "OverseerBuild", "Grep" },
     keys = {
       { "<Leader>uo", "<Cmd>OverseerToggle<CR>", desc = "Overseer toggle" },
@@ -36,7 +35,6 @@ return {
   -- Editable quickfix / loclist
   {
     "stevearc/quicker.nvim",
-    name = "quicker.nvim",
     event = "VeryLazy",
     keys = {
       { "<Leader>xq", function() require("quicker").toggle()                   end, desc = "Quickfix (quicker)" },

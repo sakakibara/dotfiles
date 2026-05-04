@@ -5,7 +5,6 @@ return {
   -- Flash: s/S treesitter jump, remote-op (r/R), cmdline toggle
   {
     "folke/flash.nvim",
-    name = "flash.nvim",
     event = "VeryLazy",
     opts = {},
     keys = {
@@ -20,7 +19,6 @@ return {
   -- Harpoon: pin up to 5 files per project, jump with <Leader>1..5
   {
     "ThePrimeagen/harpoon",
-    name = "harpoon",
     branch = "harpoon2",
     dependencies = { "plenary.nvim" },
     keys = {
@@ -36,5 +34,5 @@ return {
   },
 
   -- plenary is shared by harpoon + text-case + lsp-file-operations
-  { "nvim-lua/plenary.nvim", name = "plenary.nvim", lazy = true },
+  { "nvim-lua/plenary.nvim", lazy = true },
 }

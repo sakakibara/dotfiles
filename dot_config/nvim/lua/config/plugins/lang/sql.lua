@@ -22,20 +22,17 @@ return Lib.lang.setup({
   plugins = {
     {
       "tpope/vim-dadbod",
-      name = "vim-dadbod",
       cmd = "DB",
     },
 
     {
       "kristijanhusak/vim-dadbod-completion",
-      name = "vim-dadbod-completion",
       dependencies = { "vim-dadbod" },
       ft = sql_ft,
     },
 
     {
       "kristijanhusak/vim-dadbod-ui",
-      name = "vim-dadbod-ui",
       cmd = { "DBUI", "DBUIToggle", "DBUIAddConnection", "DBUIFindBuffer" },
       dependencies = { "vim-dadbod" },
       keys = {

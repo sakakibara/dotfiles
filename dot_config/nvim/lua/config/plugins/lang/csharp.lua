@@ -33,12 +33,10 @@ local plugins = Lib.lang.setup({
   plugins = {
     {
       "Hoffs/omnisharp-extended-lsp.nvim",
-      name = "omnisharp-extended-lsp.nvim",
       ft = { "cs", "csproj", "razor" },
     },
     {
       "Issafalcon/neotest-dotnet",
-      name = "neotest-dotnet",
       ft = "cs",
       dependencies = { "neotest" },
     },

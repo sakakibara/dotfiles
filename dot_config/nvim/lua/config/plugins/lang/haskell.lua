@@ -9,7 +9,6 @@ return Lib.lang.setup({
   plugins = {
     {
       "mrcjkb/haskell-tools.nvim",
-      name = "haskell-tools.nvim",
       version = "^3",
       ft = { "haskell", "lhaskell", "cabal", "cabalproject" },
       -- NOTE: `telescope_hoogle` extension skipped (telescope not in M2 framework).
@@ -27,14 +26,12 @@ return Lib.lang.setup({
 
     {
       "mrcjkb/neotest-haskell",
-      name = "neotest-haskell",
       ft = "haskell",
       dependencies = { "neotest" },
     },
 
     {
       "mrcjkb/haskell-snippets.nvim",
-      name = "haskell-snippets.nvim",
       ft = { "haskell", "lhaskell", "cabal", "cabalproject" },
       -- Requires LuaSnip at runtime. If LuaSnip isn't installed, we skip silently.
       config = function()

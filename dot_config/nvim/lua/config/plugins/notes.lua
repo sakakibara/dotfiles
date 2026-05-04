@@ -9,7 +9,6 @@
 return {
   {
     "zk-org/zk-nvim",
-    name = "zk-nvim",
     ft   = "markdown",
     cmd  = { "ZkIndex", "ZkNew", "ZkNotes", "ZkBuffers", "ZkBacklinks", "ZkLinks", "ZkTags", "ZkCd", "ZkMatch", "ZkInsertLink" },
     keys = {
@@ -61,17 +60,14 @@ return {
 
   {
     "sakakibara/tablature.nvim",
-    name = "tablature.nvim",
   },
 
   {
     "sakakibara/narrow.nvim",
-    name = "narrow.nvim",
   },
 
   {
     "sakakibara/organ.nvim",
-    name         = "organ.nvim",
     dependencies = { "tablature.nvim", "narrow.nvim" },
     build        = function() require("organ.grammar_install").install() end,
     opts         = {
