@@ -153,8 +153,7 @@ if status --is-interactive
     end
 
     if test (command -v hive)
-        _evalcache hive workspace shell fish
-        _evalcache hive completion fish
+        _evalcache hive init fish
     end
 
     if test (command -v pip)

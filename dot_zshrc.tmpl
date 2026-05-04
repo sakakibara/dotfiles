@@ -532,10 +532,6 @@ _evalcache fzf --zsh
 
 _evalcache zoxide init zsh
 
-if (( ${+commands[hive]} )); then
-  _evalcache hive workspace shell zsh
-fi
-
 _evalcache "${HOME}/.local/bin/mise" activate zsh
 
 #
@@ -592,7 +588,7 @@ if (( ${+commands[chezmoi]} )); then
 fi
 
 if (( ${+commands[hive]} )); then
-  _evalcache hive completion zsh
+  _evalcache hive init zsh
 fi
 
 if [[ ! "${ZSH_COMPDUMP}.zwc" -nt "${ZSH_COMPDUMP}" ]]; then
