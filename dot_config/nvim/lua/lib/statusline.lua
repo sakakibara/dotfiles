@@ -703,7 +703,7 @@ function M.setup()
   on({ "DiagnosticChanged" }, {}, { "diag" })
   on({ "LspAttach", "LspDetach" }, {}, { "lsp" })
   on({ "User" }, { pattern = "GitSignsUpdate" }, { "git" })
-  on({ "OptionSet" }, { pattern = "fileformat,fileencoding,bomb,filetype" }, { "enc", "bom", "fmt", "ft" })
+  on({ "OptionSet" }, { pattern = { "fileformat", "fileencoding", "bomb", "filetype" } }, { "enc", "bom", "fmt", "ft" })
   on({ "BufModifiedSet" }, {}, { "path" })
 
   -- Force redraw for transient states (mode glyphs, recording, search).
