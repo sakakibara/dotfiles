@@ -20,6 +20,18 @@ function M.install_dir(name)
   return install_root() .. "/" .. name
 end
 
+-- Generate `doc/tags` for a freshly-installed/updated plugin so `:help
+-- <topic>` resolves to its docs. lazy.nvim auto-handles this on every
+-- install/update; without it, plugins ship with their .txt files but
+-- no tags index, and :help silently misses everything outside the
+-- already-loaded set. Idempotent — :helptags rewrites the file.
+function M.generate_helptags(dir)
+  local doc = dir .. "/doc"
+  if vim.fn.isdirectory(doc) == 1 then
+    pcall(vim.cmd.helptags, doc)
+  end
+end
+
 
 -- Resolve and check out the right ref for a freshly-cloned plugin.
 -- Lockfile takes precedence: if a SHA is recorded for this plugin we
@@ -167,6 +179,7 @@ function M.install_missing(specs, opts)
             -- Lock.write skips when the rendered payload matches disk, so
             -- this is a no-op when nothing about this entry changed.
             M.run_build(spec, dir, { fidget = view, on_failed = opts.on_failed })
+            M.generate_helptags(dir)
           end,
         })
       end
@@ -271,6 +284,7 @@ local function apply_pending(pending, opts)
           version = type(p.spec.version) == "string" and p.spec.version or nil,
         })
         M.run_build(p.spec, p.dir, { fidget = opts.fidget })
+        M.generate_helptags(p.dir)
         Log.append({
           ts = os.time(),
           kind = "update",

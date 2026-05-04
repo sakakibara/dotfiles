@@ -296,6 +296,20 @@ function M.setup(cfg)
 
   triggers.register(ordered)
 
+  -- Backfill `doc/tags` for installed plugins that were cloned before the
+  -- per-install helptag generation existed. Idempotent (helptags rewrites
+  -- only when needed) and skipped per-plugin when doc/tags already exists.
+  vim.schedule(function()
+    local Install = require("core.pack.install")
+    for _, s in ipairs(ordered) do
+      local dir = Install.install_dir(s.name)
+      if vim.fn.isdirectory(dir) == 1
+         and vim.fn.filereadable(dir .. "/doc/tags") == 0 then
+        Install.generate_helptags(dir)
+      end
+    end
+  end)
+
   -- Close the splash either on first user input OR after a stretch of
   -- "no status updates" (idle). The idle timer is preferable to a fixed
   -- timeout because it keeps the splash up *exactly* as long as something
