@@ -9,17 +9,35 @@
 
 local M = {}
 
--- Walk up the Lua call stack looking for a `/config/plugins/lang/<x>.lua`
--- frame. Used as a default ft for mason/parsers when the caller doesn't
--- pass spec.ft explicitly. Match-on-path is what matters; level numbers
--- shift with helper depth, so we just scan a generous range.
+-- Default ft for mason/parsers when the caller doesn't pass spec.ft.
+--
+-- Two cases handled:
+--   1. The lang/<x>.lua chunk's frame is on the stack (no Lua tail-call
+--      eliminated it). Match its source path directly.
+--   2. The chunk used `return Lib.lang.setup(...)`, a tail call — Lua
+--      drops the chunk's frame and we never see lang/<x>.lua. Walk
+--      further up to `config/plugins.lua`'s loader (which has work
+--      after the require, so its frame survives) and read its `name`
+--      local — that's the module path being loaded ("lang.<x>").
 local function caller_ft()
   for level = 1, 16 do
     local info = debug.getinfo(level, "S")
     if not info then break end
     local src = info.source or ""
-    local lang_match = src:match("/config/plugins/lang/([%w_]+)%.lua$")
-    if lang_match then return lang_match end
+
+    local direct = src:match("/config/plugins/lang/([%w_]+)%.lua$")
+    if direct then return direct end
+
+    if src:match("/config/plugins%.lua$") then
+      for i = 1, 10 do
+        local lname, lvalue = debug.getlocal(level, i)
+        if not lname then break end
+        if lname == "name" and type(lvalue) == "string" then
+          local ft = lvalue:match("lang%.([%w_]+)$")
+          if ft then return ft end
+        end
+      end
+    end
   end
   return nil
 end
