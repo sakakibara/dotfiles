@@ -335,6 +335,52 @@ local function subcommands(Pack)
     end,
   }
 
+  subs.reload = {
+    desc = "Reload a loaded plugin (clears its lua require cache and re-runs config)",
+    complete = function(arglead)
+      return name_complete(Pack, arglead, function(n) return Pack._loaded[n] end)
+    end,
+    run = function(opts)
+      local name = opts.fargs[1]
+      if not name then vim.notify("core.pack: usage :Pack reload <name>", vim.log.levels.WARN); return end
+      if not Pack.has(name) then vim.notify(("core.pack: unknown plugin '%s'"):format(name), vim.log.levels.WARN); return end
+      if not Pack.loaded(name) then vim.notify(("core.pack: %s not loaded yet (use :Pack load)"):format(name), vim.log.levels.WARN); return end
+      -- Clear cached require entries so the next load reads fresh source.
+      -- The plugin's lua namespace is "<name>" minus the trailing ".nvim"
+      -- (matches install.run_build's invalidation rule). Sub-modules
+      -- (e.g. organ.grammar_install) are caught by the prefix match.
+      local mod = name:gsub("%.nvim$", "")
+      for k in pairs(package.loaded) do
+        if k == mod or k:sub(1, #mod + 1) == mod .. "." then
+          package.loaded[k] = nil
+        end
+      end
+      Pack._loaded[name] = nil
+      Pack.load(name)
+      vim.notify(("core.pack: reloaded %s"):format(name))
+    end,
+  }
+
+  subs.open = {
+    desc = "Open a plugin's source URL in the system browser",
+    complete = function(arglead) return name_complete(Pack, arglead) end,
+    run = function(opts)
+      local name = opts.fargs[1]
+      if not name then vim.notify("core.pack: usage :Pack open <name>", vim.log.levels.WARN); return end
+      local spec = Pack._specs[name]
+      if not spec then vim.notify(("core.pack: unknown plugin '%s'"):format(name), vim.log.levels.WARN); return end
+      if not spec.src then vim.notify(("core.pack: %s has no source URL (dev plugin?)"):format(name), vim.log.levels.WARN); return end
+      local opener = (vim.fn.has("mac") == 1 and "open")
+        or (vim.fn.has("unix") == 1 and "xdg-open")
+        or (vim.fn.has("win32") == 1 and "explorer")
+      if not opener or vim.fn.executable(opener) == 0 then
+        vim.notify(("core.pack: no system opener (%s) on PATH"):format(tostring(opener)), vim.log.levels.WARN)
+        return
+      end
+      vim.system({ opener, spec.src }, { detach = true })
+    end,
+  }
+
   subs.profile = {
     desc = "Show pack startup profile in a scratch buffer",
     run = function()
