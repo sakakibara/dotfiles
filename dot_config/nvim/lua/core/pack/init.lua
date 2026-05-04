@@ -51,17 +51,23 @@ local function run_config(spec)
   if M._loaded[spec.name] then return end
   M._loaded[spec.name] = true
 
+  -- lazy.nvim parity: opts may be a table OR a function returning a table.
+  -- Resolve once at config time (not registration time) so the function can
+  -- safely require plugin modules that aren't on rtp until packadd above.
+  local opts = spec.opts
+  if type(opts) == "function" then opts = opts(spec, {}) or {} end
+
   local profile = require("core.profile")
   local ok, err
   profile.span("config:" .. spec.name, "config", function()
     ok, err = xpcall(function()
       if spec.config then
-        spec.config(spec, spec.opts)
+        spec.config(spec, opts)
       else
         local mod = M._resolve_main(spec)
         local ok2, plugin = pcall(require, mod)
         if ok2 and type(plugin) == "table" and type(plugin.setup) == "function" then
-          plugin.setup(spec.opts)
+          plugin.setup(opts)
         elseif not ok2 then
           -- Clear sentinel left by Lua's require when the module errors
           -- mid-load, or subsequent explicit requires raise "loop or
