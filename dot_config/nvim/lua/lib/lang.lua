@@ -58,10 +58,12 @@ end
 --                                          (lspconfig.configs.*, schemastore, ...).
 --                                          Two helper-only fields, stripped before
 --                                          vim.lsp.config:
---                                            _enable    { cmd = "binary" } passed to
---                                                       Lib.lsp.enable as a hint for
---                                                       servers with function `cmd`.
---                                            _on_attach function(args, client) — fired
+--                                            binary     "ruby-lsp" — explicit binary
+--                                                       name passed to Lib.lsp.enable
+--                                                       as a hint for servers with
+--                                                       function `cmd` (jsonls, vtsls,
+--                                                       ruby_lsp, yamlls, angularls).
+--                                            on_attach  function(args, client) — fired
 --                                                       on LspAttach, pre-filtered to
 --                                                       this server name; client is
 --                                                       resolved from args for you.
@@ -124,17 +126,17 @@ function M.setup(spec)
       for name, cfg in pairs(servers) do
         if type(cfg) == "function" then cfg = cfg() end
         cfg = cfg or {}
-        local enable_opts = cfg._enable
-        local on_attach_cb = cfg._on_attach
+        local binary = cfg.binary
+        local on_attach_cb = cfg.on_attach
         local merged = vim.tbl_deep_extend(
           "force",
           { capabilities = Lib.lsp.capabilities() },
           cfg
         )
-        merged._enable = nil
-        merged._on_attach = nil
+        merged.binary = nil
+        merged.on_attach = nil
         vim.lsp.config(name, merged)
-        Lib.lsp.enable(name, enable_opts)
+        Lib.lsp.enable(name, binary and { cmd = binary } or nil)
 
         if on_attach_cb then
           Lib.lsp.on_attach(name, on_attach_cb)

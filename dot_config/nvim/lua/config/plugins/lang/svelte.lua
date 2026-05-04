@@ -12,7 +12,7 @@ return Lib.lang.setup({
           didChangeWatchedFiles = vim.fn.has("nvim-0.10") == 0 and { dynamicRegistration = true } or nil,
         },
       },
-      _on_attach = function(args, _)
+      on_attach = function(args, _)
         vim.keymap.set("n", "<Leader>co", function()
           vim.lsp.buf.code_action({
             apply = true,

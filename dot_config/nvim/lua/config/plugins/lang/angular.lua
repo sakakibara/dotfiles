@@ -17,9 +17,9 @@ return Lib.lang.setup({
   end,
   servers = {
     angularls = {
-      _enable = { cmd = "ngserver" },  -- function cmd in lspconfig
+      binary = "ngserver",  -- function cmd in lspconfig
       -- Disable angularls rename — it clashes with the TS server's rename capability.
-      _on_attach = function(_, client)
+      on_attach = function(_, client)
         client.server_capabilities.renameProvider = false
       end,
     },

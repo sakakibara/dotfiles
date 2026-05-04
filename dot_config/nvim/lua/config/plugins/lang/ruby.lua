@@ -5,7 +5,10 @@ return Lib.lang.setup({
   mason = { "ruby-lsp", "rubocop" },
   parsers = { "ruby" },
   servers = {
-    ruby_lsp = {},
+    -- ruby_lsp's lspconfig `cmd` is a function, so Lib.lsp.enable's
+    -- availability check needs an explicit binary hint (otherwise it
+    -- queues forever and never enables).
+    ruby_lsp = { binary = "ruby-lsp" },
     rubocop = {},
   },
   formatters = {

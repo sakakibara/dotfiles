@@ -27,7 +27,7 @@ return Lib.lang.setup({
             schemas = schemastore_ok and schemastore.yaml.schemas() or {},
           },
         },
-        _enable = { cmd = "yaml-language-server" },  -- function cmd in lspconfig
+        binary = "yaml-language-server",  -- function cmd in lspconfig
       }
     end,
   },

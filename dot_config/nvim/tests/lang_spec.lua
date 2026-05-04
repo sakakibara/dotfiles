@@ -209,34 +209,34 @@ T.describe("lib.lang.setup", function()
     end)
   end)
 
-  T.it("_enable is forwarded to Lib.lsp.enable and stripped from vim.lsp.config", function()
+  T.it("binary is forwarded to Lib.lsp.enable and stripped from vim.lsp.config", function()
     with_mocks(function(rec, lang)
       lang.setup({
-        servers = { srv = { _enable = { cmd = "real-binary" }, settings = { x = 1 } } },
+        servers = { srv = { binary = "real-binary", settings = { x = 1 } } },
       })
       rec:drive("nvim-lspconfig")
       T.eq(rec.lsp_enable, { { name = "srv", opts = { cmd = "real-binary" } } })
-      T.eq(rec.lsp_cfg[1].cfg._enable, nil, "_enable should be stripped from lsp config")
+      T.eq(rec.lsp_cfg[1].cfg.binary, nil, "binary should be stripped from lsp config")
       T.eq(rec.lsp_cfg[1].cfg.settings, { x = 1 })
     end)
   end)
 
-  T.it("_on_attach is registered name-keyed and stripped from lsp config", function()
+  T.it("on_attach is registered name-keyed and stripped from lsp config", function()
     local fired_for = {}
     with_mocks(function(rec, lang)
       lang.setup({
         servers = {
           srv1 = {
-            _on_attach = function(_, client) fired_for[#fired_for + 1] = client.name end,
+            on_attach = function(_, client) fired_for[#fired_for + 1] = client.name end,
           },
         },
       })
       rec:drive("nvim-lspconfig")
-      T.eq(rec.lsp_cfg[1].cfg._on_attach, nil, "_on_attach should be stripped")
+      T.eq(rec.lsp_cfg[1].cfg.on_attach, nil, "on_attach should be stripped")
       T.eq(#rec.lsp_attach, 1, "should register one LspAttach callback")
       T.eq(rec.lsp_attach[1].name, "srv1", "callback should be name-keyed for filter dispatch")
       -- Drive the registered callback to verify it forwards (args, client)
-      -- to the user's _on_attach. Name filtering itself is the dispatcher's
+      -- to the user's on_attach. Name filtering itself is the dispatcher's
       -- job (Lib.lsp._fire_attach), tested in lib/lsp_spec.
       rec.lsp_attach[1].fn({ data = { client_id = 1 }, buf = 0 }, { name = "srv1" })
       T.eq(fired_for, { "srv1" })
@@ -297,7 +297,7 @@ T.describe("lib.lang.setup", function()
         servers = {
           srv = function()
             resolved_at_eval_time = true
-            return { settings = { dynamic = "ok" }, _enable = { cmd = "x" } }
+            return { settings = { dynamic = "ok" }, binary = "x" }
           end,
         },
       })
@@ -305,7 +305,7 @@ T.describe("lib.lang.setup", function()
       rec:drive("nvim-lspconfig")
       T.eq(resolved_at_eval_time, true, "server fn should run inside on_load")
       T.eq(rec.lsp_cfg[1].cfg.settings, { dynamic = "ok" })
-      T.eq(rec.lsp_cfg[1].cfg._enable, nil)
+      T.eq(rec.lsp_cfg[1].cfg.binary, nil)
       T.eq(rec.lsp_enable, { { name = "srv", opts = { cmd = "x" } } })
     end)
   end)

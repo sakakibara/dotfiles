@@ -17,7 +17,7 @@ return Lib.lang.setup({
         },
         -- jsonls ships a function `cmd`; pass an explicit binary hint so our
         -- guarded enable can verify availability without trying to call the fn.
-        _enable = { cmd = "vscode-json-language-server" },
+        binary = "vscode-json-language-server",
       }
     end,
   },

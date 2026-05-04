@@ -14,7 +14,7 @@ local plugins = Lib.lang.setup({
       organize_imports_on_format = true,
       enable_import_completion = true,
       -- Omnisharp-extended "Goto Definition" keymap.
-      _on_attach = function(args, _)
+      on_attach = function(args, _)
         vim.keymap.set("n", "gd", function()
           require("omnisharp_extended").lsp_definitions()
         end, { buffer = args.buf, desc = "Goto definition" })
