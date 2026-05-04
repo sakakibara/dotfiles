@@ -207,7 +207,6 @@ return {
             { pattern = "^stop",          icon = I.close,   color = "red"    },
             { pattern = "^restart",       icon = I.play,    color = "yellow" },
             { pattern = "^eval",          icon = I.terminal, color = "cyan"  },
-            { pattern = "evaluation",     icon = I.terminal, color = "cyan"  },
             -- plugin-specific descs without command-name auto-detect
             { pattern = "lazygit",        icon = I.git,     color = "orange" },
             { pattern = "flutter",        icon = I.mobile,  color = "blue"   },
@@ -250,9 +249,36 @@ return {
             { pattern = "^help",          icon = I.help,    color = "cyan"   },
             { pattern = "leave terminal", icon = I.terminal, color = "red"   },
             { pattern = "set filetype",   icon = I.file,    color = "cyan"   },
-            { pattern = "scope",          icon = I.find,    color = "azure"  },
             { pattern = "^oil",           icon = I.open,    color = "yellow" },
             { pattern = "parent dir",     icon = I.open,    color = "yellow" },
+            -- treesitter-textobjects motion
+            { pattern = "next class",     icon = I.code,    color = "yellow" },
+            { pattern = "prev class",     icon = I.code,    color = "yellow" },
+            { pattern = "next function",  icon = I.code,    color = "yellow" },
+            { pattern = "prev function",  icon = I.code,    color = "yellow" },
+            { pattern = "reference",      icon = I.link,    color = "azure"  },
+            -- diagnostic severity (built-in 'diagnostic' rule misses these)
+            { pattern = "next error",     icon = I.trouble, color = "red"    },
+            { pattern = "prev error",     icon = I.trouble, color = "red"    },
+            { pattern = "next warning",   icon = I.trouble, color = "yellow" },
+            { pattern = "prev warning",   icon = I.trouble, color = "yellow" },
+            -- conjure eval-output jumps
+            { pattern = "eval output",    icon = I.terminal, color = "cyan"  },
+            -- DAP descs where "dap" isn't at the start
+            { pattern = "dap server",     icon = I.debug,   color = "red"    },
+            { pattern = "lua dap",        icon = I.debug,   color = "red"    },
+            { pattern = "under dap",      icon = I.debug,   color = "red"    },
+            -- task runners / list panes
+            { pattern = "overseer",       icon = I.play,    color = "yellow" },
+            { pattern = "quickfix",       icon = I.list,    color = "azure"  },
+            { pattern = "loclist",        icon = I.list,    color = "azure"  },
+            -- window operations missing the word "window"
+            { pattern = "^resize",        icon = I.resize,  color = "blue"   },
+            -- chezmoi / case / checkbox / cd
+            { pattern = "chezmoi",        icon = I.ui,      color = "yellow" },
+            { pattern = "checkbox",       icon = I.check,   color = "green"  },
+            { pattern = "^case",          icon = I.pencil,  color = "yellow" },
+            { pattern = "^cd ",           icon = I.open,    color = "yellow" },
           },
         },
         spec = {
