@@ -111,11 +111,16 @@ function M.setup()
       -- the splash overlay. This preserves the original splash contract
       -- (no chrome competing with the centered box).
       --
-      -- Queue drain (pre-noice messages): :messages-only via SILENT_KIND.
-      -- We deliberately do NOT replay through prev: replaying every queued
-      -- install-time notification as a toast burst after splash closes is
-      -- an explicit non-goal. Stock noice doesn't backfill :NoiceAll with
-      -- pre-attach history either, so :messages-only matches that contract.
+      -- Queue drain (pre-noice messages):
+      --   * INFO and below stay on the SILENT_KIND-only path — replaying
+      --     every queued install-time notification as a toast burst after
+      --     splash closes is an explicit non-goal. Stock noice doesn't
+      --     backfill :NoiceAll with pre-attach history either.
+      --   * WARN/ERROR forward through `prev` (noice). The SILENT_KIND
+      --     echo path is invisible to both histories on builds where
+      --     ext_messages bypasses nvim's internal :messages — and errors
+      --     are rare and signal real problems, so we accept the toast/
+      --     popup that comes with replay rather than risk losing them.
       local function level_to_hl(level)
         level = level or vim.log.levels.INFO
         if level >= vim.log.levels.ERROR then return "ErrorMsg" end
@@ -148,10 +153,15 @@ function M.setup()
         end
 
         for _, m in ipairs(_pending) do
-          pcall(vim.api.nvim_echo,
-            { { tostring(m.msg), level_to_hl(m.level) } },
-            true,
-            { kind = SILENT_KIND })
+          local lvl = m.level or vim.log.levels.INFO
+          if lvl >= vim.log.levels.WARN then
+            pcall(prev, m.msg, m.level, m.opts)
+          else
+            pcall(vim.api.nvim_echo,
+              { { tostring(m.msg), level_to_hl(m.level) } },
+              true,
+              { kind = SILENT_KIND })
+          end
         end
         _pending = {}
       end)

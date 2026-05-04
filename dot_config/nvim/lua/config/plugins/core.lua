@@ -56,7 +56,12 @@ return {
         end,
       },
       quickfile = { enabled = true },
-      notifier  = { enabled = true },
+      -- Snacks notifier replaces vim.notify at startup (lazy stub at
+      -- snacks/init.lua:220-224 swaps in Snacks.notifier.notify on first
+      -- call). That captures pre-noice startup errors into Snacks's own
+      -- history, invisible to :messages and :NoiceAll. Noice is our
+      -- single source of truth for notifications, so disable snacks's.
+      notifier  = { enabled = false },
       input     = { enabled = true },
       picker    = {
         enabled    = true,
@@ -87,7 +92,7 @@ return {
       { "<Leader>sw", function() Snacks.picker.grep_word() end,               desc = "Grep word",  mode = { "n", "x" } },
       { "<Leader>sh", function() Snacks.picker.highlights() end,              desc = "Highlights" },
       { "<Leader>sc", function() Snacks.picker.command_history() end,         desc = "Command history" },
-      { "<Leader>sn", function() Snacks.picker.notifications() end,           desc = "Notifications" },
+      { "<Leader>sn", function() vim.cmd("Noice") end,                        desc = "Notifications" },
       { "<Leader>cd", function() Snacks.picker.diagnostics_buffer() end,      desc = "Diagnostics (buffer)" },
       { "<Leader>cD", function() Snacks.picker.diagnostics() end,             desc = "Diagnostics (workspace)" },
       -- gd is the one pre-gr* classic we keep: nvim 0.11+ added `grr/gri/grt/gra/grn/gO`
