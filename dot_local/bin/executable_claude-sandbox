@@ -447,12 +447,20 @@ _run_args() {
   # Bind-mount $HOME/.claude.json (the live config file separate from
   # the .claude/ directory) for default + worktree. Touch it first if
   # missing so docker doesn't auto-create a directory at the bind path.
+  # Mount at the HOST's absolute path (not /home/claude/.claude.json)
+  # so absolute paths embedded in plugin/installed_plugins.json — which
+  # claude-code records as host-side `/Users/<host>/.claude/...` — still
+  # resolve inside the container. The entrypoint symlinks
+  # /home/claude/.claude.json to this so $HOME-relative lookups work too.
   # For strict mode, the file is seeded into the cl_volume during
   # _ensure_strict_volumes; the entrypoint symlinks it into place so
   # writes persist in the volume.
   if [[ "$mode" != "strict" ]]; then
     [[ -e "$HOME/.claude.json" ]] || touch "$HOME/.claude.json"
-    args+=( -v "$HOME/.claude.json":/home/claude/.claude.json )
+    args+=(
+      -v "$HOME/.claude.json":"$HOME/.claude.json"
+      -e "HOST_HOME=$HOME"
+    )
   fi
 
   case "$mode" in
@@ -469,12 +477,12 @@ _run_args() {
       for extra in "${EXTRA_MOUNTS[@]}"; do
         args+=( -v "$extra":"$extra" )
       done
-      args+=( -v "$HOME/.claude":/home/claude/.claude )
+      args+=( -v "$HOME/.claude":"$HOME/.claude" )
       ;;
     worktree)
       local wt; wt=$(_worktree_path "$repo")
       args+=( -v "$wt":"$repo"
-              -v "$HOME/.claude":/home/claude/.claude )
+              -v "$HOME/.claude":"$HOME/.claude" )
       ;;
     strict)
       args+=( -v "$(_strict_ws_volume "$repo" "${NAME_OVERRIDE:-}")":"$repo"

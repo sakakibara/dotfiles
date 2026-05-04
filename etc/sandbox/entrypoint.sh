@@ -72,6 +72,23 @@ EOF
   export GIT_CONFIG_GLOBAL="$GLOBAL_GIT"
 fi
 
+# Default/worktree mode: the wrapper bind-mounts ~/.claude and
+# ~/.claude.json at the HOST's absolute path (e.g. /Users/sho/.claude),
+# not at /home/claude/.claude. claude-code records absolute install
+# paths in installed_plugins.json that point at the host's path; without
+# this, plugin lookups inside the container fail with "not found in
+# marketplace" because /Users/sho/.claude doesn't exist in the image.
+# Symlink /home/claude/.claude (and .claude.json) to the host paths so
+# both $HOME-relative AND host-absolute lookups resolve.
+if [[ -n "${HOST_HOME:-}" && "$HOST_HOME" != "$HOME" ]]; then
+  if [[ -d "$HOST_HOME/.claude" && ! -e "$HOME/.claude" ]]; then
+    ln -sfn "$HOST_HOME/.claude" "$HOME/.claude"
+  fi
+  if [[ -e "$HOST_HOME/.claude.json" && ! -e "$HOME/.claude.json" ]]; then
+    ln -sfn "$HOST_HOME/.claude.json" "$HOME/.claude.json"
+  fi
+fi
+
 # Strict-mode bridge: the wrapper seeds host's ~/.claude.json into the
 # claude-home volume as .csb-claude.json (because docker volumes are
 # directories — we can't bind-mount a single file from a volume). When
