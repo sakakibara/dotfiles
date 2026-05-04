@@ -228,6 +228,7 @@ function M.setup(cfg)
   M._on_load = M._on_load or {}
 
   local resolved, warnings = Spec.resolve(specs)
+  M._warnings = warnings  -- exposed for :checkhealth core.pack
   for _, w in ipairs(warnings) do
     vim.notify("core.pack: " .. w, vim.log.levels.WARN)
   end

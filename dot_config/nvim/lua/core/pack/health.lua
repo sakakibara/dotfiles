@@ -34,6 +34,55 @@ local function gather()
     add("warn", "install root does not exist: " .. install_root)
   end
 
+  -- Spec validation warnings captured at pack.setup time
+  local Pack = require("core.pack")
+  local sw = Pack._warnings or {}
+  if #sw > 0 then
+    for _, w in ipairs(sw) do add("warn", "spec: " .. w) end
+  else
+    add("ok", "no spec validation warnings")
+  end
+
+  -- Specs ↔ on-disk
+  local missing, no_tags = {}, {}
+  for name, spec in pairs(Pack._specs or {}) do
+    if not spec.dev then
+      local dir = Install.install_dir(name)
+      if vim.fn.isdirectory(dir) == 0 then
+        missing[#missing + 1] = name
+      elseif vim.fn.isdirectory(dir .. "/doc") == 1
+         and vim.fn.filereadable(dir .. "/doc/tags") == 0 then
+        no_tags[#no_tags + 1] = name
+      end
+    end
+  end
+  if #missing > 0 then
+    table.sort(missing)
+    add("warn", ("%d spec(s) not on disk: %s - run :Pack install"):format(#missing, table.concat(missing, ", ")))
+  else
+    add("ok", "every spec is installed on disk")
+  end
+  if #no_tags > 0 then
+    table.sort(no_tags)
+    add("warn", ("%d plugin(s) have doc/ but no doc/tags: %s - :help is incomplete"):format(#no_tags, table.concat(no_tags, ", ")))
+  else
+    add("ok", "every plugin with docs has doc/tags")
+  end
+
+  -- Orphan dirs (on-disk but not in spec)
+  if vim.fn.isdirectory(install_root) == 1 then
+    local orphans = {}
+    for _, entry in ipairs(vim.fn.readdir(install_root)) do
+      if not Pack._specs[entry] then orphans[#orphans + 1] = entry end
+    end
+    if #orphans > 0 then
+      table.sort(orphans)
+      add("warn", ("%d orphan dir(s): %s - run :Pack clean"):format(#orphans, table.concat(orphans, ", ")))
+    else
+      add("ok", "no orphan plugin directories")
+    end
+  end
+
   return items
 end
 
