@@ -176,7 +176,7 @@ function M.cold_install_splash(total)
       "│" .. center("")                         .. "│",
       "│" .. mid_line                           .. "│",
       "│" .. center("")                         .. "│",
-      "│" .. center("one-time setup — restart isn't needed") .. "│",
+      "│" .. center("installing missing plugins — no restart needed") .. "│",
       "│" .. center("")                         .. "│",
       "╰" .. ("─"):rep(BOX_W - 2) .. "╯",
     }
