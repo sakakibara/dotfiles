@@ -51,16 +51,17 @@ local function run_config(spec)
   if M._loaded[spec.name] then return end
   M._loaded[spec.name] = true
 
-  -- lazy.nvim parity: opts may be a table OR a function returning a table.
-  -- Resolve once at config time (not registration time) so the function can
-  -- safely require plugin modules that aren't on rtp until packadd above.
-  local opts = spec.opts
-  if type(opts) == "function" then opts = opts(spec, {}) or {} end
-
   local profile = require("core.profile")
   local ok, err
   profile.span("config:" .. spec.name, "config", function()
     ok, err = xpcall(function()
+      -- lazy.nvim parity: opts may be a table OR a function returning a
+      -- table. Resolve here (not at registration time) so the function
+      -- can safely require plugin modules that aren't on rtp until
+      -- packadd above. Inside xpcall so opts() errors flow through the
+      -- same notify path as setup() errors.
+      local opts = spec.opts
+      if type(opts) == "function" then opts = opts(spec, {}) or {} end
       if spec.config then
         spec.config(spec, opts)
       else

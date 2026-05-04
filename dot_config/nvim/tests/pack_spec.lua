@@ -72,6 +72,95 @@ T.describe("core.pack eager loading", function()
   end)
 end)
 
+T.describe("core.pack opts resolution", function()
+  T.it("opts as a table is passed to config unchanged", function()
+    local pack = reset_pack()
+    local received
+    pack.setup({
+      specs = { { dev = true, name = "table-opts",
+                  opts = { value = 42 },
+                  config = function(_, opts) received = opts end } },
+    })
+    T.eq(received, { value = 42 })
+  end)
+
+  T.it("opts as a function is resolved at config time", function()
+    local pack = reset_pack()
+    local received
+    pack.setup({
+      specs = { { dev = true, name = "fn-opts",
+                  opts = function() return { value = 99 } end,
+                  config = function(_, opts) received = opts end } },
+    })
+    T.eq(received, { value = 99 })
+  end)
+
+  T.it("opts function receives spec and a base table", function()
+    local pack = reset_pack()
+    local got_spec, got_base
+    pack.setup({
+      specs = { { dev = true, name = "fn-opts-args",
+                  opts = function(spec, base) got_spec, got_base = spec, base; return {} end,
+                  config = function() end } },
+    })
+    T.eq(got_spec.name, "fn-opts-args")
+    T.eq(got_base, {})
+  end)
+
+  T.it("opts function returning nil yields empty table", function()
+    local pack = reset_pack()
+    local received
+    pack.setup({
+      specs = { { dev = true, name = "fn-opts-nil",
+                  opts = function() return nil end,
+                  config = function(_, opts) received = opts end } },
+    })
+    T.eq(received, {})
+  end)
+
+  T.it("opts function errors are caught and reported via vim.notify", function()
+    local pack = reset_pack()
+    local logs = {}
+    local orig = vim.notify
+    vim.notify = function(msg, lvl) logs[#logs + 1] = { lvl = lvl, msg = msg } end
+    pack.setup({
+      specs = { { dev = true, name = "fn-opts-fail",
+                  opts = function() error("boom from opts") end,
+                  config = function() end } },
+    })
+    vim.notify = orig
+    -- Find the ERROR-level notify whose msg references our spec name
+    local found
+    for _, l in ipairs(logs) do
+      if l.lvl == vim.log.levels.ERROR
+         and tostring(l.msg):find("fn-opts-fail", 1, true)
+         and tostring(l.msg):find("boom from opts", 1, true) then
+        found = l.msg
+        break
+      end
+    end
+    T.truthy(found)
+  end)
+
+  T.it("opts function error does not abort other specs in the same setup", function()
+    local pack = reset_pack()
+    local later_called = false
+    local orig = vim.notify
+    vim.notify = function() end
+    pack.setup({
+      specs = {
+        { dev = true, name = "fail-first",  priority = 100,
+          opts = function() error("nope") end,
+          config = function() end },
+        { dev = true, name = "succeed-after", priority = 50,
+          config = function() later_called = true end },
+      },
+    })
+    vim.notify = orig
+    T.truthy(later_called)
+  end)
+end)
+
 T.describe("core.pack lazy triggers", function()
   T.it("event trigger loads plugin on autocmd fire", function()
     local pack = reset_pack()
