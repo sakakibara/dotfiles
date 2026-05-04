@@ -123,25 +123,156 @@ return {
     "folke/which-key.nvim",
     name = "which-key.nvim",
     event = "VeryLazy",
-    opts = {
-      preset = "helix",
-      spec = {
-        { "<Leader>a",  group = "ai (avante)" },
-        { "<Leader>b",  group = "buffer" },
-        { "<Leader>c",  group = "code (lsp)" },
-        { "<Leader>d",  group = "debug (dap)" },
-        { "<Leader>f",  group = "file / find" },
-        { "<Leader>g",  group = "git" },
-        { "<Leader>gh", group = "git hunk" },
-        { "<Leader>o",  group = "org (organ)" },
-        { "<Leader>q",  group = "quit" },
-        { "<Leader>s",  group = "search" },
-        { "<Leader>t",  group = "test" },
-        { "<Leader>u",  group = "ui / toggle" },
-        { "<Leader>w",  group = "window" },
-        { "<Leader>x",  group = "trouble / diagnostics" },
-        { "<Leader>z",  group = "zk (notes)" },
-      },
-    },
+    opts = function()
+      -- Byte-escaped nerd-font glyphs (PUA codepoints survive edits
+      -- through tools that silently strip Private Use Area characters).
+      local I = {
+        ai       = "\xef\x95\x84", -- U+F544 robot
+        buffer   = "\xef\x83\xaa", -- U+F0EA clipboard
+        code     = "\xef\x84\xa1", -- U+F121 <>
+        debug    = "\xef\x86\x88", -- U+F188 bug
+        file     = "\xef\x85\x9b", -- U+F15B file
+        find     = "\xef\x80\x82", -- U+F002 magnifier
+        git      = "\xef\x87\x93", -- U+F1D3 git
+        hunk     = "\xef\x91\x80", -- U+F440 file-diff
+        org      = "\xef\x80\xad", -- U+F02D book
+        quit     = "\xef\x80\x91", -- U+F011 power
+        test     = "\xef\x83\x83", -- U+F0C3 flask
+        ui       = "\xef\x80\x93", -- U+F013 gear
+        window   = "\xef\x8b\x92", -- U+F2D2 window
+        trouble  = "\xef\x81\xb1", -- U+F071 triangle-warning
+        zk       = "\xef\x80\xae", -- U+F02E bookmark
+        save     = "\xef\x83\x87", -- U+F0C7 floppy
+        yank     = "\xef\x83\x85", -- U+F0C5 copy
+        harpoon  = "\xef\x84\xbd", -- U+F13D anchor
+        flash    = "\xef\x83\xa7", -- U+F0E7 bolt
+        fold     = "\xef\x81\xb7", -- U+F077 chevron-up
+        surround = "\xef\x84\x9c", -- U+F11C keyboard
+        play     = "\xef\x81\x8b", -- U+F04B play
+        eye      = "\xef\x81\xae", -- U+F06E eye
+        plus     = "\xef\x81\xa7", -- U+F067 +
+        minus    = "\xef\x81\xa8", -- U+F068 -
+        close    = "\xef\x80\x8d", -- U+F00D X
+        open     = "\xef\x81\xbc", -- U+F07C folder-open
+        bell     = "\xef\x83\xb3", -- U+F0F3 bell
+        help     = "\xef\x84\xa9", -- U+F129 info
+        keyboard = "\xef\x84\x9c", -- U+F11C keyboard
+        palette  = "\xef\x94\xbf", -- U+F53F palette
+        pencil   = "\xef\x81\x80", -- U+F040 pencil
+        arrow    = "\xef\x81\xa1", -- U+F061 arrow-right
+        mobile   = "\xef\x84\x8b", -- U+F10B mobile
+        terminal = "\xef\x84\xa0", -- U+F120 terminal
+        pack     = "\xef\x91\xb6", -- U+F476 package
+        resize   = "\xef\x83\xac", -- U+F0EC exchange
+        trash    = "\xef\x87\xb8", -- U+F1F8 trash
+        broom    = "\xef\x94\x9a", -- U+F51A broom
+        check    = "\xef\x81\x86", -- U+F046 check-square
+        list     = "\xef\x80\xba", -- U+F03A list
+        paste    = "\xef\x83\xa2", -- U+F0E2 history (used as paste-back)
+        link     = "\xef\x83\x81", -- U+F0C1 link
+      }
+
+      return {
+        preset = "helix",
+        icons = {
+          -- User rules run BEFORE built-ins; first match wins. Patterns
+          -- are case-insensitive substring (lua patterns), tested
+          -- against the entry's `desc`.
+          rules = {
+            -- groups + general
+            { pattern = "^save",          icon = I.save,    color = "green"  },
+            { pattern = "^yank",          icon = I.yank,    color = "yellow" },
+            { pattern = "yank entry",     icon = I.yank,    color = "yellow" },
+            { pattern = "yank history",   icon = I.yank,    color = "yellow" },
+            { pattern = "harpoon",        icon = I.harpoon, color = "azure"  },
+            { pattern = "flash",          icon = I.flash,   color = "yellow" },
+            { pattern = "fold",           icon = I.fold,    color = "grey"   },
+            { pattern = "^peek",          icon = I.fold,    color = "grey"   },
+            { pattern = "surround",       icon = I.surround, color = "purple" },
+            { pattern = "grep",           icon = I.find,    color = "green"  },
+            { pattern = "^run",           icon = I.play,    color = "green"  },
+            { pattern = "^watch",         icon = I.eye,     color = "cyan"   },
+            { pattern = "increment",      icon = I.plus,    color = "green"  },
+            { pattern = "decrement",      icon = I.minus,   color = "red"    },
+            { pattern = "^inc seq",       icon = I.plus,    color = "green"  },
+            { pattern = "^dec seq",       icon = I.minus,   color = "red"    },
+            -- DAP descs use "DAP" not "debug"; built-in rule misses them.
+            { pattern = "^dap ",          icon = I.debug,   color = "red"    },
+            { pattern = "step into",      icon = I.debug,   color = "red"    },
+            { pattern = "step over",      icon = I.debug,   color = "red"    },
+            { pattern = "step out",       icon = I.debug,   color = "red"    },
+            { pattern = "breakpoint",     icon = I.debug,   color = "red"    },
+            { pattern = "^continue",      icon = I.play,    color = "red"    },
+            { pattern = "^terminate",     icon = I.close,   color = "red"    },
+            { pattern = "^stop",          icon = I.close,   color = "red"    },
+            { pattern = "^restart",       icon = I.play,    color = "yellow" },
+            { pattern = "^eval",          icon = I.terminal, color = "cyan"  },
+            { pattern = "evaluation",     icon = I.terminal, color = "cyan"  },
+            -- plugin-specific descs without command-name auto-detect
+            { pattern = "lazygit",        icon = I.git,     color = "orange" },
+            { pattern = "flutter",        icon = I.mobile,  color = "blue"   },
+            { pattern = "markdown",       icon = I.pencil,  color = "blue"   },
+            { pattern = "metals",         icon = I.code,    color = "red"    },
+            { pattern = "ansible",        icon = I.code,    color = "red"    },
+            { pattern = "avante",         icon = I.ai,      color = "purple" },
+            { pattern = "^pack ",         icon = I.pack,    color = "azure"  },
+            -- LSP / code actions
+            { pattern = "^goto",          icon = I.arrow,   color = "yellow" },
+            { pattern = "definition",     icon = I.arrow,   color = "yellow" },
+            { pattern = "organize",       icon = I.code,    color = "cyan"   },
+            { pattern = "imports",        icon = I.code,    color = "cyan"   },
+            { pattern = "^switch",        icon = I.resize,  color = "blue"   },
+            -- color picker / swatches
+            { pattern = "color picker",   icon = I.palette, color = "purple" },
+            { pattern = "swatch",         icon = I.palette, color = "purple" },
+            { pattern = "highlight",      icon = I.palette, color = "yellow" },
+            -- pickers / panes
+            { pattern = "scope picker",   icon = I.find,    color = "azure"  },
+            { pattern = "path picker",    icon = I.find,    color = "azure"  },
+            { pattern = "smart find",     icon = I.find,    color = "green"  },
+            { pattern = "command history", icon = I.terminal, color = "cyan" },
+            -- editing
+            { pattern = "^trim ",         icon = I.broom,   color = "yellow" },
+            { pattern = "^delete ",       icon = I.trash,   color = "red"    },
+            { pattern = "^close ",        icon = I.close,   color = "red"    },
+            { pattern = "^open ",         icon = I.open,    color = "yellow" },
+            { pattern = "^put ",          icon = I.paste,   color = "yellow" },
+            { pattern = "^select ",       icon = I.check,   color = "azure"  },
+            -- notes / zk
+            { pattern = "note",           icon = I.zk,      color = "purple" },
+            { pattern = "backlinks",      icon = I.link,    color = "azure"  },
+            { pattern = "outbound link",  icon = I.link,    color = "azure"  },
+            { pattern = "insert link",    icon = I.link,    color = "azure"  },
+            { pattern = "^index ",        icon = I.list,    color = "cyan"   },
+            { pattern = "find by tags",   icon = I.find,    color = "purple" },
+            -- misc
+            { pattern = "keymap",         icon = I.keyboard, color = "azure" },
+            { pattern = "^help",          icon = I.help,    color = "cyan"   },
+            { pattern = "leave terminal", icon = I.terminal, color = "red"   },
+            { pattern = "set filetype",   icon = I.file,    color = "cyan"   },
+            { pattern = "scope",          icon = I.find,    color = "azure"  },
+            { pattern = "^oil",           icon = I.open,    color = "yellow" },
+            { pattern = "parent dir",     icon = I.open,    color = "yellow" },
+          },
+        },
+        spec = {
+          { "<Leader>a",  group = "ai (avante)",           icon = { icon = I.ai,      color = "purple" } },
+          { "<Leader>b",  group = "buffer",                icon = { icon = I.buffer,  color = "cyan"   } },
+          { "<Leader>c",  group = "code (lsp)",            icon = { icon = I.code,    color = "orange" } },
+          { "<Leader>d",  group = "debug (dap)",           icon = { icon = I.debug,   color = "red"    } },
+          { "<Leader>f",  group = "file / find",           icon = { icon = I.file,    color = "cyan"   } },
+          { "<Leader>g",  group = "git",                   icon = { icon = I.git,     color = "orange" } },
+          { "<Leader>gh", group = "git hunk",              icon = { icon = I.hunk,    color = "orange" } },
+          { "<Leader>o",  group = "org (organ)",           icon = { icon = I.org,     color = "green"  } },
+          { "<Leader>q",  group = "quit",                  icon = { icon = I.quit,    color = "red"    } },
+          { "<Leader>s",  group = "search",                icon = { icon = I.find,    color = "green"  } },
+          { "<Leader>t",  group = "test",                  icon = { icon = I.test,    color = "yellow" } },
+          { "<Leader>u",  group = "ui / toggle",           icon = { icon = I.ui,      color = "cyan"   } },
+          { "<Leader>w",  group = "window",                icon = { icon = I.window,  color = "blue"   } },
+          { "<Leader>x",  group = "trouble / diagnostics", icon = { icon = I.trouble, color = "red"    } },
+          { "<Leader>z",  group = "zk (notes)",            icon = { icon = I.zk,      color = "purple" } },
+        },
+      }
+    end,
   },
 }
