@@ -65,9 +65,14 @@ return {
   },
 
   {
+    "sakakibara/narrow.nvim",
+    name = "narrow.nvim",
+  },
+
+  {
     "sakakibara/organ.nvim",
     name         = "organ.nvim",
-    dependencies = { "tablature.nvim" },
+    dependencies = { "tablature.nvim", "narrow.nvim" },
     build        = function() require("organ.grammar_install").install() end,
     opts         = {
       org_dir = vim.fn.expand("~/org"),
