@@ -134,6 +134,10 @@ return {
           sh       = { "treesitter", "indent" },
           zsh      = { "treesitter", "indent" },
           css      = { "treesitter", "indent" },
+          -- "" disables ufo for this ft, letting the plugin own folds.
+          -- organ.nvim manages org folds via its own foldexpr + <Tab>/<S-Tab>
+          -- cycle; ufo would clobber the foldlevel changes organ makes.
+          org      = "",
         }
         return ft_map[ft] or { "lsp", "indent" }
       end,
