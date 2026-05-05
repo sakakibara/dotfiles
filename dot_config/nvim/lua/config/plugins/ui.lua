@@ -109,18 +109,15 @@ return {
     opts = {},
   },
 
-  -- nvim-ufo: modern folding with preview (zp) and LSP/treesitter providers
+  -- nvim-ufo: modern folding with LSP/treesitter providers.
+  -- We use ufo PURELY for the fast fold provider (treesitter/LSP-computed
+  -- ranges, cached). The native vim fold keymaps (zR/zM/zr/zm) are kept
+  -- intact - they drive ufo's manual folds via foldlevel, and the
+  -- ufo-specific kind-filtering on zr/zm wasn't worth the UX divergence.
   {
     "kevinhwang91/nvim-ufo",
     dependencies = { "promise-async" },
     event = "LazyFile",
-    keys = {
-      { "zR", function() require("ufo").openAllFolds()                end, desc = "Open all folds" },
-      { "zM", function() require("ufo").closeAllFolds()               end, desc = "Close all folds" },
-      { "zr", function() require("ufo").openFoldsExceptKinds()        end, desc = "Fold less" },
-      { "zm", function() require("ufo").closeFoldsWith()              end, desc = "Fold more" },
-      { "zp", function() require("ufo").peekFoldedLinesUnderCursor()  end, desc = "Peek fold" },
-    },
     opts = {
       -- ufo's provider_selector accepts at most {main, fallback}. The default
       -- combo is "lsp main, indent universal fallback" — works for any
