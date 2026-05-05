@@ -31,6 +31,14 @@ map({ "i", "n" }, "<Esc>", "<Cmd>noh<CR><Esc>", { desc = "Escape + clear hlsearc
 -- timeoutlen wait on every plain <Esc> inside TUI apps (fzf, lazygit, htop).
 map("t", "<C-q>", "<C-\\><C-n>", { desc = "Leave terminal mode" })
 
+-- cmdline: fish-style accept-then-keep-typing. While the wildmenu/pum is
+-- showing a completion candidate, <CR> accepts that candidate without
+-- executing the command, so the user can continue typing more args. With
+-- no popup active, <CR> executes as usual.
+map("c", "<CR>", function()
+  return vim.fn.wildmenumode() ~= 0 and "<C-y>" or "<CR>"
+end, { expr = true })
+
 -- better paste/indent
 map("v", "<", "<gv")
 map("v", ">", ">gv")
