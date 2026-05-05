@@ -24,6 +24,8 @@ _claude_sandbox() {
     '--strict[isolate via docker volumes]' \
     '*--workspace[mount one or more repos (default iso only)]:repo:_files -/' \
     '--name[named slot (overrides auto-bumped suffix)]:name:' \
+    '(-c --continue)'{-c,--continue}'[continue most recent claude session in cwd]' \
+    '(-r --resume)'{-r,--resume}'[resume claude session by id (or picker)]:session-id:' \
     '1: :->cmd' \
     '*::arg:->args'
 

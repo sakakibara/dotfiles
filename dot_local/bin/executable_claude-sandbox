@@ -9,7 +9,8 @@
 # outbound, no inbound port is opened.
 #
 # Subcommands:
-#   claude-sandbox [--auto|--bypass] [repo]   start + attach (default; bypass)
+#   claude-sandbox [--auto|--bypass] [--continue|--resume] [repo]
+#                                              start + attach (default; bypass)
 #   claude-sandbox start [--auto] [repo]      start detached (no TTY)
 #   claude-sandbox attach [name]              attach to a running sandbox
 #   claude-sandbox stop [name|--all]          stop & remove
@@ -366,6 +367,9 @@ _claude_args() {
     bypass) args+=( --dangerously-skip-permissions ) ;;
     *)      _die "unknown permission mode: $perm" ;;
   esac
+  # Append resume flags from _parse_common_flags. RESUME_FLAGS is empty
+  # when neither --continue nor --resume was passed.
+  [[ ${#RESUME_FLAGS[@]} -gt 0 ]] && args+=( "${RESUME_FLAGS[@]}" )
   printf '%s\n' "${args[@]}"
 }
 
@@ -711,6 +715,7 @@ _parse_common_flags() {
   ISO_MODE="default"
   NAME_OVERRIDE=""
   WORKSPACES=()
+  RESUME_FLAGS=()
   while (($#)); do
     case "$1" in
       --auto)     PERM_MODE="auto";   shift ;;
@@ -719,6 +724,19 @@ _parse_common_flags() {
       --strict)   ISO_MODE="strict";  shift ;;
       --name)     NAME_OVERRIDE="${2:-}"; [[ -z "$NAME_OVERRIDE" ]] && _die "--name requires an argument"; shift 2 ;;
       --name=*)   NAME_OVERRIDE="${1#--name=}"; shift ;;
+      # Resume passthrough. --continue and --resume reach claude as-is so
+      # the sandboxed session loads prior conversation history from
+      # ~/.claude/projects/<encoded-cwd>/. --resume may take an optional
+      # session-id; if the next arg looks like a uuid, consume it too.
+      --continue|-c) RESUME_FLAGS=( --continue ); shift ;;
+      --resume|-r)
+        shift
+        if (($#)) && [[ "$1" =~ ^[0-9a-fA-F-]+$ ]]; then
+          RESUME_FLAGS=( --resume "$1" ); shift
+        else
+          RESUME_FLAGS=( --resume )
+        fi
+        ;;
       --workspace)
         shift
         # Slurp positional paths until the next flag or end. Use `--` after
@@ -1182,6 +1200,11 @@ Naming:
 Permission modes (PERM):
   --bypass    (default) no permission prompts; the sandbox is the firewall
   --auto      acceptEdits mode; some prompts on high-risk operations
+
+Resume passthrough (forwarded to claude):
+  --continue, -c           continue the most recent session in the cwd
+  --resume [SESSION_ID]    resume a specific session by id (uuid),
+                           or open the picker if id is omitted
 
 Multi-repo (default mode only):
   --workspace PATH [PATH ...]   bind-mount each PATH at its host path

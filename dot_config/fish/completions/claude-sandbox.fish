@@ -21,6 +21,8 @@ complete -c claude-sandbox -f -n __fish_csb_takes_run_flags -l worktree  -d 'iso
 complete -c claude-sandbox -f -n __fish_csb_takes_run_flags -l strict    -d 'isolate via docker volumes'
 complete -c claude-sandbox -F -n __fish_csb_takes_run_flags -l workspace -d 'mount one or more repos (default iso only)'
 complete -c claude-sandbox -F -n __fish_csb_takes_run_flags -l name      -d 'named slot (overrides auto-bumped suffix)'
+complete -c claude-sandbox -f -n __fish_csb_takes_run_flags -s c -l continue -d 'continue most recent claude session in cwd'
+complete -c claude-sandbox -f -n __fish_csb_takes_run_flags -s r -l resume   -d 'resume claude session by id (or picker)'
 
 # Container name completions for the verbs that target one. The filters
 # rely on the wrapper's name convention `claude-sandbox-<base>-<hash>[-mode]`.
