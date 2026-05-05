@@ -47,8 +47,6 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
-RUN npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}
-
 # uid 1000: OrbStack on macOS translates ownership at the bind-mount
 # layer so files written here appear owned by the host user on disk.
 # Pre-create ~/.local/{bin,share}: trixie-slim's useradd + the mise
@@ -69,6 +67,14 @@ RUN chmod 755 /usr/local/bin/claude-sandbox-entrypoint
 
 USER claude
 WORKDIR /workspace
+
+# Install claude-code under the claude user's npm prefix so its in-process
+# auto-updater can rewrite the install. A system-wide install at
+# /usr/lib/node_modules (root:root) blocks the running claude user from
+# writing the new version, and the updater silently fails. Per-user prefix
+# at /home/claude/.local lets auto-update overwrite in place.
+RUN npm config set prefix /home/claude/.local \
+ && npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}
 
 # mise — for per-project toolchains. Image only ships mise itself; each
 # project's .mise.toml triggers `mise install` at entrypoint time.
