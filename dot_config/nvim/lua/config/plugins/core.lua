@@ -19,6 +19,12 @@ return {
         treesitter_context = true,  -- TreesitterContext / Bottom / LineNumber hl groups
         heirline = true,  -- M3; no-op today, costs nothing
       },
+      custom_highlights = function(C)
+        return {
+          -- mantle is one shade darker than base (Normal bg).
+          Folded = { bg = C.mantle },
+        }
+      end,
     },
     config = function(_, opts)
       require("catppuccin").setup(opts)
