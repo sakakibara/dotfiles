@@ -350,8 +350,17 @@ local function build_path(buf, budget)
   -- Scratch buffers (buftype=nofile) — nvim_buf_set_name stores names with
   -- cwd prefix, so render only the tail to avoid the misleading cwd. Use
   -- StslPathRO (italic dim) since these are read-only listing buffers.
+  -- If the name is a `scheme://id` URI (organ-agenda://8, term://, etc.),
+  -- the trailing fragment is a meaningless counter; prefer the filetype.
   if vim.bo[buf].buftype == "nofile" then
-    return "%#StslPathRO# " .. vim.fn.fnamemodify(name, ":t") .. " "
+    local label
+    local ft = vim.bo[buf].filetype
+    if ft ~= "" and name:match("^[%w-]+://") then
+      label = ft
+    else
+      label = vim.fn.fnamemodify(name, ":t")
+    end
+    return "%#StslPathRO# " .. label .. " "
   end
 
   local abs = vim.fn.fnamemodify(name, ":p")
