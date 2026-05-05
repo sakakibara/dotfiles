@@ -18,6 +18,9 @@ end
 opt.foldenable = true
 opt.foldlevel = 99
 opt.foldlevelstart = 99
+opt.foldmethod = "expr"
+opt.foldexpr = "v:lua.vim.treesitter.foldexpr()"
+opt.foldtext = "v:lua.Lib.fold.foldtext()"
 -- Custom statuscolumn (Lib.statuscolumn) renders fold open/close indicators
 -- itself, so we don't need a separate foldcolumn. Keeping foldcolumn > 0 used
 -- to leak nested-level digits ("234"/"345") into the gutter on windows where
