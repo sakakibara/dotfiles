@@ -12,6 +12,13 @@
 local M = {}
 
 function M.foldtext()
+  if vim.bo.filetype == "org" then
+    local ok, organ_fold = pcall(require, "organ.fold")
+    if ok and organ_fold.foldtext then
+      return organ_fold.foldtext()
+    end
+  end
+
   local start = vim.fn.getline(vim.v.foldstart)
   local folded = vim.v.foldend - vim.v.foldstart + 1
   local total = vim.api.nvim_buf_line_count(0)
