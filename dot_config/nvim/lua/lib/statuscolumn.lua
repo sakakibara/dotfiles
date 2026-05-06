@@ -14,9 +14,14 @@ end
 
 local function number_for(lnum, relnum, virtnum)
   if virtnum and virtnum ~= 0 then return "    " end
+  local relative = vim.wo.relativenumber and relnum and relnum ~= 0
   local n
-  if vim.wo.relativenumber and relnum and relnum ~= 0 then n = relnum
-  else n = lnum end
+  local ok, contents = pcall(require, "organ.fold.contents")
+  if ok and contents.statuscolumn_lnum then
+    n = contents.statuscolumn_lnum(lnum, relative)
+  else
+    n = relative and relnum or lnum
+  end
   return string.format("%4d", n)
 end
 
