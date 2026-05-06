@@ -109,6 +109,17 @@ map("n", "<Leader>up", function()
   end)
 end, { desc = "Pack subcommand" })
 
+-- Pack: direct shortcuts for the no-arg daily-driver commands.
+-- Arg-taking ones (reload/open/build/load/uninstall/rollback) stay on
+-- the <Leader>up picker so completion handles the spec lookup.
+map("n", "<Leader>Ps", "<Cmd>Pack status<CR>",   { desc = "Status" })
+map("n", "<Leader>Pu", "<Cmd>Pack update<CR>",   { desc = "Update" })
+map("n", "<Leader>PS", "<Cmd>Pack sync<CR>",     { desc = "Sync (update + clean)" })
+map("n", "<Leader>Pi", "<Cmd>Pack install<CR>",  { desc = "Install missing" })
+map("n", "<Leader>Pc", "<Cmd>Pack clean<CR>",    { desc = "Clean orphans" })
+map("n", "<Leader>Pl", "<Cmd>Pack log<CR>",      { desc = "Log" })
+map("n", "<Leader>Pp", "<Cmd>Pack profile<CR>",  { desc = "Profile" })
+
 -- single-chord fast-access (skip a keystroke for the daily-driver ops)
 map("n", "<Leader><Space>", function() Snacks.picker.smart()            end, { desc = "Smart find (files)" })
 map("n", "<Leader>,",       function() Snacks.picker.buffers()          end, { desc = "Buffers" })
