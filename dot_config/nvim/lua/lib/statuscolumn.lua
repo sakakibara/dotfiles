@@ -21,6 +21,10 @@ local function number_for(lnum, relnum, virtnum)
 end
 
 local function fold_for(lnum)
+  local ok, organ_fold = pcall(require, "organ.fold")
+  if ok and organ_fold.statuscolumn_marker then
+    return organ_fold.statuscolumn_marker(lnum)
+  end
   local fillchars = vim.opt.fillchars:get()
   if vim.fn.foldlevel(lnum) == 0 then return " " end
   if vim.fn.foldclosed(lnum) > 0 then
