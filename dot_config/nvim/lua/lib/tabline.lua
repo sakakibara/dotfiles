@@ -104,9 +104,9 @@ function M.render()
       local share = math.max(3, math.floor(c.lab * total_lab_allowed / total_lab_natural))
       if share < c.lab then
         if share >= 4 then
-          label_shown = label_shown:sub(1, share - 1) .. "…"
+          label_shown = Lib.unicode.head(label_shown, share - 1) .. "…"
         else
-          label_shown = label_shown:sub(1, math.max(1, share))
+          label_shown = Lib.unicode.head(label_shown, math.max(1, share))
         end
       end
     end

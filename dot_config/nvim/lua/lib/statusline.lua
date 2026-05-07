@@ -201,7 +201,7 @@ function M._segments.mode(mode)
 end
 
 function M._segments._short_path(path, maxlen)
-  if #path <= maxlen then return path end
+  if Lib.unicode.width(path) <= maxlen then return path end
   local parts = vim.split(path, "/", { plain = true })
   if #parts <= 2 then return path end
   return parts[1] .. "/…/" .. parts[#parts]
@@ -405,7 +405,7 @@ local function build_path(buf, budget)
   if remaining >= 3 then
     local head = math.floor((remaining - 1) / 2)
     local tail = remaining - 1 - head
-    local truncated = base:sub(1, head) .. "…" .. base:sub(-tail)
+    local truncated = Lib.unicode.head(base, head) .. "…" .. Lib.unicode.tail(base, tail)
     return compose("", "", truncated)
   end
   return levels[#levels]
