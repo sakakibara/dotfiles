@@ -32,6 +32,7 @@ return {
     opts = {
       formatters_by_ft = {
         lua = { "stylua" },
+        org = { "organ" },
       },
       default_format_opts = {
         timeout_ms = 1000,
@@ -39,6 +40,16 @@ return {
       },
       formatters = {
         stylua = {},
+        organ = {
+          format = function(_, ctx, lines, callback)
+            local ok, out = pcall(require("organ.format").format_lines, lines, nil, ctx.buf)
+            if not ok then
+              callback(out, nil)
+              return
+            end
+            callback(nil, out)
+          end,
+        },
       },
     },
   },
