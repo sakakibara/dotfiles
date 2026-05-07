@@ -12,24 +12,51 @@ local function gitsign_for(buf, lnum)
   return " "
 end
 
+local _vd_cache = {}
+local function visible_distance(bufnr, lnum, cur)
+  local tick = vim.api.nvim_buf_get_changedtick(bufnr)
+  local entry = _vd_cache[bufnr]
+  if not entry or entry.tick ~= tick or entry.cur ~= cur then
+    entry = { tick = tick, cur = cur, dist = {} }
+    _vd_cache[bufnr] = entry
+  end
+  if entry.dist[lnum] then return entry.dist[lnum] end
+  local lo, hi = math.min(lnum, cur), math.max(lnum, cur)
+  local visible = 0
+  local i = lo + 1
+  while i <= hi do
+    local fold_start = vim.fn.foldclosed(i)
+    if fold_start == -1 then
+      visible = visible + 1
+      i = i + 1
+    elseif fold_start == i then
+      visible = visible + 1
+      i = vim.fn.foldclosedend(i) + 1
+    else
+      i = vim.fn.foldclosedend(i) + 1
+    end
+  end
+  entry.dist[lnum] = visible
+  return visible
+end
+
 local function number_for(lnum, relnum, virtnum)
   if virtnum and virtnum ~= 0 then return "    " end
-  local relative = vim.wo.relativenumber and relnum and relnum ~= 0
+  local nu = vim.wo.number
+  local rnu = vim.wo.relativenumber
+  if not nu and not rnu then return "    " end
   local n
-  local ok, contents = pcall(require, "organ.fold.contents")
-  if ok and contents.statuscolumn_lnum then
-    n = contents.statuscolumn_lnum(lnum, relative)
+  if rnu and relnum and relnum ~= 0 then
+    n = visible_distance(vim.api.nvim_get_current_buf(), lnum, vim.fn.line("."))
+  elseif rnu and not nu then
+    n = 0
   else
-    n = relative and relnum or lnum
+    n = lnum
   end
   return string.format("%4d", n)
 end
 
 local function fold_for(lnum)
-  local ok, organ_fold = pcall(require, "organ.fold")
-  if ok and organ_fold.statuscolumn_marker then
-    return organ_fold.statuscolumn_marker(lnum)
-  end
   local fillchars = vim.opt.fillchars:get()
   if vim.fn.foldlevel(lnum) == 0 then return " " end
   if vim.fn.foldclosed(lnum) > 0 then
