@@ -67,5 +67,9 @@ Desktop.ini
 # Mise
 mise.toml
 
-# Claude Code per-project local state
+# Editor / AI-tool per-project local state
 .claude/
+.cursor/
+.aider*
+.vscode/
+.idea/
