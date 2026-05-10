@@ -87,11 +87,56 @@ map("n", "<Leader>;",  function() Lib.winbar.pick_scope()       end, { desc = "S
 map("n", "<Leader>.",  function() Lib.winbar.pick_path()        end, { desc = "Path picker (sibling files)" })
 map("n", "<Leader>ut", function() Lib.keymaps.pick_filetype() end, { desc = "Set filetype" })
 
--- autoformat toggles (UI toggles convention: <Leader>u…)
-map("n", "<Leader>uf", function() Lib.format.toggle()     end, { desc = "Toggle autoformat (global)" })
-map("n", "<Leader>uF", function() Lib.format.toggle(true) end, { desc = "Toggle autoformat (buffer)" })
-map("n", "<Leader>ui", function() Lib.format.info()       end, { desc = "Autoformat info" })
-map("n", "<Leader>uT", "<Cmd>TSContext toggle<CR>", { desc = "Toggle treesitter context" })
+-- UI toggles ( <Leader>u… ). Each one wraps an option/feature in
+-- Snacks.toggle so which-key renders the live "[on]/[off]" state in
+-- the help popup — bare `<Cmd>... toggle<CR>` keymaps fire and forget,
+-- which is why state stopped showing up after the rewrite. Deferred
+-- via on_load because keymaps.lua runs before pack.setup loads snacks.
+Lib.plugin.on_load("snacks.nvim", function()
+  Snacks.toggle({
+    name = "Autoformat (Global)",
+    get  = function() return Lib.format.enabled() end,
+    set  = function(state) Lib.format.enable(state) end,
+  }):map("<Leader>uf")
+  Snacks.toggle({
+    name = "Autoformat (Buffer)",
+    get  = function() return Lib.format.enabled(0) end,
+    set  = function(state) Lib.format.enable(state, 0) end,
+  }):map("<Leader>uF")
+  Snacks.toggle({
+    name = "Treesitter Context",
+    get  = function()
+      local ok, tsc = pcall(require, "treesitter-context")
+      return ok and tsc.enabled() or false
+    end,
+    set  = function(state)
+      local ok, tsc = pcall(require, "treesitter-context")
+      if not ok then return end
+      if state then tsc.enable() else tsc.disable() end
+    end,
+  }):map("<Leader>uT")
+  Snacks.toggle.option("spell",          { name = "Spelling"        }):map("<Leader>us")
+  Snacks.toggle.option("wrap",           { name = "Wrap"            }):map("<Leader>uw")
+  Snacks.toggle.option("relativenumber", { name = "Relative Number" }):map("<Leader>uL")
+  Snacks.toggle.option("conceallevel",
+    { off = 0, on = vim.o.conceallevel > 0 and vim.o.conceallevel or 2, name = "Conceal" }
+  ):map("<Leader>uC")
+  Snacks.toggle.option("background",
+    { off = "light", on = "dark", name = "Dark Background" }
+  ):map("<Leader>ub")
+  Snacks.toggle.diagnostics():map("<Leader>ud")
+  Snacks.toggle.line_number():map("<Leader>ul")
+  Snacks.toggle.dim():map("<Leader>uD")
+  Snacks.toggle.animate():map("<Leader>ua")
+  Snacks.toggle.scroll():map("<Leader>uS")
+  Snacks.toggle.zen():map("<Leader>uz")
+  Snacks.toggle.zoom():map("<Leader>uZ")
+  if vim.lsp.inlay_hint then
+    Snacks.toggle.inlay_hints():map("<Leader>uh")
+  end
+end)
+
+map("n", "<Leader>ui", function() Lib.format.info() end, { desc = "Autoformat info" })
 map("n", "<Leader>un", function()
   Snacks.notifier.hide()
   pcall(vim.cmd, "Noice dismiss")
