@@ -309,14 +309,16 @@ local function subcommands(Pack)
       end
       fidget:set_status("core.pack", ("rebuilding 0/%d"):format(total))
       local done = 0
+      local function one_done()
+        done = done + 1
+        fidget:set_status("core.pack", ("rebuilding %d/%d"):format(done, total))
+        if done == total then fidget:done("core.pack") end
+      end
       for _, s in pairs(Pack._specs) do
         if s.build and (target == nil or s.name == target) then
-          Install.run_build(s, Install.install_dir(s.name), { fidget = fidget })
-          done = done + 1
-          fidget:set_status("core.pack", ("rebuilding %d/%d"):format(done, total))
+          Install.run_build(s, Install.install_dir(s.name), { fidget = fidget }, one_done)
         end
       end
-      fidget:done("core.pack")
     end,
   }
 

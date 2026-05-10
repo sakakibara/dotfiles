@@ -2,7 +2,10 @@
 local M = {}
 
 local Git     = require("core.pack.git")
+local Jobs    = require("core.pack.jobs")
 local Version = require("core.pack.version")
+
+local async, await = Jobs.async, Jobs.await
 
 -- Validate a string is safe to pass to git as a positional arg.
 function M.validate(ref)
@@ -27,12 +30,12 @@ function M.qualified(kind, name)
 end
 
 -- Resolve a spec + post-clone working dir to a checkout-safe SHA.
--- Returns:
---   { kind = "tag"|"branch"|"commit"|"default", name = "...", sha = "..." }, nil
---   nil, "<error message>"  -- caller is expected to prefix with spec name
-function M.resolve(spec, dir)
-  local refs = Git.list_remote_refs(dir)
-  refs.default_branch = Git.default_branch(dir)
+-- Callback receives:
+--   ({ kind = "tag"|"branch"|"commit"|"default", name = "...", sha = "..." })
+--   (nil, "<error message>")  -- caller is expected to prefix with spec name
+M.resolve = async(function(spec, dir)
+  local refs = await(Git.list_remote_refs, dir)
+  refs.default_branch = await(Git.default_branch, dir)
   local resolved = Version.resolve(spec.version, refs)
   if not resolved then
     return nil, "could not resolve version (no matching tag/branch/sha)"
@@ -41,7 +44,7 @@ function M.resolve(spec, dir)
   if not M.validate(qualified) then
     return nil, ("invalid ref %q (cannot start with -)"):format(qualified)
   end
-  local sha, err = Git.rev_parse(dir, qualified .. "^{commit}")
+  local sha, err = await(Git.rev_parse, dir, qualified .. "^{commit}")
   if not sha then
     return nil, ("ref '%s' did not resolve in %s: %s"):format(qualified, dir, err or "?")
   end
@@ -49,6 +52,6 @@ function M.resolve(spec, dir)
     return nil, ("rev-parse returned invalid SHA: %s"):format(sha)
   end
   return { kind = resolved.kind, name = resolved.name, sha = sha }
-end
+end)
 
 return M

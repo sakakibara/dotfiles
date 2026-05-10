@@ -1188,7 +1188,7 @@ T.describe("core.pack.git: rev_parse and checkout_sha (stubbed)", function()
     local restore = stubs.stub_system({
       ["rev-parse --verify refs/heads/main"] = { code = 0, stdout = "abc1234567890def\n" },
     })
-    local sha = Git.rev_parse("/some/dir", "refs/heads/main")
+    local sha = stubs.await(Git.rev_parse, "/some/dir", "refs/heads/main")
     restore()
     T.eq(sha, "abc1234567890def")
   end)
@@ -1199,7 +1199,7 @@ T.describe("core.pack.git: rev_parse and checkout_sha (stubbed)", function()
     local restore = stubs.stub_system({
       ["rev-parse --verify garbage"] = { code = 0, stdout = "not-hex\n" },
     })
-    local sha, err = Git.rev_parse("/some/dir", "garbage")
+    local sha, err = stubs.await(Git.rev_parse, "/some/dir", "garbage")
     restore()
     T.eq(sha, nil)
     T.truthy(err and err:match("non%-SHA"))
@@ -1211,7 +1211,7 @@ T.describe("core.pack.git: rev_parse and checkout_sha (stubbed)", function()
     local restore = stubs.stub_system({
       ["rev-parse --verify nope"] = { code = 1, stderr = "fatal: bad revision\n" },
     })
-    local sha, err = Git.rev_parse("/some/dir", "nope")
+    local sha, err = stubs.await(Git.rev_parse, "/some/dir", "nope")
     restore()
     T.eq(sha, nil)
     T.truthy(err and err:match("bad revision"))
@@ -1223,7 +1223,7 @@ T.describe("core.pack.git: rev_parse and checkout_sha (stubbed)", function()
     local restore = stubs.stub_system({
       ["checkout --detach --quiet abc123"] = { code = 0 },
     })
-    local r = Git.checkout_sha("/some/dir", "abc123")
+    local r = stubs.await(Git.checkout_sha, "/some/dir", "abc123")
     restore()
     T.eq(r.ok, true)
   end)

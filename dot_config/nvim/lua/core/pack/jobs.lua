@@ -90,4 +90,66 @@ function M.run_sync(pool, opts)
   end
 end
 
+-- Coroutine-based async/await. `async(body)` returns a function that, when
+-- invoked, starts a coroutine running `body(...)`. Inside the body, call
+-- `await(fn, ...)` to suspend until `fn(..., cb)` invokes its callback;
+-- `await` returns whatever `cb` was called with.
+--
+-- If the wrapped function is invoked with a final callback argument, that
+-- callback receives the body's return values when the body finishes (or
+-- `(nil, err)` if it raised).
+function M.async(body)
+  return function(...)
+    local args = { n = select("#", ...), ... }
+    local final_cb
+    if args.n > 0 and type(args[args.n]) == "function" then
+      final_cb = args[args.n]
+      args[args.n] = nil
+      args.n = args.n - 1
+    end
+    local co = coroutine.create(function()
+      return body(unpack(args, 1, args.n))
+    end)
+    local function pack(...) return { n = select("#", ...), ... } end
+    local function step(...)
+      -- Hand-rolled pack preserves nils in the middle of return values;
+      -- plain `{...}` plus `#` would mis-count once the boundary walks
+      -- past a hole.
+      local r = pack(coroutine.resume(co, ...))
+      if not r[1] then
+        vim.notify("core.pack.jobs.async: " .. tostring(r[2]), vim.log.levels.ERROR)
+        if final_cb then final_cb(nil, r[2]) end
+        return
+      end
+      if coroutine.status(co) == "dead" then
+        if final_cb then final_cb(unpack(r, 2, r.n)) end
+        return
+      end
+      -- Suspended: r[2] is the thunk yielded by `await`.
+      r[2](step)
+    end
+    step()
+  end
+end
+
+function M.await(fn, ...)
+  local args = { n = select("#", ...), ... }
+  return coroutine.yield(function(resume)
+    args[args.n + 1] = function(...) resume(...) end
+    fn(unpack(args, 1, args.n + 1))
+  end)
+end
+
+-- Adapter to drain a pool from inside an async body:
+--   await(Jobs.await_pool, pool, { on_progress = ... })
+function M.await_pool(pool, opts, cb)
+  opts = opts or {}
+  local user_complete = opts.on_complete
+  opts.on_complete = function()
+    if user_complete then user_complete() end
+    cb()
+  end
+  pool:run(opts)
+end
+
 return M

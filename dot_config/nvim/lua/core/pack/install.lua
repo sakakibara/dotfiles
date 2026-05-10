@@ -9,6 +9,8 @@ local Refs    = require("core.pack.refs")
 local UI      = require("core.pack.ui")
 local Log     = require("core.pack.log")
 
+local async, await = Jobs.async, Jobs.await
+
 M._install_root_override = nil  -- tests
 
 local function install_root()
@@ -39,41 +41,56 @@ end
 -- machines. Falls back to a fresh resolve when the lock entry is
 -- missing or the SHA isn't in the cloned repo (force-pushed branch,
 -- removed commit, etc.) — `:Pack update` is what recomputes.
-local function pin_to_version(spec, dir)
+local pin_to_version = async(function(spec, dir)
   local locked = Lock.get(spec.name)
   if locked and type(locked.rev) == "string"
     and locked.rev:match("^%x+$") and #locked.rev >= 7
   then
-    local r = Git.checkout_sha(dir, locked.rev)
+    local r = await(Git.checkout_sha, dir, locked.rev)
     if r.ok then return locked.rev end
     vim.notify(
       ("core.pack: %s: locked rev %s not in remote; resolving fresh"):format(
         spec.name, locked.rev:sub(1, 8)),
       vim.log.levels.WARN)
   end
-
-  local resolved, err = Refs.resolve(spec, dir)
+  local resolved, err = await(Refs.resolve, spec, dir)
   if not resolved then
     return nil, ("%s: %s"):format(spec.name, err)
   end
-  local r = Git.checkout_sha(dir, resolved.sha)
+  local r = await(Git.checkout_sha, dir, resolved.sha)
   if not r.ok then
     return nil, ("%s: checkout failed: %s"):format(spec.name, r.err)
   end
   return resolved.sha
-end
+end)
 
--- Build hook: shell / Ex command / function. Direct sync, mirrors what
--- pack.lua's run_build did under the PackChanged autocmd.
-function M.run_build(spec, path, opts)
+-- Build hook: shell / Ex command / function. The shell branch is async
+-- (vim.system without :wait()); Ex and function branches are inherently
+-- main-thread (they execute Vimscript / Lua that touches editor state).
+-- The callback `cb` fires once the build has finished — synchronously
+-- for Ex/function builds, asynchronously for shell.
+function M.run_build(spec, path, opts, cb)
   opts = opts or {}
+  cb = cb or function() end
   local b = spec.build
-  if not b or b == "" then return end
-  -- During the (synchronous) build, surface progress via the fidget summary.
-  -- After run_build returns, the calling pool's on_progress overwrites the text
-  -- back to "installing N/M" / "applying N/M" — that's the intentional handoff.
+  if not b or b == "" then return cb() end
+  -- During the build, surface progress via the fidget summary. After
+  -- run_build returns, the calling pool's on_progress overwrites the
+  -- text — that's the intentional handoff.
   if opts.fidget then opts.fidget:set_status("core.pack", "building " .. spec.name) end
-  local ok, err
+
+  local function fail(err)
+    -- Build failure is reported but does NOT mark the plugin as
+    -- failed-to-install. Clone succeeded; the Lua modules are present;
+    -- the plugin should still load. Build artifacts (e.g. compiled
+    -- treesitter parsers) can be regenerated separately by re-running
+    -- the install hook. Marking the spec as failed would silently
+    -- disable the plugin entirely on next startup — far more disruptive
+    -- than the build failure (which the user will see and can address).
+    vim.notify(("core.pack: %s: build failed: %s"):format(spec.name, tostring(err)),
+      vim.log.levels.ERROR)
+  end
+
   if type(b) == "function" then
     -- Function-style builds need the plugin on rtp so `require()` can
     -- resolve the plugin's own modules (e.g. organ.nvim's
@@ -93,45 +110,39 @@ function M.run_build(spec, path, opts)
     end
     local prev_rtp = vim.o.runtimepath
     vim.opt.runtimepath:prepend(path)
-    ok, err = pcall(b, { name = spec.name, path = path, spec = spec })
+    local ok, err = pcall(b, { name = spec.name, path = path, spec = spec })
     vim.o.runtimepath = prev_rtp
+    if not ok then fail(err) end
+    cb()
   elseif type(b) == "string" and b:sub(1, 1) == ":" then
     local prev = vim.fn.getcwd()
-    ok, err = pcall(function()
+    local ok, err = pcall(function()
       vim.cmd.lcd({ path, mods = { silent = true } })
       vim.cmd(b:sub(2))
     end)
     pcall(vim.cmd.lcd, { prev, mods = { silent = true } })
+    if not ok then fail(err) end
+    cb()
   elseif type(b) == "string" then
-    local r = vim.system({ "sh", "-c", b }, { cwd = path, text = true }):wait()
-    ok, err = (r.code == 0), r.stderr
+    vim.system({ "sh", "-c", b }, { cwd = path, text = true }, function(r)
+      vim.schedule(function()
+        if r.code ~= 0 then fail(r.stderr) end
+        cb()
+      end)
+    end)
   else
     vim.notify(("core.pack: %s has unsupported build type %s"):format(spec.name, type(b)),
       vim.log.levels.WARN)
-    return
-  end
-  if not ok then
-    -- Build failure is reported but does NOT mark the plugin as
-    -- failed-to-install. Clone succeeded; the Lua modules are present;
-    -- the plugin should still load. Build artifacts (e.g. compiled
-    -- treesitter parsers) can be regenerated separately by re-running
-    -- the install hook. Marking the spec as failed would silently
-    -- disable the plugin entirely on next startup — far more disruptive
-    -- than the build failure (which the user will see and can address).
-    vim.notify(("core.pack: %s: build failed: %s"):format(spec.name, tostring(err)),
-      vim.log.levels.ERROR)
+    cb()
   end
 end
 
 function M.install_missing(specs, opts)
   opts = opts or {}
-  local pool = Jobs.pool({ concurrency = opts.concurrency })
   local pending = {}
 
   for _, spec in ipairs(specs) do
-    if spec.dev then
-      -- nothing on disk; pack.lua handles dev plugins separately
-    else
+    if not spec.dev then
       local dir = M.install_dir(spec.name)
       if vim.fn.isdirectory(dir) == 1 and Git.is_repo(dir) then
         -- already installed; nothing to do
@@ -142,46 +153,6 @@ function M.install_missing(specs, opts)
           vim.fn.delete(dir, "rf")
         end
         pending[#pending + 1] = { spec = spec, dir = dir }
-        pool:add({
-          cmd = { "git", "clone", "--filter=blob:none", spec.src, dir },
-          tag = spec.name,
-          on_done = function(r)
-            if r.code ~= 0 then
-              vim.notify(("core.pack: %s: clone failed: %s"):format(spec.name, r.stderr),
-                vim.log.levels.ERROR)
-              if opts.on_failed then opts.on_failed(spec.name, "clone failed: " .. r.stderr) end
-              return
-            end
-            local rev, err = pin_to_version(spec, dir)
-            if not rev then
-              vim.fn.delete(dir, "rf")
-              vim.notify(("core.pack: %s"):format(err), vim.log.levels.ERROR)
-              if opts.on_failed then
-                -- err is "<name>: <message>"; strip the name prefix since on_failed
-                -- receives name separately.
-                local clean_msg = err:gsub("^" .. vim.pesc(spec.name) .. ":%s*", "")
-                opts.on_failed(spec.name, clean_msg)
-              end
-              return
-            end
-            local existing = Lock.get(spec.name) or {}
-            -- Preserve the human-readable version field. spec.version may
-            -- be a vim.version.range (table) after normalize; in that case
-            -- type(...) == "string" is false and we'd write nil, dropping
-            -- the field on round-trip. Keep the previously-locked string
-            -- instead so the lockfile stays stable.
-            Lock.set(spec.name, {
-              src = spec.src,
-              rev = rev,
-              version = (type(spec.version) == "string" and spec.version)
-                or existing.version,
-            })
-            -- Lock.write skips when the rendered payload matches disk, so
-            -- this is a no-op when nothing about this entry changed.
-            M.run_build(spec, dir, { fidget = view, on_failed = opts.on_failed })
-            M.generate_helptags(dir)
-          end,
-        })
       end
     end
   end
@@ -198,19 +169,131 @@ function M.install_missing(specs, opts)
     view:set_status("core.pack", ("installing 0/%d"):format(#pending))
   end
 
-  pool:run({
-    on_progress = function(done, total, last)
-      if view then
-        view:set_status("core.pack", ("installing %d/%d"):format(done, total))
+  async(function()
+    local total = #pending
+    local fully_done = 0
+    await(function(cb)
+      local function complete_one(spec, last_result)
+        fully_done = fully_done + 1
+        if view then
+          view:set_status("core.pack", ("installing %d/%d"):format(fully_done, total))
+        end
+        if opts.on_progress then opts.on_progress(fully_done, total, last_result) end
+        if fully_done == total then cb() end
       end
-      if opts.on_progress then opts.on_progress(done, total, last) end
-    end,
-    on_complete = function()
-      if view then view:done("core.pack") end
-      if opts.on_complete then opts.on_complete() end
-    end,
-  })
+
+      local pool = Jobs.pool({ concurrency = opts.concurrency })
+      for _, p in ipairs(pending) do
+        pool:add({
+          cmd = { "git", "clone", "--filter=blob:none", p.spec.src, p.dir },
+          tag = p.spec.name,
+          on_done = function(r)
+            if r.code ~= 0 then
+              vim.notify(("core.pack: %s: clone failed: %s"):format(p.spec.name, r.stderr),
+                vim.log.levels.ERROR)
+              if opts.on_failed then opts.on_failed(p.spec.name, "clone failed: " .. r.stderr) end
+              return complete_one(p.spec, r)
+            end
+            async(function()
+              local rev, err = await(pin_to_version, p.spec, p.dir)
+              if not rev then
+                vim.fn.delete(p.dir, "rf")
+                vim.notify(("core.pack: %s"):format(err), vim.log.levels.ERROR)
+                if opts.on_failed then
+                  local clean_msg = err:gsub("^" .. vim.pesc(p.spec.name) .. ":%s*", "")
+                  opts.on_failed(p.spec.name, clean_msg)
+                end
+                return complete_one(p.spec, r)
+              end
+              local existing = Lock.get(p.spec.name) or {}
+              -- Preserve the human-readable version field. spec.version may
+              -- be a vim.version.range (table) after normalize; in that case
+              -- type(...) == "string" is false and we'd write nil, dropping
+              -- the field on round-trip. Keep the previously-locked string
+              -- instead so the lockfile stays stable.
+              Lock.set(p.spec.name, {
+                src = p.spec.src,
+                rev = rev,
+                version = (type(p.spec.version) == "string" and p.spec.version)
+                  or existing.version,
+              })
+              await(M.run_build, p.spec, p.dir, { fidget = view, on_failed = opts.on_failed })
+              M.generate_helptags(p.dir)
+              complete_one(p.spec, r)
+            end)()
+          end,
+        })
+      end
+      pool:run({})
+    end)
+    if view then view:done("core.pack") end
+    if opts.on_complete then opts.on_complete() end
+  end)()
 end
+
+-- Apply already-resolved pending updates: parallel checkouts, then
+-- per-plugin lockfile + build + helptags + log.
+local apply_pending = async(function(pending, opts)
+  opts = opts or {}
+  if #pending == 0 then
+    if opts.on_complete then opts.on_complete() end
+    return
+  end
+  History.snapshot()
+
+  if opts.fidget then opts.fidget:set_status("core.pack", ("applying 0/%d"):format(#pending)) end
+  local total = #pending
+  local fully_done = 0
+
+  await(function(cb)
+    local function complete_one()
+      fully_done = fully_done + 1
+      if opts.fidget then opts.fidget:set_status("core.pack", ("applying %d/%d"):format(fully_done, total)) end
+      if opts.on_progress then opts.on_progress(fully_done, total) end
+      if fully_done == total then cb() end
+    end
+
+    local pool = Jobs.pool({ concurrency = opts.concurrency })
+    for _, p in ipairs(pending) do
+      pool:add({
+        cmd = { "git", "-C", p.dir, "checkout", "--detach", "--quiet",
+                p.target_rev or p.checkout_ref or p.ref },
+        tag = p.spec.name,
+        on_done = function(r)
+          if r.code ~= 0 then
+            vim.notify(("core.pack: %s: update failed: %s"):format(p.spec.name, r.stderr),
+              vim.log.levels.ERROR)
+            return complete_one()
+          end
+          -- HEAD is now p.target_rev. Skip a sync rev-parse; reuse the
+          -- value we already resolved.
+          Lock.set(p.spec.name, {
+            src = p.spec.src,
+            rev = p.target_rev,
+            version = type(p.spec.version) == "string" and p.spec.version or nil,
+          })
+          M.run_build(p.spec, p.dir, { fidget = opts.fidget }, function()
+            M.generate_helptags(p.dir)
+            Log.append({
+              ts = os.time(),
+              kind = "update",
+              name = p.spec.name,
+              from = p.from,
+              to = p.to,
+              count = p.count or 0,
+              subject = p.subject or "",
+            })
+            complete_one()
+          end)
+        end,
+      })
+    end
+    pool:run({})
+  end)
+
+  if opts.fidget then opts.fidget:done("core.pack") end
+  if opts.on_complete then opts.on_complete() end
+end)
 
 -- Helper: parse the bundled resolve-script stdout into a refs table.
 -- Format: <tags>\x1f<branches>\x1f<default_branch>\x1f<head_rev>
@@ -257,65 +340,12 @@ printf '\037'
 git -C "$1" rev-parse HEAD
 ]]
 
--- Apply already-resolved pending updates: parallel checkouts, then lockfile + build hook per plugin.
-local function apply_pending(pending, opts)
-  opts = opts or {}
-  if #pending == 0 then
-    vim.schedule(function() if opts.on_complete then opts.on_complete() end end)
-    return
-  end
-  History.snapshot()
-
-  if opts.fidget then opts.fidget:set_status("core.pack", ("applying 0/%d"):format(#pending)) end
-  local pool = Jobs.pool({ concurrency = opts.concurrency })
-  for _, p in ipairs(pending) do
-    pool:add({
-      cmd = { "git", "-C", p.dir, "checkout", "--detach", "--quiet",
-              p.target_rev or p.checkout_ref or p.ref },
-      tag = p.spec.name,
-      on_done = function(r)
-        if r.code ~= 0 then
-          vim.notify(("core.pack: %s: update failed: %s"):format(p.spec.name, r.stderr),
-            vim.log.levels.ERROR)
-          return
-        end
-        Lock.set(p.spec.name, {
-          src = p.spec.src, rev = Git.current_rev(p.dir),
-          version = type(p.spec.version) == "string" and p.spec.version or nil,
-        })
-        M.run_build(p.spec, p.dir, { fidget = opts.fidget })
-        M.generate_helptags(p.dir)
-        Log.append({
-          ts = os.time(),
-          kind = "update",
-          name = p.spec.name,
-          from = p.from,
-          to = p.to,
-          count = p.count or 0,
-          subject = p.subject or "",
-        })
-      end,
-    })
-  end
-  pool:run({
-    on_progress = function(done, total)
-      if opts.fidget then opts.fidget:set_status("core.pack", ("applying %d/%d"):format(done, total)) end
-      if opts.on_progress then opts.on_progress(done, total) end
-    end,
-    on_complete = function()
-      if opts.fidget then opts.fidget:done("core.pack") end
-      if opts.on_complete then opts.on_complete() end
-    end,
-  })
-end
-
-function M.update(specs, names, opts)
+M.update = function(specs, names, opts)
   opts = opts or {}
   local by_name = {}
   for _, s in ipairs(specs) do by_name[s.name] = s end
   if names == nil or #names == 0 then names = vim.tbl_keys(by_name) end
 
-  -- Filter to plugins on disk.
   local targets = {}
   for _, name in ipairs(names) do
     local spec = by_name[name]
@@ -332,189 +362,185 @@ function M.update(specs, names, opts)
   end
 
   local fidget = (opts.open_window ~= false) and UI.fidget({ open_window = true }) or nil
-  if fidget then
-    fidget:set_status("core.pack", ("fetching 0/%d"):format(#targets))
-  end
+  if fidget then fidget:set_status("core.pack", ("fetching 0/%d"):format(#targets)) end
 
-  -- Phase 1: fetch in parallel.
-  local fetch_pool = Jobs.pool({ concurrency = opts.concurrency })
-  for _, t in ipairs(targets) do
-    fetch_pool:add({
-      cmd = { "git", "-C", t.dir, "fetch", "--tags", "--prune", "origin" },
-      tag = t.name,
-      on_done = function(r)
-        t.fetch_ok = (r.code == 0)
+  async(function()
+    -- Phase 1: fetch in parallel.
+    local fetch_pool = Jobs.pool({ concurrency = opts.concurrency })
+    for _, t in ipairs(targets) do
+      fetch_pool:add({
+        cmd = { "git", "-C", t.dir, "fetch", "--tags", "--prune", "origin" },
+        tag = t.name,
+        on_done = function(r) t.fetch_ok = (r.code == 0) end,
+      })
+    end
+    await(Jobs.await_pool, fetch_pool, {
+      on_progress = function(done, total)
+        if fidget then fidget:set_status("core.pack", ("fetching %d/%d"):format(done, total)) end
       end,
     })
-  end
 
-  fetch_pool:run({
-    on_progress = function(done, total)
-      if fidget then fidget:set_status("core.pack", ("fetching %d/%d"):format(done, total)) end
-    end,
-    on_complete = function()
-      -- Phase 2: resolve refs + HEAD in parallel via bundled script.
-      local resolve_pool = Jobs.pool({ concurrency = opts.concurrency })
-      for _, t in ipairs(targets) do
-        if t.fetch_ok then
-          resolve_pool:add({
-            cmd = { "sh", "-c", RESOLVE_SCRIPT, "_", t.dir },
+    -- Phase 2: resolve refs + HEAD via bundled script.
+    local resolve_pool = Jobs.pool({ concurrency = opts.concurrency })
+    for _, t in ipairs(targets) do
+      if t.fetch_ok then
+        resolve_pool:add({
+          cmd = { "sh", "-c", RESOLVE_SCRIPT, "_", t.dir },
+          tag = t.name,
+          on_done = function(r)
+            if r.code == 0 then t.refs = parse_resolve_output(r.stdout or "") end
+          end,
+        })
+      end
+    end
+    await(Jobs.await_pool, resolve_pool, {
+      on_progress = function(done, total)
+        if fidget then fidget:set_status("core.pack", ("resolving %d/%d"):format(done, total)) end
+      end,
+    })
+
+    -- Pure-Lua version resolution per target.
+    for _, t in ipairs(targets) do
+      if t.refs then
+        local resolved = Version.resolve(t.spec.version, t.refs)
+        if resolved then
+          t.resolved = resolved
+          if resolved.kind == "default" then
+            local db = t.refs.default_branch
+            t.target_ref = db and ("origin/" .. db) or nil
+          elseif resolved.kind == "branch" then
+            t.target_ref = "origin/" .. resolved.name
+          elseif resolved.kind == "tag" or resolved.kind == "commit" then
+            t.target_ref = resolved.name
+          end
+        end
+      end
+    end
+
+    -- Phase 3: rev-parse target_ref^{commit}.
+    local rp_pool = Jobs.pool({ concurrency = opts.concurrency })
+    for _, t in ipairs(targets) do
+      if t.target_ref then
+        if opts.target == "lockfile" then
+          local entry = Lock.get(t.name)
+          if not entry then
+            vim.notify(("core.pack: %s not in lockfile — skipping"):format(t.name), vim.log.levels.WARN)
+          else
+            t.target_rev = entry.rev
+            t.checkout_ref = entry.rev
+          end
+        else
+          rp_pool:add({
+            cmd = { "git", "-C", t.dir, "rev-parse", t.target_ref .. "^{commit}" },
             tag = t.name,
             on_done = function(r)
-              if r.code ~= 0 then return end
-              t.refs = parse_resolve_output(r.stdout or "")
+              if r.code == 0 then
+                t.target_rev = (r.stdout or ""):gsub("%s+", "")
+                t.checkout_ref = t.target_ref
+              end
             end,
           })
         end
       end
-      resolve_pool:run({
-        on_progress = function(done, total)
-          if fidget then fidget:set_status("core.pack", ("resolving %d/%d"):format(done, total)) end
-        end,
-        on_complete = function()
-          -- Pure-Lua version resolution per target.
-          for _, t in ipairs(targets) do
-            if t.refs then
-              local resolved = Version.resolve(t.spec.version, t.refs)
-              if resolved then
-                t.resolved = resolved
-                if resolved.kind == "default" then
-                  local db = t.refs.default_branch
-                  t.target_ref = db and ("origin/" .. db) or nil
-                elseif resolved.kind == "branch" then
-                  t.target_ref = "origin/" .. resolved.name
-                elseif resolved.kind == "tag" or resolved.kind == "commit" then
-                  t.target_ref = resolved.name
-                end
-              end
-            end
-          end
-          -- Phase 3: rev-parse target_ref^{commit} in parallel.
-          local rp_pool = Jobs.pool({ concurrency = opts.concurrency })
-          for _, t in ipairs(targets) do
-            if t.target_ref then
-              if opts.target == "lockfile" then
-                local entry = Lock.get(t.name)
-                if not entry then
-                  vim.notify(("core.pack: %s not in lockfile — skipping"):format(t.name), vim.log.levels.WARN)
-                else
-                  t.target_rev = entry.rev
-                  t.checkout_ref = entry.rev
-                end
-              else
-                rp_pool:add({
-                  cmd = { "git", "-C", t.dir, "rev-parse", t.target_ref .. "^{commit}" },
-                  tag = t.name,
-                  on_done = function(r)
-                    if r.code == 0 then
-                      t.target_rev = (r.stdout or ""):gsub("%s+", "")
-                      t.checkout_ref = t.target_ref
-                    end
-                  end,
-                })
-              end
-            end
-          end
-          rp_pool:run({
-            on_progress = function(done, total)
-              if fidget then fidget:set_status("core.pack", ("checking %d/%d"):format(done, total)) end
-            end,
-            on_complete = function()
-              -- Build pending list (pure Lua).
-              local pending = {}
-              for _, t in ipairs(targets) do
-                if t.target_rev and t.refs and t.target_rev ~= t.refs.head_rev then
-                  pending[#pending + 1] = {
-                    spec = t.spec, dir = t.dir, from = t.refs.head_rev, to = t.target_rev,
-                    ref = t.resolved and t.resolved.name or nil, checkout_ref = t.checkout_ref,
-                    target_rev = t.target_rev,
-                  }
-                end
-              end
+    end
+    await(Jobs.await_pool, rp_pool, {
+      on_progress = function(done, total)
+        if fidget then fidget:set_status("core.pack", ("checking %d/%d"):format(done, total)) end
+      end,
+    })
 
-              if #pending == 0 then
-                vim.notify("core.pack: nothing to update")
-                if fidget then fidget:close() end
-                if opts.on_complete then opts.on_complete() end
-                return
-              end
-              if opts.confirm == false then
-                apply_pending(pending, { on_complete = opts.on_complete, fidget = fidget })
-                return
-              end
+    -- Build pending list (pure Lua).
+    local pending = {}
+    for _, t in ipairs(targets) do
+      if t.target_rev and t.refs and t.target_rev ~= t.refs.head_rev then
+        pending[#pending + 1] = {
+          spec = t.spec, dir = t.dir, from = t.refs.head_rev, to = t.target_rev,
+          ref = t.resolved and t.resolved.name or nil, checkout_ref = t.checkout_ref,
+          target_rev = t.target_rev,
+        }
+      end
+    end
 
-              -- Compute commit count + latest commit subject for review buffer.
-              -- These are local-only `git log` calls; fast (~5 ms each), still sync
-              -- per-plugin. Acceptable for the review-display path because it runs
-              -- once after resolve, not per-plugin in a burst.
-              for _, p in ipairs(pending) do
-                local commits = Git.log_between(p.dir, p.from, p.to) or {}
-                p.count = #commits
-                p.subject = commits[1] and commits[1].subject or ""
-                p.ago = commits[1] and commits[1].ago or ""
-              end
+    if #pending == 0 then
+      vim.notify("core.pack: nothing to update")
+      if fidget then fidget:close() end
+      if opts.on_complete then opts.on_complete() end
+      return
+    end
+    if opts.confirm == false then
+      apply_pending(pending, { on_complete = opts.on_complete, fidget = fidget })
+      return
+    end
 
-              local items = {}
-              for _, p in ipairs(pending) do
-                items[#items + 1] = {
-                  name = p.spec.name, from = p.from, to = p.to,
-                  count = p.count, subject = p.subject, ago = p.ago, dir = p.dir,
-                  _orig = p,
-                }
-              end
+    -- Phase 4: per-plugin commit count + latest subject for the review
+    -- buffer. Run in parallel; the review only opens once all logs land.
+    if fidget then fidget:set_status("core.pack", ("logging 0/%d"):format(#pending)) end
+    await(function(cb)
+      local log_done = 0
+      for _, p in ipairs(pending) do
+        Git.log_between(p.dir, p.from, p.to, function(commits)
+          commits = commits or {}
+          p.count = #commits
+          p.subject = commits[1] and commits[1].subject or ""
+          p.ago = commits[1] and commits[1].ago or ""
+          log_done = log_done + 1
+          if fidget then fidget:set_status("core.pack", ("logging %d/%d"):format(log_done, #pending)) end
+          if log_done == #pending then cb() end
+        end)
+      end
+    end)
 
-              if fidget then fidget:close(); fidget = nil end
+    local items = {}
+    for _, p in ipairs(pending) do
+      items[#items + 1] = {
+        name = p.spec.name, from = p.from, to = p.to,
+        count = p.count, subject = p.subject, ago = p.ago, dir = p.dir,
+        _orig = p,
+      }
+    end
 
-              local complete_fired = false
-              local function fire_complete()
-                if complete_fired then return end
-                complete_fired = true
-                if opts.on_complete then opts.on_complete() end
-              end
-              local apply_started = false
-              UI.update_review(items, {
-                open_window = opts.open_window ~= false,
-                on_apply = function(list)
-                  apply_started = true
-                  local applied = {}
-                  for _, item in ipairs(list) do applied[#applied + 1] = item._orig end
-                  local apply_fidget = (opts.open_window ~= false) and UI.fidget({ open_window = true }) or nil
-                  apply_pending(applied, { on_complete = fire_complete, fidget = apply_fidget })
-                end,
-                on_close = function()
-                  if not apply_started then vim.schedule(fire_complete) end
-                end,
-                on_expand = function(name, cb)
-                  for _, p in ipairs(pending) do
-                    if p.spec.name == name then
-                      local pool = Jobs.pool({ concurrency = 1 })
-                      pool:add({
-                        cmd = { "git", "-C", p.dir, "log", "--pretty=%H%x09%an%x09%ar%x09%s", p.from .. ".." .. p.to },
-                        tag = name,
-                        on_done = function(r)
-                          local log = {}
-                          if r.code == 0 then
-                            for line in (r.stdout or ""):gmatch("[^\n]+") do
-                              local sha, author, ago, subj = line:match("^(%w+)\t([^\t]*)\t([^\t]*)\t(.*)$")
-                              if sha then log[#log + 1] = { sha = sha, author = author, ago = ago, subject = subj } end
-                            end
-                          end
-                          cb(log)
-                        end,
-                      })
-                      pool:run({})
-                      return
-                    end
+    if fidget then fidget:close(); fidget = nil end
+
+    local complete_fired = false
+    local function fire_complete()
+      if complete_fired then return end
+      complete_fired = true
+      if opts.on_complete then opts.on_complete() end
+    end
+    local apply_started = false
+    UI.update_review(items, {
+      open_window = opts.open_window ~= false,
+      on_apply = function(list)
+        apply_started = true
+        local applied = {}
+        for _, item in ipairs(list) do applied[#applied + 1] = item._orig end
+        local apply_fidget = (opts.open_window ~= false) and UI.fidget({ open_window = true }) or nil
+        apply_pending(applied, { on_complete = fire_complete, fidget = apply_fidget })
+      end,
+      on_close = function()
+        if not apply_started then vim.schedule(fire_complete) end
+      end,
+      on_expand = function(name, cb)
+        for _, p in ipairs(pending) do
+          if p.spec.name == name then
+            Git.run({ "log", "--pretty=%H%x09%an%x09%ar%x09%s", p.from .. ".." .. p.to },
+              p.dir, function(r)
+                local log = {}
+                if r.ok then
+                  for line in (r.stdout or ""):gmatch("[^\n]+") do
+                    local sha, author, ago, subj = line:match("^(%w+)\t([^\t]*)\t([^\t]*)\t(.*)$")
+                    if sha then log[#log + 1] = { sha = sha, author = author, ago = ago, subject = subj } end
                   end
-                  cb({})
-                end,
-              })
-            end,
-          })
-        end,
-      })
-    end,
-  })
+                end
+                cb(log)
+              end)
+            return
+          end
+        end
+        cb({})
+      end,
+    })
+  end)()
 end
 
 -- Uninstall named plugins: remove their on-disk dirs and lockfile
@@ -549,14 +575,9 @@ function M.clean(specs, opts)
   local keep = {}
   for _, s in ipairs(specs) do keep[s.name] = true end
   local root = install_root()
-  local orphans = {}
+  local orphan_names = {}
   for _, name in ipairs(vim.fn.readdir(root) or {}) do
-    if not keep[name] then
-      local dir = root .. "/" .. name
-      local sz_r = vim.system({ "du", "-sk", dir }, { text = true }):wait()
-      local size_kb = tonumber(sz_r.stdout and sz_r.stdout:match("^(%d+)") or "0") or 0
-      orphans[#orphans + 1] = { name = name, dir = dir, size_kb = size_kb }
-    end
+    if not keep[name] then orphan_names[#orphan_names + 1] = name end
   end
 
   local function do_remove(items)
@@ -571,24 +592,35 @@ function M.clean(specs, opts)
     return removed
   end
 
-  if #orphans == 0 then
+  if #orphan_names == 0 then
     vim.notify("core.pack: nothing to clean")
     if opts.on_complete then vim.schedule(opts.on_complete) end
     return {}
   end
 
-  if opts.confirm == false then
-    return do_remove(orphans)
-  end
+  -- Size each orphan via parallel `du -sk`; the previous sync :wait()
+  -- froze the editor for ~50 ms per orphan.
+  async(function()
+    local orphans = {}
+    local pool = Jobs.pool({ concurrency = opts.concurrency })
+    for _, name in ipairs(orphan_names) do
+      local dir = root .. "/" .. name
+      local entry = { name = name, dir = dir, size_kb = 0 }
+      orphans[#orphans + 1] = entry
+      pool:add({
+        cmd = { "du", "-sk", dir },
+        tag = name,
+        on_done = function(r)
+          entry.size_kb = tonumber(r.stdout and r.stdout:match("^(%d+)") or "0") or 0
+        end,
+      })
+    end
+    await(Jobs.await_pool, pool, {})
 
-  -- Confirm flow: hand off to caller. on_review receives the list and an apply callback.
-  if opts.on_review then
-    opts.on_review(orphans, do_remove)
-    return
-  end
-
-  -- No on_review provided: fall back to non-confirming removal (legacy behavior).
-  return do_remove(orphans)
+    if opts.confirm == false then return do_remove(orphans) end
+    if opts.on_review then return opts.on_review(orphans, do_remove) end
+    do_remove(orphans)
+  end)()
 end
 
 return M

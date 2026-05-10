@@ -57,7 +57,7 @@ T.describe("core.pack.refs.resolve", function()
       ["symbolic-ref refs/remotes/origin/HEAD"] = { code = 0, stdout = "refs/remotes/origin/main\n" },
       ["rev-parse --verify refs/remotes/origin/HEAD^{commit}"] = { code = 0, stdout = "deadbeef1234567\n" },
     })
-    local resolved, err = Refs.resolve({ name = "p" }, "/some/dir")
+    local resolved, err = stubs.await(Refs.resolve, { name = "p" }, "/some/dir")
     restore()
     T.eq(err, nil)
     T.truthy(resolved, "expected resolved table")
@@ -73,7 +73,7 @@ T.describe("core.pack.refs.resolve", function()
       ["symbolic-ref refs/remotes/origin/HEAD"] = { code = 0, stdout = "refs/remotes/origin/main\n" },
       ["rev-parse --verify refs/tags/v1.1^{commit}"] = { code = 0, stdout = "aabbcc111222333\n" },
     })
-    local resolved = Refs.resolve({ name = "p", version = "v1.1" }, "/some/dir")
+    local resolved = stubs.await(Refs.resolve, { name = "p", version = "v1.1" }, "/some/dir")
     restore()
     T.eq(resolved.kind, "tag")
     T.eq(resolved.name, "v1.1")
@@ -88,7 +88,7 @@ T.describe("core.pack.refs.resolve", function()
       ["symbolic-ref refs/remotes/origin/HEAD"] = { code = 0, stdout = "refs/remotes/origin/main\n" },
       ["rev-parse --verify refs/remotes/origin/HEAD^{commit}"] = { code = 1, stderr = "bad ref\n" },
     })
-    local resolved, err = Refs.resolve({ name = "p" }, "/some/dir")
+    local resolved, err = stubs.await(Refs.resolve, { name = "p" }, "/some/dir")
     restore()
     T.eq(resolved, nil)
     T.truthy(err and err:match("did not resolve"))
@@ -108,7 +108,7 @@ T.describe("core.pack.refs.resolve", function()
       -- existing rejection as the verification path.
       ["rev-parse --verify refs/remotes/origin/HEAD^{commit}"] = { code = 0, stdout = "not-a-sha\n" },
     })
-    local resolved, err = Refs.resolve({ name = "p" }, "/some/dir")
+    local resolved, err = stubs.await(Refs.resolve, { name = "p" }, "/some/dir")
     restore()
     T.eq(resolved, nil)
     T.truthy(err and (err:match("non%-SHA") or err:match("invalid SHA") or err:match("did not resolve")),

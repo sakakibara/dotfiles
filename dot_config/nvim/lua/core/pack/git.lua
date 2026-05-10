@@ -1,97 +1,125 @@
 local M = {}
 
-local function git(args, cwd)
+-- Run a git subcommand asynchronously. The callback receives a uniform
+-- result table on the main loop (vim.system's on_exit fires off-thread).
+local function run(args, cwd, cb)
   local cmd = { "git" }
   if cwd then table.insert(cmd, "-C"); table.insert(cmd, cwd) end
   vim.list_extend(cmd, args)
-  local r = vim.system(cmd, { text = true }):wait()
-  return { ok = r.code == 0, code = r.code, stdout = r.stdout or "", stderr = r.stderr or "" }
+  vim.system(cmd, { text = true }, function(r)
+    vim.schedule(function()
+      cb({
+        ok     = r.code == 0,
+        code   = r.code,
+        stdout = r.stdout or "",
+        stderr = r.stderr or "",
+      })
+    end)
+  end)
 end
 
+M.run = run
+
+-- File-existence check; sync because it touches no subprocess. We always
+-- clone full repos, so .git is a directory.
 function M.is_repo(dir)
   if not dir or dir == "" then return false end
-  local r = git({ "rev-parse", "--is-inside-work-tree" }, dir)
-  return r.ok and r.stdout:match("true") ~= nil
+  return vim.fn.isdirectory(dir .. "/.git") == 1
 end
 
-function M.current_rev(dir)
-  local r = git({ "rev-parse", "HEAD" }, dir)
-  if not r.ok then return nil end
-  return (r.stdout:gsub("%s+", ""))
+function M.current_rev(dir, cb)
+  run({ "rev-parse", "HEAD" }, dir, function(r)
+    if not r.ok then return cb(nil) end
+    cb((r.stdout:gsub("%s+", "")))
+  end)
 end
 
-function M.clone(url, dest)
+function M.clone(url, dest, cb)
   vim.fn.mkdir(vim.fn.fnamemodify(dest, ":h"), "p")
-  local r = git({ "clone", "--filter=blob:none", url, dest })
-  if not r.ok then return { ok = false, err = r.stderr } end
-  return { ok = true }
+  run({ "clone", "--filter=blob:none", url, dest }, nil, function(r)
+    if not r.ok then return cb({ ok = false, err = r.stderr }) end
+    cb({ ok = true })
+  end)
 end
 
-function M.fetch(dir)
-  local r = git({ "fetch", "--tags", "--prune", "origin" }, dir)
-  if not r.ok then return { ok = false, err = r.stderr } end
-  return { ok = true }
+function M.fetch(dir, cb)
+  run({ "fetch", "--tags", "--prune", "origin" }, dir, function(r)
+    if not r.ok then return cb({ ok = false, err = r.stderr }) end
+    cb({ ok = true })
+  end)
 end
 
-function M.checkout_sha(dir, sha)
+function M.checkout_sha(dir, sha, cb)
   -- SHA is hex; cannot be misinterpreted as a flag. Detached so we don't
   -- accumulate local branches.
-  local r = git({ "checkout", "--detach", "--quiet", sha }, dir)
-  if not r.ok then return { ok = false, err = r.stderr } end
-  return { ok = true }
+  run({ "checkout", "--detach", "--quiet", sha }, dir, function(r)
+    if not r.ok then return cb({ ok = false, err = r.stderr }) end
+    cb({ ok = true })
+  end)
 end
 
-function M.rev_parse(dir, ref)
+function M.rev_parse(dir, ref, cb)
   -- Resolve `ref` to a SHA. Pass `ref^{commit}` to peel annotated tags.
-  -- Returns sha string on success, or nil + stderr on failure.
-  local r = git({ "rev-parse", "--verify", ref }, dir)
-  if not r.ok then return nil, r.stderr end
-  local sha = (r.stdout:gsub("%s+", ""))
-  if not sha:match("^%x+$") or #sha < 7 then
-    return nil, "rev-parse returned non-SHA: " .. sha
-  end
-  return sha
-end
-
-function M.log_between(dir, a, b)
-  local r = git({ "log", "--pretty=%H%x09%an%x09%ar%x09%s", a .. ".." .. b }, dir)
-  if not r.ok then return nil end
-  local out = {}
-  for line in r.stdout:gmatch("[^\n]+") do
-    local sha, author, ago, subj = line:match("^(%w+)\t([^\t]*)\t([^\t]*)\t(.*)$")
-    if sha then out[#out + 1] = { sha = sha, author = author, ago = ago, subject = subj } end
-  end
-  return out
-end
-
-function M.list_remote_refs(dir)
-  local refs = { tags = {}, branches = {} }
-  local r1 = git({ "tag", "--list" }, dir)
-  if r1.ok then
-    for tag in r1.stdout:gmatch("[^\n]+") do refs.tags[#refs.tags + 1] = tag end
-  end
-  local r2 = git({ "branch", "-r", "--format=%(refname:short)" }, dir)
-  if r2.ok then
-    for line in r2.stdout:gmatch("[^\n]+") do
-      local b = line:match("^origin/(.+)$")
-      if b and b ~= "HEAD" then refs.branches[#refs.branches + 1] = b end
+  -- Callback receives (sha) on success, (nil, err) on failure.
+  run({ "rev-parse", "--verify", ref }, dir, function(r)
+    if not r.ok then return cb(nil, r.stderr) end
+    local sha = (r.stdout:gsub("%s+", ""))
+    if not sha:match("^%x+$") or #sha < 7 then
+      return cb(nil, "rev-parse returned non-SHA: " .. sha)
     end
-  end
-  return refs
+    cb(sha)
+  end)
 end
 
-function M.default_branch(dir)
-  local r = git({ "symbolic-ref", "refs/remotes/origin/HEAD" }, dir)
-  if r.ok then
-    local b = r.stdout:match("refs/remotes/origin/(.+)")
-    if b then return (b:gsub("%s+$", "")) end
+function M.log_between(dir, a, b, cb)
+  run({ "log", "--pretty=%H%x09%an%x09%ar%x09%s", a .. ".." .. b }, dir, function(r)
+    if not r.ok then return cb(nil) end
+    local out = {}
+    for line in r.stdout:gmatch("[^\n]+") do
+      local sha, author, ago, subj = line:match("^(%w+)\t([^\t]*)\t([^\t]*)\t(.*)$")
+      if sha then out[#out + 1] = { sha = sha, author = author, ago = ago, subject = subj } end
+    end
+    cb(out)
+  end)
+end
+
+function M.list_remote_refs(dir, cb)
+  local refs = { tags = {}, branches = {} }
+  local pending = 2
+  local function done()
+    pending = pending - 1
+    if pending == 0 then cb(refs) end
   end
-  -- Fallback: try common names.
-  local refs = M.list_remote_refs(dir)
-  for _, candidate in ipairs({ "main", "master" }) do
-    if vim.tbl_contains(refs.branches, candidate) then return candidate end
-  end
-  return nil
+  run({ "tag", "--list" }, dir, function(r)
+    if r.ok then
+      for tag in r.stdout:gmatch("[^\n]+") do refs.tags[#refs.tags + 1] = tag end
+    end
+    done()
+  end)
+  run({ "branch", "-r", "--format=%(refname:short)" }, dir, function(r)
+    if r.ok then
+      for line in r.stdout:gmatch("[^\n]+") do
+        local b = line:match("^origin/(.+)$")
+        if b and b ~= "HEAD" then refs.branches[#refs.branches + 1] = b end
+      end
+    end
+    done()
+  end)
+end
+
+function M.default_branch(dir, cb)
+  run({ "symbolic-ref", "refs/remotes/origin/HEAD" }, dir, function(r)
+    if r.ok then
+      local b = r.stdout:match("refs/remotes/origin/(.+)")
+      if b then return cb((b:gsub("%s+$", ""))) end
+    end
+    M.list_remote_refs(dir, function(refs)
+      for _, candidate in ipairs({ "main", "master" }) do
+        if vim.tbl_contains(refs.branches, candidate) then return cb(candidate) end
+      end
+      cb(nil)
+    end)
+  end)
 end
 
 return M

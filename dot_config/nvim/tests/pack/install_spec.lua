@@ -1,4 +1,5 @@
 local T = require("tests.helpers")
+local stubs = require("tests.pack.stubs")
 
 local function sh(cmd) return vim.fn.system(cmd) end
 
@@ -141,7 +142,7 @@ T.describe("core.pack.install", function()
     L.set("demo", { src = "file://" .. remote, rev = rev_a })
     async(function(cb) I.update({ { name = "demo", src = "file://" .. remote } }, { "demo" }, { confirm = false, target = "lockfile", on_complete = cb }) end)
     local Git = require("core.pack.git")
-    T.eq(Git.current_rev(I.install_dir("demo")), rev_a)
+    T.eq(stubs.await(Git.current_rev, I.install_dir("demo")), rev_a)
   end)
 
   T.it("update with confirm=true fires on_complete only after lockfile advances", function()
