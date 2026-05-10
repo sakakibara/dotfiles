@@ -213,12 +213,13 @@ function M.install_missing(specs, opts)
         pool:add({
           cmd = { "git", "clone", "--filter=blob:none", p.spec.src, p.dir },
           tag = p.spec.name,
-          on_done = function(r)
+          async_done = true,
+          on_done = function(r, release)
             if r.code ~= 0 then
               vim.notify(("core.pack: %s: clone failed: %s"):format(p.spec.name, r.stderr),
                 vim.log.levels.ERROR)
               if opts.on_failed then opts.on_failed(p.spec.name, "clone failed: " .. r.stderr) end
-              return complete_one(p.spec, r)
+              complete_one(p.spec, r); release(); return
             end
             async(function()
               local rev, err, resolved = await(pin_to_version, p.spec, p.dir)
@@ -229,7 +230,7 @@ function M.install_missing(specs, opts)
                   local clean_msg = err:gsub("^" .. vim.pesc(p.spec.name) .. ":%s*", "")
                   opts.on_failed(p.spec.name, clean_msg)
                 end
-                return complete_one(p.spec, r)
+                complete_one(p.spec, r); release(); return
               end
               local existing = Lock.get(p.spec.name) or {}
               -- Preserve the human-readable version field. spec.version may
@@ -253,6 +254,7 @@ function M.install_missing(specs, opts)
               await(M.run_build, p.spec, p.dir, { fidget = view, on_failed = opts.on_failed })
               M.generate_helptags(p.dir)
               complete_one(p.spec, r)
+              release()
             end)()
           end,
         })
@@ -332,11 +334,12 @@ local apply_pending = async(function(pending, opts)
         cmd = { "git", "-C", p.dir, "checkout", "--detach", "--quiet",
                 p.target_rev or p.checkout_ref or p.ref },
         tag = p.spec.name,
-        on_done = function(r)
+        async_done = true,
+        on_done = function(r, release)
           if r.code ~= 0 then
             vim.notify(("core.pack: %s: update failed: %s"):format(p.spec.name, r.stderr),
               vim.log.levels.ERROR)
-            return complete_one()
+            complete_one(); release(); return
           end
           -- HEAD is now p.target_rev. Skip a sync rev-parse; reuse the
           -- value we already resolved.
@@ -362,6 +365,7 @@ local apply_pending = async(function(pending, opts)
               subject = p.subject or "",
             })
             complete_one()
+            release()
           end)
         end,
       })

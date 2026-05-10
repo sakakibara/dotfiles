@@ -39,17 +39,27 @@ local function start_job(self, job, on_progress, total, on_all_done)
   vim.system(job.cmd, { cwd = job.cwd, text = true }, function(result)
     -- vim.system callback runs in libuv thread; schedule for main loop.
     vim.schedule(function()
-      self.inflight = self.inflight - 1
-      self.done = self.done + 1
       result.tag = job.tag
-      if job.on_done then safe_call("on_done", job.on_done, result) end
-      if on_progress then safe_call("on_progress", on_progress, self.done, total, result) end
-      if #self.queue > 0 then
-        local next_job = table.remove(self.queue, 1)
-        start_job(self, next_job, on_progress, total, on_all_done)
-      elseif self.inflight == 0 then
-        on_all_done()
+      local released = false
+      local function release()
+        if released then return end
+        released = true
+        self.inflight = self.inflight - 1
+        self.done = self.done + 1
+        if on_progress then safe_call("on_progress", on_progress, self.done, total, result) end
+        if #self.queue > 0 then
+          local next_job = table.remove(self.queue, 1)
+          start_job(self, next_job, on_progress, total, on_all_done)
+        elseif self.inflight == 0 then
+          on_all_done()
+        end
       end
+      if job.on_done then safe_call("on_done", job.on_done, result, release) end
+      -- Default behavior: release the slot as soon as on_done returns.
+      -- async_done = true keeps the slot held until on_done's chained
+      -- work explicitly calls `release` (its 2nd arg), so concurrency
+      -- caps cover the full async pipeline, not just the subprocess.
+      if not job.async_done then release() end
     end)
   end)
 end

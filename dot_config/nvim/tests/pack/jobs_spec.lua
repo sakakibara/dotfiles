@@ -66,6 +66,38 @@ T.describe("core.pack.jobs", function()
     T.eq(completed, true)
   end)
 
+  T.it("async_done holds the slot until release() is invoked", function()
+    local J = fresh()
+    local pool = J.pool({ concurrency = 1 })
+    local active = 0
+    local peak = 0
+    local releasers = {}
+    for i = 1, 3 do
+      pool:add({
+        cmd = { "true" },
+        tag = tostring(i),
+        async_done = true,
+        on_start = function() active = active + 1; if active > peak then peak = active end end,
+        on_done = function(_, release)
+          -- Park the release call so the slot stays held until we say so.
+          releasers[#releasers + 1] = function() active = active - 1; release() end
+        end,
+      })
+    end
+    local completed = false
+    pool:run({ on_complete = function() completed = true end })
+    -- Drain the first job to start, then release in order.
+    vim.wait(200, function() return #releasers >= 1 end, 5)
+    T.eq(peak, 1, "slot must stay held while async_done on_done hasn't released")
+    while #releasers > 0 do
+      local r = table.remove(releasers, 1)
+      r()
+      vim.wait(200, function() return #releasers >= 1 or completed end, 5)
+    end
+    vim.wait(2000, function() return completed end, 10)
+    T.eq(completed, true)
+  end)
+
   T.it("empty queue calls on_complete immediately on schedule tick", function()
     local J = fresh()
     local pool = J.pool({ concurrency = 1 })
