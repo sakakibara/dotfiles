@@ -1,8 +1,13 @@
 {{- /* Generated from .chezmoidata/abbreviations.toml — edit there, not here. */ -}}
+{{- $bins := list
+  (joinPath .chezmoi.homeDir ".local" "bin")
+  "/opt/homebrew/bin"
+  "/usr/local/bin"
+-}}
 {{- range .abbreviations -}}
 {{- $shells := index . "shells" -}}
 {{- $when := index . "when" -}}
-{{- if and (or (not $shells) (has "zsh" $shells)) (or (not $when) (lookPath $when)) }}
+{{- if and (or (not $shells) (has "zsh" $shells)) (or (not $when) (findExecutable $when $bins)) }}
 abbr {{ printf "%q" .key }}={{ printf "%q" .expansion }}
 {{- end -}}
 {{- end }}
