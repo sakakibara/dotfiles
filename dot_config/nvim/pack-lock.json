@@ -1,6 +1,6 @@
 {
   "plugins": {
-    "SchemaStore.nvim": {"rev":"1ccbd3720b5064146b16d7761957da302ea1e86f","src":"https://github.com/b0o/SchemaStore.nvim"},
+    "SchemaStore.nvim": {"rev":"7127911cc824a1d2f600492edd9667b476cf3eda","src":"https://github.com/b0o/SchemaStore.nvim"},
     "avante.nvim": {"rev":"907003a22b94f23ae0b25bb18ebc878425d4aa2b","src":"https://github.com/yetone/avante.nvim"},
     "better-escape.nvim": {"rev":"3f4bc0b326606264ff75967f59091b5ddada0554","src":"https://github.com/max397574/better-escape.nvim"},
     "blink.cmp": {"rev":"78336bc89ee5365633bcf754d93df01678b5c08f","src":"https://github.com/saghen/blink.cmp"},
@@ -58,11 +58,11 @@
     "nvim-treesitter-endwise": {"rev":"8fe8a95630f4f2c72a87ba1927af649e0bfaa244","src":"https://github.com/RRethy/nvim-treesitter-endwise"},
     "nvim-treesitter-textobjects": {"rev":"851e865342e5a4cb1ae23d31caf6e991e1c99f1e","src":"https://github.com/nvim-treesitter/nvim-treesitter-textobjects","version":"main"},
     "nvim-ts-autotag": {"rev":"88c1453db4ba7dd24131086fe51fdf74e587d275","src":"https://github.com/windwp/nvim-ts-autotag"},
-    "nvim-web-devicons": {"rev":"4fc505ac7bd7692824a142e96e5f529c133862f8","src":"https://github.com/nvim-tree/nvim-web-devicons"},
+    "nvim-web-devicons": {"rev":"2795c26c916bb3c57dde308b82be51971fa92747","src":"https://github.com/nvim-tree/nvim-web-devicons"},
     "oil.nvim": {"rev":"0fcc83805ad11cf714a949c98c605ed717e0b83e","src":"https://github.com/stevearc/oil.nvim"},
     "omnisharp-extended-lsp.nvim": {"rev":"51e407a46ddb15e49727139b5b1ae3650cd6a069","src":"https://github.com/Hoffs/omnisharp-extended-lsp.nvim"},
     "one-small-step-for-vimkind": {"rev":"1af6ffb9b5229a856e8090fa2f690e0931a5aace","src":"https://github.com/jbyuki/one-small-step-for-vimkind"},
-    "organ.nvim": {"rev":"4fc1e9d3c3c367cc39b6d37fd4096cc046d914c7","src":"https://github.com/sakakibara/organ.nvim"},
+    "organ.nvim": {"rev":"0587cb42097d38184412cd2b47004fab39f626a8","src":"https://github.com/sakakibara/organ.nvim"},
     "overseer.nvim": {"rev":"f818eefff81f4b12fb7cf236f1b6c16768a2fcbc","src":"https://github.com/stevearc/overseer.nvim"},
     "plantuml-syntax": {"rev":"9d4900aa16674bf5bb8296a72b975317d573b547","src":"https://github.com/aklt/plantuml-syntax"},
     "plenary.nvim": {"rev":"74b06c6c75e4eeb3108ec01852001636d85a932b","src":"https://github.com/nvim-lua/plenary.nvim"},
