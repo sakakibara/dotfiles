@@ -24,6 +24,17 @@ function M.install_dir(name)
   return install_root() .. "/" .. name
 end
 
+-- Async recursive directory removal. vim.fn.delete(_, "rf") is sync
+-- and can block the main loop for tens of milliseconds on a big
+-- plugin tree (treesitter parser builds, plenary, etc.); shelling out
+-- to `rm -rf` keeps redraws ticking.
+local function rm_rf(dir, cb)
+  cb = cb or function() end
+  vim.system({ "rm", "-rf", dir }, { text = true }, function(r)
+    vim.schedule(function() cb(r.code == 0) end)
+  end)
+end
+
 -- Generate `doc/tags` for a freshly-installed/updated plugin so `:help
 -- <topic>` resolves to its docs. lazy.nvim auto-handles this on every
 -- install/update; without it, plugins ship with their .txt files but
@@ -155,37 +166,35 @@ end)
 
 function M.install_missing(specs, opts)
   opts = opts or {}
-  local pending = {}
-
-  for _, spec in ipairs(specs) do
-    if not spec.dev then
-      local dir = M.install_dir(spec.name)
-      if vim.fn.isdirectory(dir) == 1 and Git.is_repo(dir) then
-        -- already installed; nothing to do
-      else
-        -- Clean up any pre-existing non-repo dir (e.g., interrupted prior clone)
-        -- so `git clone` doesn't refuse a non-empty target.
-        if vim.fn.isdirectory(dir) == 1 then
-          vim.fn.delete(dir, "rf")
+  async(function()
+    local pending = {}
+    for _, spec in ipairs(specs) do
+      if not spec.dev then
+        local dir = M.install_dir(spec.name)
+        if vim.fn.isdirectory(dir) == 1 and Git.is_repo(dir) then
+          -- already installed; nothing to do
+        else
+          -- Clean up any pre-existing non-repo dir (e.g., interrupted prior clone)
+          -- so `git clone` doesn't refuse a non-empty target.
+          if vim.fn.isdirectory(dir) == 1 then
+            await(rm_rf, dir)
+          end
+          pending[#pending + 1] = { spec = spec, dir = dir }
         end
-        pending[#pending + 1] = { spec = spec, dir = dir }
       end
     end
-  end
 
-  if #pending == 0 then
-    vim.schedule(function() if opts.on_complete then opts.on_complete() end end)
-    return
-  end
-  History.snapshot()
+    if #pending == 0 then
+      if opts.on_complete then opts.on_complete() end
+      return
+    end
+    History.snapshot()
 
-  local view
-  if opts.open_window then
-    view = UI.fidget({ open_window = true })
-    view:set_status("core.pack", ("installing 0/%d"):format(#pending))
-  end
-
-  async(function()
+    local view
+    if opts.open_window then
+      view = UI.fidget({ open_window = true })
+      view:set_status("core.pack", ("installing 0/%d"):format(#pending))
+    end
     local total = #pending
     local fully_done = 0
     await(function(cb)
@@ -213,7 +222,7 @@ function M.install_missing(specs, opts)
             async(function()
               local rev, err, resolved = await(pin_to_version, p.spec, p.dir)
               if not rev then
-                vim.fn.delete(p.dir, "rf")
+                await(rm_rf, p.dir)
                 vim.notify(("core.pack: %s"):format(err), vim.log.levels.ERROR)
                 if opts.on_failed then
                   local clean_msg = err:gsub("^" .. vim.pesc(p.spec.name) .. ":%s*", "")
@@ -740,26 +749,29 @@ end
 -- :Pack install (or just relaunching nvim) will reinstall. Useful as
 -- a wipe-and-refresh when a plugin's state is broken or its build
 -- artifacts need regenerating.
-function M.uninstall(names)
-  local removed = {}
-  local missing = {}
-  for _, name in ipairs(names) do
-    local dir = M.install_dir(name)
-    if vim.fn.isdirectory(dir) == 1 then
-      vim.fn.delete(dir, "rf")
-      Lock.delete(name)
-      removed[#removed + 1] = name
-    else
-      missing[#missing + 1] = name
+function M.uninstall(names, opts)
+  opts = opts or {}
+  async(function()
+    local removed = {}
+    local missing = {}
+    for _, name in ipairs(names) do
+      local dir = M.install_dir(name)
+      if vim.fn.isdirectory(dir) == 1 then
+        await(rm_rf, dir)
+        Lock.delete(name)
+        removed[#removed + 1] = name
+      else
+        missing[#missing + 1] = name
+      end
     end
-  end
-  if #removed > 0 then
-    vim.notify("core.pack: uninstalled " .. table.concat(removed, ", "))
-  end
-  if #missing > 0 then
-    vim.notify("core.pack: not installed: " .. table.concat(missing, ", "), vim.log.levels.WARN)
-  end
-  return removed
+    if #removed > 0 then
+      vim.notify("core.pack: uninstalled " .. table.concat(removed, ", "))
+    end
+    if #missing > 0 then
+      vim.notify("core.pack: not installed: " .. table.concat(missing, ", "), vim.log.levels.WARN)
+    end
+    if opts.on_complete then opts.on_complete(removed) end
+  end)()
 end
 
 function M.clean(specs, opts)
@@ -772,17 +784,17 @@ function M.clean(specs, opts)
     if not keep[name] then orphan_names[#orphan_names + 1] = name end
   end
 
-  local function do_remove(items)
+  local do_remove = async(function(items)
     local removed = {}
     for _, item in ipairs(items) do
-      vim.fn.delete(item.dir, "rf")
+      await(rm_rf, item.dir)
       Lock.delete(item.name)
       removed[#removed + 1] = item.name
     end
     if #removed > 0 then vim.notify("core.pack: removed " .. table.concat(removed, ", ")) end
-    if opts.on_complete then vim.schedule(opts.on_complete) end
+    if opts.on_complete then opts.on_complete() end
     return removed
-  end
+  end)
 
   if #orphan_names == 0 then
     vim.notify("core.pack: nothing to clean")
