@@ -150,7 +150,12 @@ return {
       { "<Leader>gf", function() Snacks.picker.git_files() end,               desc = "Git files" },
       { "<Leader>gs", function() Snacks.picker.git_status() end,              desc = "Git status" },
       { "<Leader>gc", function() Snacks.picker.git_log() end,                 desc = "Git commits" },
-      { "<Leader>gb", function() Snacks.picker.git_branches() end,            desc = "Git branches" },
+      { "<Leader>gb", function() Snacks.git.blame_line() end,                 desc = "Git blame line" },
+      { "<Leader>gB", function() Snacks.picker.git_branches() end,            desc = "Git branches" },
+      { "<Leader>gw", function() Snacks.gitbrowse() end,                      desc = "Git browse (open)", mode = { "n", "x" } },
+      { "<Leader>gy", function()
+        Snacks.gitbrowse({ open = function(url) vim.fn.setreg("+", url) end })
+      end, desc = "Git browse (yank URL)", mode = { "n", "x" } },
       -- terminal
       { "<C-/>",      function() Snacks.terminal() end,                        desc = "Terminal", mode = { "n", "t" } },
       { "<C-_>",      function() Snacks.terminal() end,                        desc = "Terminal (TTY alias)", mode = { "n", "t" } },

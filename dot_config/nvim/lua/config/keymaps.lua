@@ -8,9 +8,21 @@ vim.g.maplocalleader = "\\"
 
 local map = vim.keymap.set
 
--- smooth wrapped-line motion
-map({ "n", "x" }, "j", "v:count == 0 ? 'gj' : 'j'", { expr = true, silent = true })
-map({ "n", "x" }, "k", "v:count == 0 ? 'gk' : 'k'", { expr = true, silent = true })
+-- Screenwise j/k: moves by visual lines when no count is given. Lives
+-- as a toggle below (<Leader>uj) so it's easy to flip when working
+-- with wrapped buffers vs. counted-jump muscle memory; the install
+-- here is the default-ON state seen at startup, and the toggle's set()
+-- below mirrors it.
+local function set_screenwise_jk(state)
+  if state then
+    map({ "n", "x" }, "j", "v:count == 0 ? 'gj' : 'j'", { expr = true, silent = true })
+    map({ "n", "x" }, "k", "v:count == 0 ? 'gk' : 'k'", { expr = true, silent = true })
+  else
+    pcall(vim.keymap.del, "n", "j"); pcall(vim.keymap.del, "x", "j")
+    pcall(vim.keymap.del, "n", "k"); pcall(vim.keymap.del, "x", "k")
+  end
+end
+set_screenwise_jk(vim.g.screenwise_jk ~= false)
 
 -- window navigation
 map("n", "<C-h>", "<C-w>h", { desc = "Left window" })
@@ -124,6 +136,11 @@ Lib.plugin.on_load("snacks.nvim", function()
   Snacks.toggle.option("background",
     { off = "light", on = "dark", name = "Dark Background" }
   ):map("<Leader>ub")
+  Snacks.toggle({
+    name = "Screenwise j/k",
+    get  = function() return vim.g.screenwise_jk ~= false end,
+    set  = function(state) vim.g.screenwise_jk = state; set_screenwise_jk(state) end,
+  }):map("<Leader>uj")
   Snacks.toggle.diagnostics():map("<Leader>ud")
   Snacks.toggle.line_number():map("<Leader>ul")
   Snacks.toggle.dim():map("<Leader>uD")
@@ -131,6 +148,8 @@ Lib.plugin.on_load("snacks.nvim", function()
   Snacks.toggle.scroll():map("<Leader>uS")
   Snacks.toggle.zen():map("<Leader>uz")
   Snacks.toggle.zoom():map("<Leader>uZ")
+  Snacks.toggle.profiler():map("<Leader>up")
+  Snacks.toggle.profiler_highlights():map("<Leader>uP")
   if vim.lsp.inlay_hint then
     Snacks.toggle.inlay_hints():map("<Leader>uh")
   end
