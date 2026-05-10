@@ -71,6 +71,12 @@ return {
     build        = function() require("organ.grammar_install").install() end,
     opts         = {
       org_dir = vim.fn.expand("~/org"),
+      modern = {
+        bullets = true,
+        blocks = true,
+        pills = true,
+        table = true,
+      }
     },
   },
 
