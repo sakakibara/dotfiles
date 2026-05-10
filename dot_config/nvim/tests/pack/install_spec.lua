@@ -399,6 +399,31 @@ T.describe("core.pack.install", function()
     T.truthy(notified, "expected smoke-failure warning for runtime error")
   end)
 
+  T.it("update warns on branch rewrite when vim.g.core_pack_warn_branch_rewrite is set", function()
+    local I, L = fresh()
+    local remote = make_remote()
+    local spec = { name = "demo", src = "file://" .. remote }
+    async(function(cb) I.install_missing({ spec }, { on_complete = cb }) end)
+    -- Rewrite history on the remote: amend the original commit so the
+    -- new HEAD is NOT a descendant of the old one.
+    sh({ "git", "-C", remote, "commit", "--amend", "--allow-empty", "-q", "-m", "rewritten" })
+
+    vim.g.core_pack_warn_branch_rewrite = true
+    local notified
+    local orig = vim.notify
+    vim.notify = function(msg, lvl)
+      if lvl == vim.log.levels.WARN and msg:match("branch rewrite detected") then
+        notified = msg
+      end
+    end
+    async(function(cb) I.update({ spec }, { "demo" }, { confirm = false, on_complete = cb }) end)
+    vim.notify = orig
+    vim.g.core_pack_warn_branch_rewrite = nil
+
+    T.truthy(notified, "expected branch-rewrite warning")
+    T.truthy(notified:match("demo"), "warning should name the plugin")
+  end)
+
   T.it("update with version='stable' tracks the highest semver tag", function()
     local I, L = fresh()
     local remote = make_remote()

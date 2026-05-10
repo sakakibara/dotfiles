@@ -596,6 +596,40 @@ M.update = function(specs, names, opts)
         vim.log.levels.WARN)
     end
 
+    -- Branch force-push detection (opt-in via vim.g.core_pack_warn_branch_rewrite).
+    -- If the new HEAD doesn't have the old HEAD as an ancestor, the
+    -- branch was rewritten. Doesn't refuse the update — branch rewrites
+    -- are sometimes legitimate (rebase, squash) — just informs the user
+    -- so they can investigate when the signal matters to them.
+    if vim.g.core_pack_warn_branch_rewrite then
+      local rewrites = {}
+      local pool = Jobs.pool({ concurrency = opts.concurrency })
+      for _, t in ipairs(targets) do
+        if t.target_rev and t.refs and t.target_rev ~= t.refs.head_rev
+           and t.resolved and (t.resolved.kind == "branch" or t.resolved.kind == "default") then
+          pool:add({
+            cmd = { "git", "-C", t.dir, "merge-base", "--is-ancestor",
+                    t.refs.head_rev, t.target_rev },
+            tag = t.name,
+            on_done = function(r)
+              if r.code ~= 0 then
+                rewrites[#rewrites + 1] = ("%s (%s: %s -> %s)"):format(
+                  t.name, t.resolved.name or "<default>",
+                  t.refs.head_rev:sub(1, 8), t.target_rev:sub(1, 8))
+              end
+            end,
+          })
+        end
+      end
+      await(Jobs.await_pool, pool, {})
+      if #rewrites > 0 then
+        vim.notify(
+          ("core.pack: branch rewrite detected on %d plugin(s):\n  %s"):format(
+            #rewrites, table.concat(rewrites, "\n  ")),
+          vim.log.levels.WARN)
+      end
+    end
+
     -- Build pending list (pure Lua).
     local pending = {}
     for _, t in ipairs(targets) do
