@@ -333,11 +333,13 @@ function M.setup(cfg)
   -- a re-crash mid-resume still records progress; after MAX_ATTEMPTS we
   -- give up and clear, on the assumption something about the update is
   -- structurally broken and the user needs to intervene.
+  local txn_resuming = false
   do
     local MAX_ATTEMPTS = 3
     local Txn = require("core.pack.txn")
     local txn = Txn.read()
     if txn and type(txn.pending) == "table" and #txn.pending > 0 then
+      txn_resuming = true
       vim.api.nvim_create_autocmd("User", {
         pattern = "VeryLazy", once = true,
         callback = function()
@@ -366,6 +368,30 @@ function M.setup(cfg)
         end,
       })
     end
+  end
+
+  -- Reconcile working tree HEADs against the lockfile after eager loads.
+  -- Drift = a partially-applied update or a manual checkout the user
+  -- might want to know about. Skipped when a txn resume is in flight,
+  -- since that path will bring HEADs back into sync itself.
+  if not txn_resuming then
+    vim.api.nvim_create_autocmd("User", {
+      pattern = "VeryLazy", once = true,
+      callback = function()
+        require("core.pack.install").reconcile(ordered, function(drifts)
+          if not drifts or #drifts == 0 then return end
+          local lines = {}
+          for _, d in ipairs(drifts) do
+            lines[#lines + 1] = ("  %s (lockfile %s, working tree %s)"):format(
+              d.name, d.expected:sub(1, 8), d.actual:sub(1, 8))
+          end
+          vim.notify(
+            ("core.pack: %d plugin(s) drifted from lockfile (run :Pack update! to resync):\n%s"):format(
+              #drifts, table.concat(lines, "\n")),
+            vim.log.levels.WARN)
+        end)
+      end,
+    })
   end
 
   -- Close the splash either on first user input OR after a stretch of

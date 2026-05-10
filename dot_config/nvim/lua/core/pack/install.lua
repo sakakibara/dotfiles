@@ -431,6 +431,30 @@ end)
 
 M.apply_pending = apply_pending
 
+-- Compare each installed plugin's HEAD against the lockfile rev and
+-- report drift. Drift can mean: an interrupted update that the txn
+-- resume couldn't finish, or a manual `git checkout` inside the plugin
+-- dir. Returns a list of `{ name, expected, actual }` entries; the
+-- caller decides whether to notify, auto-fix, or ignore.
+M.reconcile = async(function(specs)
+  local drifts = {}
+  for _, spec in ipairs(specs) do
+    if not spec.dev then
+      local entry = Lock.get(spec.name)
+      if entry and type(entry.rev) == "string" and #entry.rev >= 7 then
+        local dir = M.install_dir(spec.name)
+        if vim.fn.isdirectory(dir) == 1 and Git.is_repo(dir) then
+          local head = await(Git.current_rev, dir)
+          if head and head ~= entry.rev then
+            drifts[#drifts + 1] = { name = spec.name, expected = entry.rev, actual = head }
+          end
+        end
+      end
+    end
+  end
+  return drifts
+end)
+
 -- Helper: parse the bundled resolve-script stdout into a refs table.
 -- Format: <tags>\x1f<branches>\x1f<default_branch>\x1f<head_rev>
 local function parse_resolve_output(stdout)

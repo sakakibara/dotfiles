@@ -424,6 +424,47 @@ T.describe("core.pack.install", function()
     T.truthy(notified:match("demo"), "warning should name the plugin")
   end)
 
+  T.it("reconcile reports drift when HEAD diverges from the lockfile rev", function()
+    local I, L = fresh()
+    local remote = make_remote()
+    async(function(cb) I.install_missing({ { name = "demo", src = "file://" .. remote } }, { on_complete = cb }) end)
+    local rev_a = L.get("demo").rev
+
+    -- Manual checkout to a different SHA (simulating a partially-applied
+    -- update or user-driven git operation).
+    sh({ "git", "-C", remote, "commit", "--allow-empty", "-q", "-m", "second" })
+    sh({ "git", "-C", I.install_dir("demo"), "fetch", "--quiet", "origin" })
+    local rev_b = (vim.fn.system({ "git", "-C", remote, "rev-parse", "HEAD" }):gsub("%s+", ""))
+    sh({ "git", "-C", I.install_dir("demo"), "checkout", "--detach", "--quiet", rev_b })
+
+    local result
+    async(function(cb)
+      I.reconcile({ { name = "demo", src = "file://" .. remote } }, function(drifts)
+        result = drifts
+        cb()
+      end)
+    end)
+    T.eq(#result, 1)
+    T.eq(result[1].name, "demo")
+    T.eq(result[1].expected, rev_a)
+    T.eq(result[1].actual, rev_b)
+  end)
+
+  T.it("reconcile returns empty when HEAD matches lockfile", function()
+    local I, L = fresh()
+    local remote = make_remote()
+    async(function(cb) I.install_missing({ { name = "demo", src = "file://" .. remote } }, { on_complete = cb }) end)
+
+    local result
+    async(function(cb)
+      I.reconcile({ { name = "demo", src = "file://" .. remote } }, function(drifts)
+        result = drifts
+        cb()
+      end)
+    end)
+    T.eq(#result, 0)
+  end)
+
   T.it("update with version='stable' tracks the highest semver tag", function()
     local I, L = fresh()
     local remote = make_remote()
