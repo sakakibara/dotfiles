@@ -63,7 +63,7 @@ local pin_to_version = async(function(spec, dir)
   if not r.ok then
     return nil, ("%s: checkout failed: %s"):format(spec.name, r.err)
   end
-  return resolved.sha
+  return resolved.sha, nil, resolved
 end)
 
 -- Build hook: shell / Ex command / function. The shell branch is async
@@ -202,7 +202,7 @@ function M.install_missing(specs, opts)
               return complete_one(p.spec, r)
             end
             async(function()
-              local rev, err = await(pin_to_version, p.spec, p.dir)
+              local rev, err, resolved = await(pin_to_version, p.spec, p.dir)
               if not rev then
                 vim.fn.delete(p.dir, "rf")
                 vim.notify(("core.pack: %s"):format(err), vim.log.levels.ERROR)
@@ -218,12 +218,19 @@ function M.install_missing(specs, opts)
               -- type(...) == "string" is false and we'd write nil, dropping
               -- the field on round-trip. Keep the previously-locked string
               -- instead so the lockfile stays stable.
-              Lock.set(p.spec.name, {
+              local entry = {
                 src = p.spec.src,
                 rev = rev,
                 version = (type(p.spec.version) == "string" and p.spec.version)
                   or existing.version,
-              })
+              }
+              -- Record the resolved tag's name + SHA so we can detect
+              -- force-tagging on later updates ("supply chain" check).
+              if resolved and resolved.kind == "tag" then
+                entry.tag_name = resolved.name
+                entry.tag_sha  = resolved.sha
+              end
+              Lock.set(p.spec.name, entry)
               await(M.run_build, p.spec, p.dir, { fidget = view, on_failed = opts.on_failed })
               M.generate_helptags(p.dir)
               complete_one(p.spec, r)
@@ -314,11 +321,16 @@ local apply_pending = async(function(pending, opts)
           end
           -- HEAD is now p.target_rev. Skip a sync rev-parse; reuse the
           -- value we already resolved.
-          Lock.set(p.spec.name, {
+          local entry = {
             src = p.spec.src,
             rev = p.target_rev,
             version = type(p.spec.version) == "string" and p.spec.version or nil,
-          })
+          }
+          if p.resolved and p.resolved.kind == "tag" then
+            entry.tag_name = p.resolved.name
+            entry.tag_sha  = p.target_rev
+          end
+          Lock.set(p.spec.name, entry)
           M.run_build(p.spec, p.dir, { fidget = opts.fidget }, function()
             M.generate_helptags(p.dir)
             Log.append({
@@ -443,11 +455,13 @@ M.update = function(specs, names, opts)
   if fidget then fidget:set_status("core.pack", ("fetching 0/%d"):format(#targets)) end
 
   async(function()
-    -- Phase 1: fetch in parallel.
+    -- Phase 1: fetch in parallel. `--force` lets force-pushed tags
+    -- arrive locally; the tag immutability check below uses the lockfile
+    -- to flag any tag whose SHA changed since install.
     local fetch_pool = Jobs.pool({ concurrency = opts.concurrency })
     for _, t in ipairs(targets) do
       fetch_pool:add({
-        cmd = { "git", "-C", t.dir, "fetch", "--tags", "--prune", "origin" },
+        cmd = { "git", "-C", t.dir, "fetch", "--tags", "--prune", "--force", "origin" },
         tag = t.name,
         on_done = function(r) t.fetch_ok = (r.code == 0) end,
       })
@@ -527,6 +541,31 @@ M.update = function(specs, names, opts)
       end,
     })
 
+    -- Tag immutability check: if we previously recorded a tag's SHA
+    -- and the same tag name now resolves to a different SHA, the
+    -- upstream tag was force-pushed. Refuse to apply the update for
+    -- that plugin and surface the mismatch so the user can investigate
+    -- and act intentionally.
+    local tag_skipped = {}
+    for _, t in ipairs(targets) do
+      if t.target_rev and t.resolved and t.resolved.kind == "tag" then
+        local entry = Lock.get(t.name)
+        if entry and entry.tag_name == t.resolved.name
+           and entry.tag_sha and entry.tag_sha ~= t.target_rev then
+          tag_skipped[#tag_skipped + 1] = ("%s (%s: %s -> %s)"):format(
+            t.name, t.resolved.name,
+            entry.tag_sha:sub(1, 8), t.target_rev:sub(1, 8))
+          t.target_rev = nil
+        end
+      end
+    end
+    if #tag_skipped > 0 then
+      vim.notify(
+        ("core.pack: tag SHA mismatch (force-tagged?) — refusing %d update(s):\n  %s\n  Run :Pack uninstall && :Pack install <name> to accept the new SHA."):format(
+          #tag_skipped, table.concat(tag_skipped, "\n  ")),
+        vim.log.levels.WARN)
+    end
+
     -- Build pending list (pure Lua).
     local pending = {}
     for _, t in ipairs(targets) do
@@ -534,7 +573,7 @@ M.update = function(specs, names, opts)
         pending[#pending + 1] = {
           spec = t.spec, dir = t.dir, from = t.refs.head_rev, to = t.target_rev,
           ref = t.resolved and t.resolved.name or nil, checkout_ref = t.checkout_ref,
-          target_rev = t.target_rev,
+          target_rev = t.target_rev, resolved = t.resolved,
         }
       end
     end

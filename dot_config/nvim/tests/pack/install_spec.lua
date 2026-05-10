@@ -308,6 +308,45 @@ T.describe("core.pack.install", function()
     Txn._path_override = nil
   end)
 
+  T.it("install records tag_name + tag_sha for a tag-pinned spec", function()
+    local I, L = fresh()
+    local remote = make_remote()
+    sh({ "git", "-C", remote, "tag", "v1.0.0" })
+    local spec = { name = "demo", src = "file://" .. remote, version = "v1.0.0" }
+    async(function(cb) I.install_missing({ spec }, { on_complete = cb }) end)
+    local entry = L.get("demo")
+    T.eq(entry.tag_name, "v1.0.0")
+    T.truthy(entry.tag_sha and #entry.tag_sha == 40)
+    T.eq(entry.tag_sha, entry.rev)
+  end)
+
+  T.it("update refuses to apply a force-tagged tag and warns", function()
+    local I, L = fresh()
+    local remote = make_remote()
+    sh({ "git", "-C", remote, "tag", "v1.0.0" })
+    local spec = { name = "demo", src = "file://" .. remote, version = "v1.0.0" }
+    async(function(cb) I.install_missing({ spec }, { on_complete = cb }) end)
+    local rev_orig = L.get("demo").rev
+
+    -- Move v1.0.0 to a different commit (force-tag).
+    sh({ "git", "-C", remote, "commit", "--allow-empty", "-q", "-m", "second" })
+    sh({ "git", "-C", remote, "tag", "-f", "v1.0.0" })
+
+    local notified
+    local orig = vim.notify
+    vim.notify = function(msg, lvl)
+      if lvl == vim.log.levels.WARN and msg:match("tag SHA mismatch") then
+        notified = msg
+      end
+    end
+    async(function(cb) I.update({ spec }, { "demo" }, { confirm = false, on_complete = cb }) end)
+    vim.notify = orig
+
+    T.truthy(notified, "expected force-tag warning")
+    T.truthy(notified:match("v1%.0%.0"), "warning should name the tag")
+    T.eq(L.get("demo").rev, rev_orig, "lockfile rev should not change on force-tag")
+  end)
+
   T.it("update with range version picks highest matching tag", function()
     local I, L = fresh()
     local remote = make_remote()
