@@ -1,4 +1,3 @@
--- lua/config/plugins/lang/clojure.lua
 return Lib.lang.setup({
   cmd = "clj",
   mason = { "clojure-lsp" },

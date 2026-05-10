@@ -1,4 +1,3 @@
--- lua/config/autocmds.lua
 local au = vim.api.nvim_create_autocmd
 local grp = vim.api.nvim_create_augroup("Lib", { clear = true })
 

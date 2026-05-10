@@ -1,4 +1,3 @@
--- lua/config/plugins/treesitter.lua
 --
 -- nvim-treesitter main branch (active, Nvim 0.12+). master is the locked
 -- legacy branch for Nvim 0.11 — it has the iter_matches API mismatch.

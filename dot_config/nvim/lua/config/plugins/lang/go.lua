@@ -1,4 +1,3 @@
--- lua/config/plugins/lang/go.lua
 return Lib.lang.setup({
   cmd = "go",
   mason = { "gopls", "goimports", "gofumpt", "delve" },

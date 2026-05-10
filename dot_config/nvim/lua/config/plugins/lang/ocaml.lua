@@ -1,4 +1,3 @@
--- lua/config/plugins/lang/ocaml.lua
 return Lib.lang.setup({
   cmd = "ocaml",
   mason = { "ocamllsp" },

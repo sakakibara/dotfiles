@@ -1,4 +1,3 @@
--- lua/lib/neotest.lua
 -- Registry for neotest adapters. Lang files call Lib.neotest.add(name, factory);
 -- neotest's spec calls Lib.neotest.setup(opts) which stashes opts and applies
 -- them with the current adapter list.

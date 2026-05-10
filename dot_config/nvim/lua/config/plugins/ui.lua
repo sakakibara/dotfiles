@@ -1,4 +1,3 @@
--- lua/config/plugins/ui.lua
 return {
   -- web-devicons (used by oil, render-markdown, winbar, tabline)
   -- Eager: statusline, winbar, tabline, oil all call get_icon from first

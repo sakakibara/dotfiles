@@ -1,4 +1,3 @@
--- lua/lib/theme.lua
 -- Reads $XDG_STATE_HOME/dotfiles/theme, written by the `theme` switcher.
 -- The state file is one of:
 --   "family/variant"  for variant'd families (catppuccin, tokyonight, ...)

@@ -1,4 +1,3 @@
--- lua/lib/ui.lua
 local M = {}
 
 function M.fg(name)

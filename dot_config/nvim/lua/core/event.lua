@@ -1,4 +1,3 @@
--- lua/core/event.lua
 local M = {}
 
 local EXPAND = {

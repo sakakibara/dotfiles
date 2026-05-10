@@ -1,4 +1,3 @@
--- lua/lib/lang.lua
 -- Helper for the recurring lang/*.lua shape: gate on an executable, register
 -- mason tools, install treesitter parsers, configure LSP servers (capabilities
 -- merged automatically), wire conform formatters and nvim-lint linters,

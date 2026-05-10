@@ -1,4 +1,3 @@
--- lua/config/plugins/lang/elixir.lua
 -- credo not in mason registry; user installs via `mix archive.install hex credo`.
 local linters = {}
 if vim.fn.executable("credo") == 1 then linters.elixir = { "credo" } end

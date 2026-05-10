@@ -1,4 +1,3 @@
--- tests/pack/spec_spec.lua
 local T = require("tests.helpers")
 local F = require("tests.pack.fixtures")
 

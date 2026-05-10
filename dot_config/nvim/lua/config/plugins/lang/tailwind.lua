@@ -1,4 +1,3 @@
--- lua/config/plugins/lang/tailwind.lua
 -- Note: old config added `roobert/tailwindcss-colorizer-cmp.nvim` as an
 -- nvim-cmp source formatter. Skipped — M2 uses blink.cmp and there is no
 -- direct blink-native equivalent yet. Revisit if tailwind color swatches

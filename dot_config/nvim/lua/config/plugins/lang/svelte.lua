@@ -1,4 +1,3 @@
--- lua/config/plugins/lang/svelte.lua
 -- Note: old config coordinated svelte with vtsls via `typescript-svelte-plugin`
 -- for TS intelligence inside .svelte files. Skipped per M4 simplification.
 return Lib.lang.setup({

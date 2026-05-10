@@ -1,4 +1,3 @@
--- tests/pack/fixtures.lua
 -- Reusable spec factories so per-test setup stays small.
 local M = {}
 

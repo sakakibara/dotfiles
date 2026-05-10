@@ -1,4 +1,3 @@
--- lua/config/plugins/lang/terraform.lua
 -- Note: old config registered `telescope-terraform.nvim` and
 -- `telescope-terraform-doc.nvim` extensions. Skipped — M2 has no telescope.
 -- Revisit if/when telescope lands.

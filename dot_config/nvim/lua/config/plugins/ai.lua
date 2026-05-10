@@ -1,4 +1,3 @@
--- lua/config/plugins/ai.lua
 return {
   {
     "yetone/avante.nvim",

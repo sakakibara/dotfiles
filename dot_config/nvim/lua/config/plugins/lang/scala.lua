@@ -1,4 +1,3 @@
--- lua/config/plugins/lang/scala.lua
 -- nvim-metals owns its own initialize_or_attach lifecycle; do not register
 -- metals with nvim-lspconfig. metals: install via `coursier install metals`
 -- (not auto-managed; mason has partial scala coverage but coursier is the

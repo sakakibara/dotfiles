@@ -1,4 +1,3 @@
--- lua/config/plugins/lang/markdown.lua
 -- markdown-toc not in mason registry; install via `npm i -g markdown-toc` if desired.
 return Lib.lang.setup({
   mason = { "marksman", "prettier", "markdownlint-cli2" },

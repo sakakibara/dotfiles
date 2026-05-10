@@ -1,4 +1,3 @@
--- lua/lib/winbar.lua
 --
 -- Two-zone winbar:
 --   LEFT   — code scope (treesitter symbol trail, primary focus)

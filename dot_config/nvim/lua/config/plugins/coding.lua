@@ -1,5 +1,3 @@
--- lua/config/plugins/coding.lua
-
 -- Replace blink.cmp.lib.utils.notify with a splash-aware version. The
 -- stock notify uses vim.api.nvim_echo with history=true; with our
 -- cmdheight=0 that produces a brief "more"-style popup at the top of

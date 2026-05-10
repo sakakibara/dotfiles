@@ -1,4 +1,3 @@
--- lua/config/plugins/testing.lua
 return {
   {
     "nvim-neotest/neotest",

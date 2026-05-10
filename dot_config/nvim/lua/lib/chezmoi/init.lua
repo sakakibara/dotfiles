@@ -1,4 +1,3 @@
--- lua/lib/chezmoi/init.lua
 -- nvim integration for chezmoi templates (*.tmpl files):
 --   1. Filetype detection — strip .tmpl, set ft to underlying language so
 --      LSP / formatters / treesitter for that language attach normally.

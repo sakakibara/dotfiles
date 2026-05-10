@@ -1,4 +1,3 @@
--- lua/config/plugins/lang/csharp.lua
 local plugins = Lib.lang.setup({
   cmd = "dotnet",
   mason = { "omnisharp", "csharpier", "netcoredbg" },

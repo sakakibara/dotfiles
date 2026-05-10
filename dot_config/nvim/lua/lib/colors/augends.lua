@@ -1,4 +1,3 @@
--- lua/lib/colors/augends.lua
 -- dial.nvim augends for OKLCH channel adjustment of color literals under
 -- the cursor. <C-a>/<C-x> bump the channel, the literal is rewritten in
 -- its original surface format (hex stays hex, rgb stays rgb, etc.).

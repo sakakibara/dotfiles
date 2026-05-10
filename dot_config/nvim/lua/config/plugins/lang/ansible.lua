@@ -1,4 +1,3 @@
--- lua/config/plugins/lang/ansible.lua
 return Lib.lang.setup({
   cmd = "ansible",
   mason = { "ansible-language-server", "ansible-lint" },

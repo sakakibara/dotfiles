@@ -1,4 +1,3 @@
--- lua/config/plugins/lang/java.lua
 return Lib.lang.setup({
   cmd = "java",
   mason = { "jdtls", "java-debug-adapter", "java-test" },

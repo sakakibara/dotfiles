@@ -1,4 +1,3 @@
--- lua/config/plugins/lang/json.lua
 return Lib.lang.setup({
   mason = { "json-lsp" },
   -- nvim-treesitter main dropped the dedicated jsonc parser; the json

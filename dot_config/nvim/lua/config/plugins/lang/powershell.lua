@@ -1,4 +1,3 @@
--- lua/config/plugins/lang/powershell.lua
 -- powershell-editor-services is a bundled DLL set launched via pwsh; mason
 -- installs it under its packages dir, which is what `bundle_path` points to below.
 return Lib.lang.setup({

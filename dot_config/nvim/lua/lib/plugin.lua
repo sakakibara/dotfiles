@@ -1,4 +1,3 @@
--- lua/lib/plugin.lua
 local M = {}
 
 function M.has(name)   return require("core.pack").has(name) end

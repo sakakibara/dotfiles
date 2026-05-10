@@ -1,4 +1,3 @@
--- lua/config/plugins/notes.lua
 -- Note-taking plugins:
 --   zk-nvim   — Zettelkasten via the `zk` CLI. Requires ZK_NOTEBOOK_DIR.
 --   organ.nvim — unified org-mode + org-roam. Build hook clones and compiles

@@ -1,4 +1,3 @@
--- lua/config/plugins/editor/nav.lua
 -- File / URL navigation: directory editing, external links, search-replace,
 -- dotfile helpers.
 

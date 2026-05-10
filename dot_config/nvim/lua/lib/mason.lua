@@ -1,4 +1,3 @@
--- lua/lib/mason.lua
 -- Tool registry for mason. All tools are tied to one or more filetypes
 -- and install on-demand the first time a buffer of that filetype opens.
 -- (No eager / unconditional install path: every tool we know about

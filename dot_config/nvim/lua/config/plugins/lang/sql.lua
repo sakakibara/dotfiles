@@ -1,4 +1,3 @@
--- lua/config/plugins/lang/sql.lua
 local sql_ft = { "sql", "mysql", "plsql" }
 
 local formatters_by_ft = {}

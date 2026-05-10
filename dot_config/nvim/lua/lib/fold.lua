@@ -1,4 +1,3 @@
--- lua/lib/fold.lua
 -- Custom 'foldtext' that returns {text, hl_group} tuples so the first
 -- line of the fold is painted with treesitter syntax colors, followed by
 -- a muted suffix. vim.treesitter.foldtext was removed in 0.11+, so we

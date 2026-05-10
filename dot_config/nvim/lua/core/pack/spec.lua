@@ -1,4 +1,3 @@
--- lua/core/pack/spec.lua
 local M = {}
 
 

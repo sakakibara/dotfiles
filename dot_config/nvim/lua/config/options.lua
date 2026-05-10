@@ -1,4 +1,3 @@
--- lua/config/options.lua
 local opt = vim.opt
 
 -- mise shims (unique to this user's tool-version setup)

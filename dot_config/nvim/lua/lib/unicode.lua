@@ -1,4 +1,3 @@
--- lua/lib/unicode.lua
 -- Display-width-aware string slicing. Lua's `string.sub` and `#str` work
 -- on bytes; for CJK / emoji / any multi-byte content they split mid
 -- codepoint and produce orphan continuation bytes that nvim renders as

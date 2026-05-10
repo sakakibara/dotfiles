@@ -1,4 +1,3 @@
--- lua/core/profile.lua
 local uv = vim.uv
 local M = {}
 

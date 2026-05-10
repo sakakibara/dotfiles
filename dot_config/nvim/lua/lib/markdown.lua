@@ -1,4 +1,3 @@
--- lua/lib/markdown.lua
 -- Toggle GFM task-list checkboxes on markdown lines.
 --
 -- Detection strategy is treesitter-first: if the `markdown` parser is

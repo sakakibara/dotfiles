@@ -1,5 +1,3 @@
--- lua/config/plugins/lang/helm.lua
-
 -- Stop yamlls on helm-template buffers: yamlls and helm_ls both claim yaml
 -- files, and yamlls emits noisy diagnostics on helm templates. Registered
 -- unconditionally; safe even when helm itself isn't installed because the

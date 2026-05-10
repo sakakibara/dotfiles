@@ -1,4 +1,3 @@
--- lua/lib/init.lua
 local M = {}
 
 function M.init()

@@ -1,4 +1,3 @@
--- lua/lib/root.lua
 local uv = vim.uv
 local M = {}
 

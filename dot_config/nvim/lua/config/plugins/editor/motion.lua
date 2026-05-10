@@ -1,4 +1,3 @@
--- lua/config/plugins/editor/motion.lua
 -- Movement: treesitter-aware jumps, quick-jump marks.
 
 return {

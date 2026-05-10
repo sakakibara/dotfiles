@@ -1,4 +1,3 @@
--- lua/lib/colors/color.lua
 -- Pure color math. No nvim API calls.
 local M = {}
 

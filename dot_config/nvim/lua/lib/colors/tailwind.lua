@@ -1,4 +1,3 @@
--- lua/lib/colors/tailwind.lua
 -- Tailwind v4 palette resolution: built-in defaults + project @theme overlay.
 local C       = require("lib.colors.color")
 local PALETTE = require("lib.colors._tailwind_palette")

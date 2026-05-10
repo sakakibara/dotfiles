@@ -1,4 +1,3 @@
--- lua/lib/winbar_menu.lua
 --
 -- Linked-list menu architecture (independently implemented, inspired by
 -- the state-machine dropbar.nvim uses).

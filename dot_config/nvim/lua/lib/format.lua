@@ -1,4 +1,3 @@
--- lua/lib/format.lua
 --
 -- Pluggable format-on-save with composable sources, vim.g / vim.b autoformat
 -- toggles, and quiet-by-default on-save semantics.

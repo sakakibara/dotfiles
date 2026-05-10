@@ -1,4 +1,3 @@
--- lua/lib/colors/detect.lua
 -- Hybrid detector: TS-first dispatcher (excludes comments etc.) with a
 -- line-bounded regex fallback for filetypes whose parser isn't available.
 -- Hard caps prevent runaway scans on huge buffers / single multi-MB lines.

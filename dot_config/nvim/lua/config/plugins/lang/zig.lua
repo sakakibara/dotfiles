@@ -1,4 +1,3 @@
--- lua/config/plugins/lang/zig.lua
 return Lib.lang.setup({
   cmd = "zig",
   mason = { "zls" },

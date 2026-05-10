@@ -1,4 +1,3 @@
--- lua/config/plugins/lang/docker.lua
 return Lib.lang.setup({
   cmd = "docker",
   mason = { "dockerfile-language-server", "docker-compose-language-service", "hadolint" },

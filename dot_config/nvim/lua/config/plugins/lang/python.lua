@@ -1,4 +1,3 @@
--- lua/config/plugins/lang/python.lua
 return Lib.lang.setup({
   cmd = "python3",
   mason = { "ruff", "debugpy" },

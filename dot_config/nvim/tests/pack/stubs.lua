@@ -1,4 +1,3 @@
--- tests/pack/stubs.lua
 -- Stub helpers for unit tests.
 local M = {}
 

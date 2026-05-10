@@ -1,4 +1,3 @@
--- lua/config/plugins/lang/ruby.lua
 -- erb-formatter not in mason registry; install via `gem install erb-formatter`.
 return Lib.lang.setup({
   cmd = "ruby",

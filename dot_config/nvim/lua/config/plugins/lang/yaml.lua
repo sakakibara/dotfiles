@@ -1,4 +1,3 @@
--- lua/config/plugins/lang/yaml.lua
 return Lib.lang.setup({
   mason = { "yaml-language-server" },
   parsers = { "yaml" },

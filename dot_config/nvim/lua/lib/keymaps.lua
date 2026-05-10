@@ -1,4 +1,3 @@
--- lua/lib/keymaps.lua
 local M = {}
 
 function M.yank_relative_path()

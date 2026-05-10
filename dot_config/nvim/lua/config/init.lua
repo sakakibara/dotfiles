@@ -1,4 +1,3 @@
--- lua/config/init.lua
 local M = {}
 
 -- Pre-noice vim.notify tee. See M.setup() header for the full story.

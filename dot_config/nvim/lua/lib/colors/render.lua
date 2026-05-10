@@ -1,4 +1,3 @@
--- lua/lib/colors/render.lua
 -- Manages extmarks for color highlights. Diff-patches against previous
 -- state so scrolling/editing don't bulk-clear-and-redraw.
 local C = require("lib.colors.color")

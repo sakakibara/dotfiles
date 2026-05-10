@@ -1,4 +1,3 @@
--- lua/lib/colors/contrast.lua
 -- Render WCAG contrast ratios as virt-text on lines that contain exactly
 -- two color literals. Toggleable per buffer via `:ColorContrast` (the
 -- command lives in init.lua).

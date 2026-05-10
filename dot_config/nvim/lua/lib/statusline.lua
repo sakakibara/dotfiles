@@ -1,4 +1,3 @@
--- lua/lib/statusline.lua
 --
 -- Statusline designed for two things:
 --   1. Premium appearance: powerline-slant separators, catppuccin-sourced

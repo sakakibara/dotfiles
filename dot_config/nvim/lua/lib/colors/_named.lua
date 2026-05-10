@@ -1,4 +1,3 @@
--- lua/lib/colors/_named.lua
 -- CSS Color Module Level 4 named colors (148 entries).
 -- Source: https://www.w3.org/TR/css-color-4/#named-colors
 return {

@@ -1,4 +1,3 @@
--- lua/lib/chezmoi/blink.lua
 -- blink.cmp custom source for chezmoi templates. Active only in buffers
 -- where lib.chezmoi has set b:chezmoi_template = true (so it doesn't
 -- pollute completion in regular shell/lua/toml files).

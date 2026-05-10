@@ -1,4 +1,3 @@
--- lua/config/plugins/lang/nushell.lua
 -- `nu --lsp` is built into the nushell runtime; no separate binary and no mason entry.
 return Lib.lang.setup({
   cmd = "nu",

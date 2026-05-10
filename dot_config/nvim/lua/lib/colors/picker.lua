@@ -1,4 +1,3 @@
--- lua/lib/colors/picker.lua
 -- Floating-window color picker. State machine: closed → compact → expanded.
 local C = require("lib.colors.color")
 local H = require("lib.colors.harmony")

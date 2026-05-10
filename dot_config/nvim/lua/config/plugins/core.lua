@@ -1,4 +1,3 @@
--- lua/config/plugins/core.lua
 local theme = Lib.theme.read()
 local catppuccin_active = theme.family == "catppuccin"
 local catppuccin_variant = catppuccin_active and theme.variant or "mocha"

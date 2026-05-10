@@ -1,4 +1,3 @@
--- lua/lib/tabline.lua
 -- Feature-rich tabline — for actual tab pages, not buffers. Shows:
 --   [N] <icon> <focus-buffer-name> +<extra-window-count> <modified-dot>
 -- Clickable tab pills (left-click switches, middle-click closes via %NX),

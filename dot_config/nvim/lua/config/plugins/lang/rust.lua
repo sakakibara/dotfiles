@@ -1,4 +1,3 @@
--- lua/config/plugins/lang/rust.lua
 -- Per user policy, rust-analyzer is NOT auto-installed. Install via:
 --   rustup component add rust-analyzer
 -- codelldb is shared with c.lua; Lib.mason.add is idempotent.

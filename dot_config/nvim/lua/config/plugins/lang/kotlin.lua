@@ -1,4 +1,3 @@
--- lua/config/plugins/lang/kotlin.lua
 local plugins = Lib.lang.setup({
   cmd = "kotlin",
   mason = { "kotlin-language-server", "ktlint", "kotlin-debug-adapter" },

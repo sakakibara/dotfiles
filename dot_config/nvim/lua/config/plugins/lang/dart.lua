@@ -1,4 +1,3 @@
--- lua/config/plugins/lang/dart.lua
 -- Dart LSP is bundled with the Dart SDK (via `dart language-server`); no mason
 -- entry. flutter-tools.nvim owns the LSP lifecycle, so we don't register dartls
 -- through nvim-lspconfig either.

@@ -1,4 +1,3 @@
--- lua/config/plugins/dap.lua
 return {
   {
     "mfussenegger/nvim-dap",

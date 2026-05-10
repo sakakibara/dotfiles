@@ -1,4 +1,3 @@
--- tests/helpers.lua
 local M = {}
 M._fails = {}
 M._passes = 0

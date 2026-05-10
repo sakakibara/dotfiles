@@ -1,4 +1,3 @@
--- lua/config/plugins/lang/php.lua
 local plugins = Lib.lang.setup({
   cmd = "php",
   mason = { "phpactor", "php-cs-fixer", "phpcs", "php-debug-adapter" },

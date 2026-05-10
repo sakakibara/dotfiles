@@ -1,4 +1,3 @@
--- lua/config/plugins/lang/haskell.lua
 -- haskell-language-server: install via ghcup (`ghcup install hls`); not managed by mason.
 -- haskell-tools.nvim configures the LSP on its own via vim.g.haskell_tools;
 -- no nvim-lspconfig wiring needed.

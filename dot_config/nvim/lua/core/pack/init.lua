@@ -1,4 +1,3 @@
--- lua/core/pack/init.lua
 local M = {}
 
 local Spec = require("core.pack.spec")

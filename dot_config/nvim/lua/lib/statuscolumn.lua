@@ -1,4 +1,3 @@
--- lua/lib/statuscolumn.lua
 local M = {}
 
 local function gitsign_for(buf, lnum)

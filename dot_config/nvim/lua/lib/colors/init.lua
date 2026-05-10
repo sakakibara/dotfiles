@@ -1,4 +1,3 @@
--- lua/lib/colors/init.lua
 -- Public entry point. setup() registers autocmds + commands; toggle()
 -- enables/disables per-buffer or globally.
 

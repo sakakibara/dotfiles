@@ -1,4 +1,3 @@
--- tests/run.lua
 -- Usage: nvim --headless -l tests/run.lua
 vim.opt.rtp:prepend(vim.fn.getcwd())
 

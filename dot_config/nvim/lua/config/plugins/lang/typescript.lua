@@ -1,4 +1,3 @@
--- lua/config/plugins/lang/typescript.lua
 -- NOTE: LSP keymaps (gD goToSourceDefinition, gR file references, <Leader>co
 -- organize imports, <Leader>cM add missing, <Leader>cu remove unused,
 -- <Leader>cD fix all, <Leader>cV select TS version) and the custom

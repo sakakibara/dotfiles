@@ -1,4 +1,3 @@
--- lua/config/plugins/lang/tex.lua
 return Lib.lang.setup({
   cmd = "pdflatex",
   mason = { "texlab" },

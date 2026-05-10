@@ -1,4 +1,3 @@
--- lua/lib/parsers.lua
 -- Registry of treesitter parsers, keyed by filetype. Lang specs and
 -- direct callers register parsers via Lib.parsers.add(name, { ft = ... });
 -- the treesitter spec's FileType autocmd reads list_for_ft(ft) to

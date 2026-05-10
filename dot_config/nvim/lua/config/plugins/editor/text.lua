@@ -1,4 +1,3 @@
--- lua/config/plugins/editor/text.lua
 -- Text manipulation: surround, text objects, autopair, yank ring, smart
 -- inc/dec, auto-indent, autoclose keywords, extended matchpair, split/join,
 -- trailing whitespace, case conversion, alignment, better-escape, readline

@@ -1,4 +1,3 @@
--- lua/lib/lsp.lua
 -- LSP integration: setup, capabilities, buffer keymaps, attach callbacks.
 -- Called from config/init.lua at VeryLazy.
 

@@ -1,4 +1,3 @@
--- tests/pack/refs_spec.lua
 local T = require("tests.helpers")
 local stubs = require("tests.pack.stubs")
 

@@ -1,4 +1,3 @@
--- lua/lib/colors/harmony.lua
 -- Pure color-harmony helpers operating in OKLCH for perceptual hue rotation.
 local C = require("lib.colors.color")
 local M = {}

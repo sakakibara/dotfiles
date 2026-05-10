@@ -1,4 +1,3 @@
--- lua/lib/colors/format.lua
 -- Color → text serialization in any of the supported color formats.
 -- Extracted from picker.lua's commit path so :ColorConvert / :ColorYank
 -- can reuse the same logic, and so adding a new format only touches one

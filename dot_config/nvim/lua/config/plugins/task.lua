@@ -1,4 +1,3 @@
--- lua/config/plugins/task.lua
 -- Task runner and quickfix UI. Overseer streams long-running shell output
 -- into a task panel; quicker.nvim replaces the default quickfix window
 -- with an editable buffer.

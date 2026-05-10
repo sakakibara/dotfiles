@@ -1,4 +1,3 @@
--- lua/lib/colors/parse.lua
 -- Pure: string + offset → { range = {col_s, col_e}, color = Color } or nil.
 -- Each format has its own pattern. parse() returns the literal that contains
 -- the given offset (or nil); parse_all() scans an entire string.

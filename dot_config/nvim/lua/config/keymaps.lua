@@ -1,4 +1,3 @@
--- lua/config/keymaps.lua
 -- Leader must be set before any `<leader>x` keymap is created (incl. eager
 -- plugin config()s during pack.setup). This file is required synchronously in
 -- config/init.lua's stage 1 — costs ~1 ms warm but guarantees keymaps are

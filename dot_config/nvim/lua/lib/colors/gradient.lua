@@ -1,4 +1,3 @@
--- lua/lib/colors/gradient.lua
 -- Render multi-stop swatch strips for `linear-gradient(...)`,
 -- `radial-gradient(...)`, and `conic-gradient(...)` calls. Each detected
 -- gradient gets a row of small `█` cells (one per stop, colored with the

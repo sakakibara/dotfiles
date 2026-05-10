@@ -1,4 +1,3 @@
--- lua/config/plugins/git.lua
 -- Git integration: gitsigns (hunk signs + per-hunk actions), lazygit via
 -- snacks for repository operations, blame and diff helpers.
 

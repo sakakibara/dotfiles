@@ -1,4 +1,3 @@
--- lua/lib/colors/_tailwind_palette.lua
 -- Tailwind v4 default palette (288 oklch triples, plus black/white). Generated
 -- from upstream tailwindcss/packages/tailwindcss/theme.css via:
 --   gh api repos/tailwindlabs/tailwindcss/contents/packages/tailwindcss/theme.css \

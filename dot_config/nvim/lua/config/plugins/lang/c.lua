@@ -1,5 +1,3 @@
--- lua/config/plugins/lang/c.lua
-
 -- DAP adapter + per-language configurations. Registered unconditionally;
 -- adapters/configurations only fire when the user starts a debug session.
 Lib.plugin.on_load("nvim-dap", function()

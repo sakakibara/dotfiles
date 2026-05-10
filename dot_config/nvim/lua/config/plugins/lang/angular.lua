@@ -1,4 +1,3 @@
--- lua/config/plugins/lang/angular.lua
 -- Note: old config also wired `@angular/language-server` as a vtsls global
 -- plugin so Angular-aware completions would fire inside .ts files. Skipped
 -- per M4 simplification — angularls alone handles Angular templates.

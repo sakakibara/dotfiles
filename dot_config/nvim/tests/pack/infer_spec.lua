@@ -1,4 +1,3 @@
--- tests/pack/infer_spec.lua
 local T = require("tests.helpers")
 
 local function fresh()
