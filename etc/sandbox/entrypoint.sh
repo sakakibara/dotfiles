@@ -69,6 +69,14 @@ if [[ -f "$HOST_GITCONFIG" ]]; then
 	program = ssh-keygen
 	allowedSignersFile = $signers
 EOF
+  # Honor the host's global gitignore when the wrapper bind-mounted it.
+  if [[ -f /home/claude/.gitignore_global ]]; then
+    cat >> "$GLOBAL_GIT" <<EOF
+
+[core]
+	excludesFile = /home/claude/.gitignore_global
+EOF
+  fi
   export GIT_CONFIG_GLOBAL="$GLOBAL_GIT"
 fi
 

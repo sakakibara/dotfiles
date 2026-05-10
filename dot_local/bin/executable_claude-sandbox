@@ -414,6 +414,13 @@ _run_args() {
     -w "$repo"
   )
 
+  # Mount the host's global gitignore so git inside the container honors
+  # the same ignore rules. Without this every project picks up editor /
+  # OS detritus on `git add`.
+  if [[ -f "$HOME/.gitignore_global" ]]; then
+    args+=( -v "$HOME/.gitignore_global":/home/claude/.gitignore_global:ro )
+  fi
+
   # SSH commit-signing via the host's 1Password agent. Two transports:
   #
   #   macOS host: TCP relay (host-side socat started in
