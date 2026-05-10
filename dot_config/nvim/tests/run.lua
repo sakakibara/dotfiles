@@ -51,6 +51,7 @@ dofile(vim.fn.getcwd() .. "/tests/pack/health_spec.lua")
 dofile(vim.fn.getcwd() .. "/tests/pack/log_spec.lua")
 dofile(vim.fn.getcwd() .. "/tests/pack/spec_spec.lua")
 dofile(vim.fn.getcwd() .. "/tests/pack/refs_spec.lua")
+dofile(vim.fn.getcwd() .. "/tests/pack/infer_spec.lua")
 dofile(vim.fn.getcwd() .. "/tests/pack/commands_spec.lua")
 
 dofile(vim.fn.getcwd() .. "/tests/lib/path_spec.lua")

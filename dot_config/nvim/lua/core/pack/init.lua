@@ -263,6 +263,18 @@ function M.setup(cfg)
   end
   ordered = pruned
 
+  -- Apply trigger inference for `auto = true` specs now that all clones
+  -- have settled (the scanner needs a working tree on disk). Mutates
+  -- specs in place so the eager-load filter and triggers.register both
+  -- see the inferred lazy + cmd/ft.
+  do
+    local Infer   = require("core.pack.infer")
+    local Install = require("core.pack.install")
+    for _, s in ipairs(ordered) do
+      if not s.dev then Infer.apply(s, Install.install_dir(s.name)) end
+    end
+  end
+
   -- Splash transitions from install phase to setup phase. The eager
   -- load loop below is synchronous and blocks the UI; without the
   -- splash covering it, nvim looks frozen for several seconds while
