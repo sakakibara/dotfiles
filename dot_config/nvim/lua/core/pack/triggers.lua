@@ -90,7 +90,7 @@ function M.create(deps)
       if spec.lazy and spec.event then
         for _, e in ipairs(event.expand(spec.event)) do
           if e == "VeryLazy" then
-            event.on("VeryLazy", function() load_spec(spec) end)
+            event.on("VeryLazy", function() load_spec(spec, "event:VeryLazy") end)
           elseif e:match("^User ") then
             push(user_groups, e:sub(6), spec)
           else
@@ -112,7 +112,7 @@ function M.create(deps)
         for _, c in ipairs(cmds) do
           vim.api.nvim_create_user_command(c, function(opts)
             pcall(vim.api.nvim_del_user_command, c)
-            load_spec(spec)
+            load_spec(spec, "cmd:" .. c)
             vim.api.nvim_cmd({
               cmd = c,
               bang = opts.bang,
@@ -140,15 +140,15 @@ function M.create(deps)
       return "lazy: " .. table.concat(names, ", ")
     end
 
-    local function load_group(group)
-      for _, s in ipairs(group.specs) do load_spec(s) end
+    local function load_group(group, reason)
+      for _, s in ipairs(group.specs) do load_spec(s, reason) end
     end
 
     for pat, group in pairs(user_groups) do
       vim.api.nvim_create_autocmd("User", {
         once = true, pattern = pat, desc = group_desc(group),
         callback = function(args)
-          load_group(group)
+          load_group(group, "event:User " .. pat)
           schedule_refire("User", { pattern = pat, data = args.data, modeline = false })
         end,
       })
@@ -158,7 +158,7 @@ function M.create(deps)
       vim.api.nvim_create_autocmd(e, {
         once = true, desc = group_desc(group),
         callback = function(args)
-          load_group(group)
+          load_group(group, "event:" .. args.event)
           schedule_refire(args.event, {
             buffer = args.buf, data = args.data, modeline = false,
           })
@@ -170,7 +170,7 @@ function M.create(deps)
       vim.api.nvim_create_autocmd("FileType", {
         once = true, pattern = ft, desc = group_desc(group),
         callback = function(args)
-          load_group(group)
+          load_group(group, "ft:" .. ft)
           schedule_refire("FileType", { buffer = args.buf, modeline = false })
         end,
       })

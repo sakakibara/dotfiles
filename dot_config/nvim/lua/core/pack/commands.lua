@@ -398,6 +398,66 @@ local function subcommands(Pack)
     end,
   }
 
+  subs.why = {
+    desc = "Explain why a plugin loaded (which trigger fired) and how long it took",
+    complete = function(arglead)
+      return name_complete(Pack, arglead, function(n) return Pack._loaded[n] end)
+    end,
+    run = function(opts)
+      local name = opts.fargs[1]
+      if not name then vim.notify("core.pack: usage :Pack why <name>", vim.log.levels.WARN); return end
+      if not Pack.has(name) then
+        vim.notify(("core.pack: unknown plugin '%s'"):format(name), vim.log.levels.WARN); return
+      end
+      if not Pack._loaded[name] then
+        vim.notify(("core.pack: %s is not loaded"):format(name)); return
+      end
+      local entry = Pack._load_reason[name]
+      if not entry then
+        vim.notify(("core.pack: no load record for %s"):format(name), vim.log.levels.WARN); return
+      end
+
+      local Profile = require("core.profile")
+      local load_ms = Profile.lookup(name)
+
+      local lines = { ("core.pack: why %s"):format(name), "" }
+      lines[#lines + 1] = ("  trigger : %s"):format(entry.reason)
+      if load_ms then
+        lines[#lines + 1] = ("  duration: %.2f ms"):format(load_ms)
+      end
+
+      -- Walk the dep graph upward for "dep:<parent>" reasons so the user
+      -- sees the chain that ultimately pulled this plugin in.
+      local chain, cur = {}, entry
+      while cur and cur.reason and cur.reason:match("^dep:") do
+        local parent = cur.reason:sub(5)
+        chain[#chain + 1] = parent
+        cur = Pack._load_reason[parent]
+      end
+      if #chain > 0 then
+        local root = cur and cur.reason or "unknown"
+        lines[#lines + 1] = ("  via deps: %s -> %s"):format(table.concat(chain, " -> "), root)
+      end
+
+      -- Reverse map: who else loaded because of this plugin.
+      local children = {}
+      for child, e in pairs(Pack._load_reason) do
+        if e.reason == ("dep:" .. name) then children[#children + 1] = child end
+      end
+      table.sort(children)
+      if #children > 0 then
+        lines[#lines + 1] = ("  pulled in: %s"):format(table.concat(children, ", "))
+      end
+
+      local UI = require("core.pack.ui")
+      UI.status(lines, {
+        title = "core.pack: why",
+        highlights = { { 0, 0, #lines[1], "Title" } },
+        filetype = "PackWhy",
+      })
+    end,
+  }
+
   return subs
 end
 
@@ -442,7 +502,7 @@ function M.setup(Pack)
       if handler and handler.complete then return handler.complete(arglead) end
       return {}
     end,
-    desc = "core.pack: :Pack {install|update|status|log|build|load|rollback|clean|sync|profile}",
+    desc = "core.pack: :Pack {install|update|status|log|build|load|rollback|clean|sync|profile|why}",
   })
 end
 

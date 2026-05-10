@@ -305,7 +305,7 @@ function M.create(deps)
     local function stub()
       local count = vim.v.count > 0 and tostring(vim.v.count) or ""
       local register = vim.v.register ~= "" and ('"' .. vim.v.register) or ""
-      load_spec(spec)  -- install_spec_keys inside overrides this stub with the real mapping
+      load_spec(spec, "key:" .. lhs)  -- install_spec_keys inside overrides this stub with the real mapping
       local replay = vim.api.nvim_replace_termcodes(register .. count .. lhs, true, false, true)
       vim.api.nvim_feedkeys(replay, "m", false)
     end

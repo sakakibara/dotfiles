@@ -7,6 +7,7 @@ M._specs = {}       -- { [name] = normalized_spec }
 M._loaded = {}      -- { [name] = true }
 M._opts = {}        -- { [name] = merged_opts }
 M._on_load = {}     -- { [name] = { fn, ... } }
+M._load_reason = {} -- { [name] = { reason = "...", ts_ns = ..., parent = "..." } }
 
 -- Forward declaration: load_spec is defined later (after run_config/packadd
 -- helpers) but needs to be referenced earlier by the keymaps stub callback.
@@ -112,17 +113,21 @@ local Keymaps = require("core.pack.keymaps").create({
 
 local _loading = {}  -- cycle-detection guard: names currently mid-load
 
-load_spec = function(spec)
+load_spec = function(spec, reason)
   if M._loaded[spec.name] then return end
   if _loading[spec.name] then
     vim.notify(("core.pack: dependency cycle detected at '%s'"):format(spec.name), vim.log.levels.ERROR)
     return
   end
   _loading[spec.name] = true
+  M._load_reason[spec.name] = {
+    reason = reason or "unknown",
+    ts_ns  = (vim.uv or vim.loop).hrtime(),
+  }
   for _, dep_name in ipairs(spec.dependencies) do
     local dep = M._specs[dep_name]
     if dep then
-      load_spec(dep)
+      load_spec(dep, "dep:" .. spec.name)
     else
       vim.notify(("core.pack: unknown dependency '%s' for '%s'"):format(dep_name, spec.name), vim.log.levels.WARN)
     end
@@ -279,7 +284,7 @@ function M.setup(cfg)
     local cs = cfg.install.colorscheme
     local spec = M._specs[cs]
     if spec then
-      load_spec(spec)
+      load_spec(spec, "colorscheme")
     else
       pcall(vim.cmd.packadd,     cs)
       pcall(vim.cmd.colorscheme, cs)
@@ -292,7 +297,7 @@ function M.setup(cfg)
   table.sort(eagers, function(a, b) return a.priority > b.priority end)
   for i, s in ipairs(eagers) do
     if splash then splash:set_setup_status(i, #eagers, s.name) end
-    load_spec(s)
+    load_spec(s, "eager")
   end
 
   triggers.register(ordered)
@@ -342,7 +347,7 @@ end
 function M.load(name)
   local spec = M._specs[name]
   if not spec then return end
-  load_spec(spec)
+  load_spec(spec, "manual")
 end
 
 function M.has(name)    return M._specs[name] ~= nil end

@@ -161,6 +161,62 @@ T.describe("core.pack opts resolution", function()
   end)
 end)
 
+T.describe("core.pack load reason tracking", function()
+  T.it("eager loads are tagged 'eager'", function()
+    local pack = reset_pack()
+    pack.setup({ specs = { { dev = true, name = "eager-x", config = function() end } } })
+    T.eq(pack._load_reason["eager-x"].reason, "eager")
+    T.truthy(pack._load_reason["eager-x"].ts_ns)
+  end)
+
+  T.it("manual M.load is tagged 'manual'", function()
+    local pack = reset_pack()
+    pack.setup({
+      specs = { { dev = true, name = "lazy-m", event = "User WhyManual",
+                  config = function() end } },
+    })
+    pack.load("lazy-m")
+    T.eq(pack._load_reason["lazy-m"].reason, "manual")
+  end)
+
+  T.it("event triggers tag the firing event", function()
+    local pack = reset_pack()
+    pack.setup({
+      specs = { { dev = true, name = "lazy-evt-r", event = "User WhyEvent",
+                  config = function() end } },
+    })
+    vim.api.nvim_exec_autocmds("User", { pattern = "WhyEvent" })
+    T.eq(pack._load_reason["lazy-evt-r"].reason, "event:User WhyEvent")
+  end)
+
+  T.it("ft triggers tag the matching filetype", function()
+    local pack = reset_pack()
+    pack.setup({
+      specs = { { dev = true, name = "lazy-ft-r", ft = "lua",
+                  config = function() end } },
+    })
+    vim.cmd("enew")
+    vim.bo.filetype = "lua"
+    T.eq(pack._load_reason["lazy-ft-r"].reason, "ft:lua")
+  end)
+
+  T.it("dep loads tag the parent that pulled them in", function()
+    local pack = reset_pack()
+    pack.setup({
+      specs = {
+        -- dep-leaf is lazy on a never-firing event so the eager pass
+        -- doesn't preload it; dep-root's dependency edge is what pulls it in.
+        { dev = true, name = "dep-leaf", lazy = true, event = "User NeverFires",
+          config = function() end },
+        { dev = true, name = "dep-root", dependencies = { "dep-leaf" },
+          config = function() end },
+      },
+    })
+    T.eq(pack._load_reason["dep-leaf"].reason, "dep:dep-root")
+    T.eq(pack._load_reason["dep-root"].reason, "eager")
+  end)
+end)
+
 T.describe("core.pack lazy triggers", function()
   T.it("event trigger loads plugin on autocmd fire", function()
     local pack = reset_pack()
