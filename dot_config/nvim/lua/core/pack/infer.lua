@@ -3,8 +3,9 @@
 -- scans plugin/* (for user commands) and ftdetect/ftplugin/ (for
 -- filetypes) to derive lazy-load triggers automatically.
 --
--- Pattern matching here is heuristic; the goal is "good enough for the
--- 80% case where a plugin's surface area is a small set of :Cmds".
+-- Source files are parsed with the bundled treesitter grammars (lua,
+-- vim) instead of regex so we correctly skip commands that appear inside
+-- string literals or comments.
 
 local M = {}
 
@@ -16,30 +17,29 @@ local function read_text(p)
   return content
 end
 
--- Extract user-command names from a single source file. Vimscript
--- `command! [-flags] Name args...` and Lua
--- `nvim_create_user_command("Name", ...)` are the two registration
--- paths actually in use across the ecosystem.
-local function commands_in_text(text)
+local LUA_QUERY = [[
+  (function_call
+    name: (_) @fn (#match? @fn "nvim_create_user_command")
+    arguments: (arguments . (string content: (string_content) @cmd)))
+]]
+
+local VIM_QUERY = [[
+  (command_statement (command_name) @cmd)
+]]
+
+local function captures_for(text, lang, query_str)
+  local pok, parser = pcall(vim.treesitter.get_string_parser, text, lang)
+  if not pok or not parser then return {} end
+  local tree = parser:parse()[1]
+  if not tree then return {} end
+  local qok, query = pcall(vim.treesitter.query.parse, lang, query_str)
+  if not qok or not query then return {} end
   local found = {}
-  -- Vimscript: command [-flag] [-arg=N] Name <body>
-  -- Skip the optional flags (which all start with `-`) by walking words.
-  for line in text:gmatch("[^\n]+") do
-    local body = line:match("^%s*command!?%s+(.+)$")
-    if body then
-      for word in body:gmatch("%S+") do
-        if word:sub(1, 1) ~= "-" then
-          if word:match("^[A-Z][%w]*$") then
-            found[word] = true
-          end
-          break
-        end
-      end
+  for id, node in query:iter_captures(tree:root(), text, 0, -1) do
+    if query.captures[id] == "cmd" then
+      local name = vim.treesitter.get_node_text(node, text)
+      if name and name ~= "" then found[name] = true end
     end
-  end
-  -- Lua: nvim_create_user_command("Name", ...)
-  for name in text:gmatch("nvim_create_user_command%s*%(%s*[\"']([%w_]+)") do
-    found[name] = true
   end
   return found
 end
@@ -49,9 +49,13 @@ local function scan_commands(dir)
   local plugin_dir = dir .. "/plugin"
   if vim.fn.isdirectory(plugin_dir) ~= 1 then return cmds end
   for _, entry in ipairs(vim.fn.readdir(plugin_dir) or {}) do
-    if entry:match("%.lua$") or entry:match("%.vim$") then
-      local text = read_text(plugin_dir .. "/" .. entry)
-      for name in pairs(commands_in_text(text)) do cmds[name] = true end
+    local path = plugin_dir .. "/" .. entry
+    local lang = entry:match("%.lua$") and "lua"
+              or entry:match("%.vim$") and "vim"
+    if lang then
+      local query = lang == "lua" and LUA_QUERY or VIM_QUERY
+      local text = read_text(path)
+      for name in pairs(captures_for(text, lang, query)) do cmds[name] = true end
     end
   end
   return cmds

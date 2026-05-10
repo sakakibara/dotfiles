@@ -47,6 +47,27 @@ T.describe("core.pack.infer.scan", function()
     T.eq(result.fts, { "rust", "toml" })
   end)
 
+  T.it("ignores command-like strings inside lua string literals", function()
+    local I = fresh()
+    local dir = tmp_plugin({
+      ["plugin/y.lua"] = [[
+        local doc = "see :command! NotReal in the manual"
+        vim.api.nvim_create_user_command("Real", function() end, {})
+      ]],
+    })
+    local result = I.scan(dir)
+    T.eq(result.cmds, { "Real" })
+  end)
+
+  T.it("ignores command-like strings inside vimscript comments", function()
+    local I = fresh()
+    local dir = tmp_plugin({
+      ["plugin/x.vim"] = '" command! Bogus from a comment\ncommand! Real call s:r()',
+    })
+    local result = I.scan(dir)
+    T.eq(result.cmds, { "Real" })
+  end)
+
   T.it("returns empty when no plugin/, ftdetect/, or ftplugin/", function()
     local I = fresh()
     local dir = tmp_plugin({ ["lua/foo.lua"] = "return {}" })
