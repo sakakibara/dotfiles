@@ -276,24 +276,19 @@ local function smoke_script_path()
   return vim.fn.fnamemodify(self, ":h") .. "/smoke.lua"
 end
 
--- Smoke-check a freshly-updated plugin in a clean subprocess. Side
--- effects of `require` (autocmds, globals, option writes) die with the
--- subprocess, so we get to actually exercise the require chain instead
--- of just parse-checking source. Catches syntax errors AND runtime
--- failures (missing deps, API renames that error at module load).
-local function smoke_check_async(dir, spec_name, dep_dirs, cb)
-  local main = derive_main(dir, spec_name)
-  if not main then return cb(true) end
+-- Build the argv for one plugin's smoke subprocess. Returns nil when
+-- the plugin has no derivable main module (e.g. vimscript-only) so the
+-- caller can skip it.
+local function smoke_argv(p)
+  local main = derive_main(p.dir, p.spec.name)
+  if not main then return nil end
   local args = {
-    "nvim", "--headless", "--clean", "-l", smoke_script_path(), main, dir,
+    vim.v.progpath, "--headless", "--clean", "-l", smoke_script_path(), main, p.dir,
   }
-  for _, d in ipairs(dep_dirs or {}) do args[#args + 1] = d end
-  vim.system(args, { text = true }, function(r)
-    vim.schedule(function()
-      if r.code == 0 then return cb(true) end
-      cb(false, (r.stderr ~= "" and r.stderr) or ("exit " .. tostring(r.code)))
-    end)
-  end)
+  for _, dn in ipairs(p.spec.dependencies or {}) do
+    args[#args + 1] = M.install_dir(dn)
+  end
+  return args
 end
 
 -- Apply already-resolved pending updates: parallel checkouts, then
@@ -362,20 +357,36 @@ local apply_pending = async(function(pending, opts)
     pool:run({})
   end)
 
-  -- Smoke pass: in a clean nvim subprocess, try to require each
-  -- updated plugin's main module. Any plugin whose require chain
-  -- errors (parse error, missing dep, API rename, ...) reverts to its
-  -- previous SHA, and we re-run its build hook so artifacts realign
-  -- with the restored source.
+  -- Smoke pass: in clean nvim subprocesses (parallel via Jobs.pool),
+  -- try to require each updated plugin's main module. Any plugin whose
+  -- require chain errors reverts to its previous SHA, and we re-run
+  -- its build hook so artifacts realign with the restored source. The
+  -- revert phase is sequential because each plugin's checkout + build
+  -- chain is sequential by nature.
   if opts.smoke ~= false then
-    local reverted = {}
-    for _, p in ipairs(pending) do
-      local dep_dirs = {}
-      for _, dn in ipairs(p.spec.dependencies or {}) do
-        dep_dirs[#dep_dirs + 1] = M.install_dir(dn)
+    local results = {}
+    local smoke_pool = Jobs.pool({ concurrency = opts.concurrency })
+    for i, p in ipairs(pending) do
+      local argv = smoke_argv(p)
+      if not argv then
+        results[i] = { ok = true }
+      else
+        smoke_pool:add({
+          cmd = argv, tag = p.spec.name,
+          on_done = function(r)
+            results[i] = {
+              ok  = r.code == 0,
+              err = r.stderr ~= "" and r.stderr or ("exit " .. tostring(r.code)),
+            }
+          end,
+        })
       end
-      local ok, err = await(smoke_check_async, p.dir, p.spec.name, dep_dirs)
-      if not ok then
+    end
+    await(Jobs.await_pool, smoke_pool, {})
+
+    local reverted = {}
+    for i, p in ipairs(pending) do
+      if not results[i].ok then
         await(Git.checkout_sha, p.dir, p.from)
         Lock.set(p.spec.name, {
           src = p.spec.src,
@@ -383,7 +394,7 @@ local apply_pending = async(function(pending, opts)
           version = type(p.spec.version) == "string" and p.spec.version or nil,
         })
         await(M.run_build, p.spec, p.dir, { fidget = opts.fidget })
-        reverted[#reverted + 1] = { name = p.spec.name, err = err }
+        reverted[#reverted + 1] = { name = p.spec.name, err = results[i].err }
       end
     end
     if #reverted > 0 then
