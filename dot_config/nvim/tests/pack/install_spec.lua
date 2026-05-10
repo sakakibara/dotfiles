@@ -465,6 +465,39 @@ T.describe("core.pack.install", function()
     T.eq(#result, 0)
   end)
 
+  T.it("update notifies when auto-inferred specs gain new commands", function()
+    local I, L = fresh()
+    local remote = make_remote()
+    -- Seed the remote with one user command.
+    vim.fn.mkdir(remote .. "/plugin", "p")
+    vim.fn.writefile({ "command! OldOne call s:noop()" }, remote .. "/plugin/init.vim")
+    sh({ "git", "-C", remote, "add", "." })
+    sh({ "git", "-C", remote, "commit", "-q", "-m", "initial" })
+    local spec = { name = "demo", src = "file://" .. remote, auto = true,
+                   cmd = { "OldOne" } }  -- pre-inferred
+    async(function(cb) I.install_missing({ spec }, { on_complete = cb }) end)
+
+    -- New rev adds a second command.
+    vim.fn.writefile(
+      { "command! OldOne call s:noop()", "command! BrandNew call s:new()" },
+      remote .. "/plugin/init.vim")
+    sh({ "git", "-C", remote, "commit", "-aq", "-m", "add brand new" })
+
+    local notified
+    local orig = vim.notify
+    vim.notify = function(msg, lvl)
+      if lvl == vim.log.levels.INFO and msg:match("gained new triggers") then
+        notified = msg
+      end
+    end
+    async(function(cb) I.update({ spec }, { "demo" }, { confirm = false, on_complete = cb }) end)
+    vim.notify = orig
+
+    T.truthy(notified, "expected new-trigger notification")
+    T.truthy(notified:match("BrandNew"), "notification should name the new command")
+    T.eq(notified:match("OldOne"), nil, "should not list pre-existing commands")
+  end)
+
   T.it("update with version='stable' tracks the highest semver tag", function()
     local I, L = fresh()
     local remote = make_remote()

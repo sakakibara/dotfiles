@@ -423,6 +423,43 @@ local apply_pending = async(function(pending, opts)
     end
   end
 
+  -- For specs using auto-inferred triggers, re-scan after the update
+  -- and report any newly-added commands or filetypes. Existing triggers
+  -- registered at setup() still fire correctly; this just informs the
+  -- user that restarting nvim will pick up the new lazy-load entry
+  -- points. Reverted plugins are skipped (their source is unchanged
+  -- relative to lockfile).
+  do
+    local reverted_set = {}
+    for _, p in ipairs(pending) do
+      if not Lock.get(p.spec.name) or Lock.get(p.spec.name).rev == p.from then
+        reverted_set[p.spec.name] = true
+      end
+    end
+    local Infer = require("core.pack.infer")
+    local additions = {}
+    for _, p in ipairs(pending) do
+      if p.spec.auto and not reverted_set[p.spec.name] then
+        local found = Infer.scan(p.dir)
+        local known = {}
+        for _, c in ipairs(p.spec.cmd or {}) do known[c] = true end
+        for _, f in ipairs(p.spec.ft  or {}) do known[f] = true end
+        local new = {}
+        for _, c in ipairs(found.cmds) do if not known[c] then new[#new + 1] = c end end
+        for _, f in ipairs(found.fts)  do if not known[f] then new[#new + 1] = f end end
+        if #new > 0 then
+          additions[#additions + 1] = ("%s: %s"):format(p.spec.name, table.concat(new, ", "))
+        end
+      end
+    end
+    if #additions > 0 then
+      vim.notify(
+        ("core.pack: %d auto spec(s) gained new triggers (restart to lazy-load):\n  %s"):format(
+          #additions, table.concat(additions, "\n  ")),
+        vim.log.levels.INFO)
+    end
+  end
+
   Lock.batch_commit()
   Txn.clear()
   if opts.fidget then opts.fidget:done("core.pack") end
