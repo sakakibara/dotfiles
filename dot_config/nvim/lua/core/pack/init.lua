@@ -316,6 +316,37 @@ function M.setup(cfg)
     end
   end)
 
+  -- Resume an interrupted update if a txn marker survived a crash. We
+  -- clear the marker BEFORE calling apply_pending so a re-crash during
+  -- resume doesn't loop us into the same broken state forever; the user
+  -- can fall back to `:Pack update!` or rollback if resume itself fails.
+  do
+    local Txn = require("core.pack.txn")
+    local txn = Txn.read()
+    if txn and type(txn.pending) == "table" and #txn.pending > 0 then
+      vim.api.nvim_create_autocmd("User", {
+        pattern = "VeryLazy", once = true,
+        callback = function()
+          local resumable = {}
+          for _, p in ipairs(txn.pending) do
+            local spec = M._specs[p.name]
+            if spec then
+              resumable[#resumable + 1] = {
+                spec = spec, dir = p.dir, from = p.from, to = p.to,
+                target_rev = p.target_rev, ref = p.ref, checkout_ref = p.checkout_ref,
+              }
+            end
+          end
+          Txn.clear()
+          if #resumable == 0 then return end
+          vim.notify(("core.pack: resuming interrupted update (%d plugin%s)"):format(
+            #resumable, #resumable == 1 and "" or "s"))
+          require("core.pack.install").apply_pending(resumable, { open_window = true })
+        end,
+      })
+    end
+  end
+
   -- Close the splash either on first user input OR after a stretch of
   -- "no status updates" (idle). The idle timer is preferable to a fixed
   -- timeout because it keeps the splash up *exactly* as long as something

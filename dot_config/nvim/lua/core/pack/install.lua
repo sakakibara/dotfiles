@@ -9,6 +9,7 @@ local Refs       = require("core.pack.refs")
 local UI         = require("core.pack.ui")
 local Log        = require("core.pack.log")
 local BuildCache = require("core.pack.build_cache")
+local Txn        = require("core.pack.txn")
 
 local async, await = Jobs.async, Jobs.await
 
@@ -285,6 +286,7 @@ local apply_pending = async(function(pending, opts)
     return
   end
   History.snapshot()
+  Txn.begin(pending)
 
   if opts.fidget then opts.fidget:set_status("core.pack", ("applying 0/%d"):format(#pending)) end
   local total = #pending
@@ -364,9 +366,12 @@ local apply_pending = async(function(pending, opts)
     end
   end
 
+  Txn.clear()
   if opts.fidget then opts.fidget:done("core.pack") end
   if opts.on_complete then opts.on_complete() end
 end)
+
+M.apply_pending = apply_pending
 
 -- Helper: parse the bundled resolve-script stdout into a refs table.
 -- Format: <tags>\x1f<branches>\x1f<default_branch>\x1f<head_rev>

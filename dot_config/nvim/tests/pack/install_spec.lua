@@ -263,6 +263,51 @@ T.describe("core.pack.install", function()
     T.truthy(notified:match("demo.nvim"), "notification should name the reverted plugin")
   end)
 
+  T.it("update writes a txn marker during apply and clears it on success", function()
+    package.loaded["core.pack.txn"] = nil
+    local Txn = require("core.pack.txn")
+    Txn._path_override = vim.fn.tempname() .. ".txn.json"
+    os.remove(Txn._path_override)
+
+    local I, L = fresh()
+    local remote = make_remote()
+    local spec = { name = "demo", src = "file://" .. remote }
+    async(function(cb) I.install_missing({ spec }, { on_complete = cb }) end)
+    sh({ "git", "-C", remote, "commit", "--allow-empty", "-q", "-m", "second" })
+    async(function(cb) I.update({ spec }, { "demo" }, { confirm = false, on_complete = cb }) end)
+
+    -- Txn was begun and cleared; no marker remains.
+    T.eq(vim.fn.filereadable(Txn._path_override), 0,
+      "txn marker should be cleared after a clean apply_pending")
+    Txn._path_override = nil
+  end)
+
+  T.it("apply_pending can be resumed from a stored txn", function()
+    package.loaded["core.pack.txn"] = nil
+    local Txn = require("core.pack.txn")
+    Txn._path_override = vim.fn.tempname() .. ".txn.json"
+    os.remove(Txn._path_override)
+
+    local I, L = fresh()
+    local remote = make_remote()
+    local spec = { name = "demo", src = "file://" .. remote }
+    async(function(cb) I.install_missing({ spec }, { on_complete = cb }) end)
+    local rev_a = L.get("demo").rev
+    sh({ "git", "-C", remote, "commit", "--allow-empty", "-q", "-m", "second" })
+    -- Resolve the new rev by hand so we can build a synthetic pending entry.
+    local rev_b_raw = vim.fn.system({ "git", "-C", remote, "rev-parse", "HEAD" })
+    local rev_b = (rev_b_raw:gsub("%s+", ""))
+
+    local pending = { {
+      spec = spec, dir = I.install_dir("demo"),
+      from = rev_a, to = rev_b, target_rev = rev_b,
+    } }
+    async(function(cb) I.apply_pending(pending, { on_complete = cb }) end)
+    T.eq(L.get("demo").rev, rev_b, "apply_pending should advance the lockfile")
+    T.eq(vim.fn.filereadable(Txn._path_override), 0)
+    Txn._path_override = nil
+  end)
+
   T.it("update with range version picks highest matching tag", function()
     local I, L = fresh()
     local remote = make_remote()
