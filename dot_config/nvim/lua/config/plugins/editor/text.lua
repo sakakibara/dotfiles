@@ -250,13 +250,15 @@ return {
     opts = { mappings = { toggle = "gS" } },
   },
 
-  -- Trim trailing whitespace
+  -- Trim trailing whitespace. Lives under <Leader>c (code) instead of
+  -- <Leader>u — trimming is a one-shot edit on the buffer, not a UI
+  -- toggle, and `uw` is the natural home for the wrap toggle.
   {
     "echasnovski/mini.trailspace",
     event = "LazyFile",
     keys = {
-      { "<Leader>uw", function() require("mini.trailspace").trim()            end, desc = "Trim trailing whitespace" },
-      { "<Leader>uW", function() require("mini.trailspace").trim_last_lines() end, desc = "Trim trailing empty lines" },
+      { "<Leader>cw", function() require("mini.trailspace").trim()            end, desc = "Trim trailing whitespace" },
+      { "<Leader>cW", function() require("mini.trailspace").trim_last_lines() end, desc = "Trim trailing empty lines" },
     },
     opts = {},
   },
