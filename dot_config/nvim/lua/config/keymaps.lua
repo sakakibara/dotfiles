@@ -84,6 +84,48 @@ map("n", "<Leader>qq", "<Cmd>qa<CR>", { desc = "Quit all" })
 map("n", "[b", "<Cmd>bprevious<CR>", { desc = "Prev buffer" })
 map("n", "]b", "<Cmd>bnext<CR>",     { desc = "Next buffer" })
 
+-- quickfix / location-list navigation
+map("n", "[q", vim.cmd.cprev, { desc = "Prev quickfix" })
+map("n", "]q", vim.cmd.cnext, { desc = "Next quickfix" })
+map("n", "[Q", vim.cmd.cfirst, { desc = "First quickfix" })
+map("n", "]Q", vim.cmd.clast,  { desc = "Last quickfix" })
+map("n", "[l", vim.cmd.lprev,  { desc = "Prev loclist" })
+map("n", "]l", vim.cmd.lnext,  { desc = "Next loclist" })
+
+-- search jump opens any fold the result is inside (zv) so we never land
+-- on an invisible match that requires a manual `zo` to inspect.
+map("n", "n", "'Nn'[v:searchforward].'zv'", { expr = true, desc = "Next search match" })
+map("n", "N", "'nN'[v:searchforward].'zv'", { expr = true, desc = "Prev search match" })
+map({ "x", "o" }, "n", "'Nn'[v:searchforward]", { expr = true, desc = "Next search match" })
+map({ "x", "o" }, "N", "'nN'[v:searchforward]", { expr = true, desc = "Prev search match" })
+
+-- undo break points: typing punctuation closes one undo block and opens
+-- another, so a long insert can be undone in chunks rather than wiped
+-- out wholesale.
+map("i", ",", ",<C-g>u")
+map("i", ".", ".<C-g>u")
+map("i", ";", ";<C-g>u")
+
+-- comment-aware open-line: gco / gcO open a new line below/above and
+-- enter insert with the current filetype's comment leader pre-applied
+-- (treesitter-commentstring populates &commentstring; gcc handles the
+-- actual prefix work). Saves typing `// ` or `# ` by hand.
+map("n", "gco", "o<Esc>Vcx<Esc><Cmd>normal gcc<CR>fxa<BS>", { desc = "Add comment below" })
+map("n", "gcO", "O<Esc>Vcx<Esc><Cmd>normal gcc<CR>fxa<BS>", { desc = "Add comment above" })
+
+-- tab management ( <Leader><Tab>… )
+map("n", "<Leader><Tab><Tab>", "<Cmd>tabnew<CR>",      { desc = "New tab" })
+map("n", "<Leader><Tab>]",     "<Cmd>tabnext<CR>",     { desc = "Next tab" })
+map("n", "<Leader><Tab>[",     "<Cmd>tabprevious<CR>", { desc = "Prev tab" })
+map("n", "<Leader><Tab>l",     "<Cmd>tablast<CR>",     { desc = "Last tab" })
+map("n", "<Leader><Tab>f",     "<Cmd>tabfirst<CR>",    { desc = "First tab" })
+map("n", "<Leader><Tab>d",     "<Cmd>tabclose<CR>",    { desc = "Close tab" })
+map("n", "<Leader><Tab>o",     "<Cmd>tabonly<CR>",     { desc = "Close other tabs" })
+
+-- single-keystroke window splits (mirror tmux's `prefix -` / `prefix |`)
+map("n", "<Leader>-", "<C-w>s", { desc = "Split window below", remap = true })
+map("n", "<Leader>|", "<C-w>v", { desc = "Split window right", remap = true })
+
 -- drop unused nvim default tag-stack maps — :tag/:tnext/:tlast cmdline forms
 -- still work if ever needed; ]t/[t go to other uses via core.pack override.
 pcall(vim.keymap.del, "n", "]T")

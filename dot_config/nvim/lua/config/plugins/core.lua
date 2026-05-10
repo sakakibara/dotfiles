@@ -347,6 +347,7 @@ return {
           { "<Leader>w",  group = "window",                icon = { icon = I.window,  color = "blue"   } },
           { "<Leader>x",  group = "trouble / diagnostics", icon = { icon = I.trouble, color = "red"    } },
           { "<Leader>z",  group = "zk (notes)",            icon = { icon = I.zk,      color = "purple" } },
+          { "<Leader><Tab>", group = "tabs",               icon = { icon = I.window,  color = "blue"   } },
         },
       }
     end,
