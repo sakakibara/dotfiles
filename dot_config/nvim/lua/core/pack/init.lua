@@ -328,11 +328,13 @@ function M.setup(cfg)
     end
   end)
 
-  -- Resume an interrupted update if a txn marker survived a crash. We
-  -- clear the marker BEFORE calling apply_pending so a re-crash during
-  -- resume doesn't loop us into the same broken state forever; the user
-  -- can fall back to `:Pack update!` or rollback if resume itself fails.
+  -- Resume an interrupted update if a txn marker survived a crash. The
+  -- resumer bumps the attempts counter BEFORE calling apply_pending so
+  -- a re-crash mid-resume still records progress; after MAX_ATTEMPTS we
+  -- give up and clear, on the assumption something about the update is
+  -- structurally broken and the user needs to intervene.
   do
+    local MAX_ATTEMPTS = 3
     local Txn = require("core.pack.txn")
     local txn = Txn.read()
     if txn and type(txn.pending) == "table" and #txn.pending > 0 then
@@ -349,10 +351,17 @@ function M.setup(cfg)
               }
             end
           end
-          Txn.clear()
-          if #resumable == 0 then return end
-          vim.notify(("core.pack: resuming interrupted update (%d plugin%s)"):format(
-            #resumable, #resumable == 1 and "" or "s"))
+          if #resumable == 0 then Txn.clear(); return end
+          local attempts = Txn.bump_attempts()
+          if attempts > MAX_ATTEMPTS then
+            Txn.clear()
+            vim.notify(
+              ("core.pack: giving up on resume after %d attempts; run :Pack update! manually if needed"):format(MAX_ATTEMPTS),
+              vim.log.levels.WARN)
+            return
+          end
+          vim.notify(("core.pack: resuming interrupted update (%d plugin%s, attempt %d/%d)"):format(
+            #resumable, #resumable == 1 and "" or "s", attempts, MAX_ATTEMPTS))
           require("core.pack.install").apply_pending(resumable, { open_window = true })
         end,
       })

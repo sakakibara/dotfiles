@@ -282,6 +282,27 @@ T.describe("core.pack.install", function()
     Txn._path_override = nil
   end)
 
+  T.it("txn preserves attempts across apply_pending writes (resumer bumps survive)", function()
+    package.loaded["core.pack.txn"] = nil
+    local Txn = require("core.pack.txn")
+    Txn._path_override = vim.fn.tempname() .. ".txn.json"
+    os.remove(Txn._path_override)
+
+    -- Seed a txn directly (no apply_pending yet).
+    Txn.begin({ { spec = { name = "a" }, dir = "/x", from = "f", to = "t",
+                  target_rev = "t", ref = nil, checkout_ref = nil } })
+    T.eq(Txn.bump_attempts(), 1)
+    T.eq(Txn.bump_attempts(), 2)
+    T.eq(Txn.read().attempts, 2)
+
+    -- A subsequent apply_pending writes a fresh txn (different pending) but
+    -- must NOT reset attempts — otherwise resume loops forever.
+    Txn.begin({ { spec = { name = "b" }, dir = "/y", from = "f", to = "t",
+                  target_rev = "t", ref = nil, checkout_ref = nil } })
+    T.eq(Txn.read().attempts, 2)
+    Txn._path_override = nil
+  end)
+
   T.it("apply_pending can be resumed from a stored txn", function()
     package.loaded["core.pack.txn"] = nil
     local Txn = require("core.pack.txn")

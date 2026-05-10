@@ -29,12 +29,32 @@ function M.begin(pending)
       checkout_ref = p.checkout_ref,
     }
   end
-  local raw = vim.json.encode({ ts = os.time(), pending = entries })
+  -- Preserve any existing attempts count so the resumer's bump survives
+  -- the apply_pending re-write at the start of a resume run.
+  local existing = M.read() or {}
+  local raw = vim.json.encode({
+    ts       = os.time(),
+    pending  = entries,
+    attempts = existing.attempts,
+  })
   local p = path()
   vim.fn.mkdir(vim.fn.fnamemodify(p, ":h"), "p")
   local fd = assert(io.open(p, "w"))
   fd:write(raw)
   fd:close()
+end
+
+-- Record one more resume attempt and return the new total. Persisted
+-- before apply_pending runs so a re-crash mid-resume doesn't reset us
+-- back to attempt 0 forever.
+function M.bump_attempts()
+  local data = M.read()
+  if not data then return 0 end
+  data.attempts = (data.attempts or 0) + 1
+  local fd = assert(io.open(path(), "w"))
+  fd:write(vim.json.encode(data))
+  fd:close()
+  return data.attempts
 end
 
 function M.clear()
