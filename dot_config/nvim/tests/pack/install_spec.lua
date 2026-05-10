@@ -228,6 +228,41 @@ T.describe("core.pack.install", function()
     T.eq(#vim.fn.readfile(marker), 2, "build at unchanged rev should hit cache")
   end)
 
+  T.it("update auto-reverts a plugin whose new rev has a syntax error", function()
+    local I, L = fresh()
+    local remote = make_remote()
+    -- Seed the remote with a valid lua module so smoke_check has something
+    -- to compile-check at install time.
+    vim.fn.mkdir(remote .. "/lua/demo", "p")
+    vim.fn.writefile({ "return {}" }, remote .. "/lua/demo/init.lua")
+    sh({ "git", "-C", remote, "add", "." })
+    sh({ "git", "-C", remote, "commit", "-q", "-m", "valid module" })
+    local spec = { name = "demo.nvim", src = "file://" .. remote }
+
+    async(function(cb) I.install_missing({ spec }, { on_complete = cb }) end)
+    local rev_a = L.get("demo.nvim").rev
+
+    -- Push a commit with a syntactically broken init.lua.
+    vim.fn.writefile({ "return { broken syntax" }, remote .. "/lua/demo/init.lua")
+    sh({ "git", "-C", remote, "commit", "-aq", "-m", "broken" })
+
+    local notified
+    local orig = vim.notify
+    vim.notify = function(msg, lvl)
+      if lvl == vim.log.levels.WARN and msg:match("smoke check failed") then
+        notified = msg
+      end
+    end
+    async(function(cb) I.update({ spec }, { "demo.nvim" }, { confirm = false, on_complete = cb }) end)
+    vim.notify = orig
+
+    T.eq(L.get("demo.nvim").rev, rev_a, "lockfile should be reverted to rev_a")
+    T.eq(vim.fn.readfile(I.install_dir("demo.nvim") .. "/lua/demo/init.lua")[1],
+      "return {}", "working tree should be restored to rev_a")
+    T.truthy(notified, "expected a smoke-check notification")
+    T.truthy(notified:match("demo.nvim"), "notification should name the reverted plugin")
+  end)
+
   T.it("update with range version picks highest matching tag", function()
     local I, L = fresh()
     local remote = make_remote()

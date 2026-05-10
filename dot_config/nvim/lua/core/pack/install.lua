@@ -237,6 +237,45 @@ function M.install_missing(specs, opts)
   end)()
 end
 
+-- Compile-check the entry-point Lua files of a freshly-updated plugin.
+-- Catches syntax errors / missing files in the new revision before the
+-- user trips over them at next launch. loadfile only parses; nothing
+-- runs, so this is side-effect-free even on already-loaded plugins.
+local function smoke_check(dir, spec_name)
+  local fails = {}
+
+  local lua = dir .. "/lua"
+  if vim.fn.isdirectory(lua) == 1 then
+    local derived = spec_name:gsub("%.nvim$", "")
+    local candidates = {
+      lua .. "/" .. derived .. ".lua",
+      lua .. "/" .. derived .. "/init.lua",
+    }
+    for _, c in ipairs(candidates) do
+      if vim.fn.filereadable(c) == 1 then
+        local fn, err = loadfile(c)
+        if not fn then fails[#fails + 1] = err end
+        break
+      end
+    end
+  end
+
+  -- plugin/<*.lua> files run automatically on :packadd; if any of them
+  -- has a parse error, packadd would surface it on next launch.
+  local plugin_dir = dir .. "/plugin"
+  if vim.fn.isdirectory(plugin_dir) == 1 then
+    for _, entry in ipairs(vim.fn.readdir(plugin_dir) or {}) do
+      if entry:match("%.lua$") then
+        local fn, err = loadfile(plugin_dir .. "/" .. entry)
+        if not fn then fails[#fails + 1] = err end
+      end
+    end
+  end
+
+  if #fails > 0 then return false, table.concat(fails, "\n") end
+  return true
+end
+
 -- Apply already-resolved pending updates: parallel checkouts, then
 -- per-plugin lockfile + build + helptags + log.
 local apply_pending = async(function(pending, opts)
@@ -296,6 +335,34 @@ local apply_pending = async(function(pending, opts)
     end
     pool:run({})
   end)
+
+  -- Smoke pass: parse-check entry-point Lua files at the new rev. Any
+  -- plugin that fails reverts to its previous SHA and we re-run its
+  -- build hook so artifacts realign with the restored source.
+  if opts.smoke ~= false then
+    local reverted = {}
+    for _, p in ipairs(pending) do
+      local ok, err = smoke_check(p.dir, p.spec.name)
+      if not ok then
+        await(Git.checkout_sha, p.dir, p.from)
+        Lock.set(p.spec.name, {
+          src = p.spec.src,
+          rev = p.from,
+          version = type(p.spec.version) == "string" and p.spec.version or nil,
+        })
+        await(M.run_build, p.spec, p.dir, { fidget = opts.fidget })
+        reverted[#reverted + 1] = { name = p.spec.name, err = err }
+      end
+    end
+    if #reverted > 0 then
+      local names = {}
+      for _, r in ipairs(reverted) do names[#names + 1] = r.name end
+      vim.notify(
+        ("core.pack: reverted %d plugin(s) (smoke check failed): %s"):format(
+          #reverted, table.concat(names, ", ")),
+        vim.log.levels.WARN)
+    end
+  end
 
   if opts.fidget then opts.fidget:done("core.pack") end
   if opts.on_complete then opts.on_complete() end
