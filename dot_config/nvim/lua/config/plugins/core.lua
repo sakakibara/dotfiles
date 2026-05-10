@@ -80,21 +80,56 @@ return {
           files = { follow = true },
           grep  = { follow = true },
         },
+        -- Cycle the picker's search scope through three stops:
+        --   1. project root (Lib.root: LSP / .git / lua marker)
+        --   2. directory of the buffer that owned focus when the picker opened
+        --   3. raw cwd
+        -- Identical stops are deduped so the cycle always advances. Each
+        -- press surfaces a one-line "scope: <path>" notification so the
+        -- new working directory is obvious without inspecting the prompt.
+        win = {
+          input = {
+            keys = {
+              ["<A-c>"] = { "cycle_cwd", mode = { "n", "i" } },
+            },
+          },
+        },
+        actions = {
+          cycle_cwd = function(p)
+            local buf = p.input and p.input.filter and p.input.filter.current_buf
+            local stops = { Lib.root(buf), Lib.root.buf(buf), vim.uv.cwd() }
+            local seen, uniq = {}, {}
+            for _, s in ipairs(stops) do
+              local n = vim.fs.normalize(s)
+              if not seen[n] then seen[n] = true; uniq[#uniq + 1] = n end
+            end
+            local cur, next_cwd = p:cwd(), uniq[1]
+            for i, n in ipairs(uniq) do
+              if n == cur then next_cwd = uniq[(i % #uniq) + 1]; break end
+            end
+            p:set_cwd(next_cwd)
+            p:find()
+            vim.notify(("scope: %s"):format(next_cwd), vim.log.levels.INFO)
+          end,
+        },
       },
       terminal  = { enabled = true },
       bufdelete = { enabled = true },
       words     = { enabled = true },   -- LSP document_highlight under cursor
     },
     keys = {
-      { "<Leader>ff", function() Snacks.picker.files() end,                   desc = "Find files" },
-      { "<Leader>fg", function() Snacks.picker.grep() end,                    desc = "Live grep" },
-      { "<Leader>fb", function() Snacks.picker.buffers() end,                 desc = "Buffers" },
-      { "<Leader>fr", function() Snacks.picker.recent() end,                  desc = "Recent files" },
+      { "<Leader>ff", function() Snacks.picker.files({ cwd = Lib.root() }) end,         desc = "Find files (root)" },
+      { "<Leader>fF", function() Snacks.picker.files() end,                              desc = "Find files (cwd)" },
+      { "<Leader>fg", function() Snacks.picker.grep({ cwd = Lib.root() }) end,           desc = "Live grep (root)" },
+      { "<Leader>fG", function() Snacks.picker.grep() end,                               desc = "Live grep (cwd)" },
+      { "<Leader>fb", function() Snacks.picker.buffers() end,                            desc = "Buffers" },
+      { "<Leader>fr", function() Snacks.picker.recent() end,                             desc = "Recent files" },
       { "<Leader>fc", function() Snacks.picker.files({ cwd = vim.fn.stdpath("config") }) end, desc = "Config files" },
       { "<Leader>fh", function() Snacks.picker.help() end,                    desc = "Help" },
       { "<Leader>fm", function() Snacks.picker.marks() end,                   desc = "Marks" },
       { "<Leader>fk", function() Snacks.picker.keymaps() end,                 desc = "Keymaps" },
-      { "<Leader>sw", function() Snacks.picker.grep_word() end,               desc = "Grep word",  mode = { "n", "x" } },
+      { "<Leader>sw", function() Snacks.picker.grep_word({ cwd = Lib.root() }) end, desc = "Grep word (root)", mode = { "n", "x" } },
+      { "<Leader>sW", function() Snacks.picker.grep_word() end,                     desc = "Grep word (cwd)",  mode = { "n", "x" } },
       { "<Leader>sh", function() Snacks.picker.highlights() end,              desc = "Highlights" },
       { "<Leader>sc", function() Snacks.picker.command_history() end,         desc = "Command history" },
       { "<Leader>sn", function() vim.cmd("Noice") end,                        desc = "Notifications" },
@@ -108,8 +143,8 @@ return {
       { "<Leader>ss", function() Snacks.picker.lsp_symbols() end,             desc = "LSP symbols (buffer)" },
       { "<Leader>sS", function() Snacks.picker.lsp_workspace_symbols() end,   desc = "LSP symbols (workspace)" },
       -- git
-      { "<Leader>gg", function() Snacks.lazygit() end,                        desc = "Lazygit (root)" },
-      { "<Leader>gG", function() Snacks.lazygit({ cwd = vim.uv.cwd() }) end,  desc = "Lazygit (cwd)" },
+      { "<Leader>gg", function() Snacks.lazygit({ cwd = Lib.root.git() }) end,                desc = "Lazygit (git root)" },
+      { "<Leader>gG", function() Snacks.lazygit({ cwd = vim.uv.cwd() }) end,                  desc = "Lazygit (cwd)" },
       { "<Leader>gl", function() Snacks.lazygit.log_file() end,               desc = "Lazygit log (file)" },
       { "<Leader>gL", function() Snacks.lazygit.log() end,                    desc = "Lazygit log (all)" },
       { "<Leader>gf", function() Snacks.picker.git_files() end,               desc = "Git files" },

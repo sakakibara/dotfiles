@@ -55,6 +55,7 @@ dofile(vim.fn.getcwd() .. "/tests/pack/infer_spec.lua")
 dofile(vim.fn.getcwd() .. "/tests/pack/commands_spec.lua")
 
 dofile(vim.fn.getcwd() .. "/tests/lib/path_spec.lua")
+dofile(vim.fn.getcwd() .. "/tests/lib/root_spec.lua")
 dofile(vim.fn.getcwd() .. "/tests/lib/mason_spec.lua")
 dofile(vim.fn.getcwd() .. "/tests/lib/parsers_spec.lua")
 

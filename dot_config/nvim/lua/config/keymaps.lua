@@ -120,11 +120,15 @@ map("n", "<Leader>Pc", "<Cmd>Pack clean<CR>",    { desc = "Clean orphans" })
 map("n", "<Leader>Pl", "<Cmd>Pack log<CR>",      { desc = "Log" })
 map("n", "<Leader>Pp", "<Cmd>Pack profile<CR>",  { desc = "Profile" })
 
--- single-chord fast-access (skip a keystroke for the daily-driver ops)
-map("n", "<Leader><Space>", function() Snacks.picker.smart()            end, { desc = "Smart find (files)" })
-map("n", "<Leader>,",       function() Snacks.picker.buffers()          end, { desc = "Buffers" })
-map("n", "<Leader>/",       function() Snacks.picker.grep()             end, { desc = "Grep" })
-map("n", "<Leader>:",       function() Snacks.picker.command_history()  end, { desc = "Command history" })
+-- single-chord fast-access (skip a keystroke for the daily-driver ops).
+-- Default scope is the project root (Lib.root: LSP / .git / lua); the
+-- shifted variant forces the scope to cwd. Inside any picker prompt
+-- `<A-c>` toggles between the two without closing.
+map("n", "<Leader><Space>", function() Snacks.picker.smart({ cwd = Lib.root() }) end, { desc = "Smart find (root)" })
+map("n", "<Leader>,",       function() Snacks.picker.buffers()                  end, { desc = "Buffers" })
+map("n", "<Leader>/",       function() Snacks.picker.grep({ cwd = Lib.root() }) end, { desc = "Grep (root)" })
+map("n", "<Leader>?",       function() Snacks.picker.grep()                     end, { desc = "Grep (cwd)" })
+map("n", "<Leader>:",       function() Snacks.picker.command_history()          end, { desc = "Command history" })
 
 -- windows (<C-w>… natives still work; these are leader aliases for which-key)
 map("n", "<Leader>ws", "<C-w>s",           { desc = "Split window below" })
