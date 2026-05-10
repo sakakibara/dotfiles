@@ -197,6 +197,7 @@ function M.install_missing(specs, opts)
     end
     local total = #pending
     local fully_done = 0
+    Lock.batch_begin()
     await(function(cb)
       local function complete_one(spec, last_result)
         fully_done = fully_done + 1
@@ -258,6 +259,7 @@ function M.install_missing(specs, opts)
       end
       pool:run({})
     end)
+    Lock.batch_commit()
     if view then view:done("core.pack") end
     if opts.on_complete then opts.on_complete() end
   end)()
@@ -315,6 +317,7 @@ local apply_pending = async(function(pending, opts)
   local total = #pending
   local fully_done = 0
 
+  Lock.batch_begin()
   await(function(cb)
     local function complete_one()
       fully_done = fully_done + 1
@@ -416,6 +419,7 @@ local apply_pending = async(function(pending, opts)
     end
   end
 
+  Lock.batch_commit()
   Txn.clear()
   if opts.fidget then opts.fidget:done("core.pack") end
   if opts.on_complete then opts.on_complete() end

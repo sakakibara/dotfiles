@@ -100,17 +100,47 @@ function M.write(data)
   end
 end
 
+-- In-memory buffer used while a batch is open. set/get/delete redirect
+-- through it so callers don't need to distinguish; commit writes to
+-- disk once at the end. Begin/commit are explicit (rather than wrapping
+-- a function) so the buffered region can span async work.
+M._batch = nil
+
+function M.batch_begin()
+  if M._batch then return end
+  M._batch = M.read()
+end
+
+function M.batch_commit()
+  if not M._batch then return end
+  M.write(M._batch)
+  M._batch = nil
+end
+
+function M.batch_abort()
+  M._batch = nil
+end
+
 function M.get(name)
+  if M._batch then return M._batch.plugins[name] end
   return M.read().plugins[name]
 end
 
 function M.set(name, entry)
+  if M._batch then
+    M._batch.plugins[name] = entry
+    return
+  end
   local data = M.read()
   data.plugins[name] = entry
   M.write(data)
 end
 
 function M.delete(name)
+  if M._batch then
+    M._batch.plugins[name] = nil
+    return
+  end
   local data = M.read()
   data.plugins[name] = nil
   M.write(data)

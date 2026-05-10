@@ -1333,6 +1333,46 @@ T.describe("core.pack.setup: failed-install pruning", function()
   end)
 end)
 
+T.describe("core.pack.lock: batched writes", function()
+  local function tmpdir()
+    local p = vim.fn.tempname()
+    vim.fn.mkdir(p, "p")
+    return p
+  end
+
+  T.it("batched set/get/delete buffers in memory until commit", function()
+    package.loaded["core.pack.lock"] = nil
+    local Lock = require("core.pack.lock")
+    Lock._path_override = tmpdir() .. "/lock.json"
+    Lock.batch_begin()
+    Lock.set("foo", { rev = "abc" })
+    Lock.set("bar", { rev = "def" })
+    Lock.delete("foo")
+    -- Disk file shouldn't exist yet (no writes have happened).
+    T.eq(vim.fn.filereadable(Lock._path_override), 0, "no write before commit")
+    -- Inside the batch, get sees the buffered state.
+    T.eq(Lock.get("bar").rev, "def")
+    T.eq(Lock.get("foo"), nil, "deleted in batch")
+    Lock.batch_commit()
+    T.eq(vim.fn.filereadable(Lock._path_override), 1)
+    T.eq(Lock.get("bar").rev, "def")
+    T.eq(Lock.get("foo"), nil)
+    Lock._path_override = nil
+  end)
+
+  T.it("batch_abort discards buffered changes without writing", function()
+    package.loaded["core.pack.lock"] = nil
+    local Lock = require("core.pack.lock")
+    Lock._path_override = tmpdir() .. "/lock.json"
+    Lock.set("seed", { rev = "0" })  -- baseline write
+    Lock.batch_begin()
+    Lock.set("seed", { rev = "MUTATED" })
+    Lock.batch_abort()
+    T.eq(Lock.get("seed").rev, "0", "abort should discard buffered set")
+    Lock._path_override = nil
+  end)
+end)
+
 T.describe("core.pack.lock: pretty-printed write", function()
   local function tmpdir()
     local p = vim.fn.tempname()
