@@ -254,43 +254,46 @@ function M.install_missing(specs, opts)
   end)()
 end
 
--- Compile-check the entry-point Lua files of a freshly-updated plugin.
--- Catches syntax errors / missing files in the new revision before the
--- user trips over them at next launch. loadfile only parses; nothing
--- runs, so this is side-effect-free even on already-loaded plugins.
-local function smoke_check(dir, spec_name)
-  local fails = {}
-
+-- Best-effort guess at a plugin's main lua module name, mirroring
+-- Pack._resolve_main. Used to point the smoke subprocess at something
+-- to require. Returns nil when there's no `lua/` directory or no
+-- name-matching entry — in that case smoke is skipped (vimscript-only
+-- plugins, etc.).
+local function derive_main(dir, spec_name)
   local lua = dir .. "/lua"
-  if vim.fn.isdirectory(lua) == 1 then
-    local derived = spec_name:gsub("%.nvim$", "")
-    local candidates = {
-      lua .. "/" .. derived .. ".lua",
-      lua .. "/" .. derived .. "/init.lua",
-    }
-    for _, c in ipairs(candidates) do
-      if vim.fn.filereadable(c) == 1 then
-        local fn, err = loadfile(c)
-        if not fn then fails[#fails + 1] = err end
-        break
-      end
-    end
+  if vim.fn.isdirectory(lua) ~= 1 then return nil end
+  local derived = spec_name:gsub("%.nvim$", "")
+  if vim.fn.isdirectory(lua .. "/" .. derived) == 1
+     or vim.fn.filereadable(lua .. "/" .. derived .. ".lua") == 1 then
+    return derived
   end
+  return nil
+end
 
-  -- plugin/<*.lua> files run automatically on :packadd; if any of them
-  -- has a parse error, packadd would surface it on next launch.
-  local plugin_dir = dir .. "/plugin"
-  if vim.fn.isdirectory(plugin_dir) == 1 then
-    for _, entry in ipairs(vim.fn.readdir(plugin_dir) or {}) do
-      if entry:match("%.lua$") then
-        local fn, err = loadfile(plugin_dir .. "/" .. entry)
-        if not fn then fails[#fails + 1] = err end
-      end
-    end
-  end
+local function smoke_script_path()
+  -- Resolve relative to this file so it works regardless of cwd.
+  local self = debug.getinfo(1, "S").source:sub(2)  -- strip leading "@"
+  return vim.fn.fnamemodify(self, ":h") .. "/smoke.lua"
+end
 
-  if #fails > 0 then return false, table.concat(fails, "\n") end
-  return true
+-- Smoke-check a freshly-updated plugin in a clean subprocess. Side
+-- effects of `require` (autocmds, globals, option writes) die with the
+-- subprocess, so we get to actually exercise the require chain instead
+-- of just parse-checking source. Catches syntax errors AND runtime
+-- failures (missing deps, API renames that error at module load).
+local function smoke_check_async(dir, spec_name, dep_dirs, cb)
+  local main = derive_main(dir, spec_name)
+  if not main then return cb(true) end
+  local args = {
+    "nvim", "--headless", "--clean", "-l", smoke_script_path(), main, dir,
+  }
+  for _, d in ipairs(dep_dirs or {}) do args[#args + 1] = d end
+  vim.system(args, { text = true }, function(r)
+    vim.schedule(function()
+      if r.code == 0 then return cb(true) end
+      cb(false, (r.stderr ~= "" and r.stderr) or ("exit " .. tostring(r.code)))
+    end)
+  end)
 end
 
 -- Apply already-resolved pending updates: parallel checkouts, then
@@ -359,13 +362,19 @@ local apply_pending = async(function(pending, opts)
     pool:run({})
   end)
 
-  -- Smoke pass: parse-check entry-point Lua files at the new rev. Any
-  -- plugin that fails reverts to its previous SHA and we re-run its
-  -- build hook so artifacts realign with the restored source.
+  -- Smoke pass: in a clean nvim subprocess, try to require each
+  -- updated plugin's main module. Any plugin whose require chain
+  -- errors (parse error, missing dep, API rename, ...) reverts to its
+  -- previous SHA, and we re-run its build hook so artifacts realign
+  -- with the restored source.
   if opts.smoke ~= false then
     local reverted = {}
     for _, p in ipairs(pending) do
-      local ok, err = smoke_check(p.dir, p.spec.name)
+      local dep_dirs = {}
+      for _, dn in ipairs(p.spec.dependencies or {}) do
+        dep_dirs[#dep_dirs + 1] = M.install_dir(dn)
+      end
+      local ok, err = await(smoke_check_async, p.dir, p.spec.name, dep_dirs)
       if not ok then
         await(Git.checkout_sha, p.dir, p.from)
         Lock.set(p.spec.name, {

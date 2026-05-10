@@ -347,6 +347,37 @@ T.describe("core.pack.install", function()
     T.eq(L.get("demo").rev, rev_orig, "lockfile rev should not change on force-tag")
   end)
 
+  T.it("update reverts when the new rev's require chain errors at runtime", function()
+    local I, L = fresh()
+    local remote = make_remote()
+    -- A module that parses fine but errors when required.
+    vim.fn.mkdir(remote .. "/lua/demo", "p")
+    vim.fn.writefile({ "return {}" }, remote .. "/lua/demo/init.lua")
+    sh({ "git", "-C", remote, "add", "." })
+    sh({ "git", "-C", remote, "commit", "-q", "-m", "valid" })
+    local spec = { name = "demo.nvim", src = "file://" .. remote }
+    async(function(cb) I.install_missing({ spec }, { on_complete = cb }) end)
+    local rev_a = L.get("demo.nvim").rev
+
+    -- Push a runtime-error rev: loadfile would say "OK", require() raises.
+    vim.fn.writefile({ 'error("boom at module load")', "return {}" },
+      remote .. "/lua/demo/init.lua")
+    sh({ "git", "-C", remote, "commit", "-aq", "-m", "boom" })
+
+    local notified
+    local orig = vim.notify
+    vim.notify = function(msg, lvl)
+      if lvl == vim.log.levels.WARN and msg:match("smoke check failed") then
+        notified = msg
+      end
+    end
+    async(function(cb) I.update({ spec }, { "demo.nvim" }, { confirm = false, on_complete = cb }) end)
+    vim.notify = orig
+
+    T.eq(L.get("demo.nvim").rev, rev_a, "runtime-erroring rev should be reverted")
+    T.truthy(notified, "expected smoke-failure warning for runtime error")
+  end)
+
   T.it("update with version='stable' tracks the highest semver tag", function()
     local I, L = fresh()
     local remote = make_remote()
