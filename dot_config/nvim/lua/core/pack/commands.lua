@@ -289,7 +289,7 @@ local function subcommands(Pack)
   }
 
   subs.build = {
-    desc = "Re-run plugin build hooks (one or all)",
+    desc = "Re-run plugin build hooks (one or all); ! bypasses the build cache",
     complete = function(arglead)
       return name_complete(Pack, arglead, function(_n, s) return s.build ~= nil end)
     end,
@@ -316,7 +316,8 @@ local function subcommands(Pack)
       end
       for _, s in pairs(Pack._specs) do
         if s.build and (target == nil or s.name == target) then
-          Install.run_build(s, Install.install_dir(s.name), { fidget = fidget }, one_done)
+          Install.run_build(s, Install.install_dir(s.name),
+            { fidget = fidget, force = opts.bang }, one_done)
         end
       end
     end,

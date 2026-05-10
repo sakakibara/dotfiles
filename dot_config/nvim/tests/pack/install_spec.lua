@@ -190,6 +190,44 @@ T.describe("core.pack.install", function()
     T.eq(L.get("demo").rev, rev_initial, "no rev change when already at the annotated tag")
   end)
 
+  T.it("run_build skips when source SHA + build cmd haven't changed", function()
+    local I, L = fresh()
+    local remote = make_remote()
+    local marker = vim.fn.tempname()
+    local spec = { name = "demo", src = "file://" .. remote,
+                   build = "echo x >> " .. marker }
+    async(function(cb) I.install_missing({ spec }, { on_complete = cb }) end)
+    T.eq(#vim.fn.readfile(marker), 1, "build should run on first install")
+
+    -- Second build at the same rev with the same command: cache hit.
+    async(function(cb) I.run_build(spec, I.install_dir("demo"), {}, cb) end)
+    T.eq(#vim.fn.readfile(marker), 1, "second build at same rev should be cached")
+
+    -- force = true bypasses the cache.
+    async(function(cb) I.run_build(spec, I.install_dir("demo"), { force = true }, cb) end)
+    T.eq(#vim.fn.readfile(marker), 2, "force should bypass the cache")
+  end)
+
+  T.it("run_build re-runs after the source SHA changes (update path)", function()
+    local I, L = fresh()
+    local remote = make_remote()
+    local marker = vim.fn.tempname()
+    local spec = { name = "demo", src = "file://" .. remote,
+                   build = "echo x >> " .. marker }
+    async(function(cb) I.install_missing({ spec }, { on_complete = cb }) end)
+    T.eq(#vim.fn.readfile(marker), 1)
+
+    -- Advance the remote and update the local plugin: build should re-run
+    -- because HEAD moved past the cached ref.
+    sh({ "git", "-C", remote, "commit", "--allow-empty", "-q", "-m", "second" })
+    async(function(cb) I.update({ spec }, { "demo" }, { confirm = false, on_complete = cb }) end)
+    T.eq(#vim.fn.readfile(marker), 2, "build should re-run after rev advance")
+
+    -- Same rev again: cached.
+    async(function(cb) I.run_build(spec, I.install_dir("demo"), {}, cb) end)
+    T.eq(#vim.fn.readfile(marker), 2, "build at unchanged rev should hit cache")
+  end)
+
   T.it("update with range version picks highest matching tag", function()
     local I, L = fresh()
     local remote = make_remote()

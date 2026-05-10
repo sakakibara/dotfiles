@@ -1,13 +1,14 @@
 local M = {}
 
-local History = require("core.pack.history")
-local Lock    = require("core.pack.lock")
-local Git     = require("core.pack.git")
-local Jobs    = require("core.pack.jobs")
-local Version = require("core.pack.version")
-local Refs    = require("core.pack.refs")
-local UI      = require("core.pack.ui")
-local Log     = require("core.pack.log")
+local History    = require("core.pack.history")
+local Lock       = require("core.pack.lock")
+local Git        = require("core.pack.git")
+local Jobs       = require("core.pack.jobs")
+local Version    = require("core.pack.version")
+local Refs       = require("core.pack.refs")
+local UI         = require("core.pack.ui")
+local Log        = require("core.pack.log")
+local BuildCache = require("core.pack.build_cache")
 
 local async, await = Jobs.async, Jobs.await
 
@@ -67,13 +68,18 @@ end)
 -- Build hook: shell / Ex command / function. The shell branch is async
 -- (vim.system without :wait()); Ex and function branches are inherently
 -- main-thread (they execute Vimscript / Lua that touches editor state).
--- The callback `cb` fires once the build has finished — synchronously
--- for Ex/function builds, asynchronously for shell.
-function M.run_build(spec, path, opts, cb)
+-- Skips re-running when BuildCache reports HEAD has already been built
+-- with this command; pass opts.force = true to bypass the cache.
+M.run_build = async(function(spec, path, opts)
   opts = opts or {}
-  cb = cb or function() end
   local b = spec.build
-  if not b or b == "" then return cb() end
+  if not b or b == "" then return end
+
+  if not opts.force and await(BuildCache.is_fresh, path, b) then
+    if opts.fidget then opts.fidget:set_status("core.pack", "cached " .. spec.name) end
+    return
+  end
+
   -- During the build, surface progress via the fidget summary. After
   -- run_build returns, the calling pool's on_progress overwrites the
   -- text — that's the intentional handoff.
@@ -91,6 +97,7 @@ function M.run_build(spec, path, opts, cb)
       vim.log.levels.ERROR)
   end
 
+  local ok = false
   if type(b) == "function" then
     -- Function-style builds need the plugin on rtp so `require()` can
     -- resolve the plugin's own modules (e.g. organ.nvim's
@@ -110,32 +117,31 @@ function M.run_build(spec, path, opts, cb)
     end
     local prev_rtp = vim.o.runtimepath
     vim.opt.runtimepath:prepend(path)
-    local ok, err = pcall(b, { name = spec.name, path = path, spec = spec })
+    local pok, perr = pcall(b, { name = spec.name, path = path, spec = spec })
     vim.o.runtimepath = prev_rtp
-    if not ok then fail(err) end
-    cb()
+    if pok then ok = true else fail(perr) end
   elseif type(b) == "string" and b:sub(1, 1) == ":" then
     local prev = vim.fn.getcwd()
-    local ok, err = pcall(function()
+    local pok, perr = pcall(function()
       vim.cmd.lcd({ path, mods = { silent = true } })
       vim.cmd(b:sub(2))
     end)
     pcall(vim.cmd.lcd, { prev, mods = { silent = true } })
-    if not ok then fail(err) end
-    cb()
+    if pok then ok = true else fail(perr) end
   elseif type(b) == "string" then
-    vim.system({ "sh", "-c", b }, { cwd = path, text = true }, function(r)
-      vim.schedule(function()
-        if r.code ~= 0 then fail(r.stderr) end
-        cb()
+    local r = await(function(cb)
+      vim.system({ "sh", "-c", b }, { cwd = path, text = true }, function(rr)
+        vim.schedule(function() cb(rr) end)
       end)
     end)
+    if r.code == 0 then ok = true else fail(r.stderr) end
   else
     vim.notify(("core.pack: %s has unsupported build type %s"):format(spec.name, type(b)),
       vim.log.levels.WARN)
-    cb()
   end
-end
+
+  if ok then await(BuildCache.mark_built, path, b) end
+end)
 
 function M.install_missing(specs, opts)
   opts = opts or {}
