@@ -8,11 +8,6 @@ vim.g.maplocalleader = "\\"
 
 local map = vim.keymap.set
 
--- Screenwise j/k: moves by visual lines when no count is given. Lives
--- as a toggle below (<Leader>uj) so it's easy to flip when working
--- with wrapped buffers vs. counted-jump muscle memory; the install
--- here is the default-ON state seen at startup, and the toggle's set()
--- below mirrors it.
 local function set_screenwise_jk(state)
   if state then
     map({ "n", "x" }, "j", "v:count == 0 ? 'gj' : 'j'", { expr = true, silent = true })
@@ -84,36 +79,27 @@ map("n", "<Leader>qq", "<Cmd>qa<CR>", { desc = "Quit all" })
 map("n", "[b", "<Cmd>bprevious<CR>", { desc = "Prev buffer" })
 map("n", "]b", "<Cmd>bnext<CR>",     { desc = "Next buffer" })
 
--- quickfix / location-list navigation
-map("n", "[q", vim.cmd.cprev, { desc = "Prev quickfix" })
-map("n", "]q", vim.cmd.cnext, { desc = "Next quickfix" })
+map("n", "[q", vim.cmd.cprev,  { desc = "Prev quickfix" })
+map("n", "]q", vim.cmd.cnext,  { desc = "Next quickfix" })
 map("n", "[Q", vim.cmd.cfirst, { desc = "First quickfix" })
 map("n", "]Q", vim.cmd.clast,  { desc = "Last quickfix" })
 map("n", "[l", vim.cmd.lprev,  { desc = "Prev loclist" })
 map("n", "]l", vim.cmd.lnext,  { desc = "Next loclist" })
 
--- search jump opens any fold the result is inside (zv) so we never land
--- on an invisible match that requires a manual `zo` to inspect.
+-- `'zv'` opens the fold the match landed in.
 map("n", "n", "'Nn'[v:searchforward].'zv'", { expr = true, desc = "Next search match" })
 map("n", "N", "'nN'[v:searchforward].'zv'", { expr = true, desc = "Prev search match" })
 map({ "x", "o" }, "n", "'Nn'[v:searchforward]", { expr = true, desc = "Next search match" })
 map({ "x", "o" }, "N", "'nN'[v:searchforward]", { expr = true, desc = "Prev search match" })
 
--- undo break points: typing punctuation closes one undo block and opens
--- another, so a long insert can be undone in chunks rather than wiped
--- out wholesale.
+-- `<C-g>u` breaks the undo block on punctuation so a long insert undoes in chunks.
 map("i", ",", ",<C-g>u")
 map("i", ".", ".<C-g>u")
 map("i", ";", ";<C-g>u")
 
--- comment-aware open-line: gco / gcO open a new line below/above and
--- enter insert with the current filetype's comment leader pre-applied
--- (treesitter-commentstring populates &commentstring; gcc handles the
--- actual prefix work). Saves typing `// ` or `# ` by hand.
 map("n", "gco", "o<Esc>Vcx<Esc><Cmd>normal gcc<CR>fxa<BS>", { desc = "Add comment below" })
 map("n", "gcO", "O<Esc>Vcx<Esc><Cmd>normal gcc<CR>fxa<BS>", { desc = "Add comment above" })
 
--- tab management ( <Leader><Tab>… )
 map("n", "<Leader><Tab><Tab>", "<Cmd>tabnew<CR>",      { desc = "New tab" })
 map("n", "<Leader><Tab>]",     "<Cmd>tabnext<CR>",     { desc = "Next tab" })
 map("n", "<Leader><Tab>[",     "<Cmd>tabprevious<CR>", { desc = "Prev tab" })
@@ -122,7 +108,6 @@ map("n", "<Leader><Tab>f",     "<Cmd>tabfirst<CR>",    { desc = "First tab" })
 map("n", "<Leader><Tab>d",     "<Cmd>tabclose<CR>",    { desc = "Close tab" })
 map("n", "<Leader><Tab>o",     "<Cmd>tabonly<CR>",     { desc = "Close other tabs" })
 
--- single-keystroke window splits (mirror tmux's `prefix -` / `prefix |`)
 map("n", "<Leader>-", "<C-w>s", { desc = "Split window below", remap = true })
 map("n", "<Leader>|", "<C-w>v", { desc = "Split window right", remap = true })
 
@@ -141,11 +126,8 @@ map("n", "<Leader>;",  function() Lib.winbar.pick_scope()       end, { desc = "S
 map("n", "<Leader>.",  function() Lib.winbar.pick_path()        end, { desc = "Path picker (sibling files)" })
 map("n", "<Leader>ut", function() Lib.keymaps.pick_filetype() end, { desc = "Set filetype" })
 
--- UI toggles ( <Leader>u… ). Each one wraps an option/feature in
--- Snacks.toggle so which-key renders the live "[on]/[off]" state in
--- the help popup — bare `<Cmd>... toggle<CR>` keymaps fire and forget,
--- which is why state stopped showing up after the rewrite. Deferred
--- via on_load because keymaps.lua runs before pack.setup loads snacks.
+-- Snacks.toggle wraps each keymap with get/set so which-key renders the
+-- live state. Deferred because keymaps.lua runs before snacks loads.
 Lib.plugin.on_load("snacks.nvim", function()
   Snacks.toggle({
     name = "Autoformat (Global)",

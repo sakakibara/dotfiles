@@ -70,23 +70,13 @@ return {
       input     = { enabled = true },
       picker    = {
         enabled    = true,
-        -- filename_first puts "lsp.lua   lua/lib/" instead of "lua/lib/lsp.lua",
-        -- so the identifying token is always in the same column regardless of
-        -- tree depth — much easier to skim than stock left-aligned paths.
+        -- filename_first keeps the basename in a fixed column for skim-readability.
         formatters = { file = { filename_first = true } },
-        -- Follow symlinks for files/grep — without this, grepping a directory
-        -- whose entries are symlinks silently skips them and returns 0 hits.
+        -- Without `follow`, grep skips symlinked dirs and returns 0 hits.
         sources = {
           files = { follow = true },
           grep  = { follow = true },
         },
-        -- Cycle the picker's search scope through three stops:
-        --   1. project root (Lib.root: LSP / .git / lua marker)
-        --   2. directory of the buffer that owned focus when the picker opened
-        --   3. raw cwd
-        -- Identical stops are deduped so the cycle always advances. Each
-        -- press surfaces a one-line "scope: <path>" notification so the
-        -- new working directory is obvious without inspecting the prompt.
         win = {
           input = {
             keys = {
@@ -97,6 +87,7 @@ return {
         actions = {
           cycle_cwd = function(p)
             local buf = p.input and p.input.filter and p.input.filter.current_buf
+            -- dedup so identical stops (e.g. root == cwd) don't waste a press.
             local stops = { Lib.root(buf), Lib.root.buf(buf), vim.uv.cwd() }
             local seen, uniq = {}, {}
             for _, s in ipairs(stops) do

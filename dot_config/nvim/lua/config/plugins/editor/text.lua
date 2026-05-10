@@ -250,9 +250,6 @@ return {
     opts = { mappings = { toggle = "gS" } },
   },
 
-  -- Trim trailing whitespace. Lives under <Leader>c (code) instead of
-  -- <Leader>u — trimming is a one-shot edit on the buffer, not a UI
-  -- toggle, and `uw` is the natural home for the wrap toggle.
   {
     "echasnovski/mini.trailspace",
     event = "LazyFile",

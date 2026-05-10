@@ -1,9 +1,4 @@
 -- lua/lib/root.lua
--- Project-root detection. The root is whatever the first matching
--- detector returns from a spec list — so different "kinds" of root
--- (project, git, buffer dir) are just different specs over the same
--- engine, all guaranteed to terminate at cwd.
-
 local uv = vim.uv
 local M = {}
 
