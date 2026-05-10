@@ -347,6 +347,38 @@ T.describe("core.pack.install", function()
     T.eq(L.get("demo").rev, rev_orig, "lockfile rev should not change on force-tag")
   end)
 
+  T.it("update with version='stable' tracks the highest semver tag", function()
+    local I, L = fresh()
+    local remote = make_remote()
+    sh({ "git", "-C", remote, "tag", "v0.9.0" })
+    sh({ "git", "-C", remote, "commit", "--allow-empty", "-q", "-m", "1.0" })
+    sh({ "git", "-C", remote, "tag", "v1.0.0" })
+    local spec = { name = "demo", src = "file://" .. remote, version = "stable" }
+    async(function(cb) I.install_missing({ spec }, { on_complete = cb }) end)
+    local rev_at_v1 = (vim.fn.system({ "git", "-C", remote, "rev-parse", "v1.0.0^{commit}" }):gsub("%s+", ""))
+    T.eq(L.get("demo").rev, rev_at_v1, "should install at the highest semver tag")
+
+    -- Push a new tag; update should advance to it.
+    sh({ "git", "-C", remote, "commit", "--allow-empty", "-q", "-m", "1.5" })
+    sh({ "git", "-C", remote, "tag", "v1.5.0" })
+    async(function(cb) I.update({ spec }, { "demo" }, { confirm = false, on_complete = cb }) end)
+    local rev_at_v15 = (vim.fn.system({ "git", "-C", remote, "rev-parse", "v1.5.0^{commit}" }):gsub("%s+", ""))
+    T.eq(L.get("demo").rev, rev_at_v15, "stable should advance to the new highest tag")
+  end)
+
+  T.it("update with version='pinned' refuses to advance past the lockfile rev", function()
+    local I, L = fresh()
+    local remote = make_remote()
+    local spec = { name = "demo", src = "file://" .. remote, version = "pinned" }
+    async(function(cb) I.install_missing({ spec }, { on_complete = cb }) end)
+    local rev_a = L.get("demo").rev
+
+    -- Advance the remote; pinned should NOT pull it in.
+    sh({ "git", "-C", remote, "commit", "--allow-empty", "-q", "-m", "advance" })
+    async(function(cb) I.update({ spec }, { "demo" }, { confirm = false, on_complete = cb }) end)
+    T.eq(L.get("demo").rev, rev_a, "pinned should hold the lockfile rev across updates")
+  end)
+
   T.it("update with range version picks highest matching tag", function()
     local I, L = fresh()
     local remote = make_remote()

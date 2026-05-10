@@ -1235,6 +1235,37 @@ T.describe("core.pack.version.resolve: default sentinel", function()
   end)
 end)
 
+T.describe("core.pack.version.resolve: channels", function()
+  local function fresh()
+    package.loaded["core.pack.version"] = nil
+    return require("core.pack.version")
+  end
+
+  T.it("'stable' picks the highest semver tag", function()
+    local refs = { tags = { "v0.9.0", "v1.0.0", "v1.2.3" }, branches = { "main" } }
+    local r = fresh().resolve("stable", refs)
+    T.eq(r.kind, "tag")
+    T.eq(r.name, "v1.2.3")
+  end)
+
+  T.it("'stable' with no semver tags falls back to default branch", function()
+    local refs = { tags = { "release-old" }, branches = { "main" } }
+    local r = fresh().resolve("stable", refs)
+    T.eq(r.kind, "default")
+  end)
+
+  T.it("'edge' resolves to default branch (always latest)", function()
+    local refs = { tags = { "v1.0.0" }, branches = { "main" } }
+    local r = fresh().resolve("edge", refs)
+    T.eq(r.kind, "default")
+  end)
+
+  T.it("'pinned' surfaces a sentinel kind for the caller to honor", function()
+    local r = fresh().resolve("pinned", { tags = {}, branches = {} })
+    T.eq(r.kind, "pinned")
+  end)
+end)
+
 T.describe("core.pack.git: rev_parse and checkout_sha (stubbed)", function()
   local stubs = require("tests.pack.stubs")
 

@@ -55,7 +55,16 @@ local pin_to_version = async(function(spec, dir)
         spec.name, locked.rev:sub(1, 8)),
       vim.log.levels.WARN)
   end
-  local resolved, err = await(Refs.resolve, spec, dir)
+  -- "pinned" is degenerate on a fresh clone (no lockfile rev yet) — fall
+  -- back to the default branch so the install has something to check
+  -- out. Subsequent updates honor the pin via the version.resolve path.
+  local effective = spec
+  if spec.version == "pinned" then
+    effective = {}
+    for k, v in pairs(spec) do effective[k] = v end
+    effective.version = nil
+  end
+  local resolved, err = await(Refs.resolve, effective, dir)
   if not resolved then
     return nil, ("%s: %s"):format(spec.name, err)
   end
@@ -497,7 +506,19 @@ M.update = function(specs, names, opts)
         local resolved = Version.resolve(t.spec.version, t.refs)
         if resolved then
           t.resolved = resolved
-          if resolved.kind == "default" then
+          if resolved.kind == "pinned" then
+            -- Channel "pinned": target the SHA recorded in the lockfile,
+            -- bypass rev-parse entirely. Updates only apply when the
+            -- working-tree HEAD has drifted from the pin.
+            local entry = Lock.get(t.name)
+            if entry and entry.rev then
+              t.target_rev   = entry.rev
+              t.checkout_ref = entry.rev
+            else
+              vim.notify(("core.pack: %s: version='pinned' but no lockfile entry"):format(t.name),
+                vim.log.levels.WARN)
+            end
+          elseif resolved.kind == "default" then
             local db = t.refs.default_branch
             t.target_ref = db and ("origin/" .. db) or nil
           elseif resolved.kind == "branch" then
