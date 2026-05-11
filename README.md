@@ -68,15 +68,15 @@ To rotate the key in the future: regenerate in 1Password, replace `signing.publi
 
 ## After install
 
-`chezmoi apply` runs a set of per-step `run_once_` scripts after the file deploy. Each is hash-triggered against its own inputs — the brew script re-fires when `etc/darwin/packages.txt`, the blacklist, or the bash libraries it sources change; the mise script when its config template changes; and so on:
+`chezmoi apply` runs a set of per-step `run_once_before_` scripts that install software *before* file targets are written, and a `run_once_after_theme` script that runs *after* files are in place. Each script is hash-triggered against its own inputs: the brew script re-fires when `etc/darwin/packages.txt`, the blacklist, or the bash libraries it sources change; the mise script when its config template changes; and so on. The phase prefix on each name (`apps-`, `runtime-`, `tools`, `workspace-`) sorts alphabetically into the dependency order.
 
-- **`install-1-brew.sh.tmpl`** (macOS) / **`install-1-linux-packages.sh.tmpl`** (Linux): native package install via `etc/darwin/packages.txt` or `etc/linux/packages-*.txt` (auto-detects fedora/debian/arch/suse).
-- **`install-2-mise.sh.tmpl`**: language toolchains via mise.
-- **`install-3-extras.sh.tmpl`** (Linux): bucket-3 tools not in distro repos (starship, gh, lazygit, lazydocker, cargo-installed Rust tools).
-- **`install-4-hive.sh.tmpl`**: workspace symlink layout via hive.
-- **`run_once_setup-theme.sh.tmpl`** (macOS / Linux / WSL) and the `windows/` PowerShell counterpart: downloads theme assets referenced by manifests under `~/.config/dotfiles/themes/`, verifies their sha256, and seeds `~/.local/state/dotfiles/theme` with the manifest's default. After this, `theme set <family>/<variant>` switches everything (kitty, wezterm, tmux, nvim, fish colors, fzf, vivid) at once.
+- **`run_once_before_apps-brew.sh.tmpl`** (macOS) / **`run_once_before_apps-linux-packages.sh.tmpl`** (Linux): native package install via `etc/darwin/packages.txt` or `etc/linux/packages-*.txt` (auto-detects fedora/debian/arch/suse).
+- **`run_once_before_runtime-mise.sh.tmpl`**: language toolchains via mise.
+- **`run_once_before_tools.sh.tmpl`** (Linux): binary tools fetched outside the system package manager (starship, gh, lazygit, lazydocker, cargo-installed Rust tools).
+- **`run_once_before_workspace-hive.sh.tmpl`**: workspace symlink layout via hive.
+- **`run_once_after_theme.sh.tmpl`** (macOS / Linux / WSL) and the `windows/` PowerShell counterpart: downloads theme assets referenced by manifests under `~/.config/dotfiles/themes/`, verifies their sha256, and seeds `~/.local/state/dotfiles/theme` with the manifest's default. Runs after files because it depends on `~/.local/bin/theme` being in place. After this, `theme set <family>/<variant>` switches everything (kitty, wezterm, tmux, nvim, fish colors, fzf, vivid) at once.
 
-On Windows native, `chezmoi apply` runs the PowerShell counterparts under `.chezmoiscripts/windows/`: `run_once_install-1-scoop.ps1.tmpl` (scoop + winget package install via `etc/windows/packages.txt`), `run_once_install-2-mise.ps1.tmpl` (mise toolchains), `run_once_install-4-hive.ps1.tmpl` (workspace symlinks via hive), and `run_once_setup-theme.ps1.tmpl` (theme assets). The wrapper-level `dotfiles` command on Windows is `dot_local/bin/dotfiles.ps1`; `sync` and the rest of the subcommands work the same as the bash side.
+On Windows native, `chezmoi apply` runs the PowerShell counterparts under `.chezmoiscripts/windows/`: `run_once_before_apps-scoop.ps1.tmpl` (scoop + winget package install via `etc/windows/packages.txt`), `run_once_before_runtime-mise.ps1.tmpl` (mise toolchains), `run_once_before_workspace-hive.ps1.tmpl` (workspace symlinks via hive), and `run_once_after_theme.ps1.tmpl` (theme assets). The wrapper-level `dotfiles` command on Windows is `dot_local/bin/dotfiles.ps1`; `sync` and the rest of the subcommands work the same as the bash side.
 
 ## The `dotfiles` wrapper
 

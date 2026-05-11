@@ -1,13 +1,13 @@
 {{ if eq .chezmoi.os "linux" -}}
 #!/usr/bin/env bash
-# Hash trigger — re-runs when the bucket-3 installer logic changes
+# Hash trigger — re-runs when the tools installer logic changes
 # (starship, lazygit, lazydocker, gh, cargo-installed Rust tools). Runs
 # after mise so `mise exec cargo` is on PATH.
-# extras.bash hash: {{ include "etc/bash/lib/extras.bash" | sha256sum }}
+# tools.bash hash: {{ include "etc/bash/lib/tools.bash" | sha256sum }}
 source {{ joinPath .chezmoi.sourceDir "etc" "bash" "lib" "init.bash" | quote }}
 
-import unix extras
+import unix tools
 
 unix::keep_sudo
-extras::setup
+tools::setup
 {{ end -}}

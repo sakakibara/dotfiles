@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Bucket-3 tools: not in default Linux package repos for at least one of the
-# supported distros, or the upstream-published binary is preferred over what
-# the distro packages. Each function is idempotent — skips if the tool is
-# already on PATH.
+# Binary tools fetched outside the system package manager: either not in
+# default repos for at least one supported distro, or the upstream-published
+# binary is preferred over what the distro packages. Each function is
+# idempotent — skips if the tool is already on PATH.
 
 import msg
 
 # Map uname -m → release-archive arch suffix used by most upstream releases.
-extras::_arch() {
+tools::_arch() {
   case "$(uname -m)" in
     x86_64|amd64)   echo x86_64 ;;
     aarch64|arm64)  echo arm64 ;;
@@ -17,14 +17,14 @@ extras::_arch() {
 
 # GitHub release tag fetcher. Returns the latest tag for owner/repo without
 # the leading 'v'. Uses unauthenticated GitHub API; fine for run_once context.
-extras::_latest_tag() {
+tools::_latest_tag() {
   curl -fsSL "https://api.github.com/repos/$1/releases/latest" \
     | grep -oE '"tag_name":[[:space:]]*"v?[0-9][0-9.]*"' \
     | grep -oE '[0-9][0-9.]*' \
     | head -n1
 }
 
-extras::starship() {
+tools::starship() {
   msg::heading "Installing starship"
   if command -v starship >/dev/null 2>&1; then
     msg::success "starship already installed"
@@ -37,15 +37,15 @@ extras::starship() {
 # Install a tool from a GitHub release tarball.
 # Args: $1=binary name, $2=owner/repo, $3=archive_template (uses {tag}/{arch}),
 # $4=path inside archive to the binary.
-extras::_install_github_release() {
+tools::_install_github_release() {
   local bin="$1" repo="$2" tmpl="$3" path="$4"
   if command -v "$bin" >/dev/null 2>&1; then
     msg::success "$bin already installed"
     return 0
   fi
   local tag arch tmp url filename
-  tag=$(extras::_latest_tag "$repo") || { msg::error "$bin: failed to fetch latest tag"; return 1; }
-  arch=$(extras::_arch) || return 1
+  tag=$(tools::_latest_tag "$repo") || { msg::error "$bin: failed to fetch latest tag"; return 1; }
+  arch=$(tools::_arch) || return 1
   filename=$(printf '%s' "$tmpl" | sed -e "s/{tag}/$tag/g" -e "s/{arch}/$arch/g")
   url="https://github.com/$repo/releases/download/v${tag}/${filename}"
   tmp=$(mktemp -d)
@@ -61,11 +61,11 @@ extras::_install_github_release() {
   msg::success "$bin $tag installed"
 }
 
-extras::lazygit()    { msg::heading "Installing lazygit";    extras::_install_github_release lazygit    jesseduffield/lazygit    'lazygit_{tag}_Linux_{arch}.tar.gz'    lazygit; }
-extras::lazydocker() { msg::heading "Installing lazydocker"; extras::_install_github_release lazydocker jesseduffield/lazydocker 'lazydocker_{tag}_Linux_{arch}.tar.gz' lazydocker; }
-extras::gh()         { msg::heading "Installing gh";         extras::_install_github_release gh         cli/cli                  'gh_{tag}_linux_{arch}.tar.gz'         "gh_{tag}_linux_{arch}/bin/gh"; }
+tools::lazygit()    { msg::heading "Installing lazygit";    tools::_install_github_release lazygit    jesseduffield/lazygit    'lazygit_{tag}_Linux_{arch}.tar.gz'    lazygit; }
+tools::lazydocker() { msg::heading "Installing lazydocker"; tools::_install_github_release lazydocker jesseduffield/lazydocker 'lazydocker_{tag}_Linux_{arch}.tar.gz' lazydocker; }
+tools::gh()         { msg::heading "Installing gh";         tools::_install_github_release gh         cli/cli                  'gh_{tag}_linux_{arch}.tar.gz'         "gh_{tag}_linux_{arch}/bin/gh"; }
 
-extras::cargo_tools() {
+tools::cargo_tools() {
   msg::heading "Installing Rust-based tools via cargo"
   if ! command -v mise >/dev/null 2>&1; then
     msg::error "mise not on PATH; cargo_tools needs mise+rust. Skipping."
@@ -84,10 +84,10 @@ extras::cargo_tools() {
   done
 }
 
-extras::setup() {
-  extras::starship
-  extras::lazygit
-  extras::lazydocker
-  extras::gh
-  extras::cargo_tools
+tools::setup() {
+  tools::starship
+  tools::lazygit
+  tools::lazydocker
+  tools::gh
+  tools::cargo_tools
 }
