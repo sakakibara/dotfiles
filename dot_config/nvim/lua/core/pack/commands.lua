@@ -151,39 +151,57 @@ local function subcommands(Pack)
   }
 
   subs.update = {
-    desc = "Update plugin(s); ! = target lockfile revs (use after :Pack rollback)",
+    desc = "Update plugin(s); ! = lockfile target (after :Pack rollback); -y/--yes = skip review",
     complete = function(arglead) return name_complete(Pack, arglead) end,
     run = function(opts)
       local Install = require("core.pack.install")
       local specs = {}
       for _, s in pairs(Pack._specs) do specs[#specs + 1] = s end
       local target = opts.bang and "lockfile" or "remote"
-      Install.update(specs, opts.fargs, { confirm = true, target = target })
+      local names, no_confirm = {}, false
+      for _, a in ipairs(opts.fargs) do
+        if a == "-y" or a == "--yes" then
+          no_confirm = true
+        else
+          names[#names + 1] = a
+        end
+      end
+      Install.update(specs, names, { confirm = not no_confirm, target = target })
     end,
   }
 
   subs.clean = {
-    desc = "Remove plugins not in spec (with confirmation buffer)",
-    run = function()
+    desc = "Remove plugins not in spec (-y/--yes skips review)",
+    run = function(opts)
       local Install = require("core.pack.install")
       local UI = require("core.pack.ui")
       local specs = {}
       for _, s in pairs(Pack._specs) do specs[#specs + 1] = s end
+      local skip_review = false
+      for _, a in ipairs(opts.fargs or {}) do
+        if a == "-y" or a == "--yes" then skip_review = true end
+      end
       Install.clean(specs, {
         on_review = function(orphans, do_remove)
-          UI.clean_review(orphans, {
-            on_apply = function(list) do_remove(list) end,
-          })
+          if skip_review then
+            do_remove(orphans)
+          else
+            UI.clean_review(orphans, {
+              on_apply = function(list) do_remove(list) end,
+            })
+          end
         end,
       })
     end,
   }
 
   subs.sync = {
-    desc = "Update then clean",
-    run = function()
-      vim.cmd("Pack update")
-      vim.cmd("Pack clean")
+    desc = "Update then clean (forwards bang and -y/--yes to both)",
+    run = function(opts)
+      local prefix = opts.bang and "Pack! " or "Pack "
+      local args = (opts.fargs and #opts.fargs > 0) and (" " .. table.concat(opts.fargs, " ")) or ""
+      vim.cmd(prefix .. "update" .. args)
+      vim.cmd(prefix .. "clean" .. args)
     end,
   }
 

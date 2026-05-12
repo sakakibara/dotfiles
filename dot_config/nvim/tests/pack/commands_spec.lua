@@ -175,6 +175,61 @@ T.describe("core.pack.commands :Pack dispatcher", function()
       T.eq(status_called, true)
     end)
   end)
+
+  T.it("update -y sets confirm=false (skip review)", function()
+    with_stubbed_command(function(get)
+      fresh_commands().setup(fake_pack())
+      local seen
+      local Install = require("core.pack.install")
+      local real_update = Install.update
+      Install.update = function(_specs, names, opts) seen = { names = names, opts = opts } end
+      get().callback({ fargs = { "update", "-y" }, bang = false })
+      Install.update = real_update
+      T.eq(seen.opts.confirm, false, "-y should set confirm=false")
+      T.eq(#seen.names, 0, "-y alone should yield empty names list")
+    end)
+  end)
+
+  T.it("update --yes is an alias for -y", function()
+    with_stubbed_command(function(get)
+      fresh_commands().setup(fake_pack())
+      local seen
+      local Install = require("core.pack.install")
+      local real_update = Install.update
+      Install.update = function(_specs, _names, opts) seen = opts end
+      get().callback({ fargs = { "update", "--yes" }, bang = false })
+      Install.update = real_update
+      T.eq(seen.confirm, false)
+    end)
+  end)
+
+  T.it("update plug -y partitions flag tokens from plugin names", function()
+    with_stubbed_command(function(get)
+      fresh_commands().setup(fake_pack())
+      local seen
+      local Install = require("core.pack.install")
+      local real_update = Install.update
+      Install.update = function(_specs, names, opts) seen = { names = names, opts = opts } end
+      get().callback({ fargs = { "update", "plugin-a", "-y", "plugin-b" }, bang = false })
+      Install.update = real_update
+      T.eq(seen.opts.confirm, false)
+      T.eq(seen.names, { "plugin-a", "plugin-b" })
+    end)
+  end)
+
+  T.it("update without -y keeps confirm=true (default review)", function()
+    with_stubbed_command(function(get)
+      fresh_commands().setup(fake_pack())
+      local seen
+      local Install = require("core.pack.install")
+      local real_update = Install.update
+      Install.update = function(_specs, names, opts) seen = { names = names, opts = opts } end
+      get().callback({ fargs = { "update", "plugin-a" }, bang = false })
+      Install.update = real_update
+      T.eq(seen.opts.confirm, true)
+      T.eq(seen.names, { "plugin-a" })
+    end)
+  end)
 end)
 
 -- Stub UI for the duration of `fn` with a noop-but-introspectable mock.
@@ -238,6 +293,35 @@ T.describe("core.pack.commands :Pack clean", function()
       end)
       Install.clean = orig_clean
       T.truthy(removed_with, "do_remove should have been called via on_apply")
+      T.eq(#removed_with, 1)
+      T.eq(removed_with[1].name, "ghost")
+    end)
+  end)
+
+  T.it("clean -y bypasses UI.clean_review and applies directly", function()
+    with_stubbed_command(function(get)
+      local Install = require("core.pack.install")
+      local orig_clean = Install.clean
+      local removed_with
+      Install.clean = function(_specs, opts)
+        local sample_orphans = { { name = "ghost", size_kb = 100 } }
+        opts.on_review(sample_orphans, function(list) removed_with = list end)
+      end
+      local review_called = false
+      with_ui_stub({
+        clean_review = function(orphans, ropts)
+          review_called = true
+          ropts.on_apply(orphans)
+          return { close = function() end }
+        end,
+      }, function()
+        fresh_commands().setup(fake_pack())
+        local ok, err = pcall(get().callback, { fargs = { "clean", "-y" }, bang = false })
+        T.eq(ok, true, ":Pack clean -y must not raise: " .. tostring(err))
+      end)
+      Install.clean = orig_clean
+      T.eq(review_called, false, "UI.clean_review must not be called with -y")
+      T.truthy(removed_with, "do_remove should still receive the orphan list")
       T.eq(#removed_with, 1)
       T.eq(removed_with[1].name, "ghost")
     end)
@@ -476,6 +560,34 @@ T.describe("core.pack.commands :Pack sync", function()
       end)
       vim.cmd = orig
       T.eq(cmds, { "Pack update", "Pack clean" })
+    end)
+  end)
+
+  T.it("sync -y propagates -y to inner update and clean", function()
+    with_stubbed_command(function(get)
+      local cmds = {}
+      local orig = vim.cmd
+      vim.cmd = function(c) cmds[#cmds + 1] = tostring(c) end
+      with_ui_stub({}, function()
+        fresh_commands().setup(fake_pack())
+        pcall(get().callback, { fargs = { "sync", "-y" }, bang = false })
+      end)
+      vim.cmd = orig
+      T.eq(cmds, { "Pack update -y", "Pack clean -y" })
+    end)
+  end)
+
+  T.it("sync! propagates bang to inner update and clean", function()
+    with_stubbed_command(function(get)
+      local cmds = {}
+      local orig = vim.cmd
+      vim.cmd = function(c) cmds[#cmds + 1] = tostring(c) end
+      with_ui_stub({}, function()
+        fresh_commands().setup(fake_pack())
+        pcall(get().callback, { fargs = { "sync" }, bang = true })
+      end)
+      vim.cmd = orig
+      T.eq(cmds, { "Pack! update", "Pack! clean" })
     end)
   end)
 end)
