@@ -86,9 +86,11 @@ local pin_to_version = async(function(spec, dir)
   return resolved.sha, nil, resolved
 end)
 
--- Build hook: shell / Ex command / function. The shell branch is async
--- (vim.system without :wait()); Ex and function branches are inherently
--- main-thread (they execute Vimscript / Lua that touches editor state).
+-- Build hook: shell / Ex command / function. All three branches are
+-- async: shell-string via `vim.system`; Ex and function via a clean
+-- `nvim --headless --clean` subprocess. The subprocess approach keeps
+-- the main UI responsive when builds do substantial work (compiling
+-- treesitter parsers, calling :TSUpdate-style commands, etc).
 -- Skips re-running when BuildCache reports HEAD has already been built
 -- with this command; pass opts.force = true to bypass the cache.
 M.run_build = async(function(spec, path, opts)
@@ -120,35 +122,104 @@ M.run_build = async(function(spec, path, opts)
 
   local ok = false
   if type(b) == "function" then
-    -- Function-style builds need the plugin on rtp so `require()` can
-    -- resolve the plugin's own modules (e.g. organ.nvim's
-    -- `require("organ.grammar_install").install()`). Prepend transiently;
-    -- restore after to avoid polluting rtp until packadd runs.
+    -- Dump function bytecode and run it in a clean `nvim --headless`
+    -- subprocess so the main UI stays responsive during heavy work
+    -- (e.g. organ.nvim's grammar_install compiles two treesitter
+    -- parsers, which used to block for seconds). The subprocess
+    -- prepends the plugin path to rtp so `require()` resolves the
+    -- plugin's own modules. Fresh process means no stale `package.loaded`
+    -- entries to clear, and no rtp pollution to roll back.
     --
-    -- ALSO clear package.loaded entries for the plugin's namespace.
-    -- Without this, an update that just checked out new code would have
-    -- its build hook see the cached PREVIOUS version of the module
-    -- (Lua require caches by module name; updating the file on disk
-    -- doesn't invalidate the cache).
-    local mod = spec.name:gsub("%.nvim$", "")
-    for k in pairs(package.loaded) do
-      if k == mod or k:sub(1, #mod + 1) == mod .. "." then
-        package.loaded[k] = nil
-      end
+    -- The build receives { name, path } only; spec is no longer passed
+    -- (arbitrary tables are not generally serializable across processes).
+    -- A build that needs spec data can re-derive it via `require()`
+    -- against the prepended rtp.
+    local ok_dump, dumped = pcall(string.dump, b)
+    if not ok_dump then
+      fail("function build cannot be serialized: " .. tostring(dumped))
+      return
     end
-    local prev_rtp = vim.o.runtimepath
-    vim.opt.runtimepath:prepend(path)
-    local pok, perr = pcall(b, { name = spec.name, path = path, spec = spec })
-    vim.o.runtimepath = prev_rtp
-    if pok then ok = true else fail(perr) end
-  elseif type(b) == "string" and b:sub(1, 1) == ":" then
-    local prev = vim.fn.getcwd()
-    local pok, perr = pcall(function()
-      vim.cmd.lcd({ path, mods = { silent = true } })
-      vim.cmd(b:sub(2))
+    local bc_file = vim.fn.tempname()
+    do
+      local fp, oerr = io.open(bc_file, "wb")
+      if not fp then fail("write bytecode: " .. tostring(oerr)); return end
+      fp:write(dumped); fp:close()
+    end
+    -- The plugin must be reachable both via rtp (for `runtime` lookups)
+    -- and via package.path / package.cpath (for `require`). nvim only
+    -- syncs package.path from rtp at startup; with --clean and a runtime
+    -- prepend, require() wouldn't find the plugin's modules.
+    local script = ([[
+local PLUGIN = %q
+vim.opt.runtimepath:prepend(PLUGIN)
+package.path  = PLUGIN .. "/lua/?.lua;" .. PLUGIN .. "/lua/?/init.lua;" .. package.path
+package.cpath = PLUGIN .. "/lua/?.so;" .. package.cpath
+local fp = assert(io.open(%q, "rb"))
+local chunk = fp:read("*a"); fp:close()
+local fn, ferr = loadstring(chunk)
+if not fn then io.stderr:write("loadstring: " .. tostring(ferr) .. "\n") os.exit(1) end
+local ok, perr = pcall(fn, { name = %q, path = PLUGIN })
+if not ok then io.stderr:write(tostring(perr) .. "\n") os.exit(1) end
+]]):format(path, bc_file, spec.name)
+    local script_file = vim.fn.tempname() .. ".lua"
+    do
+      local fp, oerr = io.open(script_file, "w")
+      if not fp then pcall(os.remove, bc_file); fail("write script: " .. tostring(oerr)); return end
+      fp:write(script); fp:close()
+    end
+    local r = await(function(cb)
+      vim.system(
+        { vim.v.progpath, "--headless", "--clean", "-l", script_file },
+        { cwd = path, text = true },
+        function(rr) vim.schedule(function() cb(rr) end) end)
     end)
-    pcall(vim.cmd.lcd, { prev, mods = { silent = true } })
-    if pok then ok = true else fail(perr) end
+    pcall(os.remove, bc_file)
+    pcall(os.remove, script_file)
+    if r.code == 0 then
+      ok = true
+    else
+      fail((r.stderr ~= "" and r.stderr) or ("exit " .. tostring(r.code)))
+    end
+  elseif type(b) == "string" and b:sub(1, 1) == ":" then
+    -- Ex-command builds also run in a clean headless subprocess. The
+    -- bootstrap sources the plugin's plugin/**/*.{vim,lua} so user
+    -- commands defined there (e.g. :TSUpdate) are available when the
+    -- build's Ex command runs. Mirrors what :packadd would do, but
+    -- without depending on packpath layout (which the test harness
+    -- overrides via _install_root_override).
+    local script = ([[
+local PLUGIN = %q
+vim.opt.runtimepath:prepend(PLUGIN)
+package.path  = PLUGIN .. "/lua/?.lua;" .. PLUGIN .. "/lua/?/init.lua;" .. package.path
+package.cpath = PLUGIN .. "/lua/?.so;" .. package.cpath
+for _, f in ipairs(vim.fn.glob(PLUGIN .. "/plugin/**/*.vim", true, true)) do
+  pcall(vim.cmd, "source " .. vim.fn.fnameescape(f))
+end
+for _, f in ipairs(vim.fn.glob(PLUGIN .. "/plugin/**/*.lua", true, true)) do
+  pcall(dofile, f)
+end
+vim.cmd("lcd " .. vim.fn.fnameescape(PLUGIN))
+local ok, err = pcall(vim.cmd, %q)
+if not ok then io.stderr:write(tostring(err) .. "\n") os.exit(1) end
+]]):format(path, b:sub(2))
+    local script_file = vim.fn.tempname() .. ".lua"
+    do
+      local fp, oerr = io.open(script_file, "w")
+      if not fp then fail("write script: " .. tostring(oerr)); return end
+      fp:write(script); fp:close()
+    end
+    local r = await(function(cb)
+      vim.system(
+        { vim.v.progpath, "--headless", "--clean", "-l", script_file },
+        { cwd = path, text = true },
+        function(rr) vim.schedule(function() cb(rr) end) end)
+    end)
+    pcall(os.remove, script_file)
+    if r.code == 0 then
+      ok = true
+    else
+      fail((r.stderr ~= "" and r.stderr) or ("exit " .. tostring(r.code)))
+    end
   elseif type(b) == "string" then
     local r = await(function(cb)
       vim.system({ "sh", "-c", b }, { cwd = path, text = true }, function(rr)

@@ -552,4 +552,81 @@ T.describe("core.pack.install", function()
     local rr = vim.fn.system({ "git", "-C", remote, "rev-parse", "v1.6.0^{commit}" })
     T.eq(rev_after, (rr:gsub("%s+", "")), "should advance to v1.6.0, not v2.0.0")
   end)
+
+  T.it("function build hook runs and writes its marker", function()
+    local I, L = fresh()
+    local remote = make_remote()
+    local marker = vim.fn.tempname() .. "-fbuild"
+    os.remove(marker)
+    -- Function bodies are dumped to bytecode and shipped to a subprocess,
+    -- so the marker path must be embedded as a literal (upvalues are
+    -- nilled by string.dump). Build the function via loadstring so the
+    -- path is baked in.
+    local body = ([[return function(arg)
+      local fp = assert(io.open(%q, "w"))
+      fp:write(arg.name .. "\n" .. arg.path)
+      fp:close()
+    end]]):format(marker)
+    local build = assert(loadstring(body))()
+    async(function(cb) I.install_missing(
+      { { name = "fbuild-demo", src = "file://" .. remote, build = build } }, { on_complete = cb })
+    end)
+    T.eq(vim.fn.filereadable(marker), 1, "marker file should exist after function build")
+    local content = table.concat(vim.fn.readfile(marker), "\n")
+    T.truthy(content:match("^fbuild%-demo\n"), "build received correct arg.name")
+    T.truthy(content:find(I.install_dir("fbuild-demo"), 1, true),
+      "build received correct arg.path")
+  end)
+
+  T.it("function build does not block the main thread", function()
+    local I, L = fresh()
+    local remote = make_remote()
+    -- Build sleeps 500ms in the SUBPROCESS; main thread must remain
+    -- responsive. We measure responsiveness via a 10ms-interval timer:
+    -- if the main thread is blocked, the timer can't fire. Sync code
+    -- yields ~0 ticks during the 500ms sleep; async (subprocess) yields
+    -- ~50 ticks plus some during nvim --headless startup overhead.
+    local body = [[return function() os.execute("sleep 0.5") end]]
+    local build = assert(loadstring(body))()
+    local ticks = 0
+    local timer = assert(vim.uv.new_timer())
+    timer:start(10, 10, vim.schedule_wrap(function() ticks = ticks + 1 end))
+    async(function(cb) I.install_missing(
+      { { name = "fbuild-async", src = "file://" .. remote, build = build } }, { on_complete = cb })
+    end)
+    timer:stop()
+    timer:close()
+    T.truthy(ticks >= 30,
+      "main thread should tick during function build (got " .. ticks .. ", expected >=30)")
+  end)
+
+  T.it("ex-command build hook runs and writes its marker", function()
+    local I, L = fresh()
+    local remote = make_remote()
+    local marker = vim.fn.tempname() .. "-exbuild"
+    os.remove(marker)
+    -- :lua escapes are tricky inside an Ex string; use call writefile.
+    local build = ":call writefile(['ok'], '" .. marker .. "')"
+    async(function(cb) I.install_missing(
+      { { name = "exbuild-demo", src = "file://" .. remote, build = build } }, { on_complete = cb })
+    end)
+    T.eq(vim.fn.filereadable(marker), 1, "marker file should exist after ex-command build")
+  end)
+
+  T.it("ex-command build does not block the main thread", function()
+    local I, L = fresh()
+    local remote = make_remote()
+    -- Subprocess :sleep blocks only the subprocess; parent timer should
+    -- continue ticking. Same threshold logic as the function-build test.
+    local ticks = 0
+    local timer = assert(vim.uv.new_timer())
+    timer:start(10, 10, vim.schedule_wrap(function() ticks = ticks + 1 end))
+    async(function(cb) I.install_missing(
+      { { name = "exbuild-async", src = "file://" .. remote, build = ":sleep 500m" } }, { on_complete = cb })
+    end)
+    timer:stop()
+    timer:close()
+    T.truthy(ticks >= 30,
+      "main thread should tick during ex-command build (got " .. ticks .. ", expected >=30)")
+  end)
 end)
