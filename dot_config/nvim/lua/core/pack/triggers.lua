@@ -148,8 +148,10 @@ function M.create(deps)
       vim.api.nvim_create_autocmd("User", {
         once = true, pattern = pat, desc = group_desc(group),
         callback = function(args)
-          load_group(group, "event:User " .. pat)
-          schedule_refire("User", { pattern = pat, data = args.data, modeline = false })
+          vim.schedule(function()
+            load_group(group, "event:User " .. pat)
+            schedule_refire("User", { pattern = pat, data = args.data, modeline = false })
+          end)
         end,
       })
     end
@@ -158,10 +160,12 @@ function M.create(deps)
       vim.api.nvim_create_autocmd(e, {
         once = true, desc = group_desc(group),
         callback = function(args)
-          load_group(group, "event:" .. args.event)
-          schedule_refire(args.event, {
-            buffer = args.buf, data = args.data, modeline = false,
-          })
+          vim.schedule(function()
+            load_group(group, "event:" .. args.event)
+            schedule_refire(args.event, {
+              buffer = args.buf, data = args.data, modeline = false,
+            })
+          end)
         end,
       })
     end
@@ -170,8 +174,10 @@ function M.create(deps)
       vim.api.nvim_create_autocmd("FileType", {
         once = true, pattern = ft, desc = group_desc(group),
         callback = function(args)
-          load_group(group, "ft:" .. ft)
-          schedule_refire("FileType", { buffer = args.buf, modeline = false })
+          vim.schedule(function()
+            load_group(group, "ft:" .. ft)
+            schedule_refire("FileType", { buffer = args.buf, modeline = false })
+          end)
         end,
       })
     end

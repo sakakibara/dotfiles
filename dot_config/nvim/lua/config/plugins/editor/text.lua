@@ -120,7 +120,7 @@ return {
   -- Extended matchpair: `%` jumps if/else/end, function/end, HTML tags
   {
     "andymass/vim-matchup",
-    event = "LazyFile",
+    event = "VeryLazy",
     init = function()
       vim.g.matchup_matchparen_offscreen = { method = "popup" }
       vim.g.matchup_matchparen_deferred = 1
@@ -136,7 +136,7 @@ return {
   -- and cycling.
   {
     "gbprod/yanky.nvim",
-    event = "LazyFile",
+    event = "VeryLazy",
     keys = {
       { "p",          "<Plug>(YankyPutAfter)",                           mode = { "n", "x" }, desc = "Put after" },
       { "P",          "<Plug>(YankyPutBefore)",                          mode = { "n", "x" }, desc = "Put before" },

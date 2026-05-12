@@ -1,7 +1,7 @@
 return {
   {
     "neovim/nvim-lspconfig",
-    event = "LazyFile",
+    event = { "BufReadPre", "BufNewFile", "BufWritePre" },
     -- lazydev.nvim is NOT a dependency: nvim-lspconfig is the
     -- LazyFile gate (any file), which would force lazydev to load on
     -- every file type. lazydev has its own `ft = "lua"` trigger; we
