@@ -330,6 +330,7 @@ return {
           { "<Leader>gh", group = "git hunk",              icon = { icon = I.hunk,    color = "orange" } },
           { "<Leader>o",  group = "org (organ)",           icon = { icon = I.org,     color = "green"  } },
           { "<Leader>P",  group = "pack",                  icon = { icon = I.pack,    color = "azure"  } },
+          { "<Leader>Py", group = "yes (skip review)",     icon = { icon = I.check,   color = "green"  } },
           { "<Leader>q",  group = "quit",                  icon = { icon = I.quit,    color = "red"    } },
           { "<Leader>s",  group = "search",                icon = { icon = I.find,    color = "green"  } },
           { "<Leader>t",  group = "test",                  icon = { icon = I.test,    color = "yellow" } },

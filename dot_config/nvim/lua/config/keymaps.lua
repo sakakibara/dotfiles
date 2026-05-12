@@ -207,6 +207,12 @@ map("n", "<Leader>Pc", "<Cmd>Pack clean<CR>",    { desc = "Clean orphans" })
 map("n", "<Leader>Pl", "<Cmd>Pack log<CR>",      { desc = "Log" })
 map("n", "<Leader>Pp", "<Cmd>Pack profile<CR>",  { desc = "Profile" })
 
+-- Pack: -y variants (skip review window). Sub-prefix `y` keeps the
+-- interactive defaults on Pu/PS/Pc untouched.
+map("n", "<Leader>Pyu", "<Cmd>Pack update -y<CR>", { desc = "Update -y (skip review)" })
+map("n", "<Leader>Pyc", "<Cmd>Pack clean -y<CR>",  { desc = "Clean -y (skip review)" })
+map("n", "<Leader>Pys", "<Cmd>Pack sync -y<CR>",   { desc = "Sync -y (skip review)" })
+
 -- single-chord fast-access (skip a keystroke for the daily-driver ops).
 -- Default scope is the project root (Lib.root: LSP / .git / lua); the
 -- shifted variant forces the scope to cwd. Inside any picker prompt
