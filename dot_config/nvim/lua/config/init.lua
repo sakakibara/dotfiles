@@ -154,7 +154,7 @@ function M.setup()
         for _, m in ipairs(_pending) do
           local lvl = m.level or vim.log.levels.INFO
           if lvl >= vim.log.levels.WARN then
-            pcall(prev, m.msg, m.level, m.opts)
+            vim.schedule(function() pcall(prev, m.msg, m.level, m.opts) end)
           else
             pcall(vim.api.nvim_echo,
               { { tostring(m.msg), level_to_hl(m.level) } },
