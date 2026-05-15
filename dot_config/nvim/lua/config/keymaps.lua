@@ -160,6 +160,14 @@ Lib.plugin.on_load("snacks.nvim", function()
     { off = "light", on = "dark", name = "Dark Background" }
   ):map("<Leader>ub")
   Snacks.toggle({
+    name = "Git Blame Line",
+    get  = function()
+      local ok, cfg = pcall(require, "gitsigns.config")
+      return ok and cfg.config.current_line_blame or false
+    end,
+    set  = function(state) require("gitsigns").toggle_current_line_blame(state) end,
+  }):map("<Leader>uB")
+  Snacks.toggle({
     name = "Screenwise j/k",
     get  = function() return vim.g.screenwise_jk ~= false end,
     set  = function(state) vim.g.screenwise_jk = state; set_screenwise_jk(state) end,
