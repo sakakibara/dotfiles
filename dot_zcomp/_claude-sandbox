@@ -6,7 +6,6 @@ _claude_sandbox() {
   local -a subcommands
   subcommands=(
     'start:start detached'
-    'attach:attach to a running sandbox'
     'stop:stop and remove'
     'export:export strict-mode volume to host repo'
     'list:all sandboxes'
@@ -35,11 +34,6 @@ _claude_sandbox() {
       ;;
     args)
       case "$words[1]" in
-        attach)
-          local -a running
-          running=(${(f)"$(docker ps --filter 'name=^claude-sandbox-' --format '{{.Names}}' 2>/dev/null)"})
-          _describe 'running sandbox' running
-          ;;
         stop)
           _arguments \
             '--all[stop every sandbox]' \

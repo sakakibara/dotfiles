@@ -3,18 +3,19 @@
 #
 # Default behaviour: in a repo, `claude-sandbox` starts a container with
 # `claude --remote-control --dangerously-skip-permissions` inside and
-# attaches an interactive TTY. Detach with Ctrl-p Ctrl-q to leave the
-# container running so you can drive the same session from claude.ai/code
-# or the Claude mobile app — `--remote-control` polls the Anthropic API
-# outbound, no inbound port is opened.
+# attaches an interactive TTY. The container is ephemeral: it is removed
+# when claude exits (/exit or the process ending). There is no terminal
+# reattach -- detach with Ctrl-p Ctrl-q to drive the running session from
+# claude.ai/code or the Claude mobile app (`--remote-control` polls the
+# Anthropic API outbound, no inbound port is opened), or resume a past
+# conversation in a fresh container with --continue / --resume.
 #
 # Subcommands:
 #   claude-sandbox [--auto|--bypass] [--continue|--resume] [repo]
 #                                              start + attach (default; bypass)
 #   claude-sandbox start [--auto] [repo]      start detached (no TTY)
-#   claude-sandbox attach [name]              attach to a running sandbox
 #   claude-sandbox stop [name|--all]          stop & remove
-#   claude-sandbox list                       all sandboxes (running + stopped)
+#   claude-sandbox list                       all sandboxes
 #   claude-sandbox info                       image + sandbox status
 #   claude-sandbox rebuild                    docker build --no-cache
 #   claude-sandbox enable-autostart [repo]    LaunchAgent: start at login
@@ -159,78 +160,40 @@ _containers_for_target() {
   done < <(docker ps -a --filter "name=^${NAME_PREFIX}-" --format '{{.Names}}' 2>/dev/null)
 }
 
-# First container name in the canonical sequence (base, base-2, base-3, …)
-# that is either free (doesn't exist) or owned by us (workspace label
-# matches). Skips names taken by OTHER repos. Used for both auto-bump on
-# create and locating "where the next parallel session would land."
-_next_free_name() {
+# First name in the canonical sequence (base, base-2, base-3, ...) that no
+# container currently holds. Ephemeral sandboxes never reuse a live name,
+# so every existing container -- ours or another repo's -- is skipped; the
+# integer suffix lets parallel sessions for the same repo coexist.
+_first_unused_name() {
   local repo="$1" mode="$2" name_override="$3"
   local base; base=$(_container_name_base "$repo" "$mode" "$name_override")
   local n=1 candidate="$base"
-  while true; do
-    if ! _container_exists "$candidate"; then
-      printf '%s\n' "$candidate"; return
-    fi
-    local ws; ws=$(_container_workspace_label "$candidate")
-    # Belongs to us OR is a legacy (no label) container we'll claim.
-    if [[ -z "$ws" || "$ws" == "$WS_LABEL" ]]; then
-      printf '%s\n' "$candidate"; return
-    fi
+  while _container_exists "$candidate"; do
     n=$((n + 1)); candidate="${base}-${n}"
   done
+  printf '%s\n' "$candidate"
 }
 
-# Resolve the target container name + action ("attach" or "create") for
-# (repo, mode, name_override, force_new). Outputs "<name>\t<action>" on
-# stdout, or exits via _die / interactive picker dismissal.
-_resolve_target() {
-  local repo="$1" mode="$2" name_override="$3" force_new="${4:-}"
-  local base; base=$(_container_name_base "$repo" "$mode" "$name_override")
-
-  # Named slot semantics: exact match or create. Cross-repo collision on
-  # the same name → fail with a helpful hint.
+# Pick the container name for a fresh ephemeral sandbox. A --name slot is
+# exact: if it's already taken the sandbox is still live (ephemeral
+# containers self-remove on exit), so refuse rather than clobber it.
+# Unnamed invocations auto-bump to the first unused integer suffix.
+_create_name() {
+  local repo="$1" mode="$2" name_override="$3"
   if [[ -n "$name_override" ]]; then
+    local base; base=$(_container_name_base "$repo" "$mode" "$name_override")
     if _container_exists "$base"; then
       local ws; ws=$(_container_workspace_label "$base")
-      if [[ -z "$ws" || "$ws" == "$WS_LABEL" ]]; then
-        printf '%s\tattach\n' "$base"; return
-      fi
-      _die "name '$name_override' is already used by another repo: $ws
+      if [[ -n "$ws" && "$ws" != "$WS_LABEL" ]]; then
+        _die "name '$name_override' is already used by another repo: $ws
        use a different --name to disambiguate"
+      fi
+      _die "named sandbox '$name_override' already running; stop it first:
+       claude-sandbox stop $base"
     fi
-    printf '%s\tcreate\n' "$base"; return
+    printf '%s\n' "$base"; return
   fi
-
-  # Force-create: auto-bump to next free integer.
-  if [[ -n "$force_new" ]]; then
-    local target; target=$(_next_free_name "$repo" "$mode" "")
-    # _next_free_name returns first free OR ours; force_new wants a NEW one,
-    # so if it returned an existing-ours, bump beyond it.
-    if _container_exists "$target"; then
-      local n=2
-      while _container_exists "${base}-${n}"; do n=$((n + 1)); done
-      target="${base}-${n}"
-    fi
-    printf '%s\tcreate\n' "$target"; return
-  fi
-
-  # Smart default: existing for this repo+mode? attach (single) or pick
-  # (multi). None? create at first free name.
-  local matches; matches=$(_containers_for_target "$repo" "$mode" "")
-  if [[ -z "$matches" ]]; then
-    local target; target=$(_next_free_name "$repo" "$mode" "")
-    printf '%s\tcreate\n' "$target"; return
-  fi
-  local count; count=$(printf '%s\n' "$matches" | grep -c .)
-  if (( count == 1 )); then
-    printf '%s\tattach\n' "$matches"; return
-  fi
-  command -v fzf >/dev/null 2>&1 \
-    || _die "$count sandboxes for this repo+mode; install fzf or pass --name"
-  local picked; picked=$(printf '%s\n' "$matches" \
-    | fzf --height 40% --reverse --prompt 'sandbox> ' --no-info)
-  [[ -z "$picked" ]] && exit 0
-  printf '%s\tattach\n' "$picked"
+  _first_unused_name "$repo" "$mode" ""
 }
 
 # Worktree path: filesystem path needs to be unique per host repo, so we
@@ -269,19 +232,6 @@ _strict_cl_volume() {
 _container_exists()  { docker container inspect "$1" >/dev/null 2>&1; }
 _container_running() {
   [[ "$(docker container inspect -f '{{.State.Running}}' "$1" 2>/dev/null)" == "true" ]]
-}
-
-# True when the container was created from an older image than the
-# current $IMAGE. Bind-mount specs are baked in at create time, so a
-# stale container won't pick up new -v args after a rebuild — `start`
-# would resurrect it with old mounts. Detecting this lets us remove +
-# recreate cleanly.
-_container_stale() {
-  local name="$1"
-  local container_image current_image
-  container_image=$(docker container inspect -f '{{.Image}}' "$name" 2>/dev/null) || return 1
-  current_image=$(docker image inspect -f '{{.Id}}' "$IMAGE" 2>/dev/null) || return 1
-  [[ "$container_image" != "$current_image" ]]
 }
 
 # Resolve the target repo: explicit arg if given, else git toplevel of
@@ -351,7 +301,7 @@ _print_banner() {
   if [[ "$perm" != "?" || "$iso" != "?" ]]; then
     printf '   mode:      perm=%s iso=%s\n' "$perm" "$iso"
   fi
-  printf '   detach:    Ctrl-p Ctrl-q (container keeps running)\n'
+  printf '   detach:    Ctrl-p Ctrl-q (drive from the Claude app; removed on exit)\n'
   printf '%s━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━%s\n' "$C_DIM" "$C_RESET"
 }
 
@@ -779,14 +729,13 @@ _finalize_workspaces() {
   WS_LABEL="${WORKSPACES[*]}"
 }
 
-# cmd_default — smart attach-or-create.
-#
-# Resolves a target via _resolve_target (which knows about cwd repo,
-# mode, --name, and existing containers): zero existing → create at
-# next free name; one existing → attach; multiple → fzf picker.
-# `force_new` is empty here; cmd_new flips it.
+# cmd_default — create a fresh ephemeral sandbox and attach. The
+# container is removed when claude exits (docker run --rm). There is no
+# reattach: detach with Ctrl-p Ctrl-q to drive the running session from
+# the Claude app, or resume a past conversation in a new container with
+# --continue / --resume. Concurrent sessions for the same repo coexist
+# under auto-bumped name suffixes (base, base-2, ...).
 cmd_default() {
-  local force_new="${FORCE_NEW:-}"
   _parse_common_flags "$@"
   _finalize_workspaces
   local repo="${WORKSPACES[0]}"
@@ -800,42 +749,20 @@ cmd_default() {
     strict)   _ensure_strict_volumes "$repo" "$NAME_OVERRIDE" ;;
   esac
 
-  local resolved name action
-  resolved=$(_resolve_target "$repo" "$ISO_MODE" "$NAME_OVERRIDE" "$force_new")
-  name=${resolved%%$'\t'*}
-  action=${resolved##*$'\t'}
-
-  # Stale container (older image): remove so we create fresh with new mounts.
-  if [[ "$action" == "attach" ]] && _container_stale "$name"; then
-    _info "container $name was built from an older image; recreating"
-    docker rm -f "$name" >/dev/null
-    action="create"
-  fi
-
+  local name; name=$(_create_name "$repo" "$ISO_MODE" "$NAME_OVERRIDE")
   local label; label=$(_session_label_for "$name" "$NAME_OVERRIDE")
-
-  if [[ "$action" == "attach" ]]; then
-    if _container_running "$name"; then
-      _print_banner "$name" "$repo" "$label"
-      exec docker attach "$name"
-    fi
-    _info "starting stopped $name"
-    docker start "$name" >/dev/null
-    _print_banner "$name" "$repo" "$label"
-    exec docker attach "$name"
-  fi
 
   _info "creating $name (perm=$PERM_MODE iso=$ISO_MODE)"
   local run_args=() c_args=()
   mapfile -t run_args < <(_run_args "$repo" "$name" "$ISO_MODE")
   mapfile -t c_args   < <(_claude_args "$PERM_MODE" "$label")
   _print_banner "$name" "$repo" "$label" "$PERM_MODE" "$ISO_MODE"
-  exec docker run -it "${run_args[@]}" "$IMAGE" claude "${c_args[@]}"
+  exec docker run --rm -it "${run_args[@]}" "$IMAGE" claude "${c_args[@]}"
 }
 
-# cmd_new — force-create a parallel session, never attach to existing.
-cmd_new() { FORCE_NEW=1 cmd_default "$@"; }
-
+# cmd_start — create a fresh detached ephemeral sandbox (no TTY). Used by
+# autostart and to launch a phone-drivable session. Removed when claude
+# exits, same as the attached default.
 cmd_start() {
   _parse_common_flags "$@"
   _finalize_workspaces
@@ -850,62 +777,14 @@ cmd_start() {
     strict)   _ensure_strict_volumes "$repo" "$NAME_OVERRIDE" ;;
   esac
 
-  local resolved name action
-  resolved=$(_resolve_target "$repo" "$ISO_MODE" "$NAME_OVERRIDE" "")
-  name=${resolved%%$'\t'*}
-  action=${resolved##*$'\t'}
-
-  if [[ "$action" == "attach" ]] && _container_stale "$name"; then
-    _info "container $name was built from an older image; recreating"
-    docker rm -f "$name" >/dev/null
-    action="create"
-  fi
-
-  if [[ "$action" == "attach" ]]; then
-    if _container_running "$name"; then _info "$name already running"; return 0; fi
-    _info "starting stopped $name"
-    docker start "$name" >/dev/null
-    return 0
-  fi
-
+  local name; name=$(_create_name "$repo" "$ISO_MODE" "$NAME_OVERRIDE")
   local label; label=$(_session_label_for "$name" "$NAME_OVERRIDE")
   _info "creating detached $name (perm=$PERM_MODE iso=$ISO_MODE)"
   local run_args=() c_args=()
   mapfile -t run_args < <(_run_args "$repo" "$name" "$ISO_MODE")
   mapfile -t c_args   < <(_claude_args "$PERM_MODE" "$label")
-  docker run -d "${run_args[@]}" "$IMAGE" claude "${c_args[@]}" >/dev/null
+  docker run -d --rm "${run_args[@]}" "$IMAGE" claude "${c_args[@]}" >/dev/null
   _info "started $name"
-}
-
-cmd_attach() {
-  _require_docker
-  local name="${1:-}"
-  if [[ -z "$name" ]]; then
-    name=$(_pick_running) || return 0
-  fi
-  _container_running "$name" || _die "$name not running"
-  local repo
-  repo=$(_container_workspace_label "$name")
-  [[ -z "$repo" ]] && repo="(unknown)"
-  local label; label=$(_session_label_for "$name")
-  _print_banner "$name" "$repo" "$label"
-  exec docker attach "$name"
-}
-
-# fzf-driven picker over running sandboxes (mirrors the `tm` helper).
-_pick_running() {
-  local list; list=$(docker ps --filter "name=^${NAME_PREFIX}-" --format '{{.Names}}')
-  if [[ -z "$list" ]]; then
-    _info "no running sandboxes"
-    return 1
-  fi
-  if [[ $(printf '%s\n' "$list" | wc -l | tr -d ' ') == "1" ]]; then
-    printf '%s' "$list"
-    return 0
-  fi
-  command -v fzf >/dev/null 2>&1 \
-    || _die "multiple running sandboxes; install fzf or pass a name"
-  printf '%s\n' "$list" | fzf --height 40% --reverse --prompt 'sandbox> '
 }
 
 cmd_stop() {
@@ -1169,11 +1048,9 @@ Usage:
   claude-sandbox [PERM] [ISO] [repo]        start + attach (default mode)
   claude-sandbox start [PERM] [ISO] [repo]  start detached (no TTY)
   claude-sandbox new [PERM] [ISO] [--name X] [repo]
-                                            force-create another parallel
-                                            sandbox for this repo (auto-
-                                            numbered: <base>, <base>-2, …)
-  claude-sandbox attach [name]              attach to a running sandbox
-                                            (fzf picker if multiple)
+                                            alias for the default; always
+                                            creates a fresh sandbox (auto-
+                                            numbered: <base>, <base>-2, ...)
   claude-sandbox stop [--purge] [name]      stop & remove (cwd-scoped picker
   claude-sandbox stop --all-here              for cwd repo, with mode
   claude-sandbox stop --all                   --all-here / --all variants)
@@ -1220,11 +1097,11 @@ Multi-repo (default mode only):
                                 name source, iOS label source). All
                                 subsequent paths are slurped until the next
                                 --flag (use `--` to terminate before a
-                                positional). Order matters for matching:
-                                same paths in same order reattach to the
-                                same container; different order = different
-                                container. Not compatible with --worktree
-                                or --strict.
+                                positional). Order is significant: the same
+                                paths in the same order produce the same
+                                container name and iOS label; a different
+                                order is a different sandbox. Not compatible
+                                with --worktree or --strict.
 
 Isolation modes (ISO):
   (default)   bind-mount cwd as /workspace, ~/.claude RW.
@@ -1245,20 +1122,20 @@ Isolation modes (ISO):
               the host repo as refs/sandbox-export/*; review and merge
               at your own pace.
 
-Detach without stopping: Ctrl-p Ctrl-q.
-
-Drive any running sandbox from your phone via claude.ai/code or the
-Claude mobile app — `claude --remote-control` polls the Anthropic API
-outbound; no inbound port is opened.
+Lifecycle: containers are ephemeral. `/exit` (or claude exiting) removes
+the container; there is no terminal reattach. Detach with Ctrl-p Ctrl-q
+to leave the session running and drive it from your phone via
+claude.ai/code or the Claude mobile app (`claude --remote-control` polls
+the Anthropic API outbound; no inbound port is opened). Resume a past
+conversation in a fresh container with --continue / --resume.
 EOF
 }
 
 main() {
   local sub="${1:-}"
   case "$sub" in
-    new)                shift; cmd_new "$@" ;;
+    new)                shift; cmd_default "$@" ;;
     start)              shift; cmd_start "$@" ;;
-    attach)             shift; cmd_attach "$@" ;;
     stop)               shift; cmd_stop "$@" ;;
     export)             shift; cmd_export "$@" ;;
     list|ls)            shift; cmd_list "$@" ;;
