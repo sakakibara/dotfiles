@@ -52,14 +52,10 @@ local _parse, _color
 local function parse() if not _parse then _parse = require("lib.colors.parse") end; return _parse end
 local function color() if not _color then _color = require("lib.colors.color") end; return _color end
 
--- Read a CSS file and harvest `--color-NAME: <value>;` declarations from
--- inside @theme {} blocks. Pure text scan; @theme bodies don't nest braces.
-function M.scan_file(path)
-  local fd = io.open(path, "r")
-  if not fd then return end
-  local content = fd:read("*a")
-  fd:close()
-
+-- Harvest `--color-NAME: <value>;` declarations from inside @theme {} blocks
+-- and update the overlay for `path`. Pure text scan; @theme bodies don't nest
+-- braces. Runs on the loop (mutates module state) but is bounded by file size.
+local function apply_scan(path, content)
   -- Harvest the new names + their values for this file
   local new_keys = {}
   for body in content:gmatch("@theme%s*{(.-)}") do
@@ -84,6 +80,31 @@ function M.scan_file(path)
     table.insert(owned, name)
   end
   M._overlay_by_file[path] = owned
+end
+
+-- Read a CSS file asynchronously and update the overlay from its @theme
+-- blocks. The open/read run on the libuv threadpool so the disk I/O never
+-- blocks the loop; the parse runs on the loop once content arrives. `cb`
+-- (optional) fires once the overlay has been updated -- an unreadable file
+-- still invokes it.
+function M.scan_file(path, cb)
+  local function finish() if cb then vim.schedule(cb) end end
+  vim.uv.fs_open(path, "r", 420, function(oerr, fd)
+    if oerr or not fd then return finish() end
+    vim.uv.fs_fstat(fd, function(serr, stat)
+      if serr or not stat then
+        vim.uv.fs_close(fd, function() end)
+        return finish()
+      end
+      vim.uv.fs_read(fd, stat.size, 0, function(rerr, data)
+        vim.uv.fs_close(fd, function() end)
+        vim.schedule(function()
+          if not rerr and data then apply_scan(path, data) end
+          if cb then cb() end
+        end)
+      end)
+    end)
+  end)
 end
 
 -- Directories pruned from the project @theme scan. Walking these can dominate
@@ -130,33 +151,18 @@ local function walk_css_async(root, on_done)
   visit(root)
 end
 
--- How much wall time we let scan_project occupy the main thread per chunk.
--- 1ms is below human perception even for 144Hz displays (6.9ms frame budget),
--- and we yield via vim.defer_fn(0) between chunks so input/render is never
--- blocked.
-local CHUNK_BUDGET_MS = 1
-
--- Iterate `files` in cooperative chunks; never blocks the main thread for
--- more than CHUNK_BUDGET_MS at a time.
-local function scan_files_chunked(files)
-  local i = 1
-  local function chunk()
-    local start = vim.uv.hrtime()
-    while i <= #files do
-      pcall(M.scan_file, files[i])
-      i = i + 1
-      if (vim.uv.hrtime() - start) / 1e6 >= CHUNK_BUDGET_MS then break end
-    end
-    if i <= #files then
-      vim.defer_fn(chunk, 0)
-    end
+-- Scan a list of CSS files. Each file's read is async (libuv threadpool), so
+-- the reads never block the loop; libuv's worker pool naturally throttles how
+-- fast results -- and thus the small per-file parses -- arrive on the loop.
+local function scan_files(files)
+  for _, path in ipairs(files) do
+    M.scan_file(path)
   end
-  vim.defer_fn(chunk, 0)
 end
 
 -- Scan all *.css files under the given root (default: cwd) for @theme
--- `--color-*` declarations, feeding matches to the cooperative chunked file
--- processor. Enumeration is async on every path so it never blocks the UI:
+-- `--color-*` declarations. Both enumeration and the per-file reads are async,
+-- so nothing here blocks the UI regardless of root or storage speed:
 --   1. If `rg` is on PATH, enumerate via `rg --files-with-matches` (async via
 --      vim.system, respects .gitignore so node_modules etc. are skipped for
 --      free, faster on large trees than the native walk).
@@ -183,19 +189,19 @@ function M.scan_project(root)
           for line in result.stdout:gmatch("[^\n]+") do
             files[#files + 1] = root .. "/" .. line
           end
-          scan_files_chunked(files)
+          scan_files(files)
         elseif result.code == 1 then
           -- No matches — overlay stays empty, we're done.
           return
         else
           -- Real error — fall back to the native async walk.
-          walk_css_async(root, scan_files_chunked)
+          walk_css_async(root, scan_files)
         end
       end)
     )
     return
   end
-  walk_css_async(root, scan_files_chunked)
+  walk_css_async(root, scan_files)
 end
 
 return M

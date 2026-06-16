@@ -32,7 +32,10 @@ T.describe("lib.colors.tailwind project @theme scan", function()
   T.it("scan_file harvests --color-* declarations from @theme", function()
     TW._overlay = {}
     local fixture = vim.fn.getcwd() .. "/tests/lib/colors/fixtures/theme.css"
-    TW.scan_file(fixture)
+    local done = false
+    TW.scan_file(fixture, function() done = true end)
+    vim.wait(2000, function() return done end)
+    T.truthy(done, "scan_file callback never fired")
     T.truthy(TW._overlay["brand-500"], "brand-500 not in overlay")
     T.truthy(TW._overlay["warn"], "warn not in overlay")
   end)
@@ -56,7 +59,9 @@ T.describe("lib.colors.tailwind overlay file-scope tracking", function()
     local f = io.open(fixture, "w")
     f:write("@theme {\n  --color-x: #ff0000;\n  --color-y: #00ff00;\n}\n")
     f:close()
-    TW.scan_file(fixture)
+    local done = false
+    TW.scan_file(fixture, function() done = true end)
+    vim.wait(2000, function() return done end)
     T.truthy(TW._overlay["x"], "x should be in overlay")
     T.truthy(TW._overlay["y"], "y should be in overlay")
 
@@ -64,7 +69,9 @@ T.describe("lib.colors.tailwind overlay file-scope tracking", function()
     f = io.open(fixture, "w")
     f:write("@theme {\n  --color-x: #ff0000;\n}\n")
     f:close()
-    TW.scan_file(fixture)
+    done = false
+    TW.scan_file(fixture, function() done = true end)
+    vim.wait(2000, function() return done end)
     T.truthy(TW._overlay["x"], "x should still be in overlay")
     T.eq(TW._overlay["y"], nil, "y should be removed from overlay")
 
