@@ -49,6 +49,35 @@ T.describe("lib.colors.tailwind project @theme scan", function()
   end)
 end)
 
+T.describe("lib.colors.tailwind async walk", function()
+  T.it("follows symlinks and terminates on cycles", function()
+    local tmp = vim.fn.tempname()
+    vim.fn.mkdir(tmp .. "/real", "p")
+    vim.fn.mkdir(tmp .. "/target", "p")
+    -- A css file reachable ONLY by following a symlink.
+    local f = io.open(tmp .. "/target/themed.css", "w")
+    f:write("@theme { --color-z: #0000ff; }\n"); f:close()
+    vim.uv.fs_symlink(tmp .. "/target", tmp .. "/link")
+    -- A symlink cycle: real/loop points back at an ancestor.
+    vim.uv.fs_symlink(tmp, tmp .. "/real/loop")
+
+    local done, files = false, nil
+    TW._walk_css_async(tmp, function(out) files = out; done = true end)
+    -- Bounds the cycle: if the guard regresses, pending never drains, this
+    -- times out and the test FAILS rather than hanging the runner.
+    local ok = vim.wait(3000, function() return done end, 10)
+    T.truthy(ok, "walk did not terminate within 3s (symlink-cycle guard failed)")
+
+    local found = false
+    for _, p in ipairs(files or {}) do
+      if p:match("themed%.css$") then found = true end
+    end
+    T.truthy(found, "css reached via symlink was not found")
+
+    vim.fn.delete(tmp, "rf")
+  end)
+end)
+
 T.describe("lib.colors.tailwind overlay file-scope tracking", function()
   T.it("scan_file removes stale entries on re-scan", function()
     TW._overlay = {}

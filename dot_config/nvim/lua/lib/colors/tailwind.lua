@@ -118,38 +118,73 @@ local PRUNE = { node_modules = true, [".git"] = true, dist = true, build = true,
                 Library = true }
 
 -- Async recursive walk: enumerate *.css files under `root` and hand the list
--- to `on_done` without ever blocking the main thread. The opendir/readdir
--- work runs on the libuv threadpool (so a slow path -- a network mount or an
--- evicted iCloud directory whose entries fault in over seconds -- can't stall
--- input or redraw); only the in-memory result iteration runs on the loop.
--- Prunes the PRUNE set and hidden directories at entry: project theme CSS
--- never lives in dotdirs, and they hold caches/VCS/cloud metadata we must not
--- descend into. on_done fires exactly once, after the whole tree is walked.
+-- to `on_done` without ever blocking the main thread. opendir/readdir/stat all
+-- run on the libuv threadpool -- so even when the walk follows a symlink into a
+-- slow store (a network mount, an evicted iCloud dir whose entries fault in
+-- over seconds), input and redraw stay responsive; only bookkeeping runs on
+-- the loop.
+--
+-- Symlinks are followed (resolved with fs_stat) so projects that reach content
+-- through links get scanned. Termination is guaranteed by a dev/ino visited
+-- set: a real directory tree is acyclic, and any symlink loop resolves to an
+-- inode already entered, so it stops; the set also dedupes a target reached
+-- through several links. PRUNE and hidden directories are skipped at entry
+-- (theme CSS never lives there, and they hold caches/VCS/cloud metadata not
+-- worth walking). on_done fires exactly once, after the whole tree is walked.
 local function walk_css_async(root, on_done)
   local out = {}
+  local visited = {}   -- [dev:ino] of directories already entered
   local pending = 0
-  local function visit(dir)
+  local function done_one()
+    pending = pending - 1
+    if pending == 0 then vim.schedule(function() on_done(out) end) end
+  end
+
+  local scan_dir
+  -- Resolve `path` through any symlink: walk it once if it's a directory,
+  -- collect it if it resolves to a .css file (`is_css` from the entry name).
+  local function consider(path, is_css)
+    pending = pending + 1
+    vim.uv.fs_stat(path, function(err, st)
+      if not err and st then
+        if st.type == "directory" then
+          local key = st.dev .. ":" .. st.ino
+          if not visited[key] then
+            visited[key] = true
+            scan_dir(path)
+          end
+        elseif st.type == "file" and is_css then
+          out[#out + 1] = path
+        end
+      end
+      done_one()
+    end)
+  end
+
+  scan_dir = function(dir)
     pending = pending + 1
     vim.uv.fs_scandir(dir, function(_err, fd)
       if fd then
         while true do
           local name, t = vim.uv.fs_scandir_next(fd)
           if not name then break end
-          if t == "directory" then
-            if not PRUNE[name] and name:sub(1, 1) ~= "." then
-              visit(dir .. "/" .. name)
-            end
-          elseif t == "file" and name:sub(-4) == ".css" then
-            out[#out + 1] = dir .. "/" .. name
+          local css = name:sub(-4) == ".css"
+          if t == "file" then
+            if css then out[#out + 1] = dir .. "/" .. name end
+          elseif name:sub(1, 1) ~= "." and not PRUNE[name] then
+            -- real subdir or symlink: resolve + recurse (cycle-guarded)
+            consider(dir .. "/" .. name, css)
           end
         end
       end
-      pending = pending - 1
-      if pending == 0 then vim.schedule(function() on_done(out) end) end
+      done_one()
     end)
   end
-  visit(root)
+
+  consider(root, false)
 end
+-- Exposed for tests (symlink-following + cycle termination).
+M._walk_css_async = walk_css_async
 
 -- Scan a list of CSS files. Each file's read is async (libuv threadpool), so
 -- the reads never block the loop; libuv's worker pool naturally throttles how
