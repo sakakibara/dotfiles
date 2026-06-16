@@ -107,15 +107,12 @@ function M.scan_file(path, cb)
   end)
 end
 
--- Directories pruned from the project @theme scan. Walking these can dominate
--- startup in monorepos (node_modules alone often holds hundreds of CSS files
--- nobody cares about for theme resolution). `Library` guards against a scan
--- rooted at $HOME wandering into ~/Library/Mobile Documents and other cloud
--- stores, where stat-ing evicted (dataless) files blocks the main thread for
--- tens of seconds while macOS faults them back from iCloud.
-local PRUNE = { node_modules = true, [".git"] = true, dist = true, build = true,
-                [".next"] = true, ["target"] = true, [".venv"] = true,
-                Library = true }
+-- Named directories pruned from the @theme scan, on top of the walker's
+-- blanket skip of hidden (dot) directories -- so only non-dot trees need
+-- listing here. Not a safety measure (the walk is async and its root is
+-- guarded against $HOME); purely to skip large trees that hold no theme CSS
+-- (node_modules alone often holds hundreds of irrelevant CSS files).
+local PRUNE = { node_modules = true, dist = true, build = true, target = true }
 
 -- Async recursive walk: enumerate *.css files under `root` and hand the list
 -- to `on_done` without ever blocking the main thread. opendir/readdir/stat all
