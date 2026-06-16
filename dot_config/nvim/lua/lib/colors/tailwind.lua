@@ -88,13 +88,19 @@ end
 
 -- Directories pruned from the project @theme scan. Walking these can dominate
 -- startup in monorepos (node_modules alone often holds hundreds of CSS files
--- nobody cares about for theme resolution).
+-- nobody cares about for theme resolution). `Library` guards against a scan
+-- rooted at $HOME wandering into ~/Library/Mobile Documents and other cloud
+-- stores, where stat-ing evicted (dataless) files blocks the main thread for
+-- tens of seconds while macOS faults them back from iCloud.
 local PRUNE = { node_modules = true, [".git"] = true, dist = true, build = true,
-                [".next"] = true, ["target"] = true, [".venv"] = true }
+                [".next"] = true, ["target"] = true, [".venv"] = true,
+                Library = true }
 
 -- Recursive directory walk that prunes the PRUNE set at directory entry,
 -- avoiding the cost of fnmatch on already-walked paths. Returns CSS file
--- paths under root.
+-- paths under root. Hidden directories are skipped: project theme CSS never
+-- lives in dotdirs, and they include caches/VCS/cloud metadata we must not
+-- descend into.
 local function walk_css(root, out)
   out = out or {}
   local fd = vim.uv.fs_scandir(root)
@@ -103,7 +109,7 @@ local function walk_css(root, out)
     local name, t = vim.uv.fs_scandir_next(fd)
     if not name then break end
     if t == "directory" then
-      if not PRUNE[name] then
+      if not PRUNE[name] and name:sub(1, 1) ~= "." then
         walk_css(root .. "/" .. name, out)
       end
     elseif t == "file" and name:sub(-4) == ".css" then
@@ -148,6 +154,12 @@ end
 -- `sync = true` forces the synchronous walk + processing (used by tests).
 function M.scan_project(root, sync)
   root = root or vim.fn.getcwd()
+  -- A @theme overlay is a per-project concept. Scanning $HOME or / pulls the
+  -- walk into ~/Library cloud stores and other huge trees with no payoff, so
+  -- bail unless root is a real subdirectory. Callers wanting those roots must
+  -- pass them explicitly.
+  local norm = vim.fs.normalize(root)
+  if norm == vim.fs.normalize(vim.fn.expand("~")) or norm == "/" then return end
   if sync then
     for _, f in ipairs(walk_css(root)) do pcall(M.scan_file, f) end
     return
