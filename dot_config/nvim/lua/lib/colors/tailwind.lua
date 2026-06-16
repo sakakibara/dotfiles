@@ -96,27 +96,38 @@ local PRUNE = { node_modules = true, [".git"] = true, dist = true, build = true,
                 [".next"] = true, ["target"] = true, [".venv"] = true,
                 Library = true }
 
--- Recursive directory walk that prunes the PRUNE set at directory entry,
--- avoiding the cost of fnmatch on already-walked paths. Returns CSS file
--- paths under root. Hidden directories are skipped: project theme CSS never
--- lives in dotdirs, and they include caches/VCS/cloud metadata we must not
--- descend into.
-local function walk_css(root, out)
-  out = out or {}
-  local fd = vim.uv.fs_scandir(root)
-  if not fd then return out end
-  while true do
-    local name, t = vim.uv.fs_scandir_next(fd)
-    if not name then break end
-    if t == "directory" then
-      if not PRUNE[name] and name:sub(1, 1) ~= "." then
-        walk_css(root .. "/" .. name, out)
+-- Async recursive walk: enumerate *.css files under `root` and hand the list
+-- to `on_done` without ever blocking the main thread. The opendir/readdir
+-- work runs on the libuv threadpool (so a slow path -- a network mount or an
+-- evicted iCloud directory whose entries fault in over seconds -- can't stall
+-- input or redraw); only the in-memory result iteration runs on the loop.
+-- Prunes the PRUNE set and hidden directories at entry: project theme CSS
+-- never lives in dotdirs, and they hold caches/VCS/cloud metadata we must not
+-- descend into. on_done fires exactly once, after the whole tree is walked.
+local function walk_css_async(root, on_done)
+  local out = {}
+  local pending = 0
+  local function visit(dir)
+    pending = pending + 1
+    vim.uv.fs_scandir(dir, function(_err, fd)
+      if fd then
+        while true do
+          local name, t = vim.uv.fs_scandir_next(fd)
+          if not name then break end
+          if t == "directory" then
+            if not PRUNE[name] and name:sub(1, 1) ~= "." then
+              visit(dir .. "/" .. name)
+            end
+          elseif t == "file" and name:sub(-4) == ".css" then
+            out[#out + 1] = dir .. "/" .. name
+          end
+        end
       end
-    elseif t == "file" and name:sub(-4) == ".css" then
-      out[#out + 1] = root .. "/" .. name
-    end
+      pending = pending - 1
+      if pending == 0 then vim.schedule(function() on_done(out) end) end
+    end)
   end
-  return out
+  visit(root)
 end
 
 -- How much wall time we let scan_project occupy the main thread per chunk.
@@ -143,16 +154,14 @@ local function scan_files_chunked(files)
   vim.defer_fn(chunk, 0)
 end
 
--- Scan all *.css/*.scss files under the given root (default: cwd). Two
--- progressive enhancements:
---   1. If `rg` is on PATH, use `rg --files --type css` to enumerate files —
---      async via vim.system, respects .gitignore (so node_modules is auto-
---      skipped without our explicit prune list), and faster on large trees
---      than the native walk. Includes .scss too via rg's built-in type.
---   2. Otherwise fall back to the native vim.uv walk with directory pruning.
--- Both paths feed the same cooperative chunked file processor.
--- `sync = true` forces the synchronous walk + processing (used by tests).
-function M.scan_project(root, sync)
+-- Scan all *.css files under the given root (default: cwd) for @theme
+-- `--color-*` declarations, feeding matches to the cooperative chunked file
+-- processor. Enumeration is async on every path so it never blocks the UI:
+--   1. If `rg` is on PATH, enumerate via `rg --files-with-matches` (async via
+--      vim.system, respects .gitignore so node_modules etc. are skipped for
+--      free, faster on large trees than the native walk).
+--   2. Otherwise, or on rg error, walk the tree with walk_css_async.
+function M.scan_project(root)
   root = root or vim.fn.getcwd()
   -- A @theme overlay is a per-project concept. Scanning $HOME or / pulls the
   -- walk into ~/Library cloud stores and other huge trees with no payoff, so
@@ -160,10 +169,6 @@ function M.scan_project(root, sync)
   -- pass them explicitly.
   local norm = vim.fs.normalize(root)
   if norm == vim.fs.normalize(vim.fn.expand("~")) or norm == "/" then return end
-  if sync then
-    for _, f in ipairs(walk_css(root)) do pcall(M.scan_file, f) end
-    return
-  end
   if vim.fn.executable("rg") == 1 then
     -- --files-with-matches narrows to files that actually contain @theme.
     -- For projects without any @theme blocks (most), this returns nothing
@@ -183,14 +188,14 @@ function M.scan_project(root, sync)
           -- No matches — overlay stays empty, we're done.
           return
         else
-          -- Real error — fall back to native walk.
-          scan_files_chunked(walk_css(root))
+          -- Real error — fall back to the native async walk.
+          walk_css_async(root, scan_files_chunked)
         end
       end)
     )
     return
   end
-  scan_files_chunked(walk_css(root))
+  walk_css_async(root, scan_files_chunked)
 end
 
 return M
