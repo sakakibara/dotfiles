@@ -1,0 +1,23 @@
+{{- /* 1Password SSH agent / op-ssh-sign key list.
+
+   op-ssh-sign reads this file to decide which 1Password vaults/items it may
+   use, so every signing key this machine needs must be listed here, or
+   signing fails with "No SSH private key found". git's per-account signingkey
+   (see dot_gitconfig.tmpl) decides which of these keys is actually used.
+
+   The work item/vault names embed an employer identifier, so they come from
+   local-only data (.onepassword.* in ~/.config/chezmoi/chezmoi.toml) and are
+   never committed. The personal item name carries no employer identity.
+
+   This is a template, so `chezmoi re-add` skips it — the rendered work
+   values can never leak back into the committed source. */ -}}
+# Personal-account signing key (Private/default vault) — on every machine.
+[[ssh-keys]]
+item = "GitHub Signing Key (sakakibara)"
+{{- if eq (index . "profile" | default "personal") "work" }}
+
+# Work-account signing key — work machines only.
+[[ssh-keys]]
+item = "{{ .onepassword.signing_item }}"
+vault = "{{ .onepassword.signing_vault }}"
+{{- end }}
