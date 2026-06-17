@@ -22,7 +22,7 @@ export CLAUDE_SANDBOX=1
 # Either way, SSH_AUTH_SOCK ends up pointing at a Unix socket that
 # carries the SSH agent protocol to host's 1Password. Skipped when
 # neither set (no 1Password on host); commits go out unsigned.
-HOST_GITCONFIG=/home/claude/.gitconfig.host
+HOST_GIT_DIR=/home/claude/.config/git
 
 if [[ -n "${SANDBOX_AGENT_SOCK:-}" ]]; then
   export SSH_AUTH_SOCK="$SANDBOX_AGENT_SOCK"
@@ -40,43 +40,26 @@ elif [[ -n "${SANDBOX_AGENT_HOST:-}" && -n "${SANDBOX_AGENT_PORT:-}" ]]; then
   export SSH_AUTH_SOCK="$AGENT_SOCK"
 fi
 
-# Compose container-side ~/.gitconfig. Includes host's gitconfig
-# (user.name/email/signingkey/aliases) and clears gpg.ssh.program so
-# default ssh-keygen handles signing via SSH_AUTH_SOCK. Adds an
-# allowedSignersFile derived from host's signingkey so
-# `git log --show-signature` verifies inside the sandbox too.
-if [[ -f "$HOST_GITCONFIG" ]]; then
-  signing_key=$(git config -f "$HOST_GITCONFIG" --get user.signingkey 2>/dev/null || true)
-  email=$(git config -f "$HOST_GITCONFIG" --get user.email 2>/dev/null || true)
-  signers=/home/claude/.config/git/allowed_signers
-  mkdir -p "$(dirname "$signers")"
-  if [[ -n "$signing_key" && -n "$email" ]]; then
-    printf '%s namespaces="git" %s\n' "$email" "$signing_key" > "$signers"
-  fi
-  # Use GIT_CONFIG_GLOBAL rather than writing /home/claude/.gitconfig
-  # directly. The Dockerfile chowns /home/claude to claude:claude on
-  # build, but defensive in case an older image lingers (older images
-  # left /home/claude as root:root, so claude couldn't create files in
-  # its own home root). GIT_CONFIG_GLOBAL works in any case and is
-  # honored by every git invocation in this process tree.
-  GLOBAL_GIT=/home/claude/.config/git/config
-  mkdir -p "$(dirname "$GLOBAL_GIT")"
+# Compose a sandbox global git config in a writable path (the host's
+# ~/.config/git is mounted read-only at $HOST_GIT_DIR). It [include]s the
+# host config, which carries the [user] default AND the per-account
+# [includeIf] rules — so identity and signing key resolve by the repo's
+# GitHub remote, exactly as on the host. gpg.ssh.program is overridden to
+# ssh-keygen (op-ssh-sign is macOS-only); ssh-keygen signs via SSH_AUTH_SOCK
+# -> host 1Password. allowedSignersFile points at the host's allowed_signers
+# (all accounts) so `git log --show-signature` verifies here too. The global
+# ignore at $HOST_GIT_DIR/ignore is read natively by git (XDG default), so
+# no excludesFile is needed.
+if [[ -f "$HOST_GIT_DIR/config" ]]; then
+  GLOBAL_GIT=/home/claude/.sandbox-gitconfig
   cat > "$GLOBAL_GIT" <<EOF
 [include]
-	path = $HOST_GITCONFIG
+	path = $HOST_GIT_DIR/config
 
 [gpg "ssh"]
 	program = ssh-keygen
-	allowedSignersFile = $signers
+	allowedSignersFile = $HOST_GIT_DIR/allowed_signers
 EOF
-  # Honor the host's global gitignore when the wrapper bind-mounted it.
-  if [[ -f /home/claude/.gitignore_global ]]; then
-    cat >> "$GLOBAL_GIT" <<EOF
-
-[core]
-	excludesFile = /home/claude/.gitignore_global
-EOF
-  fi
   export GIT_CONFIG_GLOBAL="$GLOBAL_GIT"
 fi
 

@@ -14,7 +14,8 @@
 #   /home/claude/.claude          bind-mount of host ~/.claude (rw, shared
 #                                 auth + memory; per-project memory paths
 #                                 already encode the project)
-#   /home/claude/.gitconfig       bind-mount of host ~/.gitconfig (ro)
+#   /home/claude/.config/git      bind-mount of host ~/.config/git (ro):
+#                                 config, ignore, and per-account *.inc
 
 FROM debian:trixie-slim
 

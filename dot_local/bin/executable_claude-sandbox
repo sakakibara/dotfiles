@@ -357,18 +357,18 @@ _run_args() {
     --label    "claude-sandbox.workspace=$WS_LABEL"
     --label    "claude-sandbox.iso=$mode"
     -e CLAUDE_SANDBOX=1
-    # Mount under .gitconfig.host so the entrypoint can compose a
-    # container-side ~/.gitconfig that includes it AND clears the host's
-    # gpg.ssh.program (op-ssh-sign is macOS-only and can't run inside).
-    -v "$HOME/.config/git/config":/home/claude/.gitconfig.host:ro
     -w "$repo"
   )
 
-  # Mount the host's global gitignore so git inside the container honors
-  # the same ignore rules. Without this every project picks up editor /
-  # OS detritus on `git add`.
-  if [[ -f "$HOME/.config/git/ignore" ]]; then
-    args+=( -v "$HOME/.config/git/ignore":/home/claude/.gitignore_global:ro )
+  # Mount the host's whole git config dir read-only: config, the global
+  # ignore, and the per-account identity includes (personal.inc,
+  # identities.local.inc, id-*.inc). The entrypoint composes a sandbox
+  # GIT_CONFIG_GLOBAL that includes config/, so identity & signing resolve
+  # by the repo's GitHub remote exactly as on the host (the op-ssh-sign ->
+  # ssh-keygen swap happens there). Honors the host global ignore too, so
+  # `git add` doesn't pick up editor/OS detritus.
+  if [[ -d "$HOME/.config/git" ]]; then
+    args+=( -v "$HOME/.config/git":/home/claude/.config/git:ro )
   fi
 
   # SSH commit-signing via the host's 1Password agent. Two transports:
