@@ -11,6 +11,13 @@
 {{   end -}}
 {{ end -}}
 
+{{/* Machine-default signing key follows the profile. Personal-account repos
+     override this (and the email) via the [includeIf] blocks at the end. */ -}}
+{{ $signing_key := .signing.personal_key -}}
+{{ if eq (index . "profile" | default "personal") "work" -}}
+{{   $signing_key = .signing.work_key -}}
+{{ end -}}
+
 [init]
 	defaultBranch = main
 [filter "lfs"]
@@ -65,8 +72,8 @@
 {{- if (index . "email") }}
 	email = {{ .email }}
 {{- end }}
-{{- if .signing.public_key }}
-	signingkey = {{ .signing.public_key }}
+{{- if $signing_key }}
+	signingkey = {{ $signing_key }}
 {{- end }}
 [credential "https://github.com"]
 	helper =
@@ -74,7 +81,7 @@
 [credential "https://gist.github.com"]
 	helper =
 	helper = !gh auth git-credential
-{{- if .signing.public_key }}
+{{- if $signing_key }}
 [gpg]
 	format = ssh
 [gpg "ssh"]
@@ -98,3 +105,22 @@
 [https]
 	proxy = {{ $proxy_url }}
 {{- end }}
+
+# Personal-account repos, detected by their GitHub remote URL, override the
+# machine-default identity and signing key above with the personal ones — so
+# personal repos never need a per-repo .git/config. Work stays the unnamed
+# default, keeping the employer org out of this committed file. (Matching is
+# by remote, so add the remote before your first commit in a fresh repo.)
+[includeIf "hasconfig:remote.*.url:https://github.com/sakakibara/**"]
+	path = ~/.config/git/personal.inc
+[includeIf "hasconfig:remote.*.url:git@github.com:sakakibara/**"]
+	path = ~/.config/git/personal.inc
+[includeIf "hasconfig:remote.*.url:ssh://git@github.com/sakakibara/**"]
+	path = ~/.config/git/personal.inc
+
+# Additional work/client identities (a different email, name, and/or signing
+# key per GitHub org) are employer-specific, so they live in a local include
+# generated from the [[data.git_identities]] array in your local chezmoi
+# config — never committed here. A missing file is silently ignored by git.
+[include]
+	path = ~/.config/git/identities.local.inc
