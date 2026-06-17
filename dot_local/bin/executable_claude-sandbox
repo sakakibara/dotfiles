@@ -360,15 +360,15 @@ _run_args() {
     # Mount under .gitconfig.host so the entrypoint can compose a
     # container-side ~/.gitconfig that includes it AND clears the host's
     # gpg.ssh.program (op-ssh-sign is macOS-only and can't run inside).
-    -v "$HOME/.gitconfig":/home/claude/.gitconfig.host:ro
+    -v "$HOME/.config/git/config":/home/claude/.gitconfig.host:ro
     -w "$repo"
   )
 
   # Mount the host's global gitignore so git inside the container honors
   # the same ignore rules. Without this every project picks up editor /
   # OS detritus on `git add`.
-  if [[ -f "$HOME/.gitignore_global" ]]; then
-    args+=( -v "$HOME/.gitignore_global":/home/claude/.gitignore_global:ro )
+  if [[ -f "$HOME/.config/git/ignore" ]]; then
+    args+=( -v "$HOME/.config/git/ignore":/home/claude/.gitignore_global:ro )
   fi
 
   # SSH commit-signing via the host's 1Password agent. Two transports:

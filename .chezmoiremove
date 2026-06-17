@@ -1,0 +1,3 @@
+# Legacy git config locations, superseded by XDG ~/.config/git/{config,ignore}.
+.gitconfig
+.gitignore_global
