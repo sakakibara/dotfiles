@@ -357,7 +357,7 @@ function M.setup(cfg)
           if attempts > MAX_ATTEMPTS then
             Txn.clear()
             vim.notify(
-              ("core.pack: giving up on resume after %d attempts; run :Pack update! manually if needed"):format(MAX_ATTEMPTS),
+              ("core.pack: giving up on resume after %d attempts; run :Pack! update manually if needed"):format(MAX_ATTEMPTS),
               vim.log.levels.WARN)
             return
           end
@@ -385,7 +385,7 @@ function M.setup(cfg)
               d.name, d.expected:sub(1, 8), d.actual:sub(1, 8))
           end
           vim.notify(
-            ("core.pack: %d plugin(s) drifted from lockfile (run :Pack update! to resync):\n%s"):format(
+            ("core.pack: %d plugin(s) drifted from lockfile (run :Pack! update to resync):\n%s"):format(
               #drifts, table.concat(lines, "\n")),
             vim.log.levels.WARN)
         end)

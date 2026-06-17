@@ -206,7 +206,7 @@ local function subcommands(Pack)
   }
 
   subs.rollback = {
-    desc = "Rollback lockfile to a previous snapshot (run :Pack update! to apply)",
+    desc = "Rollback lockfile to a previous snapshot (run :Pack! update to apply)",
     run = function(opts)
       local History = require("core.pack.history")
       local UI = require("core.pack.ui")
@@ -228,7 +228,7 @@ local function subcommands(Pack)
       local function apply(snapshot)
         local data = History.restore(snapshot.ts)
         if not data then vim.notify("core.pack: restore failed", vim.log.levels.ERROR); return end
-        vim.notify(("core.pack: restored snapshot %s — run :Pack update! to apply"):format(snapshot.iso))
+        vim.notify(("core.pack: restored snapshot %s — run :Pack! update to apply"):format(snapshot.iso))
       end
 
       -- Numeric arg = direct index (1 = newest).
