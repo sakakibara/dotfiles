@@ -80,6 +80,15 @@
 [credential "https://gist.github.com"]
 	helper =
 	helper = !gh auth git-credential
+{{- if (index . "gh_default_account") }}
+# Machine-default GitHub account for repos that match no [includeIf] below.
+# Read by the mise GH_TOKEN env in ~/.config/mise/config.toml to select the
+# account for `gh` and HTTPS git. The work login identifies the employer, so it
+# comes from local-only data (gh_default_account in ~/.config/chezmoi) and is
+# never committed here — matching how the default signing key is handled.
+[github]
+	account = {{ index . "gh_default_account" }}
+{{- end }}
 {{- if $signing_key }}
 [gpg]
 	format = ssh

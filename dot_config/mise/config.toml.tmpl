@@ -9,3 +9,20 @@ experimental = true
 {{- if eq ((index . "profile") | default "personal") "work" }}
 idiomatic_version_file_enable_tools = ["ruby"]
 {{- end }}
+{{- if ne .chezmoi.os "windows" }}
+
+# Per-repo GitHub account: export GH_TOKEN for the account that matches the
+# current repo, so `gh` subcommands and HTTPS `git push` both target the right
+# account with no manual `gh auth switch`. ~/.config/git/account-token reads
+# `git config github.account` (set per-repo by the [includeIf] routing in
+# ~/.config/git/config) and prints that account's token; gh and the
+# `gh auth git-credential` helper git uses over HTTPS both honour GH_TOKEN, so
+# one variable drives both tools. Empty (outside a mapped repo) => active gh
+# account. mise re-evaluates only on directory change, not on prompt redraw.
+# POSIX command, so skipped on Windows.
+#
+# `exec(...)` is mise's own template; the chezmoi raw string (`{{` ... `}}`)
+# makes chezmoi emit it verbatim rather than evaluate it.
+[env]
+GH_TOKEN = {{ `'''{{ exec(command='"$HOME"/.config/git/account-token "' ~ cwd ~ '"') }}'''` }}
+{{- end }}

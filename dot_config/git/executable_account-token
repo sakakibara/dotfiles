@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# account-token — print the GitHub OAuth token for the account mapped to the
+# repository at $1 (default: $PWD), or print nothing when the repo maps to no
+# account.
+#
+# The mapping is `git config github.account`, set per-repo by the [includeIf]
+# routing in ~/.config/git/config — the same remote-URL match that already
+# picks the commit identity and signing key. This script is consumed by the
+# GH_TOKEN env in ~/.config/mise/config.toml so that `gh` subcommands and HTTPS
+# `git` both target the right account with no manual `gh auth switch`. Empty
+# output (no mapping, or no such account on this machine) makes gh fall back to
+# its active account.
+set -euo pipefail
+
+acct=$(git -C "${1:-$PWD}" config --get github.account 2>/dev/null) || exit 0
+[ -n "$acct" ] || exit 0
+gh auth token --user "$acct" 2>/dev/null || true
