@@ -66,6 +66,12 @@ These were done once globally and don't repeat per-machine:
 
 To rotate the key in the future: regenerate in 1Password, replace `signing.public_key`, register the new public key on GitHub, optionally remove the old one.
 
+### Multiple GitHub accounts (identity, signing & gh)
+
+Commit identity (name/email), signing key, and which account `gh` and HTTPS `git` authenticate as are all chosen **by the repo's remote URL** — never per-machine, never a per-repo `.git/config`. Your personal account (`github.com/sakakibara`) is committed; work/client accounts live only in local data, so employer names never reach this repo. Account auto-switch is driven by `GH_TOKEN` in `dot_config/mise/config.toml.tmpl`, so it works in every shell with no `gh auth switch`.
+
+To add an account, follow the checklist at the top of `.chezmoiscripts/run_onchange_after_git-identities.sh.tmpl`. In short: `gh auth login` as the account (required — auto-switch reads its stored gh token), add a `[[data.git_identities]]` entry to local `~/.config/chezmoi/chezmoi.toml` (email, `match_urls`, `gh_account`), optionally wire a signing key, then `chezmoi apply`.
+
 ## After install
 
 `chezmoi apply` runs a set of per-step `run_once_before_` scripts that install software *before* file targets are written, and a `run_once_after_theme` script that runs *after* files are in place. Each script is hash-triggered against its own inputs: the brew script re-fires when `etc/darwin/packages.txt`, the blacklist, or the bash libraries it sources change; the mise script when its config template changes; and so on. The phase prefix on each name (`apps-`, `runtime-`, `tools`, `workspace-`) sorts alphabetically into the dependency order.
