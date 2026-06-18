@@ -60,11 +60,11 @@ The 1Password SSH agent only exposes keys listed in `~/.config/1Password/ssh/age
 
 These were done once globally and don't repeat per-machine:
 
-- Generated the SSH key in 1Password (item: "GitHub Signing Key").
-- Pasted the public key string into `.chezmoidata/signing.toml` (`signing.public_key`).
+- Generated the SSH signing key in 1Password.
+- Pasted the public key string into `.chezmoidata/signing.toml` (`signing.personal_key`).
 - Registered the same public key on GitHub (Settings -> SSH and GPG keys, type "Signing Key").
 
-To rotate the key in the future: regenerate in 1Password, replace `signing.public_key`, register the new public key on GitHub, optionally remove the old one.
+To rotate the key in the future: regenerate in 1Password, replace `signing.personal_key`, register the new public key on GitHub, optionally remove the old one.
 
 ### Multiple GitHub accounts (identity, signing & gh)
 
