@@ -80,6 +80,16 @@
 [credential "https://gist.github.com"]
 	helper =
 	helper = !gh auth git-credential
+# Route every GitHub remote over HTTPS at transport time, whatever protocol it
+# is written in, so per-account auth always flows through GH_TOKEN (set by the
+# mise env in ~/.config/mise/config.toml). This rewrites the URL used to connect
+# only — the stored remote is untouched, so the [includeIf] rules below still
+# match the original git@/ssh:// form. Without it, an SSH remote would pick the
+# account by whichever key 1Password offers first, not by repo. Need real SSH
+# transport for a specific repo? Override that remote's URL locally.
+[url "https://github.com/"]
+	insteadOf = git@github.com:
+	insteadOf = ssh://git@github.com/
 {{- if (index . "gh_default_account") }}
 # Machine-default GitHub account for repos that match no [includeIf] below.
 # Read by the mise GH_TOKEN env in ~/.config/mise/config.toml to select the
