@@ -12,7 +12,7 @@ complete -c dotfiles -f -n '__fish_use_subcommand' -a help     -d 'Show help'
 #
 # `dotfiles install` — step names recognized by cmd_install on the current OS.
 complete -c dotfiles -f -n '__fish_seen_subcommand_from install' \
-  -a 'all none brew mise hive linux extras' \
+  -a 'all none brew mise holt linux extras' \
   -d 'install step'
 
 # `dotfiles edit <pattern>` — every managed path. fish performs substring

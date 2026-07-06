@@ -1,0 +1,12 @@
+{{ if or (eq .chezmoi.os "darwin") (eq .chezmoi.os "linux") -}}
+#!/usr/bin/env bash
+# Runs after the holt config is applied (so `holt config` can be read).
+# Hash trigger — re-runs when the holt config or the holt library changes.
+# holt config hash: {{ include "dot_config/holt/config.toml.tmpl" | sha256sum }}
+# holt.bash hash:   {{ include "etc/bash/lib/holt.bash"           | sha256sum }}
+source {{ joinPath .chezmoi.sourceDir "etc" "bash" "lib" "init.bash" | quote }}
+
+import holt
+
+holt::setup
+{{ end -}}

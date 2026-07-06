@@ -1,0 +1,23 @@
+{{/* holt workspace config. The storage backend is per-machine (see
+     holt_backend in .chezmoi.toml.tmpl): this laptop syncs via iCloud, another
+     via Google Drive, and a plain machine uses a local folder. synced_root is
+     the cloud-synced folder holt keeps projects/ (and archive/, backups/)
+     under; code_root and hub_root are machine-local. Only the active backend's
+     preset is emitted, since holt only needs the one it resolves. */ -}}
+[workspace]
+{{- if eq .holt_backend "icloud" }}
+backend   = "icloud"
+{{- else if eq .holt_backend "gdrive" }}
+backend   = "gdrive"
+{{- else }}
+synced_root = "~/workspace"
+{{- end }}
+code_root = "~/Code"
+hub_root  = "~/Projects"
+{{ if eq .holt_backend "icloud" }}
+[backends.icloud]
+synced_root = "~/Library/Mobile Documents/com~apple~CloudDocs/workspace"
+{{- else if eq .holt_backend "gdrive" }}
+[backends.gdrive]
+synced_root = "~/Library/CloudStorage/GoogleDrive-{{ .gdrive_account }}/My Drive/workspace"
+{{- end }}

@@ -74,15 +74,15 @@ To add an account, follow the checklist at the top of `.chezmoiscripts/run_oncha
 
 ## After install
 
-`chezmoi apply` runs a set of per-step `run_once_before_` scripts that install software *before* file targets are written, and a `run_once_after_theme` script that runs *after* files are in place. Each script is hash-triggered against its own inputs: the brew script re-fires when `etc/darwin/packages.txt`, the blacklist, or the bash libraries it sources change; the mise script when its config template changes; and so on. The phase prefix on each name (`apps-`, `runtime-`, `tools`, `workspace-`) sorts alphabetically into the dependency order.
+`chezmoi apply` runs a set of per-step `run_once_before_` scripts that install software *before* file targets are written, plus `run_once_after_` scripts that run *after* files are in place (theme assets, and the holt workspace setup, which needs the applied holt config). Each script is hash-triggered against its own inputs: the brew script re-fires when `etc/darwin/packages.txt`, the blacklist, or the bash libraries it sources change; the mise script when its config template changes; and so on. The phase prefix on each name (`apps-`, `runtime-`, `tools`, `workspace-`) sorts alphabetically into the dependency order.
 
 - **`run_once_before_apps-brew.sh.tmpl`** (macOS) / **`run_once_before_apps-linux-packages.sh.tmpl`** (Linux): native package install via `etc/darwin/packages.txt` or `etc/linux/packages-*.txt` (auto-detects fedora/debian/arch/suse).
 - **`run_once_before_runtime-mise.sh.tmpl`**: language toolchains via mise.
 - **`run_once_before_tools.sh.tmpl`** (Linux): binary tools fetched outside the system package manager (starship, gh, lazygit, lazydocker, cargo-installed Rust tools).
-- **`run_once_before_workspace-hive.sh.tmpl`**: workspace symlink layout via hive.
+- **`run_once_after_workspace-holt.sh.tmpl`**: workspace setup via holt - installs holt if missing, links `~/Life` and `~/Work` to the synced root, and runs `holt sync` to (re)build project hubs from their markers. Runs *after* files so it can read the applied `~/.config/holt/config.toml`.
 - **`run_once_after_theme.sh.tmpl`** (macOS / Linux / WSL) and the `windows/` PowerShell counterpart: downloads theme assets referenced by manifests under `~/.config/dotfiles/themes/`, verifies their sha256, and seeds `~/.local/state/dotfiles/theme` with the manifest's default. Runs after files because it depends on `~/.local/bin/theme` being in place. After this, `theme set <family>/<variant>` switches everything (kitty, wezterm, tmux, nvim, fish colors, fzf, vivid) at once.
 
-On Windows native, `chezmoi apply` runs the PowerShell counterparts under `.chezmoiscripts/windows/`: `run_once_before_apps-scoop.ps1.tmpl` (scoop + winget package install via `etc/windows/packages.txt`), `run_once_before_runtime-mise.ps1.tmpl` (mise toolchains), `run_once_before_workspace-hive.ps1.tmpl` (workspace symlinks via hive), and `run_once_after_theme.ps1.tmpl` (theme assets). The wrapper-level `dotfiles` command on Windows is `dot_local/bin/dotfiles.ps1`; `sync` and the rest of the subcommands work the same as the bash side.
+On Windows native, `chezmoi apply` runs the PowerShell counterparts under `.chezmoiscripts/windows/`: `run_once_before_apps-scoop.ps1.tmpl` (scoop + winget package install via `etc/windows/packages.txt`), `run_once_before_runtime-mise.ps1.tmpl` (mise toolchains), `run_once_after_workspace-holt.ps1.tmpl` (holt workspace setup), and `run_once_after_theme.ps1.tmpl` (theme assets). The wrapper-level `dotfiles` command on Windows is `dot_local/bin/dotfiles.ps1`; `sync` and the rest of the subcommands work the same as the bash side.
 
 ## The `dotfiles` wrapper
 
@@ -104,11 +104,11 @@ dotfiles edit <pattern>           # fuzzy-find a managed file and open it via ch
 # Profile / health
 dotfiles profile                  # print the active chezmoi profile
 dotfiles profile work             # switch profile and re-apply
-dotfiles doctor                   # health-check chezmoi, packages, theme, mise, hive
+dotfiles doctor                   # health-check chezmoi, packages, theme, mise, holt
 
 # Upgrades
 dotfiles upgrade                  # chezmoi binary self-update
-dotfiles upgrade --all            # chezmoi + sources + brew (macOS) + mise + hive
+dotfiles upgrade --all            # chezmoi + sources + brew (macOS) + mise + holt
                                   # (Linux distro packages are skipped — run `sudo dnf upgrade` / `apt upgrade` manually)
 ```
 

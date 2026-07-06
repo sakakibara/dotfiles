@@ -54,11 +54,11 @@ _eq "+ → required state" "required"           "$_pick_state"
 _eq "+ → name"           "dependency::setup"  "$_pick_name"
 _eq "+ → label"          "Install CLT"        "$_pick_label"
 
-pick::_parse_item "~hive::setup=Workspace links~Requires hive command"
+pick::_parse_item "~holt::setup=Workspace links~Requires holt command"
 _eq "~ → disabled state" "disabled"               "$_pick_state"
-_eq "~ → name"           "hive::setup"            "$_pick_name"
+_eq "~ → name"           "holt::setup"            "$_pick_name"
 _eq "~ → label"          "Workspace links"        "$_pick_label"
-_eq "~ → reason"         "Requires hive command"  "$_pick_reason"
+_eq "~ → reason"         "Requires holt command"  "$_pick_reason"
 
 pick::_parse_item "name=label-with-=-equals"
 _eq "= splits on first only — name"  "name"               "$_pick_name"
@@ -195,13 +195,13 @@ _section "save & load round-trip"
 (
   export DOTFILES_PICK_SCOPE="install"
   _pick_n=3
-  _pick_names=(brew mise hive)
-  _pick_labels=(Brew Mise Hive)
+  _pick_names=(brew mise holt)
+  _pick_labels=(Brew Mise Holt)
   _pick_states=(normal normal normal)
   _pick_reasons=("" "" "")
   pick_selected::clear
   pick_selected::add brew
-  pick_selected::add hive
+  pick_selected::add holt
   pick::_save_selection
 )
 file="$XDG_STATE_HOME/dotfiles/pick/install.tsv"
@@ -209,21 +209,21 @@ _eq "state file exists" "yes" "$(test -f "$file" && echo yes)"
 contents=$(cat "$file" 2>/dev/null | tr '\n' ',')
 # Format: name<TAB>hash per line. With hashless items, hash is empty so
 # every line ends in <TAB> before the newline.
-_eq "state file contents" $'brew\t,hive\t,' "$contents"
+_eq "state file contents" $'brew\t,holt\t,' "$contents"
 
 # Now load
 (
   export DOTFILES_PICK_SCOPE="install"
   pick_last::clear
   pick::_load_last_selection
-  pick_last::has brew && pick_last::has hive
+  pick_last::has brew && pick_last::has holt
   rc=$?
   pick_last::has mise
   rc2=$?
   exit "$(( rc + rc2 * 10 ))"
 )
 rc=$?
-_eq "loaded brew+hive, not mise (encoded as 0+1*10=10)" "10" "$rc"
+_eq "loaded brew+holt, not mise (encoded as 0+1*10=10)" "10" "$rc"
 
 # ---------- step execution ----------
 _section "step execution: success records run-log + exits 0"

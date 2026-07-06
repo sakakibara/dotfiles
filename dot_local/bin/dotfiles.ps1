@@ -98,7 +98,7 @@ function Cmd-Info {
         _Row 'Theme:' $themeOut
     }
 
-    $tools = @('chezmoi', 'nvim', 'mise', 'hive', 'theme', 'starship', 'pwsh', 'scoop', 'winget')
+    $tools = @('chezmoi', 'nvim', 'mise', 'holt', 'theme', 'starship', 'pwsh', 'scoop', 'winget')
     $versions = @()
     foreach ($t in $tools) {
         if (-not (_Have $t)) { continue }
@@ -237,7 +237,7 @@ dotfiles doctor — health check for the dotfiles + chezmoi setup.
 Verifies that chezmoi is reachable, the source dir resolves, the profile
 renders, the Windows package list is readable, run_once scripts render,
 the theme command resolves, and the Windows toolchain (pwsh + scoop or
-winget + mise + hive) is installed. Exits 0 when all checks pass, 1 if
+winget + mise + holt) is installed. Exits 0 when all checks pass, 1 if
 any failed.
 "@ | Write-Host
         return
@@ -297,7 +297,7 @@ any failed.
     Script:_Check 'pwsh on PATH'                  (_Have pwsh)
     Script:_Check 'scoop or winget on PATH'       ((_Have scoop) -or (_Have winget))
     Script:_Check 'mise on PATH'                  (_Have mise)
-    Script:_Check 'hive on PATH'                  (_Have hive)
+    Script:_Check 'holt on PATH'                  (_Have holt)
 
     Write-Host ''
     Write-Host ('{0} passed, {1} failed' -f $Script:passes, $Script:fails)
@@ -314,7 +314,7 @@ dotfiles upgrade — bring chezmoi (and optionally everything) up to date.
 
 Usage:
   dotfiles upgrade           Upgrade chezmoi binary (= chezmoi upgrade)
-  dotfiles upgrade --all     chezmoi binary + sources + scoop/winget + mise + hive
+  dotfiles upgrade --all     chezmoi binary + sources + scoop/winget + mise + holt
 "@ | Write-Host
             return
         }
@@ -350,7 +350,7 @@ function _UpgradeAll {
     if (_Have winget)  { Script:_Step 'winget'                    { & winget upgrade --all } }
     if (_Have mise)    { Script:_Step 'mise (self)'               { & mise self-update } }
     if (_Have mise)    { Script:_Step 'mise (tools)'              { & mise upgrade } }
-    if (_Have hive)    { Script:_Step 'hive'                      { & hive upgrade } }
+    if (_Have holt)    { Script:_Step 'holt'                      { & holt upgrade } }
 
     Write-Host ''
     if ($script:upgradeFails -eq 0) {
@@ -403,20 +403,20 @@ Inside the menu:
 
     # Source pick.ps1 (the picker) + the per-tool libraries from the
     # chezmoi source dir. This mirrors the bash `import unix darwin brew
-    # mise hive pick` pattern: each library defines `Tool::Install`,
+    # mise holt pick` pattern: each library defines `Tool::Install`,
     # `Tool::Require`, `Tool::Setup` functions; pick invokes the *Setup
     # functions when the user selects them.
     . (Join-Path $PSScriptRoot 'pick.ps1')
     $lib = Join-Path $sourceDir 'etc/powershell/lib'
     Import-Module (Join-Path $lib 'Scoop.psm1') -Force
     Import-Module (Join-Path $lib 'Mise.psm1')  -Force
-    Import-Module (Join-Path $lib 'Hive.psm1')  -Force
+    Import-Module (Join-Path $lib 'Holt.psm1')  -Force
 
     $env:CHEZMOI_SOURCE_DIR = $sourceDir
 
     $scoopH = _HashFile (Join-Path $sourceDir 'etc/windows/packages.txt')
     $miseH  = _HashFile (Join-Path $sourceDir 'dot_config/mise/config.toml.tmpl')
-    $hiveH  = _HashFile (Join-Path $sourceDir 'dot_config/hive/config.toml.tmpl')
+    $holtH  = _HashFile (Join-Path $sourceDir 'dot_config/holt/config.toml.tmpl')
 
     $items = @(
         '==Packages',
@@ -424,7 +424,7 @@ Inside the menu:
         '==Toolchains',
         "Install-Mise=Language toolchains via mise|$miseH",
         '==Workspace',
-        "Install-Hive=Workspace symlinks (hive)|$hiveH"
+        "Install-Holt=Workspace symlinks (holt)|$holtH"
     )
 
     $env:DOTFILES_PICK_SCOPE = 'install'

@@ -68,7 +68,7 @@ cmd_info() {
     _row "Theme:" "$(theme get 2>/dev/null || echo "?")"
   fi
 
-  local tools=(chezmoi nvim fish zsh mise brew hive theme starship)
+  local tools=(chezmoi nvim fish zsh mise brew holt theme starship)
   local versions=()
   for t in "${tools[@]}"; do
     command -v "$t" >/dev/null 2>&1 || continue
@@ -192,7 +192,7 @@ Usage:
   dotfiles profile <name>    Switch profile and re-apply
 
 Switching re-runs `chezmoi init` with the new profile injected and then
-`chezmoi apply`. All profile-gated content (packages.txt entries, hive
+`chezmoi apply`. All profile-gated content (packages.txt entries, holt
 config, role.lua, …) re-renders accordingly.
 EOF
       return 0
@@ -340,8 +340,8 @@ EOF
   esac
   command -v mise >/dev/null 2>&1
   _check "mise on PATH" $?
-  command -v hive >/dev/null 2>&1
-  _check "hive on PATH" $?
+  command -v holt >/dev/null 2>&1
+  _check "holt on PATH" $?
 
   printf '\n%d passed, %d failed\n' "$passes" "$fails"
   return "$fails"
@@ -355,7 +355,7 @@ dotfiles upgrade — bring chezmoi (and optionally everything) up to date.
 
 Usage:
   dotfiles upgrade           Upgrade chezmoi binary (= chezmoi upgrade)
-  dotfiles upgrade --all     chezmoi binary + sources + brew + mise + hive
+  dotfiles upgrade --all     chezmoi binary + sources + brew + mise + holt
 
 `--all` runs the upgrade gestures for each tool in dependency order. On
 Linux it deliberately SKIPS distro package upgrade (`dnf upgrade` etc.) —
@@ -406,7 +406,7 @@ _upgrade_all() {
 
   command -v mise >/dev/null 2>&1 && _step "mise (self)"  mise self-update
   command -v mise >/dev/null 2>&1 && _step "mise (tools)" mise upgrade
-  command -v hive >/dev/null 2>&1 && _step "hive"         hive upgrade
+  command -v holt >/dev/null 2>&1 && _step "holt"         holt upgrade
 
   printf '\n'
   if (( fails == 0 )); then
@@ -462,8 +462,8 @@ EOF
   # shellcheck disable=SC1091
   source "$source_dir/etc/bash/lib/init.bash"
   case "$os" in
-    darwin) import unix darwin brew mise hive pick ;;
-    linux)  import unix linux mise extras hive pick ;;
+    darwin) import unix darwin brew mise holt pick ;;
+    linux)  import unix linux mise extras holt pick ;;
   esac
 
   unix::keep_sudo
@@ -480,9 +480,9 @@ EOF
     esac
   fi
 
-  local mise_h hive_h
+  local mise_h holt_h
   mise_h=$(_hash_file "$source_dir/dot_config/mise/config.toml.tmpl")
-  hive_h=$(_hash_file "$source_dir/dot_config/hive/config.toml.tmpl")
+  holt_h=$(_hash_file "$source_dir/dot_config/holt/config.toml.tmpl")
 
   local items=()
   case "$os" in
@@ -496,7 +496,7 @@ EOF
         "==Toolchains"
         "mise::setup=Language toolchains via mise|$mise_h"
         "==Workspace"
-        "hive::setup=Workspace symlinks (hive)|$hive_h"
+        "holt::setup=Workspace symlinks (holt)|$holt_h"
       )
       ;;
     linux)
@@ -512,7 +512,7 @@ EOF
         "==Toolchains"
         "mise::setup=Language toolchains via mise|$mise_h"
         "==Workspace"
-        "hive::setup=Workspace symlinks (hive)|$hive_h"
+        "holt::setup=Workspace symlinks (holt)|$holt_h"
       )
       ;;
   esac

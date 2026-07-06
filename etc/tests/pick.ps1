@@ -49,11 +49,11 @@ Test-Eq '+ → required state' 'required'   $it.State
 Test-Eq '+ → name'           'dep::setup' $it.Name
 Test-Eq '+ → label'          'Install CLT' $it.Label
 
-$it = _ParseItem '~hive::setup=Workspace links~Requires hive command'
+$it = _ParseItem '~holt::setup=Workspace links~Requires holt command'
 Test-Eq '~ → disabled state' 'disabled'              $it.State
-Test-Eq '~ → name'           'hive::setup'           $it.Name
+Test-Eq '~ → name'           'holt::setup'           $it.Name
 Test-Eq '~ → label'          'Workspace links'       $it.Label
-Test-Eq '~ → reason'         'Requires hive command' $it.Reason
+Test-Eq '~ → reason'         'Requires holt command' $it.Reason
 
 $it = _ParseItem 'name=label-with-=-equals'
 Test-Eq '= splits first only — name'  'name'                $it.Name
@@ -121,24 +121,24 @@ $env:DOTFILES_PICK_SCOPE = 'install'
 $Script:PickItems = @(
     (_ParseItem 'brew|h1'),
     (_ParseItem 'mise|h2'),
-    (_ParseItem 'hive|h3')
+    (_ParseItem 'holt|h3')
 )
 $Script:PickSelected = @{}
 $Script:PickSelected['brew'] = $true
-$Script:PickSelected['hive'] = $true
+$Script:PickSelected['holt'] = $true
 _PickSaveSelection
 $file = Join-Path $Script:PickStateDir 'install.tsv'
 Test-Eq 'state file exists'  $true (Test-Path -LiteralPath $file)
 $contents = (Get-Content -LiteralPath $file) -join ','
-Test-Eq 'state file contents' "brew`th1,hive`th3" $contents
+Test-Eq 'state file contents' "brew`th1,holt`th3" $contents
 
 $Script:PickLastSelection = @{}
 _PickLoadLastSelection
 Test-Eq 'loaded brew'       $true  $Script:PickLastSelection.ContainsKey('brew')
-Test-Eq 'loaded hive'       $true  $Script:PickLastSelection.ContainsKey('hive')
+Test-Eq 'loaded holt'       $true  $Script:PickLastSelection.ContainsKey('holt')
 Test-Eq 'mise not loaded'   $false $Script:PickLastSelection.ContainsKey('mise')
 Test-Eq 'brew hash'         'h1'   $Script:PickLastSelection['brew']
-Test-Eq 'hive hash'         'h3'   $Script:PickLastSelection['hive']
+Test-Eq 'holt hash'         'h3'   $Script:PickLastSelection['holt']
 
 # Cleanup
 $env:DOTFILES_PICK = $null

@@ -1,0 +1,14 @@
+{{ if eq .chezmoi.os "windows" -}}
+#!/usr/bin/env pwsh
+# Runs after the holt config is applied. On native Windows holt is a no-op
+# (macOS/Linux only); WSL uses the bash path.
+# Hash trigger — re-runs when the holt config or the holt lib changes.
+# holt config hash: {{ include "dot_config/holt/config.toml.tmpl" | sha256sum }}
+# Holt.psm1 hash:   {{ include "etc/powershell/lib/Holt.psm1"    | sha256sum }}
+
+$ErrorActionPreference = 'Stop'
+$env:CHEZMOI_SOURCE_DIR = '{{ .chezmoi.sourceDir }}'
+
+Import-Module (Join-Path $env:CHEZMOI_SOURCE_DIR 'etc/powershell/lib/Holt.psm1') -Force
+exit (Install-Holt)
+{{ end -}}

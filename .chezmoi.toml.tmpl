@@ -1,11 +1,19 @@
 {{- $default_profile := env "CHEZMOI_PROFILE" | default "personal" -}}
 {{- $profile := promptStringOnce . "profile" "Profile (personal/work)" $default_profile -}}
+{{- /* holt storage backend is per-machine (this laptop syncs via iCloud,
+       another via Google Drive), independent of profile. gdrive's path embeds
+       the account, so it's prompted only when the backend is gdrive. */ -}}
+{{- $holt_backend := promptStringOnce . "holt_backend" "holt storage backend (icloud/gdrive/local)" "icloud" -}}
 [data]
 email    = "{{ promptStringOnce . "email"    "Email address" }}"
 profile  = "{{ $profile }}"
 locale   = "{{ promptStringOnce . "locale"   "Locale (e.g., en_US.UTF-8)"          "en_US.UTF-8" }}"
 nls_lang = "{{ promptStringOnce . "nls_lang" "Oracle NLS_LANG"                     "AMERICAN_AMERICA.AL32UTF8" }}"
 timezone = "{{ promptStringOnce . "timezone" "Timezone (e.g., Japan, US/Eastern)"  "Japan" }}"
+holt_backend = "{{ $holt_backend }}"
+{{- if eq $holt_backend "gdrive" }}
+gdrive_account = "{{ promptStringOnce . "gdrive_account" "Google Drive account (the email in ~/Library/CloudStorage/GoogleDrive-<account>)" }}"
+{{- end }}
 {{- if eq $profile "work" }}
 
 # Work signing public key. Public, but kept out of the committed repo so the
