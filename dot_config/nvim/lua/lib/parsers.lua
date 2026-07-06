@@ -65,6 +65,18 @@ function M.fts()
   return out
 end
 
+-- Parsers wanted by a buffer's org #+begin_src blocks, via organ.nvim's
+-- public helper (org-babel spellings already resolved to parser names).
+-- Feature-detected: returns {} when organ is absent or predates the
+-- helper, so callers treat "no injected languages" uniformly.
+function M.src_block_for_buf(bufnr)
+  local ok, organ = pcall(require, "organ")
+  if not ok or type(organ.src_block_parsers) ~= "function" then return {} end
+  local got, list = pcall(organ.src_block_parsers, bufnr)
+  if not got or type(list) ~= "table" then return {} end
+  return list
+end
+
 function M._reset()
   by_ft, seen, eager = {}, {}, {}
 end

@@ -158,6 +158,63 @@ return {
           end
         end,
       })
+
+      -- Languages used only inside org #+begin_src blocks are injected, not
+      -- buffer filetypes, so the FileType installer above never sees them.
+      -- Ask organ which parsers a buffer's src blocks want and install any
+      -- that are missing. Tracked by parser name, not ft — the set varies
+      -- per buffer. After an install lands, re-highlight open org buffers so
+      -- the new injection appears without reopening the file.
+      local src_block_state = {} -- parser name → "installing" | "installed"
+
+      local function rehighlight_org_buffers()
+        for _, b in ipairs(vim.api.nvim_list_bufs()) do
+          if vim.api.nvim_buf_is_loaded(b) and vim.bo[b].filetype == "org" then
+            local ok, parser = pcall(vim.treesitter.get_parser, b, "org")
+            if ok and parser then pcall(function() parser:invalidate(true) end) end
+            pcall(vim.treesitter.stop, b)
+            pcall(vim.treesitter.start, b, "org")
+          end
+        end
+      end
+
+      local function ensure_src_block_parsers(bufnr)
+        if not vim.api.nvim_buf_is_valid(bufnr) then return end
+        local missing = {}
+        for _, p in ipairs(Lib.parsers.src_block_for_buf(bufnr)) do
+          if not installed_set[p] and not src_block_state[p] then
+            src_block_state[p] = "installing"
+            missing[#missing + 1] = p
+          end
+        end
+        if #missing == 0 then return end
+
+        local function done()
+          for _, p in ipairs(missing) do
+            src_block_state[p] = "installed"
+            installed_set[p] = true
+          end
+          rehighlight_org_buffers()
+        end
+
+        local task = require("nvim-treesitter").install(missing)
+        if task and type(task.await) == "function" then
+          task:await(function() vim.schedule(done) end)
+        else
+          vim.schedule(done)
+        end
+      end
+
+      -- FileType covers the initial open; BufWritePost picks up a block whose
+      -- language was added mid-session. BufWritePost's autocmd pattern matches
+      -- the file name, not the filetype, so gate on filetype in the callback.
+      vim.api.nvim_create_autocmd({ "FileType", "BufWritePost" }, {
+        group = vim.api.nvim_create_augroup("Lib.treesitter.org_src", { clear = true }),
+        callback = function(args)
+          if vim.bo[args.buf].filetype ~= "org" then return end
+          vim.schedule(function() ensure_src_block_parsers(args.buf) end)
+        end,
+      })
     end,
   },
 

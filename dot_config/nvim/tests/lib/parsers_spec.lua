@@ -74,3 +74,51 @@ T.describe("lib.parsers", function()
     T.eq(M.fts(), {})
   end)
 end)
+
+T.describe("lib.parsers.src_block_for_buf", function()
+  local function with_organ(stub, fn)
+    local prev = package.loaded["organ"]
+    package.loaded["organ"] = stub
+    local ok, err = pcall(fn)
+    package.loaded["organ"] = prev
+    if not ok then error(err) end
+  end
+
+  T.it("delegates to organ.src_block_parsers and forwards the bufnr", function()
+    local M = fresh()
+    with_organ({
+      src_block_parsers = function(b) return { "zig", "nix", _bufnr = b } end,
+    }, function()
+      local out = M.src_block_for_buf(42)
+      T.eq(out, { "zig", "nix", _bufnr = 42 })
+    end)
+  end)
+
+  T.it("returns empty when organ lacks the helper (older pin)", function()
+    local M = fresh()
+    with_organ({}, function()
+      T.eq(M.src_block_for_buf(0), {})
+    end)
+  end)
+
+  T.it("returns empty when organ.src_block_parsers is not a function", function()
+    local M = fresh()
+    with_organ({ src_block_parsers = "nope" }, function()
+      T.eq(M.src_block_for_buf(0), {})
+    end)
+  end)
+
+  T.it("returns empty when the helper errors", function()
+    local M = fresh()
+    with_organ({ src_block_parsers = function() error("boom") end }, function()
+      T.eq(M.src_block_for_buf(0), {})
+    end)
+  end)
+
+  T.it("returns empty when the helper returns a non-table", function()
+    local M = fresh()
+    with_organ({ src_block_parsers = function() return nil end }, function()
+      T.eq(M.src_block_for_buf(0), {})
+    end)
+  end)
+end)
