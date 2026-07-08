@@ -109,5 +109,6 @@ name = "{{ output "sh" "-c" "theme resolve herdr 2>/dev/null || echo catppuccin"
 agent_panel_sort = "spaces"
 
 [ui.toast]
-# Desktop notifications via the OS notification service.
-delivery = "system"
+# Via Ghostty, not the OS service: "system" posts through osascript, which
+# macOS attributes to (unauthorized) Script Editor and drops silently.
+delivery = "terminal"
