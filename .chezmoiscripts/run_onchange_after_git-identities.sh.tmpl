@@ -14,7 +14,8 @@
 #   name         optional  committer name override
 #   signing_key  optional  sign this account's commits with this specific key
 #   gpgsign      optional  set to false to NOT sign this account's commits
-#   gh_account   optional  GitHub login; read by the mise GH_TOKEN env to pick
+#   gh_account   optional  GitHub login; read by account-token (gh shim and
+#                          git credential helper; mise env on Windows) to pick
 #                          this account for `gh` and HTTPS git in these repos
 # Omit both signing_key and gpgsign to inherit the machine-default key and
 # signing behaviour from ~/.gitconfig.

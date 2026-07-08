@@ -5,13 +5,15 @@
 #
 # The mapping is `git config github.account`, set per-repo by the [includeIf]
 # routing in ~/.config/git/config — the same remote-URL match that already
-# picks the commit identity and signing key. This script is consumed by the
-# GH_TOKEN env in ~/.config/mise/config.toml so that `gh` subcommands and HTTPS
-# `git` both target the right account with no manual `gh auth switch`. Empty
-# output (no mapping, or no such account on this machine) makes gh fall back to
-# its active account.
+# picks the commit identity and signing key. Consumed at invocation time by
+# the gh shim (~/.local/bin/gh) and by the git credential helper in
+# ~/.config/git/config, so `gh` subcommands and HTTPS `git` both target the
+# right account with no manual `gh auth switch`. Empty output (no mapping, or
+# no such account on this machine) makes gh fall back to its active account.
+# GH_BIN, when set, names the real gh binary -- the shim passes it so this
+# script's own gh call does not re-enter the shim.
 set -euo pipefail
 
 acct=$(git -C "${1:-$PWD}" config --get github.account 2>/dev/null) || exit 0
 [ -n "$acct" ] || exit 0
-gh auth token --user "$acct" 2>/dev/null || true
+"${GH_BIN:-gh}" auth token --user "$acct" 2>/dev/null || true

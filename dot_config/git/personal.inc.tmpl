@@ -9,8 +9,9 @@
 {{- if .signing.personal_key }}
 	signingkey = {{ .signing.personal_key }}
 {{- end }}
-# Read by the mise GH_TOKEN env in ~/.config/mise/config.toml to pick the
-# GitHub account for `gh` and HTTPS git in personal repos. The login is
-# already public in this file's [includeIf] glob, so it is fine to commit.
+# Read by ~/.config/git/account-token (gh shim, credential helper, and the
+# mise env on Windows) to pick the GitHub account for `gh` and HTTPS git in
+# personal repos. The login is already public in this file's [includeIf]
+# glob, so it is fine to commit.
 [github]
 	account = sakakibara

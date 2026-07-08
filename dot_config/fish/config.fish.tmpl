@@ -84,7 +84,11 @@ fish_add_path $GOPATH/bin
 fish_add_path $HOME/.fzf/bin
 fish_add_path $HOME/.nimble/bin
 fish_add_path $HOME/.cargo/bin
-fish_add_path $HOME/.local/bin
+
+# ~/.local/bin holds the gh shim, which must shadow brew's gh -- force it in
+# front of $PATH directly (matching zsh's order); plain fish_add_path goes to
+# fish_user_paths, which lands behind brew shellenv's entries.
+fish_add_path --move --path $HOME/.local/bin
 
 if test -d $XDG_DATA_HOME/pnpm
     set -gx PNPM_HOME $XDG_DATA_HOME/pnpm

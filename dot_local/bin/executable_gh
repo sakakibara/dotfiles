@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# gh -- thin PATH shim in front of the real gh. Resolves GH_TOKEN for the
+# repository at $PWD (via ~/.config/git/account-token, which reads the
+# per-repo `github.account` set by the [includeIf] routing in
+# ~/.config/git/config) on every invocation, then execs the real binary.
+# Resolving per call rather than per cd means every context picks the right
+# account: interactive shells, scripts, editors, and non-interactive agent
+# shells that never run prompt hooks. Requires ~/.local/bin ahead of the
+# real gh's dir in PATH; the shell configs force that. An ambient
+# GH_TOKEN/GITHUB_TOKEN is respected as an explicit override. GH_BIN hands
+# the real binary's path to account-token so its own `gh auth token` call
+# cannot re-enter this shim.
+set -euo pipefail
+
+shim=${BASH_SOURCE[0]}
+
+real=""
+IFS=: read -ra path_dirs <<<"$PATH"
+for dir in "${path_dirs[@]}"; do
+  cand="$dir/gh"
+  [ -f "$cand" ] && [ -x "$cand" ] || continue
+  [ "$cand" -ef "$shim" ] && continue
+  real="$cand"
+  break
+done
+
+if [ -z "$real" ]; then
+  echo "gh shim: no gh binary found on PATH" >&2
+  exit 127
+fi
+
+if [ -z "${GH_TOKEN:-}" ] && [ -z "${GITHUB_TOKEN:-}" ]; then
+  token=$(GH_BIN="$real" "$HOME/.config/git/account-token" 2>/dev/null || true)
+  [ -n "$token" ] && export GH_TOKEN="$token"
+fi
+
+exec "$real" "$@"

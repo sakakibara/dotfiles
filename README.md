@@ -68,7 +68,7 @@ To rotate the key in the future: regenerate in 1Password, replace `signing.perso
 
 ### Multiple GitHub accounts (identity, signing & gh)
 
-Commit identity (name/email), signing key, and which account `gh` and HTTPS `git` authenticate as are all chosen **by the repo's remote URL** — never per-machine, never a per-repo `.git/config`. Your personal account (`github.com/sakakibara`) is committed; work/client accounts live only in local data, so employer names never reach this repo. Account auto-switch is driven by `GH_TOKEN` in `dot_config/mise/config.toml.tmpl`, so it works in every shell with no `gh auth switch`.
+Commit identity (name/email), signing key, and which account `gh` and HTTPS `git` authenticate as are all chosen **by the repo's remote URL** — never per-machine, never a per-repo `.git/config`. Your personal account (`github.com/sakakibara`) is committed; work/client accounts live only in local data, so employer names never reach this repo. Account auto-switch resolves at invocation time: a `gh` shim in `~/.local/bin` and the git credential helper both ask `account-token` for the repo's token, so it works with no `gh auth switch` in every context — shells, editors, scripts, and non-interactive agent sessions. Native Windows instead exports `GH_TOKEN` per directory via `dot_config/mise/config.toml.tmpl`.
 
 To add an account, follow the checklist at the top of `.chezmoiscripts/run_onchange_after_git-identities.sh.tmpl`. In short: `gh auth login` as the account (required — auto-switch reads its stored gh token), add a `[[data.git_identities]]` entry to local `~/.config/chezmoi/chezmoi.toml` (email, `match_urls`, `gh_account`), optionally wire a signing key, then `chezmoi apply`.
 

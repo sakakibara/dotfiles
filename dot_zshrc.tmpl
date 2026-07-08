@@ -79,6 +79,7 @@ fi
 export GOPATH="${HOME}/.go"
 
 path=(
+  # ~/.local/bin first: it holds the gh shim, which must shadow brew's gh.
   "${HOME}/.local/bin"
   "${HOME}/.cargo/bin"
   "${HOME}/.nimble/bin"
