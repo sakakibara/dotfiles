@@ -71,6 +71,9 @@ return {
     build        = function() require("organ.grammar_install").install() end,
     opts         = {
       org_dir = vim.fn.expand("~/org"),
+      indent = {
+        enabled = true,
+      },
       modern = {
         bullets = true,
         blocks = true,
