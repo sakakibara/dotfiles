@@ -11,23 +11,3 @@ experimental = true
 idiomatic_version_file_enable_tools = ["ruby"]
 {{- end }}
 
-{{- if eq .chezmoi.os "windows" }}
-
-# Per-repo GitHub account, native Windows only: export GH_TOKEN for the
-# account that matches the current repo, so `gh` subcommands and HTTPS
-# `git push` target the right account with no manual `gh auth switch`.
-# account-token.ps1 reads `git config github.account` (set per-repo by the
-# [includeIf] routing in ~/.config/git/config) and prints that account's
-# token. Unix resolves the token at invocation time instead (the gh shim in
-# ~/.local/bin and the git credential helper), which Windows cannot:
-# PATH shims and sh-wrapped credential helpers need a Unix shell. The
-# tradeoff is that this export is a snapshot taken on directory change --
-# processes that never run the mise hook (non-interactive shells, editors)
-# inherit whatever was last exported.
-#
-# `exec(...)` is mise's own template; the chezmoi raw string (`{{` ... `}}`)
-# makes chezmoi emit it verbatim rather than evaluate it (chezmoi fills the
-# home path; mise fills cwd).
-[env]
-GH_TOKEN = {{ printf `'''{{ exec(command='pwsh -NoProfile -File "%s/.config/git/account-token.ps1" "' ~ cwd ~ '"') }}'''` (.chezmoi.homeDir | replace "\\" "/") }}
-{{- end }}

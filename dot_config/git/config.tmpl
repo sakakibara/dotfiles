@@ -74,23 +74,19 @@
 {{- if $signing_key }}
 	signingkey = {{ $signing_key }}
 {{- end }}
-{{- $cred_helper := "!gh auth git-credential" -}}
-{{- /* On Unix the helper resolves the per-repo account token itself, at auth
-     time and in git's own cwd -- so HTTPS picks the right account in any
-     context, including processes that never ran a shell hook (editors,
-     agents, scripts). Empty resolution (unmapped repo, missing script) leaves
-     GH_TOKEN empty and gh falls back to its active account. Native Windows
-     has no sh for shell helpers wrapping a bash script; it keeps the plain
-     helper plus the cd-time GH_TOKEN export in the mise config. */ -}}
-{{- if ne .chezmoi.os "windows" -}}
-{{-   $cred_helper = "!GH_TOKEN=$(~/.config/git/account-token 2>/dev/null || true) gh auth git-credential" -}}
-{{- end }}
+# The helper resolves the per-repo account token itself (account-token reads
+# `github.account`, set by the [includeIf] routing below), at auth time and
+# in git's own cwd -- so HTTPS picks the right account in any context,
+# including processes that never ran a shell hook (editors, agents,
+# scripts). Empty resolution (unmapped repo, missing script) leaves GH_TOKEN
+# empty and gh falls back to its active account. Windows included: git runs
+# `!` helpers under its bundled sh, which executes the same bash script.
 [credential "https://github.com"]
 	helper =
-	helper = {{ $cred_helper }}
+	helper = !GH_TOKEN=$(~/.config/git/account-token 2>/dev/null || true) gh auth git-credential
 [credential "https://gist.github.com"]
 	helper =
-	helper = {{ $cred_helper }}
+	helper = !GH_TOKEN=$(~/.config/git/account-token 2>/dev/null || true) gh auth git-credential
 # Route every GitHub remote over HTTPS at transport time, whatever protocol it
 # is written in, so per-account auth always flows through the credential
 # helper's per-repo token. This rewrites the URL used to connect
@@ -103,9 +99,9 @@
 	insteadOf = ssh://git@github.com/
 {{- if (index . "gh_default_account") }}
 # Machine-default GitHub account for repos that match no [includeIf] below.
-# Read by ~/.config/git/account-token (gh shim, credential helper, and the
-# mise env on Windows) to select the
-# account for `gh` and HTTPS git. The work login identifies the employer, so it
+# Read by ~/.config/git/account-token (gh shim and credential helper) to
+# select the account for `gh` and HTTPS git. The work login identifies the
+# employer, so it
 # comes from local-only data (gh_default_account in ~/.config/chezmoi) and is
 # never committed here — matching how the default signing key is handled.
 [github]
