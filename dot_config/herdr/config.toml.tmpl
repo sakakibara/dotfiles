@@ -1,0 +1,30 @@
+# herdr - agent multiplexer. Full annotated reference: `herdr --default-config`.
+
+# Onboarding already completed; don't re-prompt on fresh machines.
+onboarding = false
+
+[keys]
+# ctrl+q is the only ergonomic single-modifier chord left unclaimed across
+# every layer that sees a keypress first: macOS globals (opt+space -> ChatGPT,
+# ctrl+space -> input switch), aerospace (all of plain Alt), the terminal
+# (Cmd, Ctrl+Shift), and the shell/fzf (readline motions, C-t/C-r, and the
+# zsh/fish rebinds). It only shadows readline quoted-insert, which is
+# duplicated on ctrl+v and still reachable by pressing the prefix twice.
+# Every other action is prefix-guarded, so nothing leaks to panes.
+prefix = "ctrl+q"
+
+[theme]
+# Driven by the `theme` tool, which rewrites this line and reloads the server on
+# `theme set`. herdr can't shell out or include a file, so the current theme is
+# seeded here from the same state (via `theme resolve herdr`) - keeping apply and
+# runtime in sync so neither clobbers the other. The `|| echo` guard falls back
+# to catppuccin when the theme tool isn't yet on PATH (fresh machine) or predates
+# herdr support (first apply of this change); the next `theme set`/`reload` fixes it.
+name = "{{ output "sh" "-c" "theme resolve herdr 2>/dev/null || echo catppuccin" | trim }}"
+
+[ui]
+agent_panel_sort = "spaces"
+
+[ui.toast]
+# Desktop notifications via the OS notification service.
+delivery = "system"

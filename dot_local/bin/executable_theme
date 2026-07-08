@@ -169,6 +169,7 @@ _default_template() {
       nvim|vivid) printf '{family}-{variant}\n' ;;
       wezterm)    printf '{Family} {Variant}\n' ;;
       tmux)       printf '{variant}\n' ;;
+      herdr)      printf '{family}\n' ;;
       *)          printf '{family}-{variant}\n' ;;
     esac
   else
@@ -182,6 +183,15 @@ _default_template() {
 
 _name() {
   local family="$1" variant="$2" tool="$3" tmpl
+  # Per-variant override wins: naming.<tool>.<variant> (literal, no templating).
+  # Needed where a tool's identifiers don't follow one template across variants,
+  # e.g. herdr collapses catppuccin's dark variants to "catppuccin" but names the
+  # light one "catppuccin-latte".
+  if [[ -n "$variant" ]]; then
+    local override
+    override=$(_manifest_get "$family" "naming.$tool.$variant" 2>/dev/null || true)
+    [[ -n "$override" ]] && { printf '%s\n' "$override"; return 0; }
+  fi
   tmpl=$(_manifest_get "$family" "naming.$tool" 2>/dev/null || true)
   if [[ -z "$tmpl" ]]; then
     local has=0
@@ -309,6 +319,23 @@ _reload() {
       [[ -S "$sock" ]] || continue
       nvim --server "$sock" --remote-expr "execute('silent! colorscheme $nvim_cs')" >/dev/null 2>&1 || true
     done
+  fi
+
+  # herdr: rewrite the [theme] name in the live config, then reload the server.
+  # herdr's TOML is static (no include, no shell-out, no theme-set API), so the
+  # name is edited in place. The chezmoi template renders the same value from
+  # this state, so a later `chezmoi apply` is a no-op rather than reverting it.
+  if command -v herdr >/dev/null 2>&1; then
+    local herdr_cfg="${HERDR_CONFIG_PATH:-$_XDG_CONFIG/herdr/config.toml}" herdr_name
+    herdr_name=$(_name "$family" "$variant" herdr)
+    if [[ -f "$herdr_cfg" && -n "$herdr_name" ]]; then
+      awk -v val="$herdr_name" '
+        /^\[/ { in_theme = ($0 == "[theme]") }
+        in_theme && /^[[:space:]]*name[[:space:]]*=/ { print "name = \"" val "\""; next }
+        { print }
+      ' "$herdr_cfg" > "$herdr_cfg.tmp" && mv "$herdr_cfg.tmp" "$herdr_cfg"
+    fi
+    herdr server reload-config >/dev/null 2>&1 || true
   fi
 
   return 0
@@ -512,10 +539,10 @@ cmd_resolve() {
     family="$__cur_fam"; variant="$__cur_var"
   fi
   case "$tool" in
-    nvim|tmux|wezterm|vivid) _name "$family" "$variant" "$tool" ;;
+    nvim|tmux|wezterm|vivid|herdr) _name "$family" "$variant" "$tool" ;;
     family)  printf '%s\n' "$family" ;;
     variant) printf '%s\n' "$variant" ;;
-    *)       die "unknown tool: $tool (known: nvim tmux wezterm vivid family variant)" ;;
+    *)       die "unknown tool: $tool (known: nvim tmux wezterm vivid herdr family variant)" ;;
   esac
 }
 

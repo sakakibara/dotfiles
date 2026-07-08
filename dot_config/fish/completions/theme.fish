@@ -34,7 +34,7 @@ complete -c theme -f -n '__fish_seen_subcommand_from list' -a '(__theme_families
 complete -c theme -f -n '__fish_seen_subcommand_from set install refresh verify' -a '(__theme_pairs)'
 
 # `theme resolve <tool>` — complete tools, then pair
-complete -c theme -f -n '__fish_seen_subcommand_from resolve; and not __fish_seen_subcommand_from nvim tmux wezterm vivid family variant' \
-    -a 'nvim tmux wezterm vivid family variant'
-complete -c theme -f -n '__fish_seen_subcommand_from resolve; and __fish_seen_subcommand_from nvim tmux wezterm vivid family variant' \
+complete -c theme -f -n '__fish_seen_subcommand_from resolve; and not __fish_seen_subcommand_from nvim tmux wezterm vivid herdr family variant' \
+    -a 'nvim tmux wezterm vivid herdr family variant'
+complete -c theme -f -n '__fish_seen_subcommand_from resolve; and __fish_seen_subcommand_from nvim tmux wezterm vivid herdr family variant' \
     -a '(__theme_pairs)'

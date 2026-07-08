@@ -63,6 +63,7 @@ gh
 gibo
 git
 gnupg
+herdr
 jq
 lazydocker
 lazygit

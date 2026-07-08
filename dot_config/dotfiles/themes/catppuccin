@@ -15,3 +15,7 @@ asset.fish.url  = https://raw.githubusercontent.com/catppuccin/fish/main/themes/
 # naming.tmux    = {variant}
 # naming.wezterm = Catppuccin {Variant}
 # naming.vivid   = catppuccin-{variant}
+
+# herdr ships only "catppuccin" (dark) and "catppuccin-latte". Dark variants
+# take the built-in {family} default; latte is the sole light identifier.
+naming.herdr.latte = catppuccin-latte

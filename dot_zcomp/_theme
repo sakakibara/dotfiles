@@ -33,7 +33,7 @@ _theme() {
           ;;
         resolve)
           if (( CURRENT == 2 )); then
-            _values 'tool' nvim tmux wezterm vivid family variant
+            _values 'tool' nvim tmux wezterm vivid herdr family variant
           else
             _theme_families_variants
           fi
