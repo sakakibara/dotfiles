@@ -28,18 +28,25 @@ detach = "prefix+q"                 # ctrl+q q, echoing nvim's <Leader>qq
 reload_config = "prefix+shift+r"
 open_notification_target = "prefix+o"
 toggle_sidebar = "prefix+b"
-remote_image_paste = "ctrl+v"       # only active under herdr --remote
+# Raw-key image paste (only active under herdr --remote). Stays prefix-free
+# so pasting an image is a single gesture, but on ctrl+alt+v not ctrl+v:
+# bare ctrl+v is nvim's visual-block / insert-literal, and this key would
+# otherwise shadow it in a remote pane. ctrl+alt+v shares the nvim-free
+# layer the pane-focus keys use.
+remote_image_paste = "ctrl+alt+v"
 
-# Panes (vim <C-w> chords). Focus is prefix-free on alt+hjkl - the most
-# frequent action, and alt+hjkl is free in fish and nvim. This layers
-# cleanly: ctrl+hjkl moves nvim splits, alt+hjkl moves herdr panes. Splits
+# Panes (vim <C-w> chords). Focus stays prefix-free - it is the most
+# frequent action - but on ctrl+alt+hjkl, not alt+hjkl: inside nvim
+# ctrl+hjkl already moves splits and alt+hjkl is organ.nvim's org-mode
+# subtree promote/demote/move, so panes take the next free layer up.
+# ctrl+alt+hjkl is unclaimed across nvim and every active plugin. Splits
 # and close stay prefix-guarded.
 split_vertical = "prefix+v"
 split_horizontal = "prefix+s"
-focus_pane_left = "alt+h"
-focus_pane_down = "alt+j"
-focus_pane_up = "alt+k"
-focus_pane_right = "alt+l"
+focus_pane_left = "ctrl+alt+h"
+focus_pane_down = "ctrl+alt+j"
+focus_pane_up = "ctrl+alt+k"
+focus_pane_right = "ctrl+alt+l"
 close_pane = "prefix+c"
 last_pane = "prefix+backtick"       # <C-w>p analog; p itself is previous_tab
 cycle_pane_next = "prefix+tab"
