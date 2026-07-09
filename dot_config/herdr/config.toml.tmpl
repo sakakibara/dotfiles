@@ -119,3 +119,9 @@ agent_panel_sort = "spaces"
 # Via Ghostty, not the OS service: "system" posts through osascript, which
 # macOS attributes to (unauthorized) Script Editor and drops silently.
 delivery = "terminal"
+
+[ui.sound]
+# Terminal-delivered toasts already ring the macOS notification sound, so
+# herdr's own audio would double up on every background state change. Mute
+# it and let the single desktop-notification sound stand.
+enabled = false
