@@ -13,7 +13,15 @@ etc/**
 .ssh/authorized_keys
 .ssh/agent.sock
 **/.git
-**/.claude
+# ~/.claude: only CLAUDE.md, settings.json, skills/, hooks/ are managed (added explicitly).
+# chezmoi apply ignores everything unmanaged anyway; these lines only guard against a broad
+# `chezmoi add ~/.claude` sweeping the catastrophic-if-public into the repo (add respects this):
+.claude/.credentials.json
+.claude/*-cache.json
+.claude/settings.local.json
+.claude/projects
+.claude/file-history
+.claude/*.jsonl
 .config/kitty/current-theme.conf
 {{ if ne .chezmoi.os "darwin" }}
 .config/aerospace/**
