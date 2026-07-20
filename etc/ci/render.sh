@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Compose-check every managed file via `mox export --resolved`. Runs the
-# export for both the macos and linux gating branches so each axis path is
-# exercised, and asserts a clean compose (0 failed) for each.
+# export for the darwin, linux, and windows gating branches so each axis path
+# is exercised, and asserts a clean compose (0 failed) for each.
 #
 # Runs in a throwaway HOME / XDG tree: the real environment and mox state
 # are never touched. Facts the sources interpolate are per-machine values
@@ -33,7 +33,7 @@ holt_backend = "icloud"
 EOF
 
 fails=0
-for os in macos linux; do
+for os in darwin linux windows; do
   out_dir="$work/export-$os"
   out=$(MOX_OS="$os" mox export --resolved "$out_dir" 2>&1)
   rc=$?
@@ -48,4 +48,4 @@ if (( fails > 0 )); then
   printf '\n%d compose failure(s)\n' "$fails" >&2
   exit 1
 fi
-printf 'all mox exports composed cleanly (macos, linux)\n'
+printf 'all mox exports composed cleanly (darwin, linux, windows)\n'

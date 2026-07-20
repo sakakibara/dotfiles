@@ -1,14 +1,23 @@
 #!/usr/bin/env bash
 # Static syntax / parse checker for non-templated files in this repo.
 # Covers shell scripts (bash/zsh/fish), Lua, TOML, YAML, JSON.
-# Templates are checked separately by render.sh (which renders them first).
+# Files carrying mox interpolation captures or `mox:` directives are only valid
+# once mox composes them; those are skipped here and validated by render.sh
+# (which composes them first).
 
 set -uo pipefail
 fails=0
 skips=()  # tools expected but missing — promoted to failures under CI=true
 
+# A source file with mox captures (`<machine.>`, `<secret:>`, ...) or a `mox:`
+# directive is not valid in its raw form; leave it to the compose check.
+_is_templated() {
+  grep -qE '<(machine|env|entry|data)\.|<secret:|(#|--|//|;)[[:space:]]*mox:' "$1" 2>/dev/null
+}
+
 _check() {
   local interp="$1" file="$2"
+  _is_templated "$file" && return 0
   if ! "$interp" -n "$file" 2>&1; then
     printf 'FAIL: %s (%s -n)\n' "$file" "$interp" >&2
     fails=$((fails + 1))
@@ -28,6 +37,7 @@ _check_lua_batch() {
 
 _check_toml() {
   local file="$1"
+  _is_templated "$file" && return 0
   if ! python3 -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$file" 2>&1; then
     printf 'FAIL: %s (toml)\n' "$file" >&2
     fails=$((fails + 1))
@@ -36,6 +46,7 @@ _check_toml() {
 
 _check_yaml() {
   local file="$1"
+  _is_templated "$file" && return 0
   if ! ruby -ryaml -e 'YAML.load_file(ARGV[0])' "$file" 2>&1; then
     printf 'FAIL: %s (yaml)\n' "$file" >&2
     fails=$((fails + 1))
@@ -44,6 +55,7 @@ _check_yaml() {
 
 _check_json() {
   local file="$1"
+  _is_templated "$file" && return 0
   if ! python3 -c 'import sys, json; json.load(open(sys.argv[1]))' "$file" 2>&1; then
     printf 'FAIL: %s (json)\n' "$file" >&2
     fails=$((fails + 1))
@@ -93,7 +105,7 @@ fi
 # without running anything. Portable while-loop array build instead.
 if command -v luajit >/dev/null 2>&1; then
   _luajit_files=()
-  while IFS= read -r -d '' f; do _luajit_files+=("$f"); done < <(
+  while IFS= read -r -d '' f; do _is_templated "$f" || _luajit_files+=("$f"); done < <(
     find src/.config/nvim -type f -name '*.lua' -print0 2>/dev/null
   )
   if [[ ${#_luajit_files[@]} -gt 0 ]]; then
@@ -127,7 +139,7 @@ for _cmd in lua5.5 lua5.4 lua; do
 done
 if [[ -n "$_lua54" ]]; then
   _lua54_files=()
-  while IFS= read -r -d '' f; do _lua54_files+=("$f"); done < <(
+  while IFS= read -r -d '' f; do _is_templated "$f" || _lua54_files+=("$f"); done < <(
     find . -type f -name '*.lua' \
       -not -path './src/.config/nvim/*' \
       -not -path './.git/*' -print0 2>/dev/null
