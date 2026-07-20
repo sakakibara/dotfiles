@@ -1,0 +1,3 @@
+#!/usr/bin/env zsh
+# mox: when os=darwin
+osascript -e 'display notification "'"$*"'"'

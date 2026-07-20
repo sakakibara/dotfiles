@@ -53,7 +53,7 @@ holt::setup() {
   msg::heading "Set up workspace with holt"
   holt::require || return 1
 
-  # holt reads the chezmoi-managed ~/.config/holt/config.toml; ask it where the
+  # holt reads the mox-managed ~/.config/holt/config.toml; ask it where the
   # roots resolved to (holt owns the truth, across icloud/gdrive/local).
   local config synced hub
   config=$(holt config 2>/dev/null)

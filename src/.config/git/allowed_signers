@@ -1,0 +1,4 @@
+sho@sakakibara.dev namespaces="git" <data.signing.personal_key>
+# mox: when profile=work and email and signing_work_key
+<machine.email> namespaces="git" <machine.signing_work_key>
+# mox: end

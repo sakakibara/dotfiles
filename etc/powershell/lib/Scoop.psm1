@@ -72,8 +72,14 @@ function Get-WingetInstalledMap {
 function Install-Scoop {
     if (-not (Initialize-ScoopBinary)) { return 1 }
 
-    $sourceDir = if ($env:CHEZMOI_SOURCE_DIR) { $env:CHEZMOI_SOURCE_DIR }
-                 else { ((& chezmoi source-path 2>$null) -as [string]).Trim() }
+    $sourceDir = if ($env:MOX_REPO) {
+                     $env:MOX_REPO
+                 } else {
+                     $dataHome = if ($env:XDG_DATA_HOME) { $env:XDG_DATA_HOME }
+                                 elseif ($env:LOCALAPPDATA) { $env:LOCALAPPDATA }
+                                 else { Join-Path $HOME '.local/share' }
+                     Join-Path $dataHome 'mox/dotfiles'
+                 }
     $profile = Get-DotfilesProfile
 
     $pkgFile   = Join-Path $sourceDir 'etc/windows/packages.txt'

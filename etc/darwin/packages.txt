@@ -1,6 +1,6 @@
 # macOS packages — formulae (bare names), casks (cask: prefix), and taps
 # (tap: prefix). Profile gating: trailing ` @profile1,profile2` restricts a
-# line to the named chezmoi profiles. Lines without a profile annotation
+# line to the named profiles. Lines without a profile annotation
 # apply everywhere. Versioned formulae (`openssl@3`) keep `@` in the name —
 # the profile suffix requires a literal SPACE before the @.
 #

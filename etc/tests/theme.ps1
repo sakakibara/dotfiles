@@ -9,7 +9,7 @@
 $ErrorActionPreference = 'Stop'
 
 $repo  = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
-$theme = Join-Path $repo 'dot_local/bin/theme.ps1'
+$theme = Join-Path $repo 'src/.local/bin/theme.ps1'
 
 # ---------- harness ----------
 $fails = 0; $passes = 0

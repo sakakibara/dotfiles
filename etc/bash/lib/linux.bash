@@ -50,7 +50,7 @@ linux::is_wsl() {
 
 linux::install_packages() {
   local distro="$1"
-  local source_dir="${CHEZMOI_SOURCE_DIR:-$HOME/.local/share/chezmoi}"
+  local source_dir="${MOX_REPO:-${XDG_DATA_HOME:-$HOME/.local/share}/mox/dotfiles}"
   local file="$source_dir/etc/linux/packages-${distro}.txt"
   local blacklist="$source_dir/etc/linux/packages-blacklist.txt"
   local profile

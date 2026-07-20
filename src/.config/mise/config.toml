@@ -1,0 +1,13 @@
+[tools]
+node = "latest"
+python = "latest"
+ruby = "latest"
+php = "latest"
+zig = "latest"
+
+[settings]
+experimental = true
+# mox: when profile=work
+idiomatic_version_file_enable_tools = ["ruby"]
+# mox: end
+

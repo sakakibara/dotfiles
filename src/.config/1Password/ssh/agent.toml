@@ -1,0 +1,10 @@
+# Personal-account signing key (Private/default vault) — on every machine.
+[[ssh-keys]]
+item = "GitHub Signing Key (sakakibara)"
+# mox: when profile=work
+
+# Work-account signing key — work machines only.
+[[ssh-keys]]
+item = "<machine.onepassword_signing_item>"
+vault = "<machine.onepassword_signing_vault>"
+# mox: end

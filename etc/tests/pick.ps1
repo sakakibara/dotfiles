@@ -9,7 +9,7 @@ $ErrorActionPreference = 'Stop'
 
 # Source pick.ps1's functions into this scope.
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
-. (Join-Path $repo 'dot_local/bin/pick.ps1')
+. (Join-Path $repo 'src/.local/bin/pick.ps1')
 
 # Isolated state dir under the system temp.
 $tmp = Join-Path ([IO.Path]::GetTempPath()) ("pick-tests-" + [Guid]::NewGuid())

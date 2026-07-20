@@ -1,0 +1,703 @@
+# Files will be created with these permissions:
+# files 644 -rw-r--r-- (666 minus 022)
+# dirs  755 drwxr-xr-x (777 minus 022)
+umask 022
+
+#
+# Exports
+#
+
+# XDG
+# https://standards.freedesktop.org/basedir-spec/basedir-spec-latest.html
+# https://wiki.archlinux.org/index.php/XDG_Base_Directory
+# https://wiki.archlinux.org/index.php/XDG_user_directories
+
+# Set directory for cache of eval commands
+export ZSH_EVALCACHE_DIR=${ZSH_EVALCACHE_DIR:-"${XDG_CACHE_HOME:-$HOME/.cache}/zsh-eval"}
+
+# Set custom zsh functions directory to fpath
+fpath=(${HOME}/.zfunc ${fpath})
+
+# Autoload all functions in custom zsh functions directory
+autoload -Uz ${HOME}/.zfunc/*(.,@:t)
+
+# Set or load OSNAME variable
+_evalcache osname init
+
+export XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-$HOME/.config}
+export XDG_CACHE_HOME=${XDG_CACHE_HOME:-$HOME/.cache}
+export XDG_DATA_HOME=${XDG_DATA_HOME:-$HOME/.local/share}
+export XDG_STATE_HOME=${XDG_STATE_HOME:-$HOME/.local/state}
+export XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-$HOME/.xdg}
+
+# Theme state — drives THEME_FAMILY / THEME_VARIANT for theme-aware tools.
+# State file is written by `theme set` and re-read on every shell start.
+if [[ -f "${XDG_STATE_HOME}/dotfiles/theme" ]]; then
+  IFS=/ read -r THEME_FAMILY THEME_VARIANT < "${XDG_STATE_HOME}/dotfiles/theme"
+else
+  THEME_FAMILY=catppuccin
+  THEME_VARIANT=mocha
+fi
+export THEME_FAMILY THEME_VARIANT
+
+if [[ "$OSTYPE" == darwin* ]]; then
+  export XDG_DESKTOP_DIR=${XDG_DESKTOP_DIR:-$HOME/Desktop}
+  export XDG_DOCUMENTS_DIR=${XDG_DOCUMENTS_DIR:-$HOME/Documents}
+  export XDG_DOWNLOAD_DIR=${XDG_DOWNLOAD_DIR:-$HOME/Downloads}
+  export XDG_MUSIC_DIR=${XDG_MUSIC_DIR:-$HOME/Music}
+  export XDG_PICTURES_DIR=${XDG_PICTURES_DIR:-$HOME/Pictures}
+  export XDG_VIDEOS_DIR=${XDG_VIDEOS_DIR:-$HOME/Videos}
+  export XDG_PROJECTS_DIR=${XDG_PROJECTS_DIR:-$HOME/Projects}
+fi
+
+# Set default language
+export LANG="<machine.locale | default "en_US.UTF-8">"
+export LC_ALL="<machine.locale | default "en_US.UTF-8">"
+
+# Set oracle language
+export NLS_LANG="<machine.nls_lang | default "AMERICAN_AMERICA.AL32UTF8">"
+
+# Disable microsoft .NET telemetry
+export DOTNET_CLI_TELEMETRY_OPTOUT=1
+
+# Add path
+if [[ "${OSTYPE}" == darwin* ]]; then
+  if [[ -f "/opt/homebrew/bin/brew" ]]; then
+    _evalcache /opt/homebrew/bin/brew shellenv
+  elif [[ -f "/usr/local/bin/brew" ]]; then
+    _evalcache /usr/local/bin/brew shellenv
+  fi
+fi
+
+if [[ -d "${XDG_CONFIG_HOME}/emacs/bin" ]]; then
+  path=(
+    "${XDG_CONFIG_HOME}/emacs/bin"
+    ${path}
+  )
+fi
+
+export GOPATH="${HOME}/.go"
+
+path=(
+  # ~/.local/bin first: it holds the gh shim, which must shadow brew's gh.
+  "${HOME}/.local/bin"
+  "${HOME}/.cargo/bin"
+  "${HOME}/.nimble/bin"
+  "${HOME}/.fzf/bin"
+  "${GOPATH}/bin"
+  ${path}
+)
+
+if [[ -d "${XDG_DATA_HOME}/pnpm" ]]; then
+  export PNPM_HOME="${XDG_DATA_HOME}/pnpm"
+  path=(
+    "${PNPM_HOME}"
+    ${path}
+  )
+fi
+
+# Set editor
+if (( ${+commands[nvim]} )); then
+  export EDITOR=nvim
+else
+  export EDITOR=vim
+fi
+export VISUAL="${EDITOR}"
+
+if [[ -n "${IS_WSL}" || -n "${WSL_DISTRO_NAME}" ]]; then
+  export TZ=/usr/share/zoneinfo/<machine.timezone | default "Japan">
+  export DISPLAY=:0
+fi
+
+if (( ${+commands[fzf]} )); then
+  local fd_command
+  if (( ${+commands[fd]} )); then
+    fd_command="fd"
+  elif (( ${+commands[fdfind]} )); then
+    fd_command="fdfind"
+  fi
+  export FZF_DEFAULT_COMMAND="${fd_command} --type file --follow --hidden --exclude .git"
+  export FZF_CTRL_T_COMMAND="${FZF_DEFAULT_COMMAND}"
+  export FZF_ALT_C_COMMAND="${fd_command} --type directory --follow --hidden"
+
+  case "$THEME_FAMILY" in
+    catppuccin)
+      typeset -gA _fzf_catppuccin_palettes=(
+        latte     '--color=bg+:#ccd0da,bg:#eff1f5,spinner:#dc8a78,hl:#d20f39 --color=fg:#4c4f69,header:#d20f39,info:#8839ef,pointer:#dc8a78 --color=marker:#dc8a78,fg+:#4c4f69,prompt:#8839ef,hl+:#d20f39'
+        frappe    '--color=bg+:#414559,bg:#303446,spinner:#f2d5cf,hl:#e78284 --color=fg:#c6d0f5,header:#e78284,info:#ca9ee6,pointer:#f2d5cf --color=marker:#f2d5cf,fg+:#c6d0f5,prompt:#ca9ee6,hl+:#e78284'
+        macchiato '--color=bg+:#363a4f,bg:#24273a,spinner:#f4dbd6,hl:#ed8796 --color=fg:#cad3f5,header:#ed8796,info:#c6a0f6,pointer:#f4dbd6 --color=marker:#f4dbd6,fg+:#cad3f5,prompt:#c6a0f6,hl+:#ed8796'
+        mocha     '--color=bg+:#313244,bg:#1e1e2e,spinner:#f5e0dc,hl:#f38ba8 --color=fg:#cdd6f4,header:#f38ba8,info:#cba6f7,pointer:#f5e0dc --color=marker:#f5e0dc,fg+:#cdd6f4,prompt:#cba6f7,hl+:#f38ba8'
+      )
+      export FZF_DEFAULT_OPTS=" ${_fzf_catppuccin_palettes[$THEME_VARIANT]}"
+      ;;
+  esac
+fi
+
+if (( ${+commands[zoxide]} )); then
+  export _ZO_DATA_DIR="${XDG_DATA_HOME:-${HOME}/.local/share}/zoxide"
+fi
+
+if (( ${+commands[zk]} )); then
+  export ZK_NOTEBOOK_DIR="${HOME}/Notes"
+fi
+
+#
+# Global variables
+#
+
+typeset -g SAVEHIST=50000
+typeset -g HISTSIZE=60000 # SAVEHIST * 1.2
+typeset -g HISTFILE="${HOME}/.zsh_history"
+
+# Let C-w stop deleting on /
+typeset -g WORDCHARS='*?_-.[]~=&;!#$%^(){}<>'
+
+# 10ms for key sequences
+typeset -g KEYTIMEOUT=1
+
+#
+# Setopts
+#
+
+# History command configuration
+setopt extended_history       # record timestamp of command in HISTFILE
+setopt hist_expire_dups_first # delete duplicates first when HISTFILE size exceeds HISTSIZE
+setopt hist_ignore_dups       # ignore duplicated commands history list
+setopt hist_ignore_space      # ignore commands that start with space
+setopt hist_verify            # show command with history expansion to user before running it
+setopt inc_append_history     # add commands to HISTFILE in order of execution
+setopt share_history          # share command history data
+
+# Globbing settings
+setopt extended_glob          # treat '#', '~' and '^' as special characters
+setopt no_case_glob           # make globbing insensitive to case
+
+# Disable beep
+setopt no_beep
+setopt no_hist_beep
+setopt no_list_beep
+
+# Allow C-q and C-s to be used for key binds
+setopt no_flow_control
+
+#
+# Key bind variables
+#
+
+zmodload zsh/terminfo
+
+typeset -gA keyinfo
+keyinfo=(
+  'Control'         '\C-'
+  'ControlLeft'     '\e[1;5D \e[5D \e\e[D \eOd'
+  'ControlRight'    '\e[1;5C \e[5C \e\e[C \eOc'
+  'ControlPageUp'   '\e[5;5~'
+  'ControlPageDown' '\e[6;5~'
+  'ShiftLeft'       '\e[1;2D'
+  'ShiftRight'      '\e[1;2C'
+  'ShiftUp'         '\e[1;2A'
+  'ShiftDown'       '\e[1;2B'
+  'ShiftHome'       '\e[1;2H'
+  'ShiftEnd'        '\e[1;2F'
+  'Escape'          '\e'
+  'Meta'            '\M-'
+  'Backspace'       "$terminfo[kbs]"
+  'Delete'          "$terminfo[kdch1]"
+  'F1'              "$terminfo[kf1]"
+  'F2'              "$terminfo[kf2]"
+  'F3'              "$terminfo[kf3]"
+  'F4'              "$terminfo[kf4]"
+  'F5'              "$terminfo[kf5]"
+  'F6'              "$terminfo[kf6]"
+  'F7'              "$terminfo[kf7]"
+  'F8'              "$terminfo[kf8]"
+  'F9'              "$terminfo[kf9]"
+  'F10'             "$terminfo[kf10]"
+  'F11'             "$terminfo[kf11]"
+  'F12'             "$terminfo[kf12]"
+  'Insert'          "$terminfo[kich1]"
+  'Home'            "$terminfo[khome]"
+  'PageUp'          "$terminfo[kpp]"
+  'End'             "$terminfo[kend]"
+  'PageDown'        "$terminfo[knp]"
+  'Up'              "$terminfo[kcuu1]"
+  'Left'            "$terminfo[kcub1]"
+  'Down'            "$terminfo[kcud1]"
+  'Right'           "$terminfo[kcuf1]"
+  'BackTab'         "$terminfo[kcbt]"
+)
+
+for key in "${(k)keyinfo[@]}"; do
+  if [[ -z "$keyinfo[$key]" ]]; then
+    keyinfo[$key]='�'
+  fi
+done
+
+autoload -Uz edit-command-line
+zle -N edit-command-line
+
+#
+# Key bind functions
+#
+# Function bodies live in dot_zfunc/ and are autoloaded via the fpath setup
+# above; register the ZLE widgets here. `bindkey-all` is an interactive
+# helper, not a widget, so no `zle -N` for it.
+#
+
+zle -N zle-line-init
+zle -N zle-line-finish
+zle -N accept-and-beginning-of-line
+zle -N accept-and-end-of-line
+zle -N expand-or-complete-non-nil
+zle -N expand-dot-to-parent-directory-path
+zle -N prepend-sudo
+zle -N glob-alias
+zle -N pound-toggle
+
+# Reset to default key bindings
+bindkey -d
+
+#
+# Emacs key bindings
+#
+
+for key in "$keyinfo[Escape]"{B,b} "${(s: :)keyinfo[ControlLeft]}" \
+  "${keyinfo[Escape]}${keyinfo[Left]}"
+  bindkey -M emacs "$key" emacs-backward-word
+for key in "$keyinfo[Escape]"{F,f} "${(s: :)keyinfo[ControlRight]}" \
+  "${keyinfo[Escape]}${keyinfo[Right]}"
+  bindkey -M emacs "$key" emacs-forward-word
+
+# Kill to the beginning of the line.
+for key in "$keyinfo[Escape]"{K,k}
+  bindkey -M emacs "$key" backward-kill-line
+
+# Redo
+bindkey -M emacs "$keyinfo[Escape]_" redo
+
+# Search previous character
+bindkey -M emacs "$keyinfo[Control]X$keyinfo[Control]B" vi-find-prev-char
+
+# Match bracket
+bindkey -M emacs "$keyinfo[Control]X$keyinfo[Control]]" vi-match-bracket
+
+# Edit command in an external editor.
+bindkey -M emacs "$keyinfo[Control]X$keyinfo[Control]E" edit-command-line
+
+if (( $+widgets[history-incremental-pattern-search-backward] )); then
+  bindkey -M emacs "$keyinfo[Control]R" \
+    history-incremental-pattern-search-backward
+  bindkey -M emacs "$keyinfo[Control]S" \
+    history-incremental-pattern-search-forward
+fi
+
+# Toggle comment at the start of the line. Note that we use pound-toggle which
+# is similar to pound insert, but meant to work around some issues that were
+# being seen in iTerm.
+bindkey -M emacs "$keyinfo[Escape];" pound-toggle
+
+#
+# Vi key bindings
+#
+
+# Edit command in an external editor emacs style (v is used for visual mode)
+bindkey -M vicmd "$keyinfo[Control]X$keyinfo[Control]E" edit-command-line
+
+# Undo/Redo
+bindkey -M vicmd "u" undo
+bindkey -M viins "$keyinfo[Control]_" undo
+bindkey -M vicmd "$keyinfo[Control]R" redo
+
+if (( $+widgets[history-incremental-pattern-search-backward] )); then
+  bindkey -M vicmd "?" history-incremental-pattern-search-backward
+  bindkey -M vicmd "/" history-incremental-pattern-search-forward
+else
+  bindkey -M vicmd "?" history-incremental-search-backward
+  bindkey -M vicmd "/" history-incremental-search-forward
+fi
+
+# Toggle comment at the start of the line
+bindkey -M vicmd "#" vi-pound-insert
+
+#
+# Emacs and vi key bindings
+#
+
+# Unbound keys in vicmd and viins mode will cause really odd things to happen
+# such as the casing of all the characters you have typed changing or other
+# undefined things. In emacs mode they just insert a tilde, but bind these keys
+# in the main keymap to a noop op so if there is no keybind in the users mode
+# it will fall back and do nothing.
+zle -N _zle-noop
+local -a unbound_keys
+unbound_keys=(
+  "${keyinfo[F1]}"
+  "${keyinfo[F2]}"
+  "${keyinfo[F3]}"
+  "${keyinfo[F4]}"
+  "${keyinfo[F5]}"
+  "${keyinfo[F6]}"
+  "${keyinfo[F7]}"
+  "${keyinfo[F8]}"
+  "${keyinfo[F9]}"
+  "${keyinfo[F10]}"
+  "${keyinfo[F11]}"
+  "${keyinfo[F12]}"
+  "${keyinfo[PageUp]}"
+  "${keyinfo[PageDown]}"
+  "${keyinfo[ControlPageUp]}"
+  "${keyinfo[ControlPageDown]}"
+)
+
+for keymap in $unbound_keys; do
+  bindkey -M viins "${keymap}" _zle-noop
+  bindkey -M vicmd "${keymap}" _zle-noop
+done
+
+for keymap in 'emacs' 'viins' 'vicmd'; do
+  bindkey -M "$keymap" "$keyinfo[Home]" beginning-of-line
+  bindkey -M "$keymap" "$keyinfo[End]" end-of-line
+
+  bindkey -M "$keymap" "$keyinfo[ShiftHome]" beginning-of-line
+  bindkey -M "$keymap" "$keyinfo[ShiftEnd]" end-of-line
+done
+
+# Keybinds for all vi keymaps
+for keymap in 'viins' 'vicmd'; do
+  # Ctrl + Left and Ctrl + Right bindings to forward/backward word
+  for key in "${(s: :)keyinfo[ControlLeft]}"
+    bindkey -M "$keymap" "$key" vi-backward-word
+  for key in "${(s: :)keyinfo[ControlRight]}"
+    bindkey -M "$keymap" "$key" vi-forward-word
+done
+
+# Keybinds for emacs and vi insert mode
+for keymap in 'emacs' 'viins'; do
+  bindkey -M "$keymap" "$keyinfo[Insert]" overwrite-mode
+  bindkey -M "$keymap" "$keyinfo[Delete]" delete-char
+  bindkey -M "$keymap" "$keyinfo[Backspace]" backward-delete-char
+
+  bindkey -M "$keymap" "$keyinfo[Left]" backward-char
+  bindkey -M "$keymap" "$keyinfo[Right]" forward-char
+
+  bindkey -M "$keymap" "$keyinfo[ShiftLeft]" backward-char
+  bindkey -M "$keymap" "$keyinfo[ShiftRight]" forward-char
+
+  bindkey -M "$keymap" "$keyinfo[PageUp]" beginning-of-buffer-or-history
+  bindkey -M "$keymap" "$keyinfo[PageDown]" end-of-buffer-or-history
+
+  # Expand history on space
+  bindkey -M "$keymap" ' ' magic-space
+
+  # Clear screen
+  bindkey -M "$keymap" "$keyinfo[Control]L" clear-screen
+
+  # Expand command name to full path
+  for key in "$keyinfo[Escape]"{E,e}
+    bindkey -M "$keymap" "$key" expand-cmd-path
+
+  # Duplicate the previous word
+  for key in "$keyinfo[Escape]"{M,m}
+    bindkey -M "$keymap" "$key" copy-prev-shell-word
+
+  # Use a more flexible push-line
+  for key in "$keyinfo[Control]Q" "$keyinfo[Escape]"{q,Q}
+    bindkey -M "$keymap" "$key" push-line-or-edit
+
+  # Bind Shift + Tab to go to the previous menu item
+  bindkey -M "$keymap" "$keyinfo[BackTab]" reverse-menu-complete
+
+  # Complete in the middle of word
+  bindkey -M "$keymap" "$keyinfo[Control]I" expand-or-complete-non-nil
+
+  # Expand .... to ../..
+  bindkey -M "$keymap" "." expand-dot-to-parent-directory-path
+
+  # Insert 'sudo ' at the beginning of the line
+  bindkey -M "$keymap" "$keyinfo[Control]X$keyinfo[Control]S" prepend-sudo
+
+  # control-space expands all aliases, including global
+  bindkey -M "$keymap" "$keyinfo[Control] " glob-alias
+done
+
+# Delete key deletes character in vimcmd cmd mode instead of weird default functionality
+bindkey -M vicmd "$keyinfo[Delete]" delete-char
+
+# Do not expand .... to ../.. during incremental search
+bindkey -M isearch . self-insert 2> /dev/null
+
+zmodload zsh/complist
+
+bindkey -M menuselect "\E" accept-search
+bindkey -M menuselect "$keyinfo[Control]A" accept-and-beginning-of-line
+bindkey -M menuselect "$keyinfo[Control]E" accept-and-end-of-line
+bindkey -M menuselect "$keyinfo[Control]S" history-incremental-search-forward
+bindkey -M menuselect "$keyinfo[Control]R" history-incremental-search-backward
+
+# Use emacs style keybindings
+bindkey -e
+
+unset keymap
+
+#
+# Aliases
+#
+
+# Option aliases
+if [[ "${OSTYPE}" == darwin* ]]; then
+  alias ls="command ls -GF"
+else
+  alias ls="command ls -F --color"
+fi
+
+if (( ${+commands[fdfind]} )); then
+  alias fd="fdfind"
+fi
+alias ll="ls -l"
+alias la="ls -la"
+
+# File size utility aliases
+alias fs="stat -f '%z bytes'"
+alias df="df -h"
+
+# Load local configuration
+[[ -r "${HOME}/.zshrc.local" ]] && source "${HOME}/.zshrc.local"
+
+#
+# Plugin config
+#
+
+typeset -g ABBR_USER_ABBREVIATIONS_FILE="${HOME}/.zabbr"
+typeset -g ZSH_AUTOSUGGEST_STRATEGY=(history completion)
+typeset -g ZSH_AUTOSUGGEST_USE_ASYNC=1
+
+#
+# Antidote
+#
+
+export ANTIDOTE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}/antidote"
+
+zstyle ':antidote:bundle' use-friendly-names 'yes'
+
+# Clone antidote if necessary
+[[ -e "${HOME}/.antidote" ]] || git clone https://github.com/mattmc3/antidote.git "${HOME}/.antidote"
+
+# Source antidote
+source "${HOME}/.antidote/antidote.zsh"
+
+# Generate and source plugins from ~/.zsh_plugins.txt
+antidote load
+
+#
+# Fast syntax highlighting
+#
+
+function chroma_single_word {
+  (( next_word = 2 | 8192 ))
+
+  local __first_call="$1" __wrd="$2" __start_pos="$3" __end_pos="$4"
+  local __style
+
+  (( __first_call )) && { __style=${FAST_THEME_NAME}alias }
+  [[ -n "$__style" ]] && (( __start=__start_pos-${#PREBUFFER}, __end=__end_pos-${#PREBUFFER}, __start >= 0 )) && reply+=("$__start $__end ${FAST_HIGHLIGHT_STYLES[$__style]}")
+
+  (( this_word = next_word ))
+  _start_pos=$_end_pos
+
+  return 0
+}
+
+function register_single_word_chroma {
+  local word=$1
+  if [[ -x $(command -v $word) ]] || [[ -n $FAST_HIGHLIGHT["chroma-$word"] ]]; then
+    return 1
+  fi
+
+  FAST_HIGHLIGHT+=( "chroma-$word" chroma_single_word )
+  return 0
+}
+
+if [[ -n $FAST_HIGHLIGHT ]]; then
+  for abbr in ${(f)"$(abbr list-abbreviations)"}; do
+    if [[ $abbr != *' '* ]]; then
+      register_single_word_chroma ${(Q)abbr}
+    fi
+  done
+fi
+
+#
+# External plugins
+#
+
+_evalcache fzf --zsh
+
+_evalcache zoxide init zsh
+
+_evalcache "${HOME}/.local/bin/mise" activate zsh
+
+#
+# LS_COLORS settings
+#
+
+if (( ${+commands[vivid]} )); then
+  # _evalcache requires its target to print shell code; wrap vivid's value
+  # in an `export` statement and key the cache on family+variant so theme
+  # switches invalidate the cached entry. For no-variant families the theme
+  # name is just the family (no -variant suffix).
+  function _vivid_export {
+    printf 'export LS_COLORS=%q\n' "$(vivid generate "$1")"
+  }
+  _evalcache _vivid_export "${THEME_FAMILY}${THEME_VARIANT:+-${THEME_VARIANT}}"
+fi
+
+if (( ${+commands[starship]} )); then
+  _evalcache starship init zsh
+fi
+
+#
+# Completions
+#
+
+fpath+=(${HOME}/.zcomp)
+
+#
+# Compdump
+#
+
+# Load and initialize the completion system ignoring insecure directories with a
+# cache time of 20 hours, so it should almost always regenerate the first time a
+# shell is opened each day.
+autoload -Uz compinit
+if [[ -z "${ZSH_COMPDUMP}" ]]; then
+  ZSH_COMPDUMP="${XDG_CACHE_HOME:-$HOME/.cache}/zsh/zcompdump"
+fi
+# #q expands globs in conditional expressions
+if [[ $ZSH_COMPDUMP(#qNmh-20) ]]; then
+  # -C (skip function check) implies -i (skip security check).
+  compinit -C -d "$ZSH_COMPDUMP"
+else
+  mkdir -p "${ZSH_COMPDUMP:h}"
+  compinit -i -d "${ZSH_COMPDUMP}"
+  # Keep $_comp_path younger than cache time even if it isn't regenerated.
+  touch "${ZSH_COMPDUMP}"
+fi
+
+_evalcache pip completion --zsh
+
+if (( ${+commands[mox]} )); then
+  _evalcache mox completion zsh
+fi
+
+if (( ${+commands[holt]} )); then
+  _evalcache holt init zsh
+fi
+
+if [[ ! "${ZSH_COMPDUMP}.zwc" -nt "${ZSH_COMPDUMP}" ]]; then
+   zcompile -R -- "${ZSH_COMPDUMP}.zwc" "${ZSH_COMPDUMP}"
+fi
+
+#
+# Completion styles
+#
+
+# Defaults.
+zstyle ':completion:*:default' list-colors ${(s.:.)LS_COLORS}
+zstyle ':completion:*:default' list-prompt '%S%M matches%s'
+
+# Use caching to make completion for commands such as dpkg and apt usable.
+zstyle ':completion::complete:*' use-cache on
+zstyle ':completion::complete:*' cache-path "${XDG_CACHE_HOME:-$HOME/.cache}/zsh/zcompcache"
+
+zstyle ':completion:*' matcher-list 'm:{a-zA-Z-_}={A-Za-z_-}' 'r:|=*' 'l:|=* r:|=*'
+
+# Group matches and describe
+zstyle ':completion:*:*:*:*:*' menu yes select
+zstyle ':completion:*:matches' group 'yes'
+zstyle ':completion:*:options' description 'yes'
+zstyle ':completion:*:options' auto-description '%d'
+zstyle ':completion:*:corrections' format ' %F{green}-- %d (errors: %e) --%f'
+zstyle ':completion:*:descriptions' format ' %F{yellow}-- %d --%f'
+zstyle ':completion:*:messages' format ' %F{purple} -- %d --%f'
+zstyle ':completion:*:warnings' format ' %F{red}-- no matches found --%f'
+zstyle ':completion:*' format ' %F{yellow}-- %d --%f'
+zstyle ':completion:*' group-name ''
+zstyle ':completion:*' verbose yes
+
+# Fuzzy match mistyped completions
+zstyle ':completion:*' completer _complete _match _approximate
+zstyle ':completion:*:match:*' original only
+zstyle ':completion:*:approximate:*' max-errors 1 numeric
+
+# Increase the number of errors based on the length of the typed word. But make
+# sure to cap (at 7) the max-errors to avoid hanging
+zstyle -e ':completion:*:approximate:*' max-errors 'reply=($((($#PREFIX+$#SUFFIX)/3>7?7:($#PREFIX+$#SUFFIX)/3))numeric)'
+
+# Don't complete unavailable commands
+zstyle ':completion:*:functions' ignored-patterns '(_*|pre(cmd|exec))'
+
+# Array completion element sorting
+zstyle ':completion:*:*:-subscript-:*' tag-order indexes parameters
+
+# Directories
+zstyle ':completion:*:*:cd:*' tag-order local-directories directory-stack path-directories
+zstyle ':completion:*:*:cd:*:directory-stack' menu yes select
+zstyle ':completion:*:-tilde-:*' group-order 'named-directories' 'path-directories' 'users' 'expand'
+zstyle ':completion:*' squeeze-slashes true
+
+# History
+zstyle ':completion:*:history-words' stop yes
+zstyle ':completion:*:history-words' remove-all-dups yes
+zstyle ':completion:*:history-words' list false
+zstyle ':completion:*:history-words' menu yes
+
+# Environment variables
+zstyle ':completion::*:(-command-|export):*' fake-parameters ${${${_comps[(I)-value-*]#*,}%%,*}:#-*-}
+
+# Populate hostname completion
+zstyle -e ':completion:*:hosts' hosts 'reply=(
+  ${=${=${=${${(f)"$(cat {/etc/ssh/ssh_,~/.ssh/}known_hosts(|2)(N) 2> /dev/null)"}%%[#| ]*}//\]:[0-9]*/ }//,/ }//\[/ }
+  ${=${(f)"$(cat /etc/hosts(|)(N) <<(ypcat hosts 2> /dev/null))"}%%(\#${_etc_host_ignores:+|${(j:|:)~_etc_host_ignores}})*}
+  ${=${${${${(@M)${(f)"$(cat ~/.ssh/config 2> /dev/null)"}:#Host *}#Host }:#*\**}:#*\?*}}
+)'
+
+# Don't complete uninteresting users...
+zstyle ':completion:*:*:*:users' ignored-patterns \
+  adm amanda apache avahi beaglidx bin cacti canna clamav daemon \
+  dbus distcache dovecot fax ftp games gdm gkrellmd gopher \
+  hacluster haldaemon halt hsqldb ident junkbust ldap lp mail \
+  mailman mailnull mldonkey mysql nagios \
+  named netdump news nfsnobody nobody nscd ntp nut nx openvpn \
+  operator pcap postfix postgres privoxy pulse pvm quagga radvd \
+  rpc rpcuser rpm shutdown squid sshd sync uucp vcsa xfs '_*'
+
+# ... unless we really want to.
+zstyle '*' single-ignored show
+
+# Ignore multiple entries.
+zstyle ':completion:*:(rm|kill|diff):*' ignore-line other
+zstyle ':completion:*:rm:*' file-patterns '*:all-files'
+
+# Kill
+zstyle ':completion:*:*:*:*:processes' command 'ps -u $LOGNAME -o pid,user,command -w'
+zstyle ':completion:*:*:kill:*:processes' list-colors '=(#b) #([0-9]#) ([0-9a-z-]#)*=01;36=0=01'
+zstyle ':completion:*:*:kill:*' menu yes select
+zstyle ':completion:*:*:kill:*' force-list always
+zstyle ':completion:*:*:kill:*' insert-ids single
+
+# Man
+zstyle ':completion:*:manuals' separate-sections true
+zstyle ':completion:*:manuals.(^1*)' insert-sections true
+
+# Media Players
+zstyle ':completion:*:*:mpg123:*' file-patterns '*.(mp3|MP3):mp3\ files *(-/):directories'
+zstyle ':completion:*:*:mpg321:*' file-patterns '*.(mp3|MP3):mp3\ files *(-/):directories'
+zstyle ':completion:*:*:ogg123:*' file-patterns '*.(ogg|OGG|flac):ogg\ files *(-/):directories'
+zstyle ':completion:*:*:mocp:*' file-patterns '*.(wav|WAV|mp3|MP3|ogg|OGG|flac):ogg\ files *(-/):directories'
+
+# SSH/SCP/RSYNC
+zstyle ':completion:*:(ssh|scp|rsync):*' tag-order 'hosts:-host:host hosts:-domain:domain hosts:-ipaddr:ip\ address *'
+zstyle ':completion:*:(scp|rsync):*' group-order users files all-files hosts-domain hosts-host hosts-ipaddr
+zstyle ':completion:*:ssh:*' group-order users hosts-domain hosts-host users hosts-ipaddr
+zstyle ':completion:*:(ssh|scp|rsync):*:hosts-host' ignored-patterns '*(.|:)*' loopback ip6-loopback localhost ip6-localhost broadcasthost
+zstyle ':completion:*:(ssh|scp|rsync):*:hosts-domain' ignored-patterns '<->.<->.<->.<->' '^[-[:alnum:]]##(.[-[:alnum:]]##)##' '*@*'
+zstyle ':completion:*:(ssh|scp|rsync):*:hosts-ipaddr' ignored-patterns '^(<->.<->.<->.<->|(|::)([[:xdigit:].]##:(#c,2))##(|%*))' '127.0.0.<->' '255.255.255.255' '::1' 'fe80::*'

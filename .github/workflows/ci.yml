@@ -48,15 +48,15 @@ jobs:
           Write-Host "all PowerShell scripts parse cleanly"
 
   render:
-    name: chezmoi execute-template
+    name: Compose check (mox export)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - name: Install zsh + fish + luajit
-        run: sudo apt-get update && sudo apt-get install -y zsh fish luajit
-      - name: Install chezmoi
+      - name: Install mox
         run: |
-          sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
+          mkdir -p "$HOME/.local/bin"
+          curl -fsSL https://github.com/sakakibara/mox/releases/latest/download/mox-x86_64-linux.tar.gz -o /tmp/mox.tar.gz
+          tar xzf /tmp/mox.tar.gz -C "$HOME/.local/bin"
           echo "$HOME/.local/bin" >> $GITHUB_PATH
       - run: bash etc/ci/render.sh
 
@@ -85,19 +85,19 @@ jobs:
             -o "$HOME/.local/share/nvim/site/parser/css.so"
       - name: Run nvim test suite
         run: |
-          cd dot_config/nvim
+          cd src/.config/nvim
           nvim --headless -l tests/run.lua
       - name: Smoke-load actual config (cold start with plugin install)
         run: |
-          # Point nvim at a *copy* of the chezmoi-source nvim config so
+          # Point nvim at a *copy* of the mox-source nvim config so
           # vim.pack's lockfile (and any other side-effect writes) land in
           # a throwaway dir, not the repo. Catches "init.lua references a
           # removed plugin" / "lib/X.lua has a typo" style regressions
           # that the unit tests miss. Plugin install pulls from upstream;
           # transient flakes will fail here.
           SMOKE_DIR=$(mktemp -d)
-          cp -r dot_config "$SMOKE_DIR/"
-          export XDG_CONFIG_HOME="$SMOKE_DIR/dot_config"
+          cp -r src/.config "$SMOKE_DIR/"
+          export XDG_CONFIG_HOME="$SMOKE_DIR/.config"
           export XDG_DATA_HOME="$SMOKE_DIR/data"
           export XDG_CACHE_HOME="$SMOKE_DIR/cache"
           export XDG_STATE_HOME="$SMOKE_DIR/state"
@@ -123,10 +123,20 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
-      - name: Install chezmoi (used by dotfiles wrapper tests)
+      - name: Install mox (used by dotfiles wrapper tests)
+        shell: bash
         run: |
-          sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          case "$(uname -s)-$(uname -m)" in
+            Linux-x86_64)  asset=mox-x86_64-linux.tar.gz ;;
+            Linux-aarch64) asset=mox-aarch64-linux.tar.gz ;;
+            Darwin-arm64)  asset=mox-aarch64-macos.tar.gz ;;
+            Darwin-x86_64) asset=mox-x86_64-macos.tar.gz ;;
+            *) echo "unsupported: $(uname -s)-$(uname -m)" >&2; exit 1 ;;
+          esac
+          mkdir -p "$HOME/.local/bin"
+          curl -fsSL "https://github.com/sakakibara/mox/releases/latest/download/$asset" -o "$RUNNER_TEMP/mox.tar.gz"
+          tar xzf "$RUNNER_TEMP/mox.tar.gz" -C "$HOME/.local/bin"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: store (set + map containers)
         run: bash etc/tests/store.sh
       - name: pick (interactive runner)
@@ -143,16 +153,14 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v5
-      - name: Install chezmoi (used by dotfiles_wrapper smoke tests)
+      - name: Install mox (used by dotfiles_wrapper smoke tests)
         shell: pwsh
         # Pull the latest release binary directly. scoop/winget add ~30s of
         # cold-start vs ~3s for a single archive download.
         run: |
-          $tag = (Invoke-RestMethod 'https://api.github.com/repos/twpayne/chezmoi/releases/latest').tag_name
-          $ver = $tag.TrimStart('v')
-          $url = "https://github.com/twpayne/chezmoi/releases/download/$tag/chezmoi_${ver}_windows_amd64.zip"
-          $zip = "$env:RUNNER_TEMP/chezmoi.zip"
-          $dest = "$env:RUNNER_TEMP/chezmoi"
+          $url = 'https://github.com/sakakibara/mox/releases/latest/download/mox-x86_64-windows.zip'
+          $zip = "$env:RUNNER_TEMP/mox.zip"
+          $dest = "$env:RUNNER_TEMP/mox"
           Invoke-WebRequest $url -OutFile $zip
           Expand-Archive $zip -DestinationPath $dest
           Add-Content $env:GITHUB_PATH $dest

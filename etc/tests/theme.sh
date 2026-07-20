@@ -73,7 +73,7 @@ asset.kitty.url = http://localhost:$PORT/dracula.conf
 EOF
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-THEME="$REPO_ROOT/dot_local/bin/executable_theme"
+THEME="$REPO_ROOT/src/.local/bin/theme"
 chmod +x "$THEME"
 
 # ------------- tests -------------

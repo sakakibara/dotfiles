@@ -1,0 +1,20 @@
+# mox: for id in "data/git_identities.toml" into "id-<id.slug>.inc"
+[user]
+	email = <id.email>
+# mox: when id.name
+	name = <id.name>
+# mox: end
+# mox: when id.signing_key
+	signingkey = <id.signing_key>
+# mox: end
+# mox: when not id.signing_key
+[commit]
+	gpgsign = false
+[tag]
+	gpgsign = false
+# mox: end
+# mox: when id.gh_account
+[github]
+	account = <id.gh_account>
+# mox: end
+# mox: end

@@ -1,0 +1,56 @@
+#compdef dotfiles
+
+_dotfiles() {
+  local -a our_subcmds
+  our_subcmds=(
+    'info:Print info snapshot'
+    'install:Run install steps (interactive menu by default)'
+    'sync:Review untracked packages'
+    'edit:Fuzzy-find a managed file and edit it'
+    'profile:Print or switch the active profile'
+    'doctor:Health-check the setup'
+    'upgrade:Upgrade mox (or every tool with --all)'
+    'help:Show help'
+  )
+
+  if (( CURRENT == 2 )); then
+    # Offer wrapper subcommands first, then mox's own (forwarded
+    # subcommands like apply / diff / status / etc.) via the existing
+    # _mox completion function. Both lists merge naturally.
+    _describe -t commands 'dotfiles command' our_subcmds
+    if (( ${+functions[_mox]} )); then
+      words[1]=mox
+      _mox "$@"
+    fi
+    return
+  fi
+
+  # Per-subcommand argument completion.
+  case "${words[2]:-}" in
+    install)
+      _values 'install step' all none brew mise holt linux extras
+      ;;
+    edit)
+      local -a managed
+      managed=("${(@f)$(mox status 2>/dev/null | sed 's/^  [^ ]*  //')}")
+      _describe 'managed file' managed
+      ;;
+    profile)
+      _values 'profile' personal work
+      ;;
+    upgrade)
+      _values 'flag' --all
+      ;;
+    sync|doctor|info|help|""|-h|--help)
+      ;;
+    *)
+      # Forward to mox completion for any subcommand we don't own
+      # (apply, diff, status, init, …). Cuts off the same way as the
+      # wrapper's pass-through case in the bash dispatcher.
+      words[1]=mox
+      (( ${+functions[_mox]} )) && _mox "$@"
+      ;;
+  esac
+}
+
+_dotfiles "$@"

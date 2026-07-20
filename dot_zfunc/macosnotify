@@ -1,2 +1,0 @@
-#!/usr/bin/env zsh
-osascript -e 'display notification "'"$*"'"'

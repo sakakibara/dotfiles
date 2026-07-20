@@ -9,7 +9,7 @@
 $ErrorActionPreference = 'Stop'
 
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
-. (Join-Path $repo 'dot_local/bin/sync.ps1')
+. (Join-Path $repo 'src/.local/bin/sync.ps1')
 
 $fails = 0; $passes = 0
 function Test-Eq([string]$desc, $expect, $actual) {

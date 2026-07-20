@@ -563,9 +563,9 @@ sync::run() {
   esac
 
   local source_dir pkg_file blacklist_file default_kind profile
-  source_dir="${CHEZMOI_SOURCE_DIR:-$(chezmoi source-path 2>/dev/null)}"
+  source_dir="${MOX_REPO:-${XDG_DATA_HOME:-$HOME/.local/share}/mox/dotfiles}"
   if [[ -z "$source_dir" ]]; then
-    msg::error "sync: chezmoi source dir not found"
+    msg::error "sync: mox source dir not found"
     return 1
   fi
 

@@ -3,14 +3,14 @@
 #
 # Smoke tests for the `dotfiles` wrapper. Verifies that each subcommand
 # parses arguments correctly and emits expected boilerplate. Doesn't run
-# real chezmoi — that requires a full chezmoi setup which is too heavy
-# for unit-test scope. The deeper functionality is exercised by the
+# real mox — that requires a full mox setup which is too heavy for
+# unit-test scope. The deeper functionality is exercised by the
 # pick/sync/packages tests.
 
 set -uo pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
-BIN="$REPO_DIR/dot_local/bin/executable_dotfiles"
+BIN="$REPO_DIR/src/.local/bin/dotfiles"
 
 fails=0; passes=0
 
@@ -64,7 +64,7 @@ _match "non-match error mentions pattern" "no managed file matches" "$out"
 [[ $rc -ne 0 ]] && passes=$((passes+1)) || { printf '  ✗ edit non-match should exit non-zero (got %d)\n' "$rc"; fails=$((fails+1)); }
 
 _section "profile with no arg prints current profile"
-# When chezmoi is reachable we get a profile name; otherwise we exit
+# When mox is reachable we get a profile name; otherwise we exit
 # with an error message — both are acceptable smoke outcomes.
 out=$(bash "$BIN" profile 2>&1); rc=$?
 if (( rc == 0 )); then
@@ -75,7 +75,7 @@ if (( rc == 0 )); then
     *)             printf '  ✓ profile prints a single line\n'; passes=$((passes+1)) ;;
   esac
 else
-  _match "profile errors mention chezmoi" "chezmoi" "$out"
+  _match "profile errors mention mox" "mox" "$out"
 fi
 
 _section "profile with unknown name rejects"
@@ -83,9 +83,9 @@ out=$(bash "$BIN" profile some-bogus-name 2>&1); rc=$?
 _match "rejects unknown profile" "unknown profile" "$out"
 [[ $rc -ne 0 ]] && passes=$((passes+1)) || { printf '  ✗ unknown profile should exit non-zero\n'; fails=$((fails+1)); }
 
-_section "upgrade --all no-args still mentions chezmoi"
-# Run a quick exec test — `dotfiles upgrade` execs chezmoi, which we don't
-# want to actually do in tests. Verify --help path works as a smoke.
+_section "upgrade --help documents --all and brew"
+# Bare `dotfiles upgrade` runs a real upgrade, which we don't want to
+# actually do in tests. Verify the --help path works as a smoke.
 out=$(bash "$BIN" upgrade --help 2>&1)
 _match "upgrade --help mentions --all" "--all" "$out"
 _match "upgrade --help mentions brew"  "brew"  "$out"

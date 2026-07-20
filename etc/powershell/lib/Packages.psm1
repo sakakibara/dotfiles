@@ -1,14 +1,14 @@
 # packages — shared parser for the per-OS package list files (analog of
 # etc/bash/lib/packages.bash). Used by sync.ps1 and the install libraries.
 
-# Resolve the active chezmoi profile, falling back to "personal" when
-# nothing answers. Result is the bare profile name (no quotes / colors).
+# Resolve the active profile, falling back to "personal" when nothing
+# answers. Result is the bare profile name (no quotes / colors).
 function Get-DotfilesProfile {
     if ($env:DOTFILES_PROFILE) { return $env:DOTFILES_PROFILE }
-    if (Get-Command chezmoi -ErrorAction SilentlyContinue) {
+    if (Get-Command mox -ErrorAction SilentlyContinue) {
         try {
-            $p = ((& chezmoi execute-template '{{ index . "profile" | default "personal" }}' 2>$null) -as [string])
-            if ($p) { return $p.Trim() }
+            $line = (& mox facts 2>$null | Select-String -Pattern '^profile = "(.*)"$')
+            if ($line) { return $line.Matches[0].Groups[1].Value }
         } catch { }
     }
     return 'personal'

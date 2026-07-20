@@ -1,0 +1,16 @@
+mox trigger seen-version theme-windows
+if ($LASTEXITCODE -ne 0) { exit 0 }
+# One-time theme bootstrap: download cached assets and seed default state so
+# kitty / fish-colors have something to read. Idempotent — re-running is a
+# no-op once cache and state exist.
+
+$ErrorActionPreference = 'Stop'
+$theme = Join-Path $HOME '.local\bin\theme.ps1'
+if (-not (Test-Path -LiteralPath $theme)) { exit 0 }
+
+& pwsh -NoProfile -File $theme install
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+& pwsh -NoProfile -File $theme verify
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+$cur = & pwsh -NoProfile -File $theme get
+& pwsh -NoProfile -File $theme set $cur | Out-Null

@@ -13,7 +13,7 @@
 #     Names may contain `/` (e.g. tap names, scoop buckets) and `@` (e.g.
 #     `openssl@3` formula version pinning) — the profile suffix requires a
 #     literal SPACE before the @ so versioned formulae aren't confused.
-#   - `@profile` (or `@p1,p2`) restricts the line to those chezmoi profiles.
+#   - `@profile` (or `@p1,p2`) restricts the line to those profiles.
 #     A line with no `@` suffix applies to every profile.
 #
 # Comments: `#` starts a comment. Blank lines and trailing whitespace ignored.
@@ -24,18 +24,18 @@ import store
 # packages::filtered. Defined once at load; cleared/repopulated each call.
 store::set _packages_blacklist
 
-# Resolve the current chezmoi profile. Priority:
-#   1. DOTFILES_PROFILE env var (baked by run_once templates, fastest)
-#   2. `chezmoi execute-template` against the live data
+# Resolve the current profile. Priority:
+#   1. DOTFILES_PROFILE env var (fastest, when a setup script exports it)
+#   2. the `profile` fact reported by `mox facts`
 #   3. fallback: "personal"
 packages::current_profile() {
   if [[ -n "${DOTFILES_PROFILE:-}" ]]; then
     printf '%s' "$DOTFILES_PROFILE"
     return
   fi
-  if command -v chezmoi >/dev/null 2>&1; then
+  if command -v mox >/dev/null 2>&1; then
     local p
-    p=$(chezmoi execute-template '{{ index . "profile" | default "personal" }}' 2>/dev/null)
+    p=$(mox facts 2>/dev/null | sed -n 's/^profile = "\(.*\)"$/\1/p')
     if [[ -n "$p" ]]; then
       printf '%s' "$p"
       return

@@ -1,6 +1,6 @@
 # holt - workspace CLI bootstrap (Windows analog of etc/bash/lib/holt.bash).
 # Installs holt via its PowerShell installer when missing and sets up the
-# workspace (Life/Work links, sync), so `chezmoi apply` brings holt up on
+# workspace (Life/Work links, sync), so `mox apply` brings holt up on
 # native Windows the way the bash path does on macOS/Linux. WSL uses the bash
 # path instead. Public entries: `Install-Holt`, `Initialize-Holt`.
 

@@ -27,11 +27,11 @@ brew::require() {
 }
 
 brew::_packages_file() {
-  printf '%s/etc/darwin/packages.txt' "${CHEZMOI_SOURCE_DIR:-$HOME/.local/share/chezmoi}"
+  printf '%s/etc/darwin/packages.txt' "${MOX_REPO:-${XDG_DATA_HOME:-$HOME/.local/share}/mox/dotfiles}"
 }
 
 brew::_blacklist_file() {
-  printf '%s/etc/darwin/packages-blacklist.txt' "${CHEZMOI_SOURCE_DIR:-$HOME/.local/share/chezmoi}"
+  printf '%s/etc/darwin/packages-blacklist.txt' "${MOX_REPO:-${XDG_DATA_HOME:-$HOME/.local/share}/mox/dotfiles}"
 }
 
 brew::setup() {

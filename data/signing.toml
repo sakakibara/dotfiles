@@ -1,0 +1,4 @@
+# Personal SSH commit-signing public key (github.com/sakakibara). Already
+# public under the same identity as this repo, so committing it reveals
+# nothing new; shared across git/config, allowed_signers, and personal.inc.
+personal_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIC1HaB5DIRwgKQ2E35VSiESgSwtVwCIpvyOFo8tq6WCd"

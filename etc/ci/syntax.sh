@@ -53,7 +53,7 @@ _check_json() {
 # Bash files
 while IFS= read -r -d '' f; do _check bash "$f"; done < <(
   {
-    find dot_local/bin -type f -name 'executable_*' -print0 2>/dev/null
+    find src/.local/bin -type f -not -name '*.ps1' -not -name '*.cmd' -print0 2>/dev/null
     find etc/bash/lib -type f -name '*.bash' -print0 2>/dev/null
     find etc/tests etc/ci -type f -name '*.sh' -print0 2>/dev/null
   } | sort -z
@@ -63,8 +63,8 @@ while IFS= read -r -d '' f; do _check bash "$f"; done < <(
 if command -v zsh >/dev/null 2>&1; then
   while IFS= read -r -d '' f; do _check zsh "$f"; done < <(
     {
-      find dot_zfunc -type f -print0 2>/dev/null
-      find dot_zcomp -type f -print0 2>/dev/null
+      find src/.zfunc -type f -print0 2>/dev/null
+      find src/.zcomp -type f -print0 2>/dev/null
     } | sort -z
   )
 else
@@ -75,7 +75,7 @@ fi
 # Fish files
 if command -v fish >/dev/null 2>&1; then
   while IFS= read -r -d '' f; do _check fish "$f"; done < <(
-    find dot_config/fish -type f -name '*.fish' -not -name '*.tmpl' -print0 2>/dev/null
+    find src/.config/fish -type f -name '*.fish' -print0 2>/dev/null
   )
 else
   echo "skip: fish not on PATH" >&2
@@ -83,8 +83,8 @@ else
 fi
 
 # Lua files. Different consumers in this repo use different Lua runtimes:
-#   - dot_config/nvim/**/*.lua  → LuaJIT (~Lua 5.1 + extensions)
-#   - dot_config/wezterm/*.lua  → Lua 5.4 (wezterm bundles mlua/Lua 5.4)
+#   - src/.config/nvim/**/*.lua  -> LuaJIT (~Lua 5.1 + extensions)
+#   - src/.config/wezterm/*.lua  -> Lua 5.4 (wezterm bundles mlua/Lua 5.4)
 # Using the wrong parser produces false positives (LuaJIT rejects `<close>`,
 # Lua 5.4 rejects some LuaJIT extensions) — pick the right one per location.
 
@@ -94,7 +94,7 @@ fi
 if command -v luajit >/dev/null 2>&1; then
   _luajit_files=()
   while IFS= read -r -d '' f; do _luajit_files+=("$f"); done < <(
-    find dot_config/nvim -type f -name '*.lua' -not -name '*.tmpl' -print0 2>/dev/null
+    find src/.config/nvim -type f -name '*.lua' -print0 2>/dev/null
   )
   if [[ ${#_luajit_files[@]} -gt 0 ]]; then
     _check_lua_batch luajit "${_luajit_files[@]}"
@@ -129,9 +129,8 @@ if [[ -n "$_lua54" ]]; then
   _lua54_files=()
   while IFS= read -r -d '' f; do _lua54_files+=("$f"); done < <(
     find . -type f -name '*.lua' \
-      -not -path './dot_config/nvim/*' \
-      -not -path './.git/*' \
-      -not -name '*.tmpl' -print0 2>/dev/null
+      -not -path './src/.config/nvim/*' \
+      -not -path './.git/*' -print0 2>/dev/null
   )
   if [[ ${#_lua54_files[@]} -gt 0 ]]; then
     _check_lua_batch "$_lua54" "${_lua54_files[@]}"
@@ -141,11 +140,11 @@ else
   skips+=("lua5.4")
 fi
 
-# TOML files (non-templated; rendered .toml.tmpl handled by render.sh).
+# TOML files (base files and .d/ overlays; both are valid TOML on their own).
 if python3 -c 'import tomllib' 2>/dev/null; then
   while IFS= read -r -d '' f; do _check_toml "$f"; done < <(
     find . -type f -name '*.toml' \
-      -not -path './.git/*' -not -name '*.tmpl' -print0 2>/dev/null
+      -not -path './.git/*' -print0 2>/dev/null
   )
 else
   echo "skip: python3 tomllib not available" >&2
@@ -163,7 +162,7 @@ else
   skips+=("ruby")
 fi
 
-# JSON files (excluding chezmoi-generated lockfiles, etc).
+# JSON files (excluding generated lockfiles, etc).
 if command -v python3 >/dev/null 2>&1; then
   while IFS= read -r -d '' f; do _check_json "$f"; done < <(
     find . -type f -name '*.json' \

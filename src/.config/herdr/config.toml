@@ -1,0 +1,127 @@
+# herdr - agent multiplexer. Full annotated reference: `herdr --default-config`.
+
+# Onboarding already completed; don't re-prompt on fresh machines.
+onboarding = false
+
+[keys]
+# ctrl+q is the only ergonomic single-modifier chord left unclaimed across
+# every layer that sees a keypress first: macOS globals (opt+space -> ChatGPT,
+# ctrl+space -> input switch), the terminal (Cmd, Ctrl+Shift), and the
+# shell/fzf (readline motions, C-t/C-r, and the zsh/fish rebinds). It only
+# shadows readline quoted-insert, which is duplicated on ctrl+v and still
+# reachable by pressing the prefix twice. Every action is prefix-guarded
+# except the direct alt+1..9 workspace jump below, which is safe because no
+# pane app binds alt+digit.
+prefix = "ctrl+q"
+
+# Every action is pinned explicitly, defaults included, so this file is the
+# whole keymap and an upstream default change can never move a key. One
+# scheme throughout: pane chords follow vim's <C-w> (v/s split, h/j/k/l
+# focus, c close), and shift raises a letter to the tab/workspace scope
+# (c/C close pane/tab, t/T new/rename tab, n/N next tab/new workspace,
+# j/k vs J/K pane focus vs workspace step).
+
+# Session and UI chrome
+help = "prefix+?"
+settings = "prefix+shift+s"
+detach = "prefix+q"                 # ctrl+q q, echoing nvim's <Leader>qq
+reload_config = "prefix+shift+r"
+open_notification_target = "prefix+o"
+toggle_sidebar = "prefix+b"
+# Raw-key image paste (only active under herdr --remote). Stays prefix-free
+# so pasting an image is a single gesture, but on ctrl+alt+v not ctrl+v:
+# bare ctrl+v is nvim's visual-block / insert-literal, and this key would
+# otherwise shadow it in a remote pane. ctrl+alt+v shares the nvim-free
+# layer the pane-focus keys use.
+remote_image_paste = "ctrl+alt+v"
+
+# Panes (vim <C-w> chords). Focus stays prefix-free - it is the most
+# frequent action - but on ctrl+alt+hjkl, not alt+hjkl: inside nvim
+# ctrl+hjkl already moves splits and alt+hjkl is organ.nvim's org-mode
+# subtree promote/demote/move, so panes take the next free layer up.
+# ctrl+alt+hjkl is unclaimed across nvim and every active plugin. Splits
+# and close stay prefix-guarded.
+split_vertical = "prefix+v"
+split_horizontal = "prefix+s"
+focus_pane_left = "ctrl+alt+h"
+focus_pane_down = "ctrl+alt+j"
+focus_pane_up = "ctrl+alt+k"
+focus_pane_right = "ctrl+alt+l"
+close_pane = "prefix+c"
+last_pane = "prefix+backtick"       # <C-w>p analog; p itself is previous_tab
+cycle_pane_next = "prefix+tab"
+cycle_pane_previous = "prefix+shift+tab"
+zoom = "prefix+z"
+resize_mode = "prefix+r"
+rename_pane = "prefix+shift+p"
+edit_scrollback = "prefix+e"        # scrollback opens in $EDITOR (nvim)
+
+# Tabs. Stepping is prefix-free on alt+[ / alt+] (vim-unimpaired [/] =
+# prev/next), pairing with the alt+,/. space steppers. Jump-to-tab stays on
+# prefix+1..9; create/rename/close stay prefix-guarded.
+new_tab = "prefix+t"
+rename_tab = "prefix+shift+t"
+close_tab = "prefix+shift+c"
+previous_tab = "alt+["
+next_tab = "alt+]"
+switch_tab = "prefix+1..9"
+
+# Workspaces are the primary unit (one space per repo/context), so they get
+# the fastest keys, all prefix-free: alt+1..9 jumps straight to a space, and
+# alt+, / alt+. step to the prev/next space (comma/period are the unshifted
+# </> keys). Left Option sends Alt (macos-option-as-alt = "left" in ghostty)
+# and no pane app binds these, so the direct globals are safe. w opens the
+# picker. shift+digit is avoided - this terminal sends punctuation (`!`) for
+# it, which herdr can't match.
+workspace_picker = "prefix+w"
+new_workspace = "prefix+shift+n"
+rename_workspace = "prefix+shift+w"
+close_workspace = "prefix+shift+d"
+previous_workspace = "alt+comma"
+next_workspace = "alt+period"
+switch_workspace = "alt+1..9"
+
+# Worktrees and jumps
+goto = "prefix+g"
+new_worktree = "prefix+shift+g"
+
+# Agent panel stepping
+next_agent = "prefix+down"
+previous_agent = "prefix+up"
+
+# Navigate-mode movement (vim motions; arrows always work too)
+navigate_pane_left = "h"
+navigate_pane_down = "j"
+navigate_pane_up = "k"
+navigate_pane_right = "l"
+navigate_workspace_up = "up"
+navigate_workspace_down = "down"
+
+# lazygit in a throwaway pane, echoing nvim's <Leader>gg (g itself is goto)
+[[keys.command]]
+key = "prefix+shift+l"
+type = "pane"
+command = "lazygit"
+
+[theme]
+# Driven by the `theme` tool, which rewrites this line and reloads the server on
+# `theme set`. herdr can't shell out or include a file, so the current theme is
+# seeded here from the same state (via `theme resolve herdr`) - keeping apply and
+# runtime in sync so neither clobbers the other. The `|| echo` guard falls back
+# to catppuccin when the theme tool isn't yet on PATH (fresh machine) or predates
+# herdr support (first apply of this change); the next `theme set`/`reload` fixes it.
+name = "<secret:cmd:theme resolve herdr 2\>/dev/null || echo catppuccin>"
+
+[ui]
+agent_panel_sort = "spaces"
+
+[ui.toast]
+# Via Ghostty, not the OS service: "system" posts through osascript, which
+# macOS attributes to (unauthorized) Script Editor and drops silently.
+delivery = "terminal"
+
+[ui.sound]
+# Terminal-delivered toasts already ring the macOS notification sound, so
+# herdr's own audio would double up on every background state change. Mute
+# it and let the single desktop-notification sound stand.
+enabled = false

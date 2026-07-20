@@ -2,13 +2,13 @@
 # Run with: pwsh -NoProfile -File etc/tests/dotfiles_wrapper_ps1.ps1   (from the repo root)
 #
 # Smoke tests for the dotfiles.ps1 wrapper. Verifies subcommand dispatch,
-# help text, and basic argument validation. Doesn't run real chezmoi —
+# help text, and basic argument validation. Doesn't run real mox —
 # the deeper functionality is exercised by pick_ps1, sync_ps1, and theme_ps1.
 
 $ErrorActionPreference = 'Stop'
 
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
-$bin  = Join-Path $repo 'dot_local/bin/dotfiles.ps1'
+$bin  = Join-Path $repo 'src/.local/bin/dotfiles.ps1'
 
 $fails = 0; $passes = 0
 
@@ -94,7 +94,7 @@ if ($r.Rc -eq 0) {
         $passes++
     }
 } else {
-    Match 'profile errors mention chezmoi' 'chezmoi' $r.Out
+    Match 'profile errors mention mox' 'mox' $r.Out
 }
 
 Section 'profile with unknown name rejects'
