@@ -19,11 +19,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.claude/hooks/git-stage-guard.sh"
+            "command": "$HOME/.agents/hooks/git-stage-guard.sh"
           },
           {
             "type": "command",
-            "command": "$HOME/.claude/hooks/commit-jargon-guard.sh"
+            "command": "$HOME/.agents/hooks/commit-jargon-guard.sh"
           }
         ]
       }

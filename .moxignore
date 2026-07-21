@@ -14,6 +14,27 @@
 .claude/sessions/
 .claude/shell-snapshots/
 
+# Codex: only AGENTS.md and hooks.json are tracked. Shared agent instructions,
+# skills, and hook implementations live under .agents/.
+.codex/auth.json
+.codex/config.toml
+.codex/*.json
+.codex/*.jsonl
+.codex/*.sqlite*
+.codex/cache/
+.codex/generated_images/
+.codex/goals_*.sqlite*
+.codex/history.jsonl
+.codex/logs_*.sqlite*
+.codex/memories_*.sqlite*
+.codex/models_cache.json
+.codex/sessions/
+.codex/shell_snapshots/
+.codex/state_*.sqlite*
+.codex/tmp/
+
+!.codex/hooks.json
+
 # SSH / signing keys
 .ssh/id_*
 !.ssh/id_*.pub

@@ -1,0 +1,11 @@
+[".claude/CLAUDE.md"]
+symlink = true
+
+[".claude/hooks"]
+symlink = true
+
+[".claude/skills"]
+symlink = true
+
+[".codex/AGENTS.md"]
+symlink = true

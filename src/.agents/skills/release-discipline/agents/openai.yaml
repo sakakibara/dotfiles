@@ -1,0 +1,4 @@
+interface:
+  display_name: "Release Discipline"
+  short_description: "Gate releases on exact-commit cross-platform CI"
+  default_prompt: "Use $release-discipline to prepare and verify this release."

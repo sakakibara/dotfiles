@@ -1,0 +1,23 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.agents/hooks/git-stage-guard.sh\"",
+            "timeout": 10,
+            "statusMessage": "Checking explicit git staging"
+          },
+          {
+            "type": "command",
+            "command": "\"$HOME/.agents/hooks/commit-jargon-guard.sh\"",
+            "timeout": 10,
+            "statusMessage": "Checking commit message"
+          }
+        ]
+      }
+    ]
+  }
+}

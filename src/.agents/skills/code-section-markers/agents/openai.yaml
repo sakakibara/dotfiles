@@ -1,0 +1,4 @@
+interface:
+  display_name: "Code Section Markers"
+  short_description: "Keep internal code headings plain and minimal"
+  default_prompt: "Use $code-section-markers when adding or reviewing internal headings in code."
