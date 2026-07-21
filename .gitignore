@@ -6,3 +6,8 @@ flycheck_*
 # raw key material reaching the repo at all.
 src/.ssh/*
 !src/.ssh/config
+
+# The global git ignore excludes .claude/ (live Claude state). mox's source
+# tree uses native names, so src/.claude/ is the managed CONFIG source, not
+# live state -- re-include it. Secrets stay out of src/ via .moxignore.
+!src/.claude/

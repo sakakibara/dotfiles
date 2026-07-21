@@ -1,0 +1,20 @@
+# mox ignore (gitignore syntax; paths relative to $HOME).
+# Keeps credentials and machine-local state out of the synced repo.
+# Delete a line to track it (e.g. if the repo is private).
+
+# Claude Code: only CLAUDE.md, settings.json, skills/, hooks/ are tracked
+# (added explicitly). Everything else here is credentials, caches, and
+# session data that must never be committed.
+.claude/.credentials.json
+.claude/*.jsonl
+.claude/*-cache.json
+.claude/settings.local.json
+.claude/projects/
+.claude/file-history/
+.claude/sessions/
+.claude/shell-snapshots/
+
+# SSH / signing keys
+.ssh/id_*
+!.ssh/id_*.pub
+*.pem
