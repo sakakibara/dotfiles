@@ -1,0 +1,4 @@
+interface:
+  display_name: "Session Handoff"
+  short_description: "Preserve exact state, judgment, and recovery"
+  default_prompt: "Use $session-handoff to prepare a self-contained handoff for the next agent."

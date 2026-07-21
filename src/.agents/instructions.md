@@ -68,6 +68,10 @@ For a change that is BOTH large AND correctness-critical (specs, formal designs,
 - **Merge supersession notes into a clean body before handing off.** Never leave a "these rulings override the text below" banner for the next reader to reconcile against stale text; rewrite the body as one coherent, current document. The reconciliation burden is where merge errors hide.
 - **Keep durable text timeless; cite by content.** Coordination scaffolding (batch names, finding IDs, round numbers, "as we discussed") stays OUT of the artifact and commit messages - it must read for someone with zero session context. Line numbers rot within a session; reference anchors/quoted phrases and grep to locate before asserting an artifact's current state.
 - **Capture before you relocate.** Before moving/consolidating files that aren't backed up: copy + commit first, verify byte-identical, and only THEN remove originals.
+- **Keep delegated commands attached.** Subagents must run builds, tests, fuzzers, and benchmarks in the foreground and wait for completion in the same turn. Background processes may die silently when a subagent turn ends. Judge completion from the command result and repository state, not output-file timestamps.
+- **Repository safety expires when state changes.** Re-run `git status` immediately before dispatching writers, staging, committing, resetting, switching branches, or cleaning. In shared or bind-mounted checkouts, foreign work may appear at any time; never stash, reset, edit, or commit it.
+
+Use the `correctness-campaign` skill for the complete paper, review, implementation, and verification workflow. Use the `session-handoff` skill when work will cross a session, context limit, model change, or agent boundary.
 
 ### Debug with logs, not guesses
 
@@ -85,6 +89,10 @@ Don't skip, stub, mask, or work around a bug - find the root cause and fix it th
 
 Make the smallest change that COMPLETELY solves the task - don't add code, files, config entries, abstractions, dependencies, or behavior it didn't call for, and never make an unrequested design or behavior change silently. This guards against scope-creep and gold-plating, NOT against improvement: when you see a worthwhile change beyond the ask, surface it (what + why) rather than either building it unbidden or staying quiet.
 
+### Evaluate newly orphaned code
+
+When a change removes the last known caller of a declaration, do not delete it mechanically. Read its contract and surrounding rationale, check whether it is public or intended for future use, and distinguish an obsolete workaround from reserved capability. State the verdict and reasoning before removing it.
+
 ### No compatibility shims or vendored fallbacks
 
 When extracting a module into its own dep, refactoring an API, or replacing one approach with another, make the change clean. No `pcall(require, "x")` around a fallback inline implementation; no "if new API do A, else B" bridging that lives forever. If a dep is required, make it required; if an API changed, change all the callers. Rip out the old path entirely - no deprecated leftovers, no "kept for compat" branch, zero backward-compat unless the user asks for it.
@@ -96,6 +104,12 @@ When fixing a hang, OOM, runaway loop, or infinite recursion, add a regression t
 - Hangs / runaway loops: wrap under `timeout` (shell) or a wall-clock assertion; it must FAIL, not hang forever.
 - OOMs: cap via `ulimit -v` (Linux) or `prlimit`, iteration count, or input-size bound - failing with a clear "exceeded limit", not silently killing the runner. On macOS `ulimit -v`/`prlimit` don't enforce an address-space cap; use an input-size or iteration-count bound there, or run the bounded test in Linux CI.
 - Infinite recursion: depth cap or call-count assertion.
+
+### Make verification prove the claimed behavior
+
+- **Interpret harness results by contract.** Identify the authoritative exit code and summary before classifying a run. Expected failing subprocesses, negative tests, sanitizer probes, and environment-bound performance gates may print alarming output. Record known exceptions precisely; never dismiss a new deterministic failure as a flake.
+- **Use differential gates for behavior-preserving changes.** For extractions, refactors, compiler folds, and engine replacements, run the same corpus against the trusted baseline and candidate. Compare outputs, diagnostics, spans, serialized forms, or generated artifacts at the richest meaningful level. Where unchanged inputs should remain identical, require byte identity.
+- **Cross-target checks compile a real deliverable.** A matrix that only configures or evaluates the default build graph does not prove target support. Build an example, library artifact, executable, or test artifact for every claimed target.
 
 ### Don't latch onto injected slash commands
 

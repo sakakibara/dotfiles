@@ -1,0 +1,4 @@
+interface:
+  display_name: "Correctness Campaign"
+  short_description: "Drive high-risk changes through rigorous gates"
+  default_prompt: "Use $correctness-campaign to execute this correctness-critical change with durable decisions and adversarial verification."
