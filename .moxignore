@@ -18,3 +18,10 @@
 .ssh/id_*
 !.ssh/id_*.pub
 *.pem
+
+# Windows-only shims: PowerShell/batch scripts. On macOS/Linux the
+# extensionless (bash) versions are used, so ignore these there.
+# mox: when os=darwin or os=linux
+*.ps1
+*.cmd
+# mox: end
