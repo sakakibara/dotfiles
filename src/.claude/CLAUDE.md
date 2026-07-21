@@ -43,7 +43,7 @@ Specs, plans, design docs, and any markdown from superpowers-style planning skil
 
 1. **cwd under a hub project** (`<hub_root>/<org>/<project>/`): write to `<project>/docs/superpowers/{specs,plans}/<YYYY-MM-DD>-<topic>.md`.
 2. **cwd inside a repo working tree** (under `code_root`): find the hub project bridging it - `holt list` and match, or the `<hub_root>/*/*/code/<repo>` symlink that resolves to this repo root (usually `<project>` == `<repo>` for the primary repo). Write to that project's `docs/` as in (1).
-3. **cwd maps to no hub project** (chezmoi source, third-party clones, some work repos): check project memory (`~/.claude/projects/<encoded-cwd>/memory/`) for a recorded docs location; if none, ASK before writing and propose saving the mapping to memory.
+3. **cwd maps to no hub project** (third-party clones, some work repos): check project memory (`~/.claude/projects/<encoded-cwd>/memory/`) for a recorded docs location; if none, ASK before writing and propose saving the mapping to memory.
 4. Create the `docs/` target if absent. A prompt that says "save to `docs/superpowers/...`" means this resolved absolute target, not that relative path taken from cwd.
 
 **Inside claude-sandbox** (`CLAUDE_SANDBOX=1`): the wrapper bind-mounts only the cwd. Started from the hub project root, the `docs/` symlink is mounted - resolve as above. Started from inside a repo (or anywhere not under the hub project), the `docs/` sibling is unreachable; write to `~/.claude/superpowers/<repo>/{specs,plans}/<date>-<topic>.md` instead. `~/.claude/` is bind-mounted from the host, so it persists, stays visible to host Claude Code, and can be folded into the canonical `docs/` later. Detect the case by whether cwd sits under a hub project root (a dir with both a `code/` symlink directory and a `docs/` symlink).
@@ -125,7 +125,7 @@ When a task has more than one viable option (design, UX, architecture, naming, a
 
 Default to NO comment - the bar to add one is high, and when one is genuinely warranted keep it terse (a line, not an essay).
 
-Never add a comment to the user's personal config or dotfiles (nvim, chezmoi sources); preserve existing ones, add none.
+Never add a comment to the user's personal config or dotfiles (nvim, mox sources); preserve existing ones, add none.
 
 Comments tell WHAT the code does, not HOW; a wrong or stale comment is worse than none, because absent comments force the reader to the code (right by definition) while misleading ones don't.
 
@@ -156,7 +156,7 @@ Distinguish "verification wasn't run" from "no runnable verification exists": a 
 
 ### Match each repo's commit message style
 
-Check the target repo's convention with `git log --oneline -10` BEFORE composing a message, and adopt it. Common: conventional commits (`feat:`, `fix(scope):`, `chore:`) on most public projects; terse one-liner imperative (no body/trailers) chezmoi-style; or mixed - inspect before assuming. Boilerplate commits aren't exempt: the first commit in a conventional-commit project is `chore: initial commit`, not `Initial commit`. A cross-reference to a real git object (`Companion to cb1c4c4.`) is fine; a reference to a spec/plan FILE is not (it lives outside the repo and won't survive a fresh clone).
+Check the target repo's convention with `git log --oneline -10` BEFORE composing a message, and adopt it. Common: conventional commits (`feat:`, `fix(scope):`, `chore:`) on most public projects; terse one-liner imperative (no body/trailers); or mixed - inspect before assuming. Boilerplate commits aren't exempt: the first commit in a conventional-commit project is `chore: initial commit`, not `Initial commit`. A cross-reference to a real git object (`Companion to cb1c4c4.`) is fine; a reference to a spec/plan FILE is not (it lives outside the repo and won't survive a fresh clone).
 
 ## Public / published repos
 
@@ -187,8 +187,8 @@ Some of the user's public repos (plugins, libraries, tools, configs) are extract
 - **GitHub username**: `sakakibara`
 - **OS**: macOS primary, WSL secondary - keep tooling portable, don't assume an OS
 - **Locale**: Japanese; ASCII-friendly tooling preferred
-- **Dotfiles**: chezmoi-managed; source edited at `~/.local/share/chezmoi`, public repo `github.com/sakakibara/dotfiles`
-- **This Claude config is chezmoi-managed** - `CLAUDE.md`, `settings.json`, `skills/`, `hooks/` live under `dot_claude/` in the chezmoi source. Edit the source and `chezmoi apply`; direct edits to `~/.claude` are overwritten on the next apply and don't sync to other machines.
+- **Dotfiles**: mox-managed; source edited at `~/.local/share/mox/dotfiles`, public repo `github.com/sakakibara/dotfiles`
+- **This Claude config is mox-managed** - `CLAUDE.md`, `settings.json`, `skills/`, `hooks/` live under `src/.claude/` in the mox dotfiles repo. Edit the source and `mox apply`; direct edits to `~/.claude` are overwritten on the next apply and don't sync to other machines.
 - **Runtime manager**: mise (Ruby/Node/Python/etc.)
 - **JS/TS**: pnpm only - `pnpm` / `pnpm exec`, never npm / npx / yarn
 - **Systems / native code**: prefers Zig - reach for it first for CPU-bound or native components
