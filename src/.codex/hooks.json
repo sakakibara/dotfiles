@@ -13,18 +13,6 @@
         ]
       }
     ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$HOME/.agents/hooks/instruction-trust-guard.sh\"",
-            "timeout": 10,
-            "statusMessage": "Reinforcing repository instruction boundaries"
-          }
-        ]
-      }
-    ],
     "PreToolUse": [
       {
         "matcher": "^Bash$",
