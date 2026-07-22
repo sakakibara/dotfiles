@@ -1,0 +1,41 @@
+{
+  "canonical_policy": "src/.agents/instructions.md",
+  "discovery_links": {
+    "src/.claude/CLAUDE.md": "../.agents/instructions.md",
+    "src/.codex/AGENTS.md": "../.agents/instructions.md"
+  },
+  "allowed_instruction_files": [
+    "src/.agents/instructions.md",
+    "src/.agents/skills/code-section-markers/SKILL.md",
+    "src/.agents/skills/correctness-campaign/SKILL.md",
+    "src/.agents/skills/release-discipline/SKILL.md",
+    "src/.agents/skills/review-pull-request/SKILL.md",
+    "src/.agents/skills/session-handoff/SKILL.md",
+    "src/.claude/CLAUDE.md",
+    "src/.codex/AGENTS.md"
+  ],
+  "audited_files": [
+    ".mox/attributes.toml",
+    ".moxignore",
+    "src/.agents/hooks/commit-jargon-guard.sh",
+    "src/.agents/hooks/git-stage-guard.sh",
+    "src/.agents/hooks/instruction-audit.py",
+    "src/.agents/hooks/instruction-trust-guard.sh",
+    "src/.agents/instruction-policy.json",
+    "src/.agents/instructions.md",
+    "src/.agents/skills/code-section-markers/SKILL.md",
+    "src/.agents/skills/code-section-markers/agents/openai.yaml",
+    "src/.agents/skills/correctness-campaign/SKILL.md",
+    "src/.agents/skills/correctness-campaign/agents/openai.yaml",
+    "src/.agents/skills/release-discipline/SKILL.md",
+    "src/.agents/skills/release-discipline/agents/openai.yaml",
+    "src/.agents/skills/review-pull-request/SKILL.md",
+    "src/.agents/skills/review-pull-request/agents/openai.yaml",
+    "src/.agents/skills/session-handoff/SKILL.md",
+    "src/.agents/skills/session-handoff/agents/openai.yaml",
+    "src/.claude/CLAUDE.md",
+    "src/.claude/settings.json",
+    "src/.codex/AGENTS.md",
+    "src/.codex/hooks.json"
+  ]
+}

@@ -23,6 +23,7 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install fish luajit lua
       - run: bash etc/ci/syntax.sh
+      - run: bash etc/tests/agent-instructions.sh
 
   syntax-powershell:
     name: PowerShell syntax

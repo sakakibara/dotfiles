@@ -9,6 +9,10 @@ set -uo pipefail
 fails=0
 skips=()  # tools expected but missing — promoted to failures under CI=true
 
+if ! python3 src/.agents/hooks/instruction-audit.py --root . --policy src/.agents/instruction-policy.json; then
+  fails=$((fails + 1))
+fi
+
 # A source file with mox captures (`<machine.>`, `<secret:>`, ...) or a `mox:`
 # directive is not valid in its raw form; leave it to the compose check.
 _is_templated() {
