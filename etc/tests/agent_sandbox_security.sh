@@ -246,6 +246,7 @@ keymap = config["tui"]["keymap"]
 assert keymap["global"]["open_transcript"] == "ctrl-shift-t"
 assert keymap["composer"]["submit"] == ["enter", "ctrl-j", "ctrl-m"]
 assert keymap["editor"]["move_left"] == "ctrl-b"
+assert keymap["editor"]["delete_backward"] == ["backspace", "ctrl-h"]
 assert keymap["editor"]["delete_backward_word"] == "ctrl-w"
 assert keymap["editor"]["kill_line_start"] == "ctrl-u"
 PY
