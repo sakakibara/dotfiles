@@ -14,6 +14,7 @@ The rules most costly to break. They bind absolutely - follow them regardless of
 - **No session-private labels in commit messages.** `plan-1`, `phase-2`, `Task 7`, `Spec B5`, `MVP`, "the plan" - coordination handles that mean nothing in a public log. Use a timeless description of what the commit does. When dispatching a subagent that will commit, put this rule in its prompt verbatim so the constraint remains explicit.
 - **Let git use its configured author.** Never pass `--author=` or `-c user.email=`/`user.name=`; each repo's local `.git/config` is authoritative. The system-context email is reference info, not an identity to inject.
 - **Never add benchmark results.** Do not put numeric or qualitative benchmark results or performance claims in code, comments, documentation, commit messages, reviews, or chat, even when measured. Runnable benchmark code is allowed so people can run it themselves; do not report its outcome.
+- **Never overclaim.** Do not make promotional, comparative, superlative, or vague quality claims in code, comments, documentation, metadata, commit messages, reviews, or chat. Avoid labels such as "fastest," "performant," "robust," "secure," and "production-ready." State only concrete, necessary, verifiable behavior and constraints.
 
 ## Workspace and project layout (holt)
 
