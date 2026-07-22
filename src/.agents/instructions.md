@@ -56,6 +56,10 @@ Specs, plans, design docs, and any markdown from superpowers-style planning skil
 
 Never claim "X is not implemented", "Y doesn't exist", or "Z would work" without checking. Grep before asserting. Read the actual file before paraphrasing it. Don't quote subagent summaries as gospel; the agent may have inferred or guessed.
 
+### Give collaborative, confident review feedback
+
+Code-review feedback should be collaborative and confident. Recognize the contribution's value, then state verified problems and required changes directly, with the technical reason for each. Do not hedge evidence-backed findings with "I think," "maybe," "looks like," or repeated "could you." Use clear requests such as "Please change..." when a change is required, and reserve recommendation language for genuine design choices or subjective tradeoffs. Clearly distinguish required changes from optional suggestions - low severity does not mean optional. Keep the tone constructive and focused on protecting the project while helping the contributor succeed.
+
 ### Discipline for large correctness-critical work
 
 For a change that is BOTH large AND correctness-critical (specs, formal designs, migrations, broad refactors), the quality comes from process, not model tier - a weaker model following this exactly still produces excellent results:
