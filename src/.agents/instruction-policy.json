@@ -22,7 +22,7 @@
     "etc/sandbox/Dockerfile",
     "etc/sandbox/entrypoint.sh",
     "etc/tests/agent-instructions.sh",
-    "etc/tests/claude_sandbox_security.sh",
+    "etc/tests/agent_sandbox_security.sh",
     "src/.agents/hooks/commit-jargon-guard.sh",
     "src/.agents/hooks/git-stage-guard.sh",
     "src/.agents/hooks/instruction-audit.py",
@@ -40,11 +40,13 @@
     "src/.agents/skills/session-handoff/SKILL.md",
     "src/.agents/skills/session-handoff/agents/openai.yaml",
     "src/.claude/CLAUDE.md",
+    "src/.claude/keybindings.json",
     "src/.claude/settings.json",
     "src/.codex/AGENTS.md",
     "src/.codex/hooks.json",
-    "src/.config/fish/completions/claude-sandbox.fish",
-    "src/.local/bin/claude-sandbox",
-    "src/.zcomp/_claude-sandbox"
+    "src/.config/fish/completions/agent-sandbox.fish",
+    "src/.local/bin/agent-sandbox",
+    "src/.zcomp/_agent-sandbox",
+    "scripts/post/codex-keybindings.sh"
   ]
 }

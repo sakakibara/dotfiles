@@ -40,6 +40,15 @@ Portable vs derived (the workspace spans machines via the synced backend):
 - Hubs and clones are machine-local and DERIVED. `holt sync` rebuilds every hub from its marker, `holt restore` re-clones missing repos, `holt doctor` reports drift. Never hand-edit a hub symlink or expect it to survive a rebuild - change the marker (or use the right holt command) and re-run `holt sync`.
 - Output splits streams: stdout is a bare cd-friendly path (the machine-local payload); human status goes to stderr. Capture stdout when scripting.
 
+### Codex and hub symlinks
+
+Codex workspace authorization is checked against resolved filesystem targets. A session opened at a hub root may read a `code/<repo>` symlink but still lack write access because the clone resolves outside the primary workspace; the same applies to `docs/`, `assets/`, and `links/` when the synced backend is outside `hub_root`.
+
+- Resolve repo workdirs with `holt path <project>/<repo>` and use the returned physical clone path for commands and file links; do not treat a failed symlink write as a missing repo.
+- For a Codex session rooted under `hub_root`, add both the resolved `code_root` and `synced_root` as writable roots. CLI sessions can pass `--add-dir <code_root> --add-dir <synced_root>`; persistent workspace-write configuration uses `sandbox_workspace_write.writable_roots`.
+- Derive these roots from `holt config`; never bake one machine's paths into project instructions or scripts.
+- A changed writable-root configuration applies to new sessions. If the current session lacks the resolved target, request scoped approval or restart with the required roots instead of relocating project files into the repo.
+
 ### Where specs, plans, and design docs go
 
 Specs, plans, design docs, and any markdown from superpowers-style planning skills are PROJECT DOCUMENTATION, not source. By default they never go inside a git repo's working tree (any path under `git rev-parse --show-toplevel`) - keeping them out prevents accidental doc commits. They belong in the project's synced `docs/` sibling. Resolve the target:
@@ -49,7 +58,7 @@ Specs, plans, design docs, and any markdown from superpowers-style planning skil
 3. **cwd maps to no hub project** (third-party clones, some work repos): check project memory (`~/.claude/projects/<encoded-cwd>/memory/`) for a recorded docs location; if none, ASK before writing and propose saving the mapping to memory.
 4. Create the `docs/` target if absent. A prompt that says "save to `docs/superpowers/...`" means this resolved absolute target, not that relative path taken from cwd.
 
-**Inside claude-sandbox** (`CLAUDE_SANDBOX=1`): the wrapper bind-mounts only the cwd. Started from the hub project root, the `docs/` symlink is mounted - resolve as above. Started from inside a repo (or anywhere not under the hub project), the `docs/` sibling is unreachable; write to `~/.claude/superpowers/<repo>/{specs,plans}/<date>-<topic>.md` instead. `~/.claude/` is bind-mounted from the host, so it persists, stays visible to host Claude Code, and can be folded into the canonical `docs/` later. Detect the case by whether cwd sits under a hub project root (a dir with both a `code/` symlink directory and a `docs/` symlink).
+**Inside agent-sandbox** (`AGENT_SANDBOX=1`): the wrapper bind-mounts only the cwd. Started from the hub project root, the `docs/` symlink is mounted - resolve as above. For Claude sessions started inside a repo or elsewhere outside the hub, write to `~/.claude/superpowers/<repo>/{specs,plans}/<date>-<topic>.md` instead. `~/.claude/` persists and stays visible to host Claude Code. Detect the hub case by whether cwd sits under a project root containing both a `code/` symlink directory and a `docs/` symlink.
 
 **Opt-in exception:** a project may version-control its docs inside its repo when the documents ARE its primary artifact (spec-first design work, or when git history for the docs is wanted). This needs the user's explicit instruction and a note in that project's memory; when a project is so configured, follow its recorded arrangement - do not "correct" it by moving docs back out.
 
@@ -225,4 +234,4 @@ Some of the user's public repos (plugins, libraries, tools, configs) are extract
 - **Systems / native code**: prefers Zig - reach for it first for CPU-bound or native components
 - **Shells**: fish (interactive) + zsh (compatibility)
 - **Editor**: nvim (custom config); emacs occasionally for org-mode comparison
-- **Container tooling**: claude-sandbox - the user's own Docker wrapper for running Claude Code in repo-isolated containers
+- **Container tooling**: agent-sandbox - the user's own Docker wrapper for running Claude Code or Codex in repo-isolated containers

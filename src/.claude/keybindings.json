@@ -1,0 +1,37 @@
+{
+  "$schema": "https://www.schemastore.org/claude-code-keybindings.json",
+  "$docs": "https://code.claude.com/docs/en/keybindings",
+  "bindings": [
+    {
+      "context": "Global",
+      "bindings": {
+        "ctrl+t": null,
+        "ctrl+shift+t": "app:toggleTodos",
+        "ctrl+o": null,
+        "ctrl+shift+o": "app:toggleTranscript"
+      }
+    },
+    {
+      "context": "Chat",
+      "bindings": {
+        "ctrl+g": null,
+        "ctrl+shift+g": "chat:externalEditor",
+        "ctrl+s": null,
+        "ctrl+shift+s": "chat:stash",
+        "ctrl+v": null,
+        "ctrl+shift+v": "chat:imagePaste",
+        "ctrl+j": "chat:submit",
+        "ctrl+shift+j": "chat:newline",
+        "ctrl+x ctrl+k": null,
+        "ctrl+shift+k": "chat:killAgents"
+      }
+    },
+    {
+      "context": "Task",
+      "bindings": {
+        "ctrl+b": null,
+        "ctrl+shift+b": "task:background"
+      }
+    }
+  ]
+}

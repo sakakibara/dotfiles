@@ -1,32 +1,28 @@
 #!/usr/bin/env bash
-# claude-sandbox - Docker-isolated Claude Code, one container per repo.
+# agent-sandbox - Docker-isolated coding agents, one container per repo.
 #
-# Default behaviour: in a repo, `claude-sandbox` starts a container with
+# Default behaviour: in a repo, `agent-sandbox` starts a container with
 # `claude --remote-control --permission-mode acceptEdits` inside and
-# attaches an interactive TTY. The container is ephemeral: it is removed
-# when claude exits (/exit or the process ending). There is no terminal
-# reattach -- detach with Ctrl-p Ctrl-q to drive the running session from
-# claude.ai/code or the Claude mobile app (`--remote-control` polls the
-# Anthropic API outbound, no inbound port is opened), or resume a past
-# conversation in a fresh container with --continue / --resume.
+# attaches an interactive TTY. Selecting `codex` runs Codex instead. The
+# container is ephemeral and is removed when the agent exits.
 #
 # Subcommands:
-#   claude-sandbox [--auto|--bypass] [--continue|--resume] [repo]
+#   agent-sandbox [claude|codex] [--auto|--bypass] [--continue|--resume] [repo]
 #                                              start + attach (default; auto)
-#   claude-sandbox run-untrusted [repo] -- COMMAND
+#   agent-sandbox run-untrusted [repo] -- COMMAND
 #                                              run repo code without host access
-#   claude-sandbox start [--auto] [repo]      start detached (no TTY)
-#   claude-sandbox stop [name|--all]          stop & remove
-#   claude-sandbox list                       all sandboxes
-#   claude-sandbox info                       image + sandbox status
-#   claude-sandbox rebuild                    docker build --no-cache
-#   claude-sandbox enable-autostart [repo]    LaunchAgent: start at login
-#   claude-sandbox disable-autostart [repo]
-#   claude-sandbox help
+#   agent-sandbox start [--auto] [repo]      start detached (no TTY)
+#   agent-sandbox stop [name|--all]          stop & remove
+#   agent-sandbox list                       all sandboxes
+#   agent-sandbox info                       image + sandbox status
+#   agent-sandbox rebuild                    docker build --no-cache
+#   agent-sandbox enable-autostart [repo]    LaunchAgent: start at login
+#   agent-sandbox disable-autostart [repo]
+#   agent-sandbox help
 
 set -euo pipefail
 
-# ANSI color helpers — only when stdout is a TTY (matches the dotfiles
+# ANSI color helpers - only when stdout is a TTY (matches the dotfiles
 # wrapper's pattern).
 if [[ -t 1 ]]; then
   C_DIM=$'\033[2m'
@@ -38,14 +34,15 @@ else
   C_DIM=""; C_BOLD=""; C_RED=""; C_YELLOW=""; C_RESET=""
 fi
 
-_die()  { printf '%sclaude-sandbox: %s%s\n' "$C_RED" "$*" "$C_RESET" >&2; exit 1; }
-_warn() { printf '%sclaude-sandbox: %s%s\n' "$C_YELLOW" "$*" "$C_RESET" >&2; }
-_info() { printf '%sclaude-sandbox:%s %s\n' "$C_DIM" "$C_RESET" "$*"; }
+DISPLAY_NAME=agent-sandbox
+_die()  { printf '%s%s: %s%s\n' "$C_RED" "$DISPLAY_NAME" "$*" "$C_RESET" >&2; exit 1; }
+_warn() { printf '%s%s: %s%s\n' "$C_YELLOW" "$DISPLAY_NAME" "$*" "$C_RESET" >&2; }
+_info() { printf '%s%s:%s %s\n' "$C_DIM" "$DISPLAY_NAME" "$C_RESET" "$*"; }
 _row()  { printf '%s%-7s%s %s\n' "$C_BOLD" "$1" "$C_RESET" "$2"; }
 
-IMAGE="claude-sandbox:latest"
-NAME_PREFIX="claude-sandbox"
-CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/claude-sandbox"
+IMAGE="agent-sandbox:latest"
+NAME_PREFIX="agent-sandbox"
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/agent-sandbox"
 
 # Port the 1Password-agent TCP relay listens on (host's 127.0.0.1).
 # Containers reach it via host.docker.internal. Picked obscure enough to
@@ -63,6 +60,7 @@ WS_LABEL=""
 
 RUN_REPO_SETUP=0
 SIGNING=0
+AGENT_KIND=claude
 
 _require_docker() {
   command -v docker >/dev/null 2>&1 \
@@ -79,7 +77,7 @@ _mox_repo() {
 
 _dockerfile_dir() { printf '%s/etc/sandbox\n' "$(_mox_repo)"; }
 
-# Hash of Dockerfile + entrypoint — used to detect when a rebuild is needed.
+# Hash of Dockerfile + entrypoint - used to detect when a rebuild is needed.
 _dockerfile_hash() {
   local dir; dir=$(_dockerfile_dir)
   [[ -f "$dir/Dockerfile" ]]   || _die "Dockerfile not found at $dir/Dockerfile"
@@ -91,7 +89,7 @@ _built_hash_file() { printf '%s/built-hash\n' "$CACHE_DIR"; }
 _image_built()     { docker image inspect "$IMAGE" >/dev/null 2>&1; }
 
 # Sanitized basename of a repo path, suitable for use in container/volume
-# names. Pure bash — avoids `basename ... | tr` because basename emits a
+# names. Pure bash - avoids `basename ... | tr` because basename emits a
 # trailing newline that tr converts to '_', leaving spurious underscores
 # at the end of the result (the visible bug: `organ.nvim_`).
 _sanitize_basename() {
@@ -111,7 +109,7 @@ _sanitize_basename() {
 #                   forces a different name. N starts at 2 (first session
 #                   has no suffix).
 # No path hash anywhere user-visible. Cross-repo collision is detected
-# via the claude-sandbox.workspace label set at create time, then the
+# via the agent-sandbox.workspace label set at create time, then the
 # wrapper auto-bumps to the next free integer suffix.
 _container_name_base() {
   local repo="$1" mode="${2:-default}" name_override="${3:-}"
@@ -121,25 +119,28 @@ _container_name_base() {
     worktree) mode_suffix="-wt" ;;
     strict)   mode_suffix="-strict" ;;
   esac
+  [[ "$AGENT_KIND" == "claude" ]] || mode_suffix="-${AGENT_KIND}${mode_suffix}"
   if [[ -n "$name_override" ]]; then
     name_suffix="-$(printf '%s' "$name_override" | tr -c 'A-Za-z0-9_.-' '_')"
   fi
   printf '%s-%s%s%s\n' "$NAME_PREFIX" "$base" "$mode_suffix" "$name_suffix"
 }
 
-# Backwards-compatible alias used by older code paths that still want
-# "the canonical first name without auto-numbering" (volume helpers etc.).
-_container_name() { _container_name_base "$@"; }
-
-# Read a container's claude-sandbox.workspace label. Empty for legacy
-# (pre-label) containers; treat empty as a wildcard match.
 _container_workspace_label() {
-  docker container inspect -f '{{ index .Config.Labels "claude-sandbox.workspace" }}' "$1" 2>/dev/null
+  docker container inspect -f '{{ index .Config.Labels "agent-sandbox.workspace" }}' "$1" 2>/dev/null
 }
 
-# Containers belonging to (repo, mode, name_override) — i.e., name matches
+_container_agent_label() {
+  docker container inspect -f '{{ index .Config.Labels "agent-sandbox.agent" }}' "$1" 2>/dev/null
+}
+
+_container_iso_label() {
+  docker container inspect -f '{{ index .Config.Labels "agent-sandbox.iso" }}' "$1" 2>/dev/null
+}
+
+# Containers belonging to (repo, mode, name_override) - i.e., name matches
 # the canonical base optionally followed by `-<integer>`, AND the workspace
-# label matches (or is absent / matches as wildcard for legacy).
+# label matches.
 # When name_override is set, the match is exact (named slots don't auto-number).
 _containers_for_target() {
   local repo="$1" mode="${2:-default}" name_override="${3:-}"
@@ -154,8 +155,19 @@ _containers_for_target() {
     [[ -z "$name" ]] && continue
     [[ "$name" =~ $pattern ]] || continue
     local ws; ws=$(_container_workspace_label "$name")
-    [[ -z "$ws" || "$ws" == "$WS_LABEL" ]] && printf '%s\n' "$name"
+    [[ "$ws" == "$WS_LABEL" ]] && printf '%s\n' "$name"
   done < <(docker ps -a --filter "name=^${NAME_PREFIX}-" --format '{{.Names}}' 2>/dev/null)
+}
+
+_containers_for_repo() {
+  local repo="$1" selected="$AGENT_KIND" agent
+  for agent in claude codex; do
+    AGENT_KIND="$agent"
+    _containers_for_target "$repo" "default" ""
+    _containers_for_target "$repo" "worktree" ""
+    _containers_for_target "$repo" "strict" ""
+  done
+  AGENT_KIND="$selected"
 }
 
 # First name in the canonical sequence (base, base-2, base-3, ...) that no
@@ -187,31 +199,26 @@ _create_name() {
        use a different --name to disambiguate"
       fi
       _die "named sandbox '$name_override' already running; stop it first:
-       claude-sandbox stop $base"
+       agent-sandbox stop $base"
     fi
     printf '%s\n' "$base"; return
   fi
   _first_unused_name "$repo" "$mode" ""
 }
 
-# Worktree path: filesystem path needs to be unique per host repo, so we
-# keep an 8-char hash here (it never appears in container names or iOS
-# labels — purely a filesystem-uniqueness concern under cache dir).
 _worktree_path() {
-  local repo="$1"
-  local abs base hash
+  local repo="$1" name="$2"
+  local abs base hash short
   abs=$(cd "$repo" && pwd -P)
   base=$(_sanitize_basename "$repo")
   hash=$(printf '%s' "$abs" | shasum -a 256 | cut -c1-8)
-  printf '%s/worktrees/%s-%s\n' "$CACHE_DIR" "$base" "$hash"
+  short="${name#${NAME_PREFIX}-}"
+  printf '%s/worktrees/%s-%s-%s\n' "$CACHE_DIR" "$base" "$hash" "$short"
 }
 
-# Worktree branch name: lives in the host repo's git db, so it only
-# needs to be unique within that one repo. No cross-repo hash needed.
 _worktree_branch() {
-  local repo="$1"
-  local base; base=$(_sanitize_basename "$repo")
-  printf 'claude-sandbox/%s\n' "$base"
+  local name="$2" short="${name#${NAME_PREFIX}-}"
+  printf 'agent-sandbox/%s\n' "$short"
 }
 
 # Strict-mode volume names. Derived from the container name so they
@@ -219,12 +226,10 @@ _worktree_branch() {
 # workspace volume's host-repo label is checked at seed time for
 # cross-repo collision (see _ensure_strict_volumes).
 _strict_ws_volume() {
-  local repo="$1" name_override="${2:-}"
-  printf '%s-ws\n' "$(_container_name "$repo" strict "$name_override")"
+  printf '%s-ws\n' "$1"
 }
 _strict_cl_volume() {
-  local repo="$1" name_override="${2:-}"
-  printf '%s-cl\n' "$(_container_name "$repo" strict "$name_override")"
+  printf '%s-cl\n' "$1"
 }
 
 _container_exists()  { docker container inspect "$1" >/dev/null 2>&1; }
@@ -255,23 +260,20 @@ _resolve_repo() {
 }
 
 # Visible cues that this terminal is inside a sandbox. starship's
-# [custom.sandbox] indicator only renders in shell prompts — but
-# claude-sandbox drops straight into Claude's UI, no shell visible.
-# A printed banner is wiped by Claude's first redraw; the terminal
-# title (OSC 0) survives because Claude doesn't manage it.
+# [custom.sandbox] indicator only renders in shell prompts - but
+# agent-sandbox drops straight into the agent UI, with no shell visible.
 _print_banner() {
   local name="$1" repo="$2" label="${3:-}" perm="${4:-?}" iso="${5:-?}"
   if [[ -t 1 ]]; then
-    # OSC 0: terminal title + icon name. Persists across Claude's
-    # redraws because Claude doesn't manage the title bar.
+    # OSC 0: terminal title + icon name.
     if [[ -n "$label" ]]; then
       printf '\033]0;%s\007' "$label"
     else
-      printf '\033]0;🛡 claude-sandbox · %s\007' "$name"
+      printf '\033]0;🛡 %s - %s\007' "$DISPLAY_NAME" "$name"
     fi
   fi
-  printf '%s━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━%s\n' "$C_DIM" "$C_RESET"
-  printf '%s🛡  claude-sandbox%s · %s\n' "$C_BOLD" "$C_RESET" "$name"
+  printf '%s=====================================================%s\n' "$C_DIM" "$C_RESET"
+  printf '%s🛡  %s%s - %s\n' "$C_BOLD" "$DISPLAY_NAME" "$C_RESET" "$name"
   if [[ ${#WORKSPACES[@]} -gt 1 ]]; then
     printf '   workspace: %s (primary)\n' "${WORKSPACES[0]}"
     local i
@@ -281,29 +283,53 @@ _print_banner() {
   else
     printf '   workspace: %s\n' "$repo"
   fi
-  [[ -n "$label" ]] && printf '   ios label: %s\n' "$label"
+  [[ "$AGENT_KIND" == "claude" && -n "$label" ]] && printf '   ios label: %s\n' "$label"
   if [[ "$perm" != "?" || "$iso" != "?" ]]; then
     printf '   mode:      perm=%s iso=%s repo-setup=%s signing=%s\n' "$perm" "$iso" "$RUN_REPO_SETUP" "$SIGNING"
   fi
-  printf '   detach:    Ctrl-p Ctrl-q (drive from the Claude app; removed on exit)\n'
-  printf '%s━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━%s\n' "$C_DIM" "$C_RESET"
+  if [[ "$AGENT_KIND" == "claude" ]]; then
+    printf '   detach:    Ctrl-p Ctrl-q (drive from the Claude app; removed on exit)\n'
+  else
+    printf '   exit:      quit Codex to remove the container\n'
+  fi
+  printf '%s=====================================================%s\n' "$C_DIM" "$C_RESET"
 }
 
-# Claude CLI args. The label (when given) is passed via `claude --name`
+# Agent CLI args. The label (when given) is passed via `claude --name`
 # so the iOS app shows a stable, distinguishable session label instead
 # of the auto-derived first-prompt-summary that drifts over time.
-_claude_args() {
+_agent_args() {
   local perm="$1" label="${2:-}"
-  local args=( --remote-control )
-  [[ -n "$label" ]] && args+=( --name "$label" )
-  case "$perm" in
-    auto)   args+=( --permission-mode acceptEdits ) ;;
-    bypass) args+=( --dangerously-skip-permissions ) ;;
-    *)      _die "unknown permission mode: $perm" ;;
+  local args=()
+  case "$AGENT_KIND" in
+    claude)
+      args=( --remote-control )
+      [[ -n "$label" ]] && args+=( --name "$label" )
+      case "$perm" in
+        auto) args+=( --permission-mode acceptEdits ) ;;
+        bypass) args+=( --dangerously-skip-permissions ) ;;
+        *) _die "unknown permission mode: $perm" ;;
+      esac
+      [[ ${#RESUME_FLAGS[@]} -gt 0 ]] && args+=( "${RESUME_FLAGS[@]}" )
+      ;;
+    codex)
+      case "$perm" in
+        auto) args+=( --sandbox workspace-write --ask-for-approval on-request ) ;;
+        bypass) args+=( --dangerously-bypass-approvals-and-sandbox ) ;;
+        *) _die "unknown permission mode: $perm" ;;
+      esac
+      case "${RESUME_FLAGS[0]:-}" in
+        --continue) args=( resume --last "${args[@]}" ) ;;
+        --resume)
+          if [[ ${#RESUME_FLAGS[@]} -gt 1 ]]; then
+            args=( resume "${RESUME_FLAGS[1]}" "${args[@]}" )
+          else
+            args=( resume "${args[@]}" )
+          fi
+          ;;
+      esac
+      ;;
   esac
-  # Append resume flags from _parse_common_flags. RESUME_FLAGS is empty
-  # when neither --continue nor --resume was passed.
-  [[ ${#RESUME_FLAGS[@]} -gt 0 ]] && args+=( "${RESUME_FLAGS[@]}" )
   printf '%s\n' "${args[@]}"
 }
 
@@ -324,26 +350,27 @@ _session_label_for() {
 #
 # default:  bind-mount the repo at its host path inside the container.
 #           Mirroring the path matters because Claude's per-project
-#           session memory is keyed at ~/.claude/projects/<path>/ — if
+#           session memory is keyed at ~/.claude/projects/<path>/ - if
 #           we mounted at /workspace the in-sandbox memory would split
 #           into a separate dir from the host's. Mirroring keeps memory
 #           continuous between sandbox and non-sandbox sessions.
 # worktree: the git worktree is mounted at the *host repo's* path so
 #           memory keys to the project, not the throwaway worktree.
 # strict:   the workspace volume is also mounted at the host repo's
-#           path — the volume's contents diverge from host but the path
+#           path - the volume's contents diverge from host but the path
 #           encoding stays consistent inside the container.
 _run_args() {
   local repo="$1" name="$2" mode="${3:-default}"
   local args=(
     --name     "$name"
     --hostname "$name"
-    --label    "claude-sandbox.workspace=$WS_LABEL"
-    --label    "claude-sandbox.iso=$mode"
-    -e CLAUDE_SANDBOX=1
+    --label    "agent-sandbox.workspace=$WS_LABEL"
+    --label    "agent-sandbox.iso=$mode"
+    --label    "agent-sandbox.agent=$AGENT_KIND"
+    -e AGENT_SANDBOX=1
     -w "$repo"
   )
-  ((RUN_REPO_SETUP)) && args+=( -e CSB_REPO_SETUP=1 )
+  ((RUN_REPO_SETUP)) && args+=( -e ASB_REPO_SETUP=1 )
 
   # Mount the host's whole git config dir read-only: config, the global
   # ignore, and the per-account identity includes (personal.inc,
@@ -352,7 +379,7 @@ _run_args() {
   # by the repo's GitHub remote exactly as on the host (the op-ssh-sign ->
   # ssh-keygen swap happens there). Honors the host global ignore too, so
   # `git add` doesn't pick up editor/OS detritus.
-  if [[ -d "$HOME/.config/git" ]]; then
+  if ((SIGNING)) && [[ -d "$HOME/.config/git" ]]; then
     args+=( -v "$HOME/.config/git":/home/claude/.config/git:ro )
   fi
 
@@ -395,19 +422,19 @@ _run_args() {
   # the .claude/ directory) for default + worktree. Touch it first if
   # missing so docker doesn't auto-create a directory at the bind path.
   # Mount at the HOST's absolute path (not /home/claude/.claude.json)
-  # so absolute paths embedded in plugin/installed_plugins.json — which
-  # claude-code records as host-side `/Users/<host>/.claude/...` — still
+  # so absolute paths embedded in plugin/installed_plugins.json - which
+  # claude-code records as host-side `/Users/<host>/.claude/...` - still
   # resolve inside the container. The entrypoint symlinks
   # /home/claude/.claude.json to this so $HOME-relative lookups work too.
   # For strict mode, the file is seeded into the cl_volume during
   # _ensure_strict_volumes; the entrypoint symlinks it into place so
   # writes persist in the volume.
   if [[ "$mode" != "strict" ]]; then
-    [[ -e "$HOME/.claude.json" ]] || touch "$HOME/.claude.json"
-    args+=(
-      -v "$HOME/.claude.json":"$HOME/.claude.json"
-      -e "HOST_HOME=$HOME"
-    )
+    args+=( -e "HOST_HOME=$HOME" -e "SANDBOX_AGENT_KIND=$AGENT_KIND" )
+    if [[ "$AGENT_KIND" == "claude" ]]; then
+      [[ -e "$HOME/.claude.json" ]] || touch "$HOME/.claude.json"
+      args+=( -v "$HOME/.claude.json":"$HOME/.claude.json" )
+    fi
   fi
 
   case "$mode" in
@@ -417,16 +444,16 @@ _run_args() {
       for ws in "${WORKSPACES[@]}"; do
         args+=( -v "$ws":"$ws" )
       done
-      args+=( -v "$HOME/.claude":"$HOME/.claude" )
+      args+=( -v "$HOME/.$AGENT_KIND":"$HOME/.$AGENT_KIND" )
       ;;
     worktree)
-      local wt; wt=$(_worktree_path "$repo")
+      local wt; wt=$(_worktree_path "$repo" "$name")
       args+=( -v "$wt":"$repo"
-              -v "$HOME/.claude":"$HOME/.claude" )
+              -v "$HOME/.$AGENT_KIND":"$HOME/.$AGENT_KIND" )
       ;;
     strict)
-      args+=( -v "$(_strict_ws_volume "$repo" "${NAME_OVERRIDE:-}")":"$repo"
-              -v "$(_strict_cl_volume "$repo" "${NAME_OVERRIDE:-}")":/home/claude/.claude )
+      args+=( -v "$(_strict_ws_volume "$name")":"$repo"
+              -v "$(_strict_cl_volume "$name")":/home/claude/.claude )
       ;;
     *) _die "unknown isolation mode: $mode" ;;
   esac
@@ -452,7 +479,7 @@ _op_agent_socket() {
 # boundary. Started lazily on first sandbox launch and persists
 # across invocations. Stop with: pkill -f "socat.*${SANDBOX_AGENT_PORT}".
 #
-# Linux hosts skip this entirely — the wrapper bind-mounts the agent
+# Linux hosts skip this entirely - the wrapper bind-mounts the agent
 # socket directly into the container instead, since Linux-to-Linux
 # Unix socket forwarding works fine.
 _ensure_signing_relay() {
@@ -485,13 +512,13 @@ _ensure_signing_relay() {
 }
 
 # --worktree: create a fresh git worktree on a throwaway branch so
-# Claude works in a checkout that's disjoint from the user's main one.
+# The agent works in a checkout that's disjoint from the user's main one.
 _ensure_worktree() {
-  local repo="$1"
+  local repo="$1" name="$2"
   [[ -d "$repo/.git" || -f "$repo/.git" ]] || _die "$repo is not a git repo (--worktree requires git)"
   local wt branch
-  wt=$(_worktree_path "$repo")
-  branch=$(_worktree_branch "$repo")
+  wt=$(_worktree_path "$repo" "$name")
+  branch=$(_worktree_branch "$repo" "$name")
   if [[ -d "$wt" ]]; then return 0; fi
   mkdir -p "$(dirname "$wt")"
   # If the branch already exists (from a prior worktree that was rm'd
@@ -509,16 +536,16 @@ _ensure_worktree() {
 # reuse the volume so Claude's in-progress work survives container
 # recreation.
 _ensure_strict_volumes() {
-  local repo="$1" name_override="${2:-}"
+  local repo="$1" name="$2"
   local ws cl
-  ws=$(_strict_ws_volume "$repo" "$name_override")
-  cl=$(_strict_cl_volume "$repo" "$name_override")
+  ws=$(_strict_ws_volume "$name")
+  cl=$(_strict_cl_volume "$name")
 
   if ! docker volume inspect "$ws" >/dev/null 2>&1; then
     _info "creating + seeding $ws from $repo"
     docker volume create \
-      --label "claude-sandbox.host-repo=${repo}" \
-      --label "claude-sandbox.kind=workspace" \
+      --label "agent-sandbox.host-repo=${repo}" \
+      --label "agent-sandbox.kind=workspace" \
       "$ws" >/dev/null
     docker run --rm \
       -v "$repo":/src:ro \
@@ -530,7 +557,7 @@ _ensure_strict_volumes() {
   if ! docker volume inspect "$cl" >/dev/null 2>&1; then
     _info "creating $cl"
     docker volume create \
-      --label "claude-sandbox.kind=claude-home" \
+      --label "agent-sandbox.kind=claude-home" \
       "$cl" >/dev/null
     if [[ -d "$HOME/.claude" ]]; then
       _info "seeding $cl from ~/.claude (one time only)"
@@ -540,17 +567,17 @@ _ensure_strict_volumes() {
         "$IMAGE" \
         sh -c 'cp -a /src/. /dst/' >/dev/null
     fi
-    # Also seed ~/.claude.json into the volume root as `.csb-claude.json`.
+    # Also seed ~/.claude.json into the volume root as `.asb-claude.json`.
     # The entrypoint symlinks `$HOME/.claude.json` to it so reads/writes
     # by claude inside the sandbox persist in the volume rather than
     # bouncing off the ephemeral image filesystem.
     if [[ -f "$HOME/.claude.json" ]]; then
-      _info "seeding $cl with ~/.claude.json (as .csb-claude.json)"
+      _info "seeding $cl with ~/.claude.json (as .asb-claude.json)"
       docker run --rm \
         -v "$HOME":/host:ro \
         -v "$cl":/dst \
         "$IMAGE" \
-        sh -c 'cp /host/.claude.json /dst/.csb-claude.json' >/dev/null
+        sh -c 'cp /host/.claude.json /dst/.asb-claude.json' >/dev/null
     fi
   fi
 }
@@ -562,7 +589,7 @@ _ensure_image() {
   built=$(cat "$(_built_hash_file)" 2>/dev/null || echo "")
 
   if ! _image_built; then
-    _info "image $IMAGE not built yet — building"
+    _info "image $IMAGE not built yet - building"
     _build_image
     return
   fi
@@ -590,7 +617,7 @@ _build_image() {
   _dockerfile_hash > "$(_built_hash_file)"
 }
 
-# ── subcommands ────────────────────────────────────────────────────────
+# subcommands
 
 # Parse common flags: permission mode + isolation mode. Sets the
 # globals PERM_MODE and ISO_MODE; consumed positional args are shifted
@@ -620,12 +647,13 @@ _parse_common_flags() {
       --continue|-c) RESUME_FLAGS=( --continue ); shift ;;
       --resume|-r)
         shift
-        if (($#)) && [[ "$1" =~ ^[0-9a-fA-F-]+$ ]]; then
+        if (($#)) && { [[ "$1" =~ ^[0-9a-fA-F-]+$ ]] || [[ ! -d "$1" && "$1" != -* ]]; }; then
           RESUME_FLAGS=( --resume "$1" ); shift
         else
           RESUME_FLAGS=( --resume )
         fi
         ;;
+      --resume=*) RESUME_FLAGS=( --resume "${1#--resume=}" ); shift ;;
       --workspace)
         shift
         # Slurp positional paths until the next flag or end. Use `--` after
@@ -647,6 +675,9 @@ _parse_common_flags() {
 
   if ((RUN_REPO_SETUP && SIGNING)); then
     _die "--repo-setup and --signing cannot be combined"
+  fi
+  if [[ "$AGENT_KIND" == "codex" && "$ISO_MODE" == "strict" ]]; then
+    _die "--strict is not yet supported for Codex; use default or --worktree"
   fi
 
   if [[ ${#WORKSPACES[@]} -gt 1 ]] && [[ "$ISO_MODE" != "default" ]]; then
@@ -701,8 +732,8 @@ cmd_run_untrusted() {
     "$image" -c 'mkdir -p "$HOME"; cp -a /src/. /workspace/; exec "$@"' sh "$@"
 }
 
-# cmd_default — create a fresh ephemeral sandbox and attach. The
-# container is removed when claude exits (docker run --rm). There is no
+# cmd_default - create a fresh ephemeral sandbox and attach. The
+# container is removed when the agent exits (docker run --rm). There is no
 # reattach: detach with Ctrl-p Ctrl-q to drive the running session from
 # the Claude app, or resume a past conversation in a new container with
 # --continue / --resume. Concurrent sessions for the same repo coexist
@@ -715,24 +746,31 @@ cmd_default() {
   _ensure_image
   ((SIGNING)) && _ensure_signing_relay
 
-  case "$ISO_MODE" in
-    worktree) _ensure_worktree "$repo" ;;
-    strict)   _ensure_strict_volumes "$repo" "$NAME_OVERRIDE" ;;
-  esac
-
   local name; name=$(_create_name "$repo" "$ISO_MODE" "$NAME_OVERRIDE")
+  case "$ISO_MODE" in
+    worktree) _ensure_worktree "$repo" "$name" ;;
+    strict)   _ensure_strict_volumes "$repo" "$name" ;;
+  esac
   local label; label=$(_session_label_for "$name" "$NAME_OVERRIDE")
 
   _info "creating $name (perm=$PERM_MODE iso=$ISO_MODE)"
   local run_args=() c_args=()
   mapfile -t run_args < <(_run_args "$repo" "$name" "$ISO_MODE")
-  mapfile -t c_args   < <(_claude_args "$PERM_MODE" "$label")
+  mapfile -t c_args   < <(_agent_args "$PERM_MODE" "$label")
   _print_banner "$name" "$repo" "$label" "$PERM_MODE" "$ISO_MODE"
-  exec docker run --rm -it "${run_args[@]}" "$IMAGE" claude "${c_args[@]}"
+  local herdr_source="agent-sandbox:$name" rc=0
+  if [[ "${HERDR_ENV:-}" == "1" && -n "${HERDR_PANE_ID:-}" ]] && command -v herdr >/dev/null 2>&1; then
+    herdr pane report-agent "$HERDR_PANE_ID" --source "$herdr_source" --agent "$AGENT_KIND" --state unknown >/dev/null 2>&1 || true
+  fi
+  if docker run --rm -it "${run_args[@]}" "$IMAGE" "$AGENT_KIND" "${c_args[@]}"; then rc=0; else rc=$?; fi
+  if [[ "${HERDR_ENV:-}" == "1" && -n "${HERDR_PANE_ID:-}" ]] && command -v herdr >/dev/null 2>&1; then
+    herdr pane release-agent "$HERDR_PANE_ID" --source "$herdr_source" --agent "$AGENT_KIND" >/dev/null 2>&1 || true
+  fi
+  return "$rc"
 }
 
-# cmd_start — create a fresh detached ephemeral sandbox (no TTY). Used by
-# autostart and to launch a phone-drivable session. Removed when claude
+# cmd_start - create a fresh detached ephemeral sandbox (no TTY). Used by
+# autostart and to launch a phone-drivable session. Removed when the agent
 # exits, same as the attached default.
 cmd_start() {
   _parse_common_flags "$@"
@@ -742,18 +780,17 @@ cmd_start() {
   _ensure_image
   ((SIGNING)) && _ensure_signing_relay
 
-  case "$ISO_MODE" in
-    worktree) _ensure_worktree "$repo" ;;
-    strict)   _ensure_strict_volumes "$repo" "$NAME_OVERRIDE" ;;
-  esac
-
   local name; name=$(_create_name "$repo" "$ISO_MODE" "$NAME_OVERRIDE")
+  case "$ISO_MODE" in
+    worktree) _ensure_worktree "$repo" "$name" ;;
+    strict)   _ensure_strict_volumes "$repo" "$name" ;;
+  esac
   local label; label=$(_session_label_for "$name" "$NAME_OVERRIDE")
   _info "creating detached $name (perm=$PERM_MODE iso=$ISO_MODE)"
   local run_args=() c_args=()
   mapfile -t run_args < <(_run_args "$repo" "$name" "$ISO_MODE")
-  mapfile -t c_args   < <(_claude_args "$PERM_MODE" "$label")
-  docker run -d --rm "${run_args[@]}" "$IMAGE" claude "${c_args[@]}" >/dev/null
+  mapfile -t c_args   < <(_agent_args "$PERM_MODE" "$label")
+  docker run -d --rm "${run_args[@]}" "$IMAGE" "$AGENT_KIND" "${c_args[@]}" >/dev/null
   _info "started $name"
 }
 
@@ -793,9 +830,7 @@ cmd_stop() {
 
   if [[ "$scope" == "here" ]]; then
     local repo; repo=$(_resolve_repo)
-    local matches; matches=$(_containers_for_target "$repo" "default" ""; \
-                              _containers_for_target "$repo" "worktree" ""; \
-                              _containers_for_target "$repo" "strict" "")
+    local matches; matches=$(_containers_for_repo "$repo")
     [[ -z "$matches" ]] && { _info "no sandboxes for $repo"; return 0; }
     while IFS= read -r n; do
       [[ -z "$n" ]] && continue
@@ -808,9 +843,7 @@ cmd_stop() {
   local name="$arg" repo=""
   if [[ -z "$name" ]]; then
     repo=$(_resolve_repo)
-    local matches; matches=$(_containers_for_target "$repo" "default" ""; \
-                              _containers_for_target "$repo" "worktree" ""; \
-                              _containers_for_target "$repo" "strict" "")
+    local matches; matches=$(_containers_for_repo "$repo")
     [[ -z "$matches" ]] && _die "no sandbox for $repo"
     local count; count=$(printf '%s\n' "$matches" | grep -c .)
     if (( count == 1 )); then
@@ -826,21 +859,26 @@ cmd_stop() {
 
   _container_exists "$name" || _die "$name does not exist"
   [[ -z "$repo" ]] && repo=$(_container_workspace_label "$name")
+  local container_agent; container_agent=$(_container_agent_label "$name")
+  [[ "$container_agent" == "claude" || "$container_agent" == "codex" ]] || _die "$name has no valid agent label"
+  local container_iso; container_iso=$(_container_iso_label "$name")
+  [[ "$container_iso" == "default" || "$container_iso" == "worktree" || "$container_iso" == "strict" ]] || _die "$name has no valid isolation label"
   docker rm -f "$name" >/dev/null
   _info "stopped $name"
 
   # Purge: remove the worktree and/or strict volumes too. Without
-  # --purge, those persist so a later `claude-sandbox` reattaches to
+  # --purge, those persist so a later `agent-sandbox` reattaches to
   # the same state (--strict's whole point) or the same worktree.
   if (( purge )); then
-    case "$name" in
-      *-wt)
+    case "$container_iso" in
+      worktree)
         # Recover the original repo from worktree metadata.
         if [[ -z "$repo" ]]; then
           # Best effort: ask the user to pass the path; we don't store it.
-          _warn "purge: pass the repo path via 'claude-sandbox stop --purge <name>' from inside the repo"
+          _warn "purge: pass the repo path via 'agent-sandbox stop --purge <name>' from inside the repo"
         else
-          local wt; wt=$(_worktree_path "$repo")
+          AGENT_KIND="$container_agent"
+          local wt; wt=$(_worktree_path "$repo" "$name")
           if [[ -d "$wt" ]]; then
             git -C "$repo" worktree remove --force "$wt" 2>/dev/null \
               || rm -rf "$wt"
@@ -848,16 +886,10 @@ cmd_stop() {
           fi
         fi
         ;;
-      *-strict)
+      strict)
         local ws cl
-        if [[ -n "$repo" ]]; then
-          ws=$(_strict_ws_volume "$repo")
-          cl=$(_strict_cl_volume "$repo")
-        else
-          # Reverse-engineer volume names from the container name suffix.
-          ws="${name}-ws"
-          cl="${name}-cl"
-        fi
+        ws="${name}-ws"
+        cl="${name}-cl"
         docker volume rm "$ws" "$cl" 2>/dev/null || true
         _info "removed volumes $ws $cl"
         ;;
@@ -895,7 +927,7 @@ cmd_export() {
   docker volume inspect "$ws" >/dev/null 2>&1 || _die "volume $ws not found"
 
   local host_repo
-  host_repo=$(docker volume inspect "$ws" -f '{{ index .Labels "claude-sandbox.host-repo" }}' 2>/dev/null)
+  host_repo=$(docker volume inspect "$ws" -f '{{ index .Labels "agent-sandbox.host-repo" }}' 2>/dev/null)
   [[ -n "$host_repo" && -d "$host_repo/.git" ]] \
     || _die "could not resolve host repo from $ws label, or repo is not a git repo"
 
@@ -920,7 +952,7 @@ cmd_list() {
   _require_docker
   local out
   out=$(docker ps -a --filter "name=^${NAME_PREFIX}-" \
-    --format '{{.Names}}\t{{.Status}}\t{{.Label "claude-sandbox.workspace"}}')
+    --format '{{.Names}}\t{{.Status}}\t{{.Label "agent-sandbox.workspace"}}')
   if [[ -z "$out" ]]; then _info "no sandboxes"; return 0; fi
   printf '%s%-40s %-25s %s%s\n' "$C_BOLD" NAME STATUS WORKSPACE "$C_RESET"
   printf '%s\n' "$out" | column -t -s $'\t'
@@ -940,7 +972,7 @@ cmd_info() {
   if [[ "$current" == "$stored" ]]; then
     _row "Hash:"  "$current"
   else
-    _row "Hash:"  "${C_YELLOW}$current (current) ≠ $stored (built)${C_RESET}"
+    _row "Hash:"  "${C_YELLOW}$current (current) != $stored (built)${C_RESET}"
   fi
   _row "Cache:" "$CACHE_DIR"
   echo
@@ -959,15 +991,15 @@ cmd_rebuild() {
 # repos can be autostarted independently.
 _plist_path() {
   local repo="$1"
-  local hash; hash=$(printf '%s' "$repo" | shasum -a 256 | cut -c1-8)
-  printf '%s/Library/LaunchAgents/dev.sakakibara.claude-sandbox.%s.plist\n' "$HOME" "$hash"
+  local hash; hash=$(printf '%s\n%s' "$repo" "$AGENT_KIND" | shasum -a 256 | cut -c1-8)
+  printf '%s/Library/LaunchAgents/dev.sakakibara.agent-sandbox.%s.%s.plist\n' "$HOME" "$AGENT_KIND" "$hash"
 }
 
 cmd_enable_autostart() {
   local repo plist self
   repo=$(_resolve_repo "${1:-}")
   plist=$(_plist_path "$repo")
-  self=$(command -v claude-sandbox) || _die "claude-sandbox not on PATH"
+  self=$(command -v agent-sandbox) || _die "agent-sandbox not on PATH"
   mkdir -p "$(dirname "$plist")" "$CACHE_DIR"
 
   cat > "$plist" <<EOF
@@ -980,6 +1012,7 @@ cmd_enable_autostart() {
   <key>ProgramArguments</key>
   <array>
     <string>$self</string>
+    <string>$AGENT_KIND</string>
     <string>start</string>
     <string>$repo</string>
   </array>
@@ -1012,43 +1045,44 @@ cmd_disable_autostart() {
 
 cmd_help() {
   cat <<'EOF'
-claude-sandbox - Docker-isolated Claude Code, one container per repo.
+agent-sandbox - Docker-isolated coding agents.
 
 Usage:
-  claude-sandbox [PERM] [ISO] [repo]        start + attach (default mode)
-  claude-sandbox start [PERM] [ISO] [repo]  start detached (no TTY)
-  claude-sandbox new [PERM] [ISO] [--name X] [repo]
+  agent-sandbox [claude|codex] [PERM] [ISO] [repo]
+  agent-sandbox [claude|codex] start [PERM] [ISO] [repo]
+  agent-sandbox [claude|codex] new [PERM] [ISO] [--name X] [repo]
                                             alias for the default; always
                                             creates a fresh sandbox (auto-
                                             numbered: <base>, <base>-2, ...)
-  claude-sandbox run-untrusted [--image IMAGE] [repo] -- COMMAND
+  agent-sandbox run-untrusted [--image IMAGE] [repo] -- COMMAND
                                             run untrusted repository code in
                                             a disposable, networkless volume
-  claude-sandbox stop [--purge] [name]      stop & remove (cwd-scoped picker
-  claude-sandbox stop --all-here              for cwd repo, with mode
-  claude-sandbox stop --all                   --all-here / --all variants)
-  claude-sandbox stop --relay               stop the host-side 1Password
+  agent-sandbox stop [--purge] [name]      stop & remove (cwd-scoped picker
+  agent-sandbox stop --all-here              for cwd repo, with mode
+  agent-sandbox stop --all                   --all-here / --all variants)
+  agent-sandbox stop --relay               stop the host-side 1Password
                                             agent socat relay (persists
                                             across sandboxes by default;
                                             this is the explicit stop)
-  claude-sandbox export [name]              --strict only: git-fetch volume
+  agent-sandbox export [name]              --strict only: git-fetch volume
                                             branches into the host repo
                                             as refs/sandbox-export/*
-  claude-sandbox list                       all sandboxes (with workspace col)
-  claude-sandbox info                       image + sandbox status
-  claude-sandbox rebuild                    docker build --no-cache
-  claude-sandbox enable-autostart [repo]    LaunchAgent: start at login
-  claude-sandbox disable-autostart [repo]
-  claude-sandbox help
+  agent-sandbox list                       all sandboxes (with workspace col)
+  agent-sandbox info                       image + sandbox status
+  agent-sandbox rebuild                    docker build --no-cache
+  agent-sandbox enable-autostart [repo]    LaunchAgent: start at login
+  agent-sandbox disable-autostart [repo]
+  agent-sandbox help
 
 Naming:
-  Containers: claude-sandbox-<base>[-mode][-name | -N]
+  Containers: agent-sandbox-<base>[-codex][-wt|-strict][-name | -N]
     base   = sanitized repo basename
-    mode   = -wt | -strict (default mode has no suffix)
+    agent  = -codex for Codex (Claude has no agent suffix)
+    mode   = -wt | -strict (default mode has no mode suffix)
     name   = sanitized --name X (named slot)
     N      = auto-bumped integer (parallel sessions; cross-repo collision)
 
-  iOS labels: 🛡 <base>[-mode][-name | -N]   (or 🛡 <X> if --name X is set)
+  iOS labels: 🛡 <base>[-codex][-mode][-name | -N] (or 🛡 <X> with --name)
 
   Cross-repo basename collision: first repo to claim `<base>` wins; the
   second auto-bumps to `<base>-2`. Detected via the workspace label set
@@ -1058,14 +1092,20 @@ Permission modes (PERM):
   --auto      (default) acceptEdits mode; prompts on high-risk operations
   --bypass    no permission prompts; explicit opt-in for trusted work
 
+Agent selection:
+  agent-sandbox claude  run Claude Code; supports every isolation mode
+  agent-sandbox codex   run Codex; supports default and --worktree
+  Omitting the agent selects Claude.
+
 Optional capabilities:
   --repo-setup  trusted repos only: run setup and mise install at startup
   --signing     forward the host signing agent and Git identity configuration
 
-Resume passthrough (forwarded to claude):
+Resume passthrough:
   --continue, -c           continue the most recent session in the cwd
-  --resume [SESSION_ID]    resume a specific session by id (uuid),
-                           or open the picker if id is omitted
+  --resume [SESSION]       resume a session by UUID or name, or open the
+                           picker if omitted. Use --resume=NAME when NAME
+                           is also a directory.
 
 Multi-repo (default mode only):
   --workspace PATH [PATH ...]   bind-mount each PATH at its host path
@@ -1081,13 +1121,14 @@ Multi-repo (default mode only):
                                 with --worktree or --strict.
 
 Isolation modes (ISO):
-  (default)   bind-mount cwd at its host path, with ~/.claude RW.
-              Risk: Claude can rm -rf the cwd; ~/.claude can be corrupted.
+  (default)   bind-mount cwd at its host path, with the selected agent's
+              state directory RW. Risk: the agent can delete the cwd or
+              corrupt its state.
               External symlink targets are not mounted implicitly.
 
   --worktree  bind-mount a fresh `git worktree add` at the host repo path.
-              Main checkout is unreachable from the container. ~/.claude
-              remains RW (same as default).
+              Main checkout is unreachable from the container. The selected
+              agent's state remains RW (same as default).
               Cheap "just in case" upgrade; one extra arg.
 
   --strict    the host repo path is a docker volume seeded from the cwd repo.
@@ -1095,7 +1136,7 @@ Isolation modes (ISO):
               Without --signing, the long-running container has no host
               bind mounts. Host repo and host ~/.claude cannot be touched
               by the container at all.
-              Use `claude-sandbox export` to git-fetch changes back to
+              Use `agent-sandbox export` to git-fetch changes back to
               the host repo as refs/sandbox-export/*; review and merge
               at your own pace.
 
@@ -1105,16 +1146,18 @@ Untrusted execution:
   signing socket, or writable host mount. CPU, memory, and process counts
   are bounded, and the workspace disappears with the container.
 
-Lifecycle: containers are ephemeral. `/exit` (or claude exiting) removes
-the container; there is no terminal reattach. Detach with Ctrl-p Ctrl-q
-to leave the session running and drive it from your phone via
-claude.ai/code or the Claude mobile app (`claude --remote-control` polls
-the Anthropic API outbound; no inbound port is opened). Resume a past
-conversation in a fresh container with --continue / --resume.
+Lifecycle: containers are ephemeral and disappear when the selected agent
+exits. Claude sessions can detach with Ctrl-p Ctrl-q and continue through
+Claude remote control. Codex sessions have no remote-control detach path.
+Resume a past conversation in a fresh container with --continue / --resume.
 EOF
 }
 
 main() {
+  if [[ "${1:-}" == "claude" || "${1:-}" == "codex" ]]; then
+    AGENT_KIND="$1"
+    shift
+  fi
   local sub="${1:-}"
   case "$sub" in
     new)                shift; cmd_default "$@" ;;

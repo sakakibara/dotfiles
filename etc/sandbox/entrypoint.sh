@@ -5,14 +5,14 @@
 
 set -euo pipefail
 
-export CLAUDE_SANDBOX=1
+export AGENT_SANDBOX=1
 
 # 1Password SSH agent forwarding. Two cases the wrapper sets up:
 #
-#   SANDBOX_AGENT_SOCK=<path>            (Linux host) — the host's
+#   SANDBOX_AGENT_SOCK=<path>            (Linux host) - the host's
 #       1Password Unix socket bind-mounted directly. Use as-is.
 #
-#   SANDBOX_AGENT_HOST=... + _PORT=...   (macOS host) — host-side
+#   SANDBOX_AGENT_HOST=... + _PORT=...   (macOS host) - host-side
 #       socat relays the macOS Unix socket to TCP. We start an
 #       internal socat that re-presents the TCP as a Unix socket
 #       for ssh-keygen.
@@ -41,7 +41,7 @@ fi
 # Compose a sandbox global git config in a writable path (the host's
 # ~/.config/git is mounted read-only at $HOST_GIT_DIR). It [include]s the
 # host config, which carries the [user] default AND the per-account
-# [includeIf] rules — so identity and signing key resolve by the repo's
+# [includeIf] rules - so identity and signing key resolve by the repo's
 # GitHub remote, exactly as on the host. gpg.ssh.program is overridden to
 # ssh-keygen (op-ssh-sign is macOS-only); ssh-keygen signs via SSH_AUTH_SOCK
 # -> host 1Password. allowedSignersFile points at the host's allowed_signers
@@ -76,50 +76,52 @@ if [[ -n "${HOST_HOME:-}" && "$HOST_HOME" != "$HOME" ]]; then
   if [[ -e "$HOST_HOME/.claude.json" && ! -e "$HOME/.claude.json" ]]; then
     ln -sfn "$HOST_HOME/.claude.json" "$HOME/.claude.json"
   fi
+  if [[ "${SANDBOX_AGENT_KIND:-}" == "codex" && -d "$HOST_HOME/.codex" && ! -e "$HOME/.codex" ]]; then
+    ln -sfn "$HOST_HOME/.codex" "$HOME/.codex"
+  fi
 fi
 
 # Strict-mode bridge: the wrapper seeds host's ~/.claude.json into the
-# claude-home volume as .csb-claude.json (because docker volumes are
-# directories — we can't bind-mount a single file from a volume). When
+# claude-home volume as .asb-claude.json (because docker volumes are
+# directories - we can't bind-mount a single file from a volume). When
 # $HOME/.claude.json doesn't already exist (i.e., not bind-mounted by
 # default/worktree mode), symlink it to the seeded copy inside the
 # volume so reads/writes hit the volume and persist.
-if [[ ! -e "$HOME/.claude.json" && -f "$HOME/.claude/.csb-claude.json" ]]; then
-  ln -sf .claude/.csb-claude.json "$HOME/.claude.json"
+if [[ ! -e "$HOME/.claude.json" && -f "$HOME/.claude/.asb-claude.json" ]]; then
+  ln -sf .claude/.asb-claude.json "$HOME/.claude.json"
 fi
 
-# Per-repo install hooks. Once-per-container — sentinel files live under
-# /var/lib/csb-state/ so they don't survive container recreation. Stop
+# Per-repo install hooks. Once-per-container - sentinel files live under
+# /var/lib/agent-sandbox-state/ so they don't survive container recreation. Stop
 # and re-create the container to re-run.
 #
-#   .claude-sandbox/apt-packages   newline-separated apt package names
-#   .claude-sandbox/setup.sh       arbitrary script (run as claude w/ sudo
+#   .agent-sandbox/apt-packages   newline-separated apt package names
+#   .agent-sandbox/setup.sh       arbitrary script (run as claude w/ sudo
 #                                  available); use for non-apt installs
 #                                  (mise add, npm install -g, build steps,
 #                                  etc.)
 #
-# Both are optional. Failures are non-fatal (hook errors don't block claude
-# from starting); review with `claude-sandbox attach && cat /var/lib/csb-state/*.log`.
-if [[ ${CSB_REPO_SETUP:-0} == 1 ]]; then
-  sudo install -d -m 0775 -o claude /var/lib/csb-state 2>/dev/null || true
+# Both are optional. Failures are non-fatal and do not block the agent.
+if [[ ${ASB_REPO_SETUP:-0} == 1 ]]; then
+  sudo install -d -m 0775 -o claude /var/lib/agent-sandbox-state 2>/dev/null || true
 
-  if [[ -f .claude-sandbox/apt-packages && ! -f /var/lib/csb-state/apt-packages.done ]]; then
-    echo "claude-sandbox: installing apt packages from .claude-sandbox/apt-packages"
-    pkgs=$(grep -vE '^\s*(#|$)' .claude-sandbox/apt-packages | tr '\n' ' ')
+  if [[ -f .agent-sandbox/apt-packages && ! -f /var/lib/agent-sandbox-state/apt-packages.done ]]; then
+    echo "agent-sandbox: installing apt packages from .agent-sandbox/apt-packages"
+    pkgs=$(grep -vE '^\s*(#|$)' .agent-sandbox/apt-packages | tr '\n' ' ')
     if [[ -n "$pkgs" ]]; then
       sudo apt-get update -qq \
         && sudo apt-get install -y --no-install-recommends $pkgs \
-        && sudo touch /var/lib/csb-state/apt-packages.done \
-        || echo "claude-sandbox: apt install failed; continuing"
+        && sudo touch /var/lib/agent-sandbox-state/apt-packages.done \
+        || echo "agent-sandbox: apt install failed; continuing"
     fi
   fi
 
-  if [[ -x .claude-sandbox/setup.sh && ! -f /var/lib/csb-state/setup.done ]]; then
-    echo "claude-sandbox: running .claude-sandbox/setup.sh"
-    if ./.claude-sandbox/setup.sh; then
-      sudo touch /var/lib/csb-state/setup.done
+  if [[ -x .agent-sandbox/setup.sh && ! -f /var/lib/agent-sandbox-state/setup.done ]]; then
+    echo "agent-sandbox: running .agent-sandbox/setup.sh"
+    if ./.agent-sandbox/setup.sh; then
+      sudo touch /var/lib/agent-sandbox-state/setup.done
     else
-      echo "claude-sandbox: setup.sh failed; continuing"
+      echo "agent-sandbox: setup.sh failed; continuing"
     fi
   fi
 

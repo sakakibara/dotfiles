@@ -138,9 +138,9 @@ expansion = "taskwarrior-tui"
 when = "taskwarrior-tui"
 
 [[abbreviations]]
-# No `when` filter: claude-sandbox is installed by the dotfiles themselves (via
-# .local/bin/claude-sandbox), and the abbreviation's tool check runs before mox
+# No `when` filter: agent-sandbox is installed by the dotfiles themselves (via
+# .local/bin/agent-sandbox), and the abbreviation's tool check runs before mox
 # has copied the file into place -- gating on it would skip the abbreviation on
 # first apply and only re-include it on a second apply.
 key = "csb"
-expansion = "claude-sandbox"
+expansion = "agent-sandbox"

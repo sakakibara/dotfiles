@@ -20,7 +20,7 @@ filenames or in-file `# mox:` directives rather than a templated body.
   `os=macos/`, `os=linux/`, `os=windows/` subdirectories and run only on that
   OS.
 - **`etc/`** - support library: package lists, CI helpers, tests, the
-  claude-sandbox image, and shared bash/PowerShell libraries.
+  agent-sandbox image, and shared bash/PowerShell libraries.
 
 Two idioms express per-OS / per-profile variation:
 
@@ -78,26 +78,26 @@ GitHub. `git log --show-signature` works locally too.
 If you skip this on a machine, commits still work but go out unsigned. Nothing
 fails; you just don't get the badge for that machine's commits.
 
-### Commit signing inside claude-sandbox containers
+### Commit signing inside agent-sandbox containers
 
-The same 1Password key signs commits made inside `claude-sandbox` containers, so
+The same 1Password key signs commits made inside `agent-sandbox` containers, so
 sandbox commits also get the Verified badge. Setup is automatic on macOS and
 Linux; one extra setting on Windows + WSL.
 
-- **macOS host**: nothing extra. claude-sandbox starts a tiny `socat` relay on
+- **macOS host**: nothing extra. agent-sandbox starts a tiny `socat` relay on
   `127.0.0.1:19988` on first launch (1Password's macOS Unix socket can't be
   bind-mounted directly into Linux containers; the relay bridges via TCP).
   socat is installed via `etc/darwin/packages.txt`.
-- **Linux host**: nothing extra. claude-sandbox bind-mounts
+- **Linux host**: nothing extra. agent-sandbox bind-mounts
   `~/.1password/agent.sock` into the container directly (Linux-to-Linux Unix
   sockets work). Make sure `socat` is installed (used inside the container; the
   package is in the sandbox image).
 - **Windows + WSL2 host**: enable 1Password's WSL integration in the Windows
   1Password app: **Settings -> Developer -> Integrate with WSL** -> on. After
   that, `~/.1password/agent.sock` exists inside WSL and the Linux branch of
-  claude-sandbox handles it transparently. Run claude-sandbox from inside WSL
+  agent-sandbox handles it transparently. Run agent-sandbox from inside WSL
   (it's a bash script and won't run from PowerShell or git-bash).
-- **Native Windows (no WSL)**: claude-sandbox itself doesn't run there. Out of
+- **Native Windows (no WSL)**: agent-sandbox itself doesn't run there. Out of
   scope.
 
 The 1Password SSH agent only exposes keys listed in

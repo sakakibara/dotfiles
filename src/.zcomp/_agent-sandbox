@@ -1,10 +1,13 @@
-#compdef claude-sandbox
-# Completion for claude-sandbox. Container name completions filter by
-# the wrapper's name convention `claude-sandbox-<base>-<hash>[-mode]`.
+#compdef agent-sandbox
+# Completion for agent-sandbox.
 
-_claude_sandbox() {
+_agent_sandbox() {
   local -a subcommands
+  local verb
   subcommands=(
+    'claude:run Claude Code'
+    'codex:run Codex'
+    'new:start a fresh attached sandbox'
     'start:start detached'
     'run-untrusted:run repository code without host or network access'
     'stop:stop and remove'
@@ -26,8 +29,8 @@ _claude_sandbox() {
     '--strict[isolate via docker volumes]' \
     '*--workspace[mount one or more repos (default iso only)]:repo:_files -/' \
     '--name[named slot (overrides auto-bumped suffix)]:name:' \
-    '(-c --continue)'{-c,--continue}'[continue most recent claude session in cwd]' \
-    '(-r --resume)'{-r,--resume}'[resume claude session by id (or picker)]:session-id:' \
+    '(-c --continue)'{-c,--continue}'[continue the most recent agent session]' \
+    '(-r --resume)'{-r,--resume}'[resume an agent session (or picker)]:session:' \
     '1: :->cmd' \
     '*::arg:->args'
 
@@ -36,7 +39,27 @@ _claude_sandbox() {
       _describe 'subcommand' subcommands
       ;;
     args)
-      case "$words[1]" in
+      verb="$words[2]"
+      if [[ "$verb" == claude || "$verb" == codex ]]; then
+        if (( CURRENT == 3 )); then
+          local -a agent_subcommands
+          agent_subcommands=(
+            'new:start a fresh attached sandbox'
+            'start:start detached'
+            'stop:stop and remove'
+            'list:all sandboxes'
+            'info:image + sandbox status'
+            'rebuild:docker build --no-cache'
+            'enable-autostart:LaunchAgent: start at login'
+            'disable-autostart:remove LaunchAgent'
+            'help:usage'
+          )
+          _describe 'subcommand' agent_subcommands
+          return
+        fi
+        verb="$words[3]"
+      fi
+      case "$verb" in
         stop)
           _arguments \
             '--all[stop every sandbox]' \
@@ -44,12 +67,12 @@ _claude_sandbox() {
             '--purge[also remove worktree / volumes]' \
             '--relay[stop the 1password agent relay]'
           local -a all
-          all=(${(f)"$(docker ps -a --filter 'name=^claude-sandbox-' --format '{{.Names}}' 2>/dev/null)"})
+          all=(${(f)"$(docker ps -a --filter 'name=^agent-sandbox-' --format '{{.Names}}' 2>/dev/null)"})
           _describe 'sandbox' all
           ;;
         export)
           local -a strict
-          strict=(${(f)"$(docker ps -a --filter 'name=^claude-sandbox-.*-strict$' --format '{{.Names}}' 2>/dev/null)"})
+          strict=(${(f)"$(docker ps -a --filter 'name=^agent-sandbox-' --filter 'label=agent-sandbox.iso=strict' --format '{{.Names}}' 2>/dev/null)"})
           _describe 'strict sandbox' strict
           ;;
         run-untrusted)
@@ -63,4 +86,4 @@ _claude_sandbox() {
   esac
 }
 
-_claude_sandbox "$@"
+_agent_sandbox "$@"
