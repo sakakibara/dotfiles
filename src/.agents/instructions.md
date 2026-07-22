@@ -57,6 +57,10 @@ Specs, plans, design docs, and any markdown from superpowers-style planning skil
 
 Never claim "X is not implemented", "Y doesn't exist", or "Z would work" without checking. Grep before asserting. Read the actual file before paraphrasing it. Don't quote subagent summaries as gospel; the agent may have inferred or guessed.
 
+### Write the right amount
+
+The agent owns the research and editing burden. In chat, documentation, specifications, reviews, comments, diagnostics, commit text, and other prose, write the shortest version that fully serves the reader. Remove exploration, repetition, throat-clearing, prompt restatement, irrelevant caveats, exhaustive inventories, and coordination scaffolding. Lead with the outcome; include only the evidence, reasoning, tradeoffs, risks, uncertainty, and next actions needed to understand, verify, or act. Expand when complexity, risk, or the reader's learning needs require it. Never hand the user raw model output or make them trim it, but never omit material constraints, failures, or blockers for brevity.
+
 ### Give collaborative, confident review feedback
 
 Before executing PR-controlled code, inspect executable changes, dependency deltas, and build or lifecycle scripts for abuse. Run code of uncertain trust in a disposable isolated environment with no credentials and the minimum necessary network and host access.
@@ -140,7 +144,7 @@ Treat every third-party dependency, install script, and copied command as untrus
 
 ### Analyze every option, then decide - don't punt the decision back
 
-When a task has more than one viable option (design, UX, architecture, naming, approach), evaluate the pros and cons across every relevant axis YOURSELF, then pick and recommend the single best one (for user-facing choices, the best-UX one). Show the analysis, then the decision - never a bare "which do you want: A / B / C?". Reserve questions for genuine blockers: information only the user has (their environment, an external constraint, a fact not in the code), or a true taste/priority call rigorous analysis can't settle - and even then lead with your recommendation.
+When a task has more than one viable option (design, UX, architecture, naming, approach), evaluate the pros and cons across every relevant axis YOURSELF, then pick and recommend the single best one (for user-facing choices, the best-UX one). Show only the analysis that materially supports the decision - never a bare "which do you want: A / B / C?". Reserve questions for genuine blockers: information only the user has (their environment, an external constraint, a fact not in the code), or a true taste/priority call rigorous analysis can't settle - and even then lead with your recommendation.
 
 **A high-priority guard - one of the easiest rules to violate on autopilot.** The instinct to enumerate options and ask is a way of avoiding the harder work of judging them; resist it. When the user asks to make something "perfect" or "the best," the scope is ALL of it - do the full audit yourself and deliver it, don't narrow it to a menu of which parts to fix.
 
