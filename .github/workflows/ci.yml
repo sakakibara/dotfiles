@@ -148,6 +148,8 @@ jobs:
         run: bash etc/tests/sync.sh
       - name: dotfiles wrapper
         run: bash etc/tests/dotfiles_wrapper.sh
+      - name: claude sandbox security
+        run: bash etc/tests/claude_sandbox_security.sh
 
   pwsh-tests:
     name: PowerShell tests (Windows)

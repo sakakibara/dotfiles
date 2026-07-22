@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# claude-sandbox — Docker-isolated Claude Code, one container per repo.
+# claude-sandbox - Docker-isolated Claude Code, one container per repo.
 #
 # Default behaviour: in a repo, `claude-sandbox` starts a container with
-# `claude --remote-control --dangerously-skip-permissions` inside and
+# `claude --remote-control --permission-mode acceptEdits` inside and
 # attaches an interactive TTY. The container is ephemeral: it is removed
 # when claude exits (/exit or the process ending). There is no terminal
 # reattach -- detach with Ctrl-p Ctrl-q to drive the running session from
@@ -12,7 +12,9 @@
 #
 # Subcommands:
 #   claude-sandbox [--auto|--bypass] [--continue|--resume] [repo]
-#                                              start + attach (default; bypass)
+#                                              start + attach (default; auto)
+#   claude-sandbox run-untrusted [repo] -- COMMAND
+#                                              run repo code without host access
 #   claude-sandbox start [--auto] [repo]      start detached (no TTY)
 #   claude-sandbox stop [name|--all]          stop & remove
 #   claude-sandbox list                       all sandboxes
@@ -59,13 +61,8 @@ SANDBOX_AGENT_PORT="${SANDBOX_AGENT_PORT:-19988}"
 WORKSPACES=()
 WS_LABEL=""
 
-# External-symlink auto-mounts. Populated by _scan_external_symlinks
-# from the workspace contents: any symlink that resolves to a target
-# outside the workspace (and isn't on the deny-list) gets bind-mounted
-# at its host path so the sandbox can follow the symlink. Surface via
-# banner so the user can see what was added implicitly.
-EXTRA_MOUNTS=()
-DENIED_SYMLINKS=()
+RUN_REPO_SETUP=0
+SIGNING=0
 
 _require_docker() {
   command -v docker >/dev/null 2>&1 \
@@ -284,23 +281,9 @@ _print_banner() {
   else
     printf '   workspace: %s\n' "$repo"
   fi
-  if [[ ${#EXTRA_MOUNTS[@]} -gt 0 ]]; then
-    printf '   linked:    %s\n' "${EXTRA_MOUNTS[0]}"
-    local j
-    for ((j = 1; j < ${#EXTRA_MOUNTS[@]}; j++)); do
-      printf '              %s\n' "${EXTRA_MOUNTS[j]}"
-    done
-  fi
-  if [[ ${#DENIED_SYMLINKS[@]} -gt 0 ]]; then
-    printf '%s   warning:   %d symlink target(s) refused (security):%s\n' "$C_YELLOW" "${#DENIED_SYMLINKS[@]}" "$C_RESET"
-    local k
-    for ((k = 0; k < ${#DENIED_SYMLINKS[@]}; k++)); do
-      printf '              %s\n' "${DENIED_SYMLINKS[k]}"
-    done
-  fi
   [[ -n "$label" ]] && printf '   ios label: %s\n' "$label"
   if [[ "$perm" != "?" || "$iso" != "?" ]]; then
-    printf '   mode:      perm=%s iso=%s\n' "$perm" "$iso"
+    printf '   mode:      perm=%s iso=%s repo-setup=%s signing=%s\n' "$perm" "$iso" "$RUN_REPO_SETUP" "$SIGNING"
   fi
   printf '   detach:    Ctrl-p Ctrl-q (drive from the Claude app; removed on exit)\n'
   printf '%s━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━%s\n' "$C_DIM" "$C_RESET"
@@ -360,6 +343,7 @@ _run_args() {
     -e CLAUDE_SANDBOX=1
     -w "$repo"
   )
+  ((RUN_REPO_SETUP)) && args+=( -e CSB_REPO_SETUP=1 )
 
   # Mount the host's whole git config dir read-only: config, the global
   # ignore, and the per-account identity includes (personal.inc,
@@ -388,7 +372,8 @@ _run_args() {
   #
   # Skipped silently when 1Password's agent isn't running (commits
   # go out unsigned, same as a host without 1Password).
-  local op_sock; op_sock=$(_op_agent_socket)
+  local op_sock=""
+  ((SIGNING)) && op_sock=$(_op_agent_socket)
   if [[ -n "$op_sock" && -S "$op_sock" ]]; then
     case "$(uname)" in
       Darwin)
@@ -427,17 +412,10 @@ _run_args() {
 
   case "$mode" in
     default)
-      # One bind per workspace path (single-element WORKSPACES = single
-      # repo; multi-element = the --workspace multi-mount case). Then
-      # any auto-detected external symlink targets, mounted at their
-      # host paths so symlinks-pointing-outside-cwd resolve correctly.
+      # One bind per explicitly selected workspace path.
       local ws
       for ws in "${WORKSPACES[@]}"; do
         args+=( -v "$ws":"$ws" )
-      done
-      local extra
-      for extra in "${EXTRA_MOUNTS[@]}"; do
-        args+=( -v "$extra":"$extra" )
       done
       args+=( -v "$HOME/.claude":"$HOME/.claude" )
       ;;
@@ -504,57 +482,6 @@ _ensure_signing_relay() {
     sleep 0.2
   done
   _warn "agent relay didn't come up within 1s (see $logdir/relay.log); commits inside sandbox may be unsigned"
-}
-
-# Deny-list for external symlink targets. Returns 0 (true) if the
-# target is sensitive enough that we refuse to auto-mount it; warn
-# instead. Most paths are fine to mount; a small list of secret /
-# system / OS-internal locations are blocked.
-_is_denied_symlink_target() {
-  local t="$1"
-  case "$t" in
-    "$HOME/.ssh"|"$HOME/.ssh"/*) return 0 ;;
-    "$HOME/.gnupg"|"$HOME/.gnupg"/*) return 0 ;;
-    "$HOME/.aws"|"$HOME/.aws"/*) return 0 ;;
-    "$HOME/.config/1Password"|"$HOME/.config/1Password"/*) return 0 ;;
-    "$HOME/Library/Keychains"|"$HOME/Library/Keychains"/*) return 0 ;;
-    /etc|/etc/*|/var|/var/*|/usr|/usr/*|/sys|/sys/*|/proc|/proc/*|/dev|/dev/*) return 0 ;;
-  esac
-  return 1
-}
-
-# Scan workspaces for symlinks whose target lives outside any workspace.
-# Targets that aren't deny-listed get appended to EXTRA_MOUNTS for
-# bind-mounting at their host path. Deny-listed ones go to
-# DENIED_SYMLINKS for the banner to warn about. Find depth is capped to
-# avoid pathological scans on huge trees; -L is intentional so the test
-# is "is this entry, after symlink resolution, a thing that exists?".
-_scan_external_symlinks() {
-  local ws symlink target inside w m already
-  for ws in "${WORKSPACES[@]}"; do
-    while IFS= read -r symlink; do
-      [[ -z "$symlink" ]] && continue
-      target=$(readlink -f "$symlink" 2>/dev/null) || continue
-      [[ -z "$target" || ! -e "$target" ]] && continue
-      inside=0
-      for w in "${WORKSPACES[@]}"; do
-        case "$target" in
-          "$w"|"$w"/*) inside=1; break ;;
-        esac
-      done
-      ((inside)) && continue
-      if _is_denied_symlink_target "$target"; then
-        DENIED_SYMLINKS+=( "$symlink -> $target" )
-        continue
-      fi
-      already=0
-      for m in "${EXTRA_MOUNTS[@]}"; do
-        [[ "$m" == "$target" ]] && { already=1; break; }
-      done
-      ((already)) && continue
-      EXTRA_MOUNTS+=( "$target" )
-    done < <(find "$ws" -maxdepth 6 -type l 2>/dev/null)
-  done
 }
 
 # --worktree: create a fresh git worktree on a throwaway branch so
@@ -669,9 +596,11 @@ _build_image() {
 # globals PERM_MODE and ISO_MODE; consumed positional args are shifted
 # off via the caller. Stops at the first non-flag argument.
 _parse_common_flags() {
-  PERM_MODE="bypass"
+  PERM_MODE="auto"
   ISO_MODE="default"
   NAME_OVERRIDE=""
+  RUN_REPO_SETUP=0
+  SIGNING=0
   WORKSPACES=()
   RESUME_FLAGS=()
   while (($#)); do
@@ -680,6 +609,8 @@ _parse_common_flags() {
       --bypass)   PERM_MODE="bypass"; shift ;;
       --worktree) ISO_MODE="worktree"; shift ;;
       --strict)   ISO_MODE="strict";  shift ;;
+      --repo-setup) RUN_REPO_SETUP=1; shift ;;
+      --signing) SIGNING=1; shift ;;
       --name)     NAME_OVERRIDE="${2:-}"; [[ -z "$NAME_OVERRIDE" ]] && _die "--name requires an argument"; shift 2 ;;
       --name=*)   NAME_OVERRIDE="${1#--name=}"; shift ;;
       # Resume passthrough. --continue and --resume reach claude as-is so
@@ -714,6 +645,10 @@ _parse_common_flags() {
   done
   REMAINING=( "$@" )
 
+  if ((RUN_REPO_SETUP && SIGNING)); then
+    _die "--repo-setup and --signing cannot be combined"
+  fi
+
   if [[ ${#WORKSPACES[@]} -gt 1 ]] && [[ "$ISO_MODE" != "default" ]]; then
     _die "--workspace with multiple paths is only supported in default iso mode (no --worktree / --strict)"
   fi
@@ -730,6 +665,42 @@ _finalize_workspaces() {
   WS_LABEL="${WORKSPACES[*]}"
 }
 
+cmd_run_untrusted() {
+  local image="$IMAGE" repo=""
+  while (($#)); do
+    case "$1" in
+      --image) image="${2:-}"; [[ -z "$image" ]] && _die "--image requires an argument"; shift 2 ;;
+      --image=*) image="${1#--image=}"; shift ;;
+      --) shift; break ;;
+      -*) _die "unknown run-untrusted option: $1" ;;
+      *) [[ -z "$repo" ]] || _die "run-untrusted accepts one repository path"; repo="$1"; shift ;;
+    esac
+  done
+  (($#)) || _die "run-untrusted requires a command after --"
+  repo=$(_resolve_repo "$repo")
+  _require_docker
+  if [[ "$image" == "$IMAGE" ]]; then
+    _ensure_image
+  else
+    docker image inspect "$image" >/dev/null 2>&1 || _die "image not found: $image"
+  fi
+  docker run --rm \
+    --network none \
+    --cap-drop ALL \
+    --security-opt no-new-privileges \
+    --read-only \
+    --memory 4g \
+    --cpus 4 \
+    --pids-limit 512 \
+    --tmpfs /tmp:rw,nosuid,nodev \
+    --tmpfs /workspace:rw,nosuid,nodev,size=4g,uid=1000,gid=1000,mode=0700 \
+    -e HOME=/tmp/home \
+    -v "$repo":/src:ro \
+    -w /workspace \
+    --entrypoint sh \
+    "$image" -c 'mkdir -p "$HOME"; cp -a /src/. /workspace/; exec "$@"' sh "$@"
+}
+
 # cmd_default — create a fresh ephemeral sandbox and attach. The
 # container is removed when claude exits (docker run --rm). There is no
 # reattach: detach with Ctrl-p Ctrl-q to drive the running session from
@@ -742,8 +713,7 @@ cmd_default() {
   local repo="${WORKSPACES[0]}"
   _require_docker
   _ensure_image
-  _ensure_signing_relay
-  _scan_external_symlinks
+  ((SIGNING)) && _ensure_signing_relay
 
   case "$ISO_MODE" in
     worktree) _ensure_worktree "$repo" ;;
@@ -770,8 +740,7 @@ cmd_start() {
   local repo="${WORKSPACES[0]}"
   _require_docker
   _ensure_image
-  _ensure_signing_relay
-  _scan_external_symlinks
+  ((SIGNING)) && _ensure_signing_relay
 
   case "$ISO_MODE" in
     worktree) _ensure_worktree "$repo" ;;
@@ -1043,7 +1012,7 @@ cmd_disable_autostart() {
 
 cmd_help() {
   cat <<'EOF'
-claude-sandbox — Docker-isolated Claude Code, one container per repo.
+claude-sandbox - Docker-isolated Claude Code, one container per repo.
 
 Usage:
   claude-sandbox [PERM] [ISO] [repo]        start + attach (default mode)
@@ -1052,6 +1021,9 @@ Usage:
                                             alias for the default; always
                                             creates a fresh sandbox (auto-
                                             numbered: <base>, <base>-2, ...)
+  claude-sandbox run-untrusted [--image IMAGE] [repo] -- COMMAND
+                                            run untrusted repository code in
+                                            a disposable, networkless volume
   claude-sandbox stop [--purge] [name]      stop & remove (cwd-scoped picker
   claude-sandbox stop --all-here              for cwd repo, with mode
   claude-sandbox stop --all                   --all-here / --all variants)
@@ -1083,8 +1055,12 @@ Naming:
   on each container.
 
 Permission modes (PERM):
-  --bypass    (default) no permission prompts; the sandbox is the firewall
-  --auto      acceptEdits mode; some prompts on high-risk operations
+  --auto      (default) acceptEdits mode; prompts on high-risk operations
+  --bypass    no permission prompts; explicit opt-in for trusted work
+
+Optional capabilities:
+  --repo-setup  trusted repos only: run setup and mise install at startup
+  --signing     forward the host signing agent and Git identity configuration
 
 Resume passthrough (forwarded to claude):
   --continue, -c           continue the most recent session in the cwd
@@ -1105,23 +1081,29 @@ Multi-repo (default mode only):
                                 with --worktree or --strict.
 
 Isolation modes (ISO):
-  (default)   bind-mount cwd as /workspace, ~/.claude RW.
+  (default)   bind-mount cwd at its host path, with ~/.claude RW.
               Risk: Claude can rm -rf the cwd; ~/.claude can be corrupted.
-              Host filesystem outside those two mounts: 0% risk.
+              External symlink targets are not mounted implicitly.
 
-  --worktree  bind-mount a fresh `git worktree add` (under cache dir)
-              instead of cwd. Main checkout is unreachable from the
-              container. ~/.claude RW (same as default).
+  --worktree  bind-mount a fresh `git worktree add` at the host repo path.
+              Main checkout is unreachable from the container. ~/.claude
+              remains RW (same as default).
               Cheap "just in case" upgrade; one extra arg.
 
-  --strict    /workspace is a docker volume seeded once from the cwd repo.
+  --strict    the host repo path is a docker volume seeded from the cwd repo.
               ~/.claude is a docker volume seeded once from host ~/.claude.
-              The long-running container has NO host bind mounts (except
-              ~/.gitconfig RO for commit identity). Host repo and host
-              ~/.claude cannot be touched by the container at all.
+              Without --signing, the long-running container has no host
+              bind mounts. Host repo and host ~/.claude cannot be touched
+              by the container at all.
               Use `claude-sandbox export` to git-fetch changes back to
               the host repo as refs/sandbox-export/*; review and merge
               at your own pace.
+
+Untrusted execution:
+  run-untrusted copies the repository into a disposable 4 GiB in-memory
+  workspace and runs COMMAND with no network, credentials, agent state,
+  signing socket, or writable host mount. CPU, memory, and process counts
+  are bounded, and the workspace disappears with the container.
 
 Lifecycle: containers are ephemeral. `/exit` (or claude exiting) removes
 the container; there is no terminal reattach. Detach with Ctrl-p Ctrl-q
@@ -1136,6 +1118,7 @@ main() {
   local sub="${1:-}"
   case "$sub" in
     new)                shift; cmd_default "$@" ;;
+    run-untrusted)      shift; cmd_run_untrusted "$@" ;;
     start)              shift; cmd_start "$@" ;;
     stop)               shift; cmd_stop "$@" ;;
     export)             shift; cmd_export "$@" ;;

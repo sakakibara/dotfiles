@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 # Container entrypoint. Sets the sandbox env marker, bridges the
-# strict-mode .claude.json from the volume into $HOME, runs per-repo
-# install hooks if present, installs the project's mise-pinned toolchain
-# if a .mise.toml is present, then exec's whatever command the docker run
-# was invoked with (typically `claude --remote-control ...`).
+# strict-mode .claude.json from the volume into $HOME, optionally runs
+# explicitly enabled repository setup, then execs the docker command.
 
 set -euo pipefail
 
@@ -102,31 +100,32 @@ fi
 #
 # Both are optional. Failures are non-fatal (hook errors don't block claude
 # from starting); review with `claude-sandbox attach && cat /var/lib/csb-state/*.log`.
-sudo install -d -m 0775 -o claude /var/lib/csb-state 2>/dev/null || true
+if [[ ${CSB_REPO_SETUP:-0} == 1 ]]; then
+  sudo install -d -m 0775 -o claude /var/lib/csb-state 2>/dev/null || true
 
-if [[ -f .claude-sandbox/apt-packages && ! -f /var/lib/csb-state/apt-packages.done ]]; then
-  echo "claude-sandbox: installing apt packages from .claude-sandbox/apt-packages"
-  pkgs=$(grep -vE '^\s*(#|$)' .claude-sandbox/apt-packages | tr '\n' ' ')
-  if [[ -n "$pkgs" ]]; then
-    sudo apt-get update -qq \
-      && sudo apt-get install -y --no-install-recommends $pkgs \
-      && sudo touch /var/lib/csb-state/apt-packages.done \
-      || echo "claude-sandbox: apt install failed; continuing"
+  if [[ -f .claude-sandbox/apt-packages && ! -f /var/lib/csb-state/apt-packages.done ]]; then
+    echo "claude-sandbox: installing apt packages from .claude-sandbox/apt-packages"
+    pkgs=$(grep -vE '^\s*(#|$)' .claude-sandbox/apt-packages | tr '\n' ' ')
+    if [[ -n "$pkgs" ]]; then
+      sudo apt-get update -qq \
+        && sudo apt-get install -y --no-install-recommends $pkgs \
+        && sudo touch /var/lib/csb-state/apt-packages.done \
+        || echo "claude-sandbox: apt install failed; continuing"
+    fi
   fi
-fi
 
-if [[ -x .claude-sandbox/setup.sh && ! -f /var/lib/csb-state/setup.done ]]; then
-  echo "claude-sandbox: running .claude-sandbox/setup.sh"
-  if ./.claude-sandbox/setup.sh; then
-    sudo touch /var/lib/csb-state/setup.done
-  else
-    echo "claude-sandbox: setup.sh failed; continuing"
+  if [[ -x .claude-sandbox/setup.sh && ! -f /var/lib/csb-state/setup.done ]]; then
+    echo "claude-sandbox: running .claude-sandbox/setup.sh"
+    if ./.claude-sandbox/setup.sh; then
+      sudo touch /var/lib/csb-state/setup.done
+    else
+      echo "claude-sandbox: setup.sh failed; continuing"
+    fi
   fi
-fi
 
-# mise: install per-project toolchain if the cwd repo has one.
-if [[ -f .mise.toml || -f mise.toml || -f .tool-versions ]]; then
-  "$HOME/.local/bin/mise" install >/dev/null 2>&1 || true
+  if [[ -f .mise.toml || -f mise.toml || -f .tool-versions ]]; then
+    "$HOME/.local/bin/mise" install >/dev/null 2>&1 || true
+  fi
 fi
 
 exec "$@"

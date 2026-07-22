@@ -15,8 +15,14 @@
     "src/.codex/AGENTS.md"
   ],
   "audited_files": [
+    ".github/workflows/ci.yml",
     ".mox/attributes.toml",
     ".moxignore",
+    "etc/ci/syntax.sh",
+    "etc/sandbox/Dockerfile",
+    "etc/sandbox/entrypoint.sh",
+    "etc/tests/agent-instructions.sh",
+    "etc/tests/claude_sandbox_security.sh",
     "src/.agents/hooks/commit-jargon-guard.sh",
     "src/.agents/hooks/git-stage-guard.sh",
     "src/.agents/hooks/instruction-audit.py",
@@ -36,6 +42,9 @@
     "src/.claude/CLAUDE.md",
     "src/.claude/settings.json",
     "src/.codex/AGENTS.md",
-    "src/.codex/hooks.json"
+    "src/.codex/hooks.json",
+    "src/.config/fish/completions/claude-sandbox.fish",
+    "src/.local/bin/claude-sandbox",
+    "src/.zcomp/_claude-sandbox"
   ]
 }

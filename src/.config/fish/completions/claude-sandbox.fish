@@ -1,5 +1,6 @@
 # Subcommands.
 complete -c claude-sandbox -f -n '__fish_use_subcommand' -a start             -d 'start detached'
+complete -c claude-sandbox -f -n '__fish_use_subcommand' -a run-untrusted     -d 'run repository code without host or network access'
 complete -c claude-sandbox -f -n '__fish_use_subcommand' -a stop              -d 'stop and remove'
 complete -c claude-sandbox -f -n '__fish_use_subcommand' -a export            -d 'export strict-mode volume to host repo'
 complete -c claude-sandbox -f -n '__fish_use_subcommand' -a list              -d 'all sandboxes'
@@ -15,7 +16,9 @@ function __fish_csb_takes_run_flags
     __fish_use_subcommand; or __fish_seen_subcommand_from start
 end
 complete -c claude-sandbox -f -n __fish_csb_takes_run_flags -l auto      -d 'auto permission mode'
-complete -c claude-sandbox -f -n __fish_csb_takes_run_flags -l bypass    -d 'bypass permission mode (default)'
+complete -c claude-sandbox -f -n __fish_csb_takes_run_flags -l bypass    -d 'bypass permission mode'
+complete -c claude-sandbox -f -n __fish_csb_takes_run_flags -l repo-setup -d 'trusted repos only: run setup and mise install'
+complete -c claude-sandbox -f -n __fish_csb_takes_run_flags -l signing   -d 'forward host signing agent and Git identity'
 complete -c claude-sandbox -f -n __fish_csb_takes_run_flags -l worktree  -d 'isolate via git worktree'
 complete -c claude-sandbox -f -n __fish_csb_takes_run_flags -l strict    -d 'isolate via docker volumes'
 complete -c claude-sandbox -F -n __fish_csb_takes_run_flags -l workspace -d 'mount one or more repos (default iso only)'
@@ -38,3 +41,4 @@ complete -c claude-sandbox -f -n '__fish_seen_subcommand_from stop'   -l all-her
 complete -c claude-sandbox -f -n '__fish_seen_subcommand_from stop'   -l purge -d 'also remove worktree / volumes'
 complete -c claude-sandbox -f -n '__fish_seen_subcommand_from stop'   -l relay -d 'stop the 1password agent relay'
 complete -c claude-sandbox -f -n '__fish_seen_subcommand_from export' -a '(__fish_csb_strict)'
+complete -c claude-sandbox -f -n '__fish_seen_subcommand_from run-untrusted' -l image -d 'container image' -r

@@ -6,6 +6,7 @@ _claude_sandbox() {
   local -a subcommands
   subcommands=(
     'start:start detached'
+    'run-untrusted:run repository code without host or network access'
     'stop:stop and remove'
     'export:export strict-mode volume to host repo'
     'list:all sandboxes'
@@ -18,7 +19,9 @@ _claude_sandbox() {
 
   _arguments -C \
     '--auto[auto permission mode]' \
-    '--bypass[bypass permission mode (default)]' \
+    '--bypass[bypass permission mode]' \
+    '--repo-setup[trusted repos only: run setup and mise install]' \
+    '--signing[forward host signing agent and Git identity]' \
     '--worktree[isolate via git worktree]' \
     '--strict[isolate via docker volumes]' \
     '*--workspace[mount one or more repos (default iso only)]:repo:_files -/' \
@@ -48,6 +51,9 @@ _claude_sandbox() {
           local -a strict
           strict=(${(f)"$(docker ps -a --filter 'name=^claude-sandbox-.*-strict$' --format '{{.Names}}' 2>/dev/null)"})
           _describe 'strict sandbox' strict
+          ;;
+        run-untrusted)
+          _arguments '--image[container image]:image:' '*:argument:_files'
           ;;
         enable-autostart|disable-autostart|start)
           _files -/

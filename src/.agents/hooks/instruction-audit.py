@@ -20,6 +20,8 @@ INSTRUCTION_NAMES = {
 TEXT_SUFFIXES = {".md", ".mdc", ".json", ".toml", ".yaml", ".yml", ".sh", ".py"}
 OPAQUE_RE = re.compile(r"(?<![A-Za-z0-9+/=])[A-Za-z0-9+/]{96,}={0,2}(?![A-Za-z0-9+/=])|(?<![0-9A-Fa-f])[0-9A-Fa-f]{128,}(?![0-9A-Fa-f])")
 HIDDEN_RE = re.compile(r"<!--|<details\b|display\s*:\s*none|visibility\s*:\s*hidden", re.IGNORECASE)
+PRUNED_DIRS = {".git", ".cache", ".next", ".venv", "build", "dist", "node_modules", "target", "vendor"}
+AGENT_CONFIG_DIRS = {".claude", ".codex", ".cursor", ".windsurf"}
 
 
 def inside(path, root):
@@ -30,12 +32,20 @@ def inside(path, root):
         return False
 
 
+def display_path(path):
+    return json.dumps(os.fspath(path), ensure_ascii=True)
+
+
 def instruction_path(rel):
     parts = rel.parts
     if rel.name in INSTRUCTION_NAMES:
         return True
     value = rel.as_posix()
     if value == ".github/copilot-instructions.md":
+        return True
+    if value.startswith(".github/instructions/") and value.endswith(".instructions.md"):
+        return True
+    if value in {".mcp.json", ".claude/settings.json", ".claude/settings.local.json", ".codex/config.toml", ".cursor/mcp.json", ".vscode/mcp.json"}:
         return True
     if ".cursor" in parts or ".windsurf" in parts:
         return rel.suffix.lower() in {".md", ".mdc"}
@@ -45,7 +55,7 @@ def instruction_path(rel):
 def discover(root):
     found = []
     for current, dirs, files in os.walk(root, followlinks=False):
-        dirs[:] = [name for name in dirs if name != ".git"]
+        dirs[:] = [name for name in dirs if name not in PRUNED_DIRS]
         base = Path(current)
         for name in files:
             path = base / name
@@ -54,7 +64,9 @@ def discover(root):
                 found.append(rel)
         for name in dirs:
             path = base / name
-            if path.is_symlink():
+            if path.is_symlink() and name in AGENT_CONFIG_DIRS:
+                found.append(path.relative_to(root))
+            elif path.is_symlink():
                 rel = path.relative_to(root)
                 if instruction_path(rel):
                     found.append(rel)
@@ -62,33 +74,34 @@ def discover(root):
 
 
 def inspect_file(path, rel, root, content_rules, errors, warnings):
+    shown = display_path(rel.as_posix())
     if path.is_symlink():
         target = path.resolve(strict=False)
         if not inside(target, root):
-            errors.append(f"{rel}: instruction symlink resolves outside repository: {target}")
+            errors.append(f"{shown}: instruction symlink resolves outside repository")
             return
         path = target
     try:
         raw = path.read_bytes()
     except OSError as exc:
-        errors.append(f"{rel}: cannot read: {exc}")
+        errors.append(f"{shown}: cannot read: {exc}")
         return
     try:
         text = raw.decode("utf-8")
     except UnicodeDecodeError as exc:
-        errors.append(f"{rel}: invalid UTF-8: {exc}")
+        errors.append(f"{shown}: invalid UTF-8: {exc}")
         return
     for index, char in enumerate(text):
         category = unicodedata.category(char)
         if category == "Cf" or category == "Cc" and char not in "\n\r\t":
-            errors.append(f"{rel}: dangerous Unicode control U+{ord(char):04X} at character {index + 1}")
+            errors.append(f"{shown}: dangerous Unicode control U+{ord(char):04X} at character {index + 1}")
     normalized = unicodedata.normalize("NFKC", text)
     if normalized != text:
-        warnings.append(f"{rel}: Unicode compatibility normalization changes content")
+        warnings.append(f"{shown}: Unicode compatibility normalization changes content")
     if content_rules and HIDDEN_RE.search(text):
-        errors.append(f"{rel}: hidden or collapsed content marker found")
+        errors.append(f"{shown}: hidden or collapsed content marker found")
     if content_rules and OPAQUE_RE.search(text):
-        warnings.append(f"{rel}: long opaque base64/hex-like payload found; inspect without executing")
+        warnings.append(f"{shown}: long opaque base64/hex-like payload found; inspect without executing")
 
 
 def load_policy(root, path):
@@ -117,6 +130,9 @@ def main():
     discovered = discover(root)
     files = set(discovered)
     allowed = None
+    for rel in discovered:
+        if (root / rel).is_symlink() and rel.name in AGENT_CONFIG_DIRS:
+            errors.append(f"{display_path(rel)}: symlinked agent configuration directory")
 
     if args.policy:
         try:
@@ -128,37 +144,37 @@ def main():
         files.update(Path(value) for value in policy.get("audited_files", []))
         canonical = Path(policy["canonical_policy"])
         if canonical not in allowed:
-            errors.append(f"{canonical}: canonical policy is not allowlisted")
+            errors.append(f"{display_path(canonical)}: canonical policy is not allowlisted")
         for rel, target in policy.get("discovery_links", {}).items():
             link = root / rel
             try:
                 actual = link.read_text(encoding="utf-8")
             except OSError as exc:
-                errors.append(f"{rel}: cannot read discovery declaration: {exc}")
+                errors.append(f"{display_path(rel)}: cannot read discovery declaration: {exc}")
                 continue
             if actual != target:
-                errors.append(f"{rel}: expected discovery target {target!r}, found {actual!r}")
+                errors.append(f"{display_path(rel)}: expected discovery target {target!r}, found {actual!r}")
             resolved = (link.parent / target).resolve()
             if resolved != (root / canonical).resolve():
-                errors.append(f"{rel}: discovery target does not resolve to canonical policy")
+                errors.append(f"{display_path(rel)}: discovery target does not resolve to canonical policy")
         unexpected = set(discovered) - allowed
         missing = {rel for rel in allowed if not (root / rel).exists() and not (root / rel).is_symlink()}
-        errors.extend(f"{rel}: unexpected instruction-file location" for rel in sorted(unexpected, key=str))
-        errors.extend(f"{rel}: allowlisted instruction file not found" for rel in sorted(missing, key=str))
+        errors.extend(f"{display_path(rel)}: unexpected instruction-file location" for rel in sorted(unexpected, key=str))
+        errors.extend(f"{display_path(rel)}: allowlisted instruction file not found" for rel in sorted(missing, key=str))
     elif args.strict_locations:
         for rel in discovered:
             value = rel.as_posix()
             if rel.parent != Path(".") and value != ".github/copilot-instructions.md" and not value.startswith((".cursor/", ".windsurf/")):
-                errors.append(f"{rel}: unexpected nested instruction-file location")
+                errors.append(f"{display_path(rel)}: unexpected nested instruction-file location")
     else:
         for rel in discovered:
             if rel.name in {"AGENT.md", "AGENTS.md", "CLAUDE.md", "GEMINI.md"} and rel.parent != Path("."):
-                warnings.append(f"{rel}: nested instruction scope discovered; review precedence")
+                warnings.append(f"{display_path(rel)}: nested instruction scope discovered; review precedence")
 
     for rel in sorted(files, key=lambda item: item.as_posix()):
         path = root / rel
         if not path.exists() and not path.is_symlink():
-            errors.append(f"{rel}: audited file not found")
+            errors.append(f"{display_path(rel)}: audited file not found")
             continue
         if path.is_dir() or path.suffix.lower() not in TEXT_SUFFIXES and path.name not in INSTRUCTION_NAMES:
             continue

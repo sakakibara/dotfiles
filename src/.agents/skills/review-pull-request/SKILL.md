@@ -9,7 +9,7 @@ description: Run an evidence-driven, security-aware pull-request review from ini
 
 1. Resolve the exact PR head, base, and current merge-base. Record the head identity used for every later command.
 2. Read the full diff before executing PR-controlled code. Inspect executable changes, dependencies, lockfiles, compiler or test plugins, build files, lifecycle hooks, fixtures, and CI helpers for abuse.
-3. Treat unfamiliar code as untrusted. Execute it in a separate disposable environment with no agent state, credentials, signing sockets, or unrelated host mounts, and with network disabled unless a verified test requires it. The agent's own authenticated container is not this execution boundary.
+3. Treat unfamiliar code as untrusted. Execute it in a separate disposable environment with no agent state, credentials, signing sockets, or unrelated host mounts, and with network disabled unless a verified test requires it. Use `claude-sandbox run-untrusted -- COMMAND` when available. The agent's own authenticated container is not this execution boundary.
 4. Report the security and supply-chain assessment separately from implementation quality. An absence of malicious behavior does not establish correctness.
 
 ## Map the change

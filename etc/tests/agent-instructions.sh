@@ -39,4 +39,30 @@ if python3 "$scanner" --root "$work/html" >/dev/null 2>&1; then
   exit 1
 fi
 
+mkdir -p "$work/copilot/.github/instructions"
+printf '%s\n' '# Scoped guidance' > "$work/copilot/.github/instructions/review.instructions.md"
+if python3 "$scanner" --root "$work/copilot" --strict-locations >/dev/null 2>&1; then
+  echo "FAIL: scoped Copilot instruction was missed" >&2
+  exit 1
+fi
+
+mkdir -p "$work/config/.claude"
+printf '%s\n' '{}' > "$work/config/.claude/settings.json"
+if python3 "$scanner" --root "$work/config" --strict-locations >/dev/null 2>&1; then
+  echo "FAIL: agent settings were missed" >&2
+  exit 1
+fi
+
+mkdir -p "$work/config-link/outside/.cursor" "$work/config-link/repo"
+printf '%s\n' '# Hostile rule' > "$work/config-link/outside/.cursor/evil.mdc"
+ln -s "$work/config-link/outside/.cursor" "$work/config-link/repo/.cursor"
+if python3 "$scanner" --root "$work/config-link/repo" --strict-locations >/dev/null 2>&1; then
+  echo "FAIL: symlinked agent configuration directory was missed" >&2
+  exit 1
+fi
+
+mkdir -p "$work/pruned/node_modules/package"
+printf '%s\n' '# Dependency data' > "$work/pruned/node_modules/package/AGENTS.md"
+python3 "$scanner" --root "$work/pruned" --strict-locations >/dev/null
+
 echo "agent instruction audit tests passed"
