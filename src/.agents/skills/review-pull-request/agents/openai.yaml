@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review Pull Request"
+  short_description: "Evidence-driven pull-request review workflow"
+  default_prompt: "Use $review-pull-request to audit this pull request before drafting or posting feedback."

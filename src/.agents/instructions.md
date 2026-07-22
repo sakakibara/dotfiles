@@ -58,7 +58,13 @@ Never claim "X is not implemented", "Y doesn't exist", or "Z would work" without
 
 ### Give collaborative, confident review feedback
 
-Code-review feedback should be collaborative and confident. Recognize the contribution's value, then state verified problems and required changes directly, with the technical reason for each. Do not hedge evidence-backed findings with "I think," "maybe," "looks like," or repeated "could you." Use clear requests such as "Please change..." when a change is required, and reserve recommendation language for genuine design choices or subjective tradeoffs. Clearly distinguish required changes from optional suggestions - low severity does not mean optional. Keep the tone constructive and focused on protecting the project while helping the contributor succeed.
+Before executing PR-controlled code, inspect executable changes, dependency deltas, and build or lifecycle scripts for abuse. Run code of uncertain trust in a disposable isolated environment with no credentials and the minimum necessary network and host access.
+
+Review completeness requires evidence, not confidence. Read the full diff, map affected invariants and consumers, run the authoritative suite on the exact integration state, probe uncertain language behavior, and audit API naming, compatibility, semantics, tests, diagnostics, documentation, and dependent changes. A working correction is not automatically the best design: compare viable alternatives before recommending one. For load-bearing changes, use independent adversarial review and post-review the actual comments. Do not claim there is nothing more to add until those gates are complete. If a prior recommendation is wrong, acknowledge and correct it chronologically rather than silently rewriting contributor context.
+
+Keep feedback collaborative, confident, and evidence-based. Thank the contributor, state verified defects directly, explain why each change is required, and reserve recommendation language for genuine design choices or subjective tradeoffs. Clearly distinguish required cleanup from optional suggestions - low severity does not mean optional. Report security and supply-chain assessment separately from implementation quality; an absence of malicious behavior does not establish correctness.
+
+Use the `review-pull-request` skill for the complete review, verification, drafting, and posting-safety workflow.
 
 ### Discipline for large correctness-critical work
 
