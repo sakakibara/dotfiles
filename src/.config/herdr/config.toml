@@ -4,10 +4,15 @@
 onboarding = false
 
 [keys]
-# F12 keeps every readline/emacs control binding available to the pane.
-# Every action is prefix-guarded except the direct alt+1..9 workspace jump
-# below, which is safe because no pane app binds alt+digit.
-prefix = "f12"
+# ctrl+q is the only ergonomic single-modifier chord left unclaimed across
+# every layer that sees a keypress first: macOS globals (opt+space -> ChatGPT,
+# ctrl+space -> input switch), the terminal (Cmd, Ctrl+Shift), and the
+# shell/fzf (readline motions, C-t/C-r, and the zsh/fish rebinds). It only
+# shadows readline quoted-insert, which is duplicated on ctrl+v and still
+# reachable by pressing the prefix twice. Every action is prefix-guarded
+# except the direct alt+1..9 workspace jump below, which is safe because no
+# pane app binds alt+digit.
+prefix = "ctrl+q"
 
 # Every action is pinned explicitly, defaults included, so this file is the
 # whole keymap and an upstream default change can never move a key. One
