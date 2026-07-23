@@ -22,6 +22,7 @@
         "ctrl+shift+v": "chat:imagePaste",
         "ctrl+j": "chat:submit",
         "ctrl+shift+j": "chat:newline",
+        "shift+enter": "chat:newline",
         "ctrl+x ctrl+k": null,
         "ctrl+shift+k": "chat:killAgents"
       }
