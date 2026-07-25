@@ -754,9 +754,9 @@ cmd_default() {
   local label; label=$(_session_label_for "$name" "$NAME_OVERRIDE")
 
   _info "creating $name (perm=$PERM_MODE iso=$ISO_MODE)"
-  local run_args=() c_args=()
-  mapfile -t run_args < <(_run_args "$repo" "$name" "$ISO_MODE")
-  mapfile -t c_args   < <(_agent_args "$PERM_MODE" "$label")
+  local run_args=() c_args=() line
+  while IFS= read -r line || [[ -n "$line" ]]; do run_args+=("$line"); done < <(_run_args "$repo" "$name" "$ISO_MODE")
+  while IFS= read -r line || [[ -n "$line" ]]; do c_args+=("$line"); done < <(_agent_args "$PERM_MODE" "$label")
   _print_banner "$name" "$repo" "$label" "$PERM_MODE" "$ISO_MODE"
   local herdr_source="agent-sandbox:$name" rc=0
   if [[ "${HERDR_ENV:-}" == "1" && -n "${HERDR_PANE_ID:-}" ]] && command -v herdr >/dev/null 2>&1; then
@@ -787,9 +787,9 @@ cmd_start() {
   esac
   local label; label=$(_session_label_for "$name" "$NAME_OVERRIDE")
   _info "creating detached $name (perm=$PERM_MODE iso=$ISO_MODE)"
-  local run_args=() c_args=()
-  mapfile -t run_args < <(_run_args "$repo" "$name" "$ISO_MODE")
-  mapfile -t c_args   < <(_agent_args "$PERM_MODE" "$label")
+  local run_args=() c_args=() line
+  while IFS= read -r line || [[ -n "$line" ]]; do run_args+=("$line"); done < <(_run_args "$repo" "$name" "$ISO_MODE")
+  while IFS= read -r line || [[ -n "$line" ]]; do c_args+=("$line"); done < <(_agent_args "$PERM_MODE" "$label")
   docker run -d --rm "${run_args[@]}" "$IMAGE" "$AGENT_KIND" "${c_args[@]}" >/dev/null
   _info "started $name"
 }

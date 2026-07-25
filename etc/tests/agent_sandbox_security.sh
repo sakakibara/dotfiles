@@ -152,7 +152,7 @@ set -e
 
 git -C "$work/fixture" init -q
 git -C "$work/fixture" add input.txt
-git -C "$work/fixture" -c commit.gpgsign=false commit -qm fixture
+git -C "$work/fixture" -c commit.gpgsign=false -c user.email=fixture@test.invalid -c "user.name=fixture" commit -qm fixture
 : > "$work/docker.log"
 run_sandbox --worktree "$work/fixture"
 claude_log=$(tail -1 "$work/docker.log")
@@ -267,7 +267,7 @@ set -e
 [[ $ambiguous_status -ne 0 ]] || { echo 'FAIL: Codex keymap patch accepted ambiguous multiline content' >&2; exit 1; }
 [[ "$ambiguous_hash" == "$(shasum -a 256 "$ambiguous_home/config.toml" | cut -d' ' -f1)" ]] || { echo 'FAIL: rejected Codex config was modified' >&2; exit 1; }
 
-grep -q '^prefix = "f12"$' "$repo/src/.config/herdr/config.toml" || { echo 'FAIL: herdr prefix occupies a readline binding' >&2; exit 1; }
+grep -q '^prefix = "ctrl+q"$' "$repo/src/.config/herdr/config.toml" || { echo 'FAIL: herdr prefix drifted from the chosen ctrl+q' >&2; exit 1; }
 grep -q '^unbind-key C-b$' "$repo/src/.tmux.conf" || { echo 'FAIL: tmux can intercept Ctrl-B' >&2; exit 1; }
 
 echo "agent sandbox security tests passed"
