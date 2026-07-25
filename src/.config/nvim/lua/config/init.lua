@@ -47,6 +47,8 @@ function M.setup()
   -- before any buffer (argument file, :e, session restore) is ever read.
   require("config.autocmds")
 
+  Lib.mox.setup()
+
   -- K must be remapped in Stage 1: if user spams K during startup before
   -- Stage 3 (VeryLazy) runs, nvim's default K → keywordprg=:Man spawns a
   -- synchronous subprocess per press and stalls the input queue. Installing

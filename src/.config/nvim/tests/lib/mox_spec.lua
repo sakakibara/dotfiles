@@ -1,0 +1,106 @@
+local T = require("tests.helpers")
+
+local mox = require("lib.mox")
+local blink = require("lib.mox.blink")
+
+local o = { src_root = "/repo/src", home = "/home/me" }
+
+T.describe("lib.mox.live_of", function()
+  T.it("maps a base source to its live path", function()
+    T.eq(mox.live_of("/repo/src/.zshrc", o), "/home/me/.zshrc")
+    T.eq(mox.live_of("/repo/src/.config/fish/config.fish", o), "/home/me/.config/fish/config.fish")
+  end)
+
+  T.it("maps an overlay to its base's live path", function()
+    T.eq(mox.live_of("/repo/src/.config/app/config.toml.d/os=darwin.toml", o), "/home/me/.config/app/config.toml")
+  end)
+
+  T.it("maps a region fragment to its base's live path", function()
+    T.eq(mox.live_of("/repo/src/.zshrc.d/os/darwin", o), "/home/me/.zshrc")
+  end)
+
+  T.it("rejects a path outside src", function()
+    T.eq(mox.live_of("/repo/data/ids.toml", o), nil)
+    T.eq(mox.live_of("/elsewhere/.zshrc", o), nil)
+  end)
+
+  T.it("does not treat a bare .d component as an overlay dir", function()
+    T.eq(mox.live_of("/repo/src/.d", o), "/home/me/.d")
+  end)
+end)
+
+T.describe("lib.mox.source_of", function()
+  T.it("maps a live path into src", function()
+    T.eq(mox.source_of("/home/me/.zshrc", o), "/repo/src/.zshrc")
+  end)
+
+  T.it("rejects a path outside home", function()
+    T.eq(mox.source_of("/etc/passwd", o), nil)
+  end)
+end)
+
+T.describe("lib.mox.blink.directive_candidates", function()
+  T.it("offers directives right after the marker", function()
+    local got = blink.directive_candidates("# mox: ")
+    T.truthy(vim.tbl_contains(got, "when"))
+    T.truthy(vim.tbl_contains(got, "for"))
+  end)
+
+  T.it("offers directives for a partial keyword", function()
+    T.truthy(blink.directive_candidates("-- mox: wh"))
+  end)
+
+  T.it("stays quiet on an ordinary line", function()
+    T.eq(blink.directive_candidates("export EDITOR=nvim"), nil)
+    T.eq(blink.directive_candidates("# mox: when os=darwin and "), nil)
+  end)
+end)
+
+T.describe("lib.mox.blink.axis_candidates", function()
+  T.it("offers axes and facts inside a when expression", function()
+    local got = blink.axis_candidates("# mox: when ", { "signing_key" })
+    T.truthy(vim.tbl_contains(got, "os"))
+    T.truthy(vim.tbl_contains(got, "signing_key"))
+  end)
+
+  T.it("offers axes after a boolean operator", function()
+    T.truthy(blink.axis_candidates("# mox: when os=darwin and ", {}))
+    T.truthy(blink.axis_candidates("# mox: when not ", {}))
+  end)
+
+  T.it("stays quiet outside a when", function()
+    T.eq(blink.axis_candidates("# mox: include ", {}), nil)
+  end)
+end)
+
+T.describe("lib.mox.blink.capture_candidates", function()
+  T.it("offers namespaces after an open angle", function()
+    local got = blink.capture_candidates("email = <", {})
+    T.truthy(vim.tbl_contains(got, "machine."))
+    T.truthy(vim.tbl_contains(got, "secret:"))
+  end)
+
+  T.it("offers machine fields and facts after machine dot", function()
+    local got, prefix = blink.capture_candidates("email = <machine.", { "email" })
+    T.eq(prefix, "machine.")
+    T.truthy(vim.tbl_contains(got, "brew_prefix"))
+    T.truthy(vim.tbl_contains(got, "email"))
+  end)
+
+  T.it("stays quiet with no open capture", function()
+    T.eq(blink.capture_candidates("plain text", {}), nil)
+  end)
+end)
+
+T.describe("lib.mox.blink.read_facts", function()
+  T.it("reads top-level keys and caches by mtime", function()
+    local path = vim.fn.tempname()
+    local f = assert(io.open(path, "w"))
+    f:write('email = "a@b.c"\nprofile = "work"\n')
+    f:close()
+    T.eq(blink.read_facts(path), { "email", "profile" })
+    T.eq(blink.read_facts(path), { "email", "profile" })
+    os.remove(path)
+    T.eq(blink.read_facts(path), {})
+  end)
+end)

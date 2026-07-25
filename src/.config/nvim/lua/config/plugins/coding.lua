@@ -90,12 +90,17 @@ return {
         ghost_text = { enabled = false },
       },
       sources = {
-        default = { "lsp", "path", "snippets", "buffer", "lazydev" },
+        default = { "lsp", "path", "snippets", "buffer", "lazydev", "mox" },
         providers = {
           lazydev = {
             name = "LazyDev",
             module = "lazydev.integrations.blink",
             score_offset = 100,
+          },
+          mox = {
+            name = "mox",
+            module = "lib.mox.blink",
+            score_offset = 50,
           },
         },
       },
