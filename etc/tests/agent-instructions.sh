@@ -11,7 +11,7 @@ printf '%s\n' '# Safe project guidance' > "$work/clean/AGENTS.md"
 python3 "$scanner" --root "$work/clean" >/dev/null
 
 mkdir -p "$work/unicode"
-printf '# Hidden\u202einstruction\n' > "$work/unicode/AGENTS.md"
+printf '# Hidden\342\200\256instruction\n' > "$work/unicode/AGENTS.md"
 if python3 "$scanner" --root "$work/unicode" >/dev/null 2>&1; then
   echo "FAIL: bidi control was accepted" >&2
   exit 1

@@ -229,9 +229,9 @@ move_left = "broken"
 [hooks.state.example]
 trusted_hash = "test-hash"
 EOF
-CODEX_HOME="$codex_home" bash "$repo/scripts/post/codex-keybindings.sh"
+CODEX_HOME="$codex_home" PATH="$work/bin:$PATH" bash "$repo/scripts/post/codex-keybindings.sh"
 first_hash=$(shasum -a 256 "$codex_home/config.toml" | cut -d' ' -f1)
-CODEX_HOME="$codex_home" bash "$repo/scripts/post/codex-keybindings.sh"
+CODEX_HOME="$codex_home" PATH="$work/bin:$PATH" bash "$repo/scripts/post/codex-keybindings.sh"
 second_hash=$(shasum -a 256 "$codex_home/config.toml" | cut -d' ' -f1)
 [[ "$first_hash" == "$second_hash" ]] || { echo 'FAIL: Codex keymap patch is not idempotent' >&2; exit 1; }
 python3 - <<'PY' "$codex_home/config.toml"
@@ -261,7 +261,7 @@ This is data, not a TOML table.
 EOF
 ambiguous_hash=$(shasum -a 256 "$ambiguous_home/config.toml" | cut -d' ' -f1)
 set +e
-CODEX_HOME="$ambiguous_home" bash "$repo/scripts/post/codex-keybindings.sh" >/dev/null 2>&1
+CODEX_HOME="$ambiguous_home" PATH="$work/bin:$PATH" bash "$repo/scripts/post/codex-keybindings.sh" >/dev/null 2>&1
 ambiguous_status=$?
 set -e
 [[ $ambiguous_status -ne 0 ]] || { echo 'FAIL: Codex keymap patch accepted ambiguous multiline content' >&2; exit 1; }
