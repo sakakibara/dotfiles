@@ -1,0 +1,3 @@
+# mox: for c in "data/completions.toml" where c.fish into "<c.name>.fish"
+command -q <c.name>; and <c.fish> | source
+# mox: end

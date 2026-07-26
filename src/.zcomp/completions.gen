@@ -1,0 +1,8 @@
+# mox: for c in "data/completions.toml" where c.zsh into "_<c.name>"
+##compdef <c.name>
+(( $+commands[<c.name>] )) || return 1
+eval "$(<c.zsh>)"
+# mox: when c.zsh_dispatch
+<c.zsh_dispatch> "$@"
+# mox: end
+# mox: end

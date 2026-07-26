@@ -584,10 +584,6 @@ fi
 
 _evalcache pip completion --zsh
 
-if (( ${+commands[mox]} )); then
-  _evalcache mox completion zsh
-fi
-
 if (( ${+commands[holt]} )); then
   _evalcache holt init zsh
 fi

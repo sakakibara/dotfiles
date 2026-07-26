@@ -152,10 +152,6 @@ if status --is-interactive
         _evalcache $HOME/.local/bin/mise activate fish
     end
 
-    if test (command -v mox)
-        _evalcache mox completion fish
-    end
-
     if test (command -v holt)
         _evalcache holt init fish
     end
