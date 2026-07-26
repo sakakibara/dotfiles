@@ -1,31 +1,36 @@
 #!/usr/bin/env zsh
-local cmdHash="nohash" data="$*" name
-
+local name
 for name in $@; do
   if [ "${name}" = "${name#[A-Za-z_][A-Za-z0-9_]*=}" ]; then
     break
   fi
 done
 
+# Staleness signal: the file that defines $name -- a function's
+# definition file, else the resolved binary. Symlink resolution puts
+# the versioned Cellar path into the key, so a brew upgrade changes
+# the key; the -nt guard catches in-place binary replacement.
+local signal=""
 if typeset -f "${name}" > /dev/null; then
-  data=${data}$(typeset -f "${name}")
+  signal="${functions_source[$name]:-${ZDOTDIR:-$HOME}/.zshrc}"
+elif [[ "$name" == */* ]]; then
+  [[ -e "$name" ]] && signal="${name:A}"
+elif [[ -n "${commands[$name]}" ]]; then
+  signal="${commands[$name]:A}"
 fi
 
-if builtin command -v md5 > /dev/null; then
-  cmdHash=$(echo -n "${data}" | md5)
-elif builtin command -v md5sum > /dev/null; then
-  cmdHash=$(echo -n "${data}" | md5sum | cut -d' ' -f1)
-fi
-
-local cacheFile="$ZSH_EVALCACHE_DIR/init-${name##*/}-${cmdHash}.sh"
+local key="${(j:_:)@}_${signal}"
+key="${key//[^A-Za-z0-9._-]/_}"
+(( ${#key} > 160 )) && key="${key[1,160]}_${#key}"
+local cacheFile="$ZSH_EVALCACHE_DIR/init-${key}.sh"
 
 if [ "$ZSH_EVALCACHE_DISABLE" = "true" ]; then
   eval ${(q)@}
-elif [ -s "$cacheFile" ]; then
+elif [[ -s "$cacheFile" && ! ( -n "$signal" && "$signal" -nt "$cacheFile" ) ]]; then
   source "$cacheFile"
 else
   if type "${name}" > /dev/null; then
-    echo "evalcache: ${name} initialization not cached, caching output of: $*" >&2
+    echo "evalcache: caching output of: $*" >&2
     mkdir -p "$ZSH_EVALCACHE_DIR"
     eval ${(q)@} > "$cacheFile"
     source "$cacheFile"
