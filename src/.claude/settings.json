@@ -1,9 +1,9 @@
+// mox: disown model
 {
   "attribution": {
     "commit": "",
     "pr": ""
   },
-  "model": "claude-fable-5[1m]",
   "hooks": {
     "SessionStart": [
       {
