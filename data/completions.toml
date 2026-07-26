@@ -1,24 +1,28 @@
 # Single source of truth for lazily generated shell completions.
-# Composed by mox into one stub per tool in .config/fish/completions/
-# and .zcomp/. A stub asks the installed tool for its completion script
-# on the first completion request of a session, so completions always
-# match the installed version and cost nothing at shell startup. A tool
+# Consumed by the `# mox: completions <shell>` generator sources in
+# .config/fish/completions/ and .zcomp/: each row becomes one stub per
+# shell that asks the installed tool for its completion script on the
+# first completion request of a session, so completions always match
+# the installed version and cost nothing at shell startup. A tool
 # missing on a machine makes its stub a silent no-op.
 #
 # Each entry is a [[completions]] table with:
 #   name          the command being completed
-#   fish          command emitting the fish completion script
-#   zsh           command emitting the zsh completion script
-#   zsh_dispatch  function to call when the zsh script only registers a
-#                 compdef and does not dispatch the current request
+#   command       completion-emitting command prefix; the shell name is
+#                 appended (herdr completion -> herdr completion fish)
+#   fish / zsh    full per-shell override for irregular CLIs; wins over
+#                 command
+#   shells        allow-list of shells the row covers (the only way a
+#                 shell is skipped; a covered shell without a command
+#                 is an error)
+#   zsh_dispatch  completion function the zsh stub dispatches when the
+#                 generated script defines something other than _<name>
 
 [[completions]]
 name = "herdr"
-fish = "herdr completion fish"
-zsh = "herdr completion zsh"
+command = "herdr completion"
 
 [[completions]]
 name = "mox"
-fish = "mox completion fish"
-zsh = "mox completion zsh"
+command = "mox completion"
 zsh_dispatch = "_mox_complete"
