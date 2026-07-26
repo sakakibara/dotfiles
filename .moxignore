@@ -34,6 +34,7 @@
 .codex/tmp/
 
 !.codex/hooks.json
+!.codex/config.toml
 
 # SSH / signing keys
 .ssh/id_*

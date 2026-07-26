@@ -9,3 +9,6 @@ symlink = true
 
 [".codex/AGENTS.md"]
 symlink = true
+
+[".codex/config.toml"]
+mode = "0600"

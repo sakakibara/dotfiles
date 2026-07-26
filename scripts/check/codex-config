@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Validate a candidate codex config.toml against codex's own strict parser.
+# mox runs this before installing a partial write; MOX_CHECK_DIR holds the
+# candidate as config.toml. codex app-server exits 1 with "no transport
+# configured" when the config PARSED and only the transport is missing --
+# that is acceptance. Any other outcome refuses the write.
+set -u
+command -v codex >/dev/null 2>&1 || exit 0
+out=$(CODEX_HOME="$MOX_CHECK_DIR" codex app-server --strict-config --listen off 2>&1)
+rc=$?
+[ $rc -eq 0 ] && exit 0
+case "$out" in *"no transport configured"*) exit 0 ;; esac
+printf '%s\n' "$out" >&2
+exit 1

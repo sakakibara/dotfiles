@@ -47,6 +47,6 @@
     "src/.config/fish/completions/agent-sandbox.fish",
     "src/.local/bin/agent-sandbox",
     "src/.zcomp/_agent-sandbox",
-    "scripts/post/codex-keybindings.sh"
+    "scripts/check/codex-config"
   ]
 }

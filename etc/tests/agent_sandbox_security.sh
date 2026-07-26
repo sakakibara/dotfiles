@@ -215,33 +215,23 @@ for context, values in expected.items():
         assert bindings[context][key] == action
 PY
 
-codex_home="$work/codex-home"
-mkdir -p "$codex_home"
-cat > "$codex_home/config.toml" <<'EOF'
-model = "test-model"
-
-[projects."/tmp/example"]
-trust_level = "trusted"
-
-[tui.keymap.editor]
-move_left = "broken"
-
-[hooks.state.example]
-trusted_hash = "test-hash"
-EOF
-CODEX_HOME="$codex_home" PATH="$work/bin:$PATH" bash "$repo/scripts/post/codex-keybindings.sh"
-first_hash=$(shasum -a 256 "$codex_home/config.toml" | cut -d' ' -f1)
-CODEX_HOME="$codex_home" PATH="$work/bin:$PATH" bash "$repo/scripts/post/codex-keybindings.sh"
-second_hash=$(shasum -a 256 "$codex_home/config.toml" | cut -d' ' -f1)
-[[ "$first_hash" == "$second_hash" ]] || { echo 'FAIL: Codex keymap patch is not idempotent' >&2; exit 1; }
-python3 - <<'PY' "$codex_home/config.toml"
+# The Codex keymap is a mox partial-ownership source: the head declares the
+# owned tables, the check hook, and the tool gate, and mox owns the patching
+# mechanics (its own suite covers splice, idempotency, and refusals). Here we
+# hold the CONTRACT: the declarations exist, the source carries the expected
+# bindings, and the check script accepts a valid config and rejects garbage.
+codex_src="$repo/src/.codex/config.toml"
+grep -q '^# mox: own tui.keymap.global$' "$codex_src" || { echo 'FAIL: codex source does not own tui.keymap.global' >&2; exit 1; }
+grep -q '^# mox: own tui.keymap.composer$' "$codex_src" || { echo 'FAIL: codex source does not own tui.keymap.composer' >&2; exit 1; }
+grep -q '^# mox: own tui.keymap.editor$' "$codex_src" || { echo 'FAIL: codex source does not own tui.keymap.editor' >&2; exit 1; }
+grep -q '^# mox: check "scripts/check/codex-config"$' "$codex_src" || { echo 'FAIL: codex source lacks the check hook' >&2; exit 1; }
+grep -q '^# mox: when tool=codex$' "$codex_src" || { echo 'FAIL: codex source is not gated on the codex tool' >&2; exit 1; }
+python3 - <<'PY' "$codex_src"
 import sys
 import tomllib
 with open(sys.argv[1], "rb") as handle:
-    config = tomllib.load(handle)
-assert config["model"] == "test-model"
-assert config["projects"]["/tmp/example"]["trust_level"] == "trusted"
-assert config["hooks"]["state"]["example"]["trusted_hash"] == "test-hash"
+    body = b"".join(line for line in handle if not line.lstrip().startswith(b"# mox:"))
+config = tomllib.loads(body.decode())
 keymap = config["tui"]["keymap"]
 assert keymap["global"]["open_transcript"] == "ctrl-shift-t"
 assert keymap["composer"]["submit"] == ["enter", "ctrl-j", "ctrl-m"]
@@ -249,23 +239,30 @@ assert keymap["editor"]["move_left"] == "ctrl-b"
 assert keymap["editor"]["delete_backward"] == ["backspace", "ctrl-h"]
 assert keymap["editor"]["delete_backward_word"] == "ctrl-w"
 assert keymap["editor"]["kill_line_start"] == "ctrl-u"
+assert set(config) == {"tui"}, "codex source defines content outside the owned tables"
 PY
 
-ambiguous_home="$work/ambiguous-codex-home"
-mkdir -p "$ambiguous_home"
-cat > "$ambiguous_home/config.toml" <<'EOF'
-model_instructions = """
-[tui.keymap.editor]
-This is data, not a TOML table.
-"""
+check_dir="$work/check-candidate"
+mkdir -p "$check_dir"
+grep -v '^# mox:' "$codex_src" > "$check_dir/config.toml"
+MOX_CHECK_DIR="$check_dir" MOX_CHECK_FILE="$check_dir/config.toml" PATH="$work/bin:$PATH" \
+  bash "$repo/scripts/check/codex-config" || { echo 'FAIL: check script rejected a valid codex config' >&2; exit 1; }
+# A rejecting codex (nonzero exit, no transport phrase) must propagate as a
+# refusal -- the shared stub always ends with the acceptance phrase, so the
+# negative path gets its own.
+mkdir -p "$work/bin-reject"
+cat > "$work/bin-reject/codex" <<'EOF'
+#!/usr/bin/env bash
+echo 'Error: config rejected by strict parser' >&2
+exit 2
 EOF
-ambiguous_hash=$(shasum -a 256 "$ambiguous_home/config.toml" | cut -d' ' -f1)
+chmod +x "$work/bin-reject/codex"
 set +e
-CODEX_HOME="$ambiguous_home" PATH="$work/bin:$PATH" bash "$repo/scripts/post/codex-keybindings.sh" >/dev/null 2>&1
-ambiguous_status=$?
+MOX_CHECK_DIR="$check_dir" MOX_CHECK_FILE="$check_dir/config.toml" PATH="$work/bin-reject:$PATH" \
+  bash "$repo/scripts/check/codex-config" >/dev/null 2>&1
+check_status=$?
 set -e
-[[ $ambiguous_status -ne 0 ]] || { echo 'FAIL: Codex keymap patch accepted ambiguous multiline content' >&2; exit 1; }
-[[ "$ambiguous_hash" == "$(shasum -a 256 "$ambiguous_home/config.toml" | cut -d' ' -f1)" ]] || { echo 'FAIL: rejected Codex config was modified' >&2; exit 1; }
+[[ $check_status -ne 0 ]] || { echo 'FAIL: check script accepted a rejected codex config' >&2; exit 1; }
 
 grep -q '^prefix = "ctrl+q"$' "$repo/src/.config/herdr/config.toml" || { echo 'FAIL: herdr prefix drifted from the chosen ctrl+q' >&2; exit 1; }
 grep -q '^unbind-key C-b$' "$repo/src/.tmux.conf" || { echo 'FAIL: tmux can intercept Ctrl-B' >&2; exit 1; }

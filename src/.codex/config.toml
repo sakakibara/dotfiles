@@ -1,0 +1,31 @@
+# mox: own tui.keymap.global
+# mox: own tui.keymap.composer
+# mox: own tui.keymap.editor
+# mox: check "scripts/check/codex-config"
+# mox: when tool=codex
+[tui.keymap.global]
+open_transcript = "ctrl-shift-t"
+open_external_editor = "ctrl-shift-g"
+copy = "ctrl-shift-o"
+clear_terminal = "ctrl-l"
+[tui.keymap.composer]
+submit = ["enter", "ctrl-j", "ctrl-m"]
+history_search_previous = "ctrl-r"
+history_search_next = "ctrl-s"
+[tui.keymap.editor]
+insert_newline = ["shift-enter", "alt-enter", "ctrl-shift-j"]
+move_left = "ctrl-b"
+move_right = "ctrl-f"
+move_up = "ctrl-p"
+move_down = "ctrl-n"
+move_word_left = "alt-b"
+move_word_right = "alt-f"
+move_line_start = "ctrl-a"
+move_line_end = "ctrl-e"
+delete_backward = ["backspace", "ctrl-h"]
+delete_forward = "ctrl-d"
+delete_backward_word = "ctrl-w"
+delete_forward_word = "alt-d"
+kill_line_start = "ctrl-u"
+kill_line_end = "ctrl-k"
+yank = "ctrl-y"
