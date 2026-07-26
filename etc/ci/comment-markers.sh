@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Section-marker lint for comments in tracked source files.
-# Flags banner rules (leader + ==== / ----), decorated labels
-# (leader + --- label ---), and region tags (MARK: / SECTION: /
-# #region) — section headings must be plain labeled comments.
+# Flags banner rules, decorated labels, and region tags after a comment
+# leader; section headings must be plain labeled comments. The banned
+# tokens are spelled only inside the patterns below, so this file does
+# not flag itself.
 # Runs on bash 3.2 (macOS /bin/bash) and BSD/GNU grep.
 
 set -uo pipefail
@@ -19,7 +20,7 @@ _excluded() {
 
 # Comment-leader regex per file type. Empty means "not checked":
 # binary, markdown (# is a heading, --- a rule), data and comment-less
-# formats. Extensionless files default to `#` — every such tracked file
+# formats. Extensionless files default to `#` -- every such tracked file
 # (shell scripts, zsh functions, git/ssh/tool configs) uses hash
 # comments, and files without hash comments simply never match.
 _leader_for() {
