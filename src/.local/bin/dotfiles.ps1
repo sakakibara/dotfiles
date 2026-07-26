@@ -13,7 +13,7 @@
 
 $ErrorActionPreference = 'Stop'
 
-# ---------- ANSI helpers ----------
+# ANSI helpers
 # Modern PowerShell on Windows 10 1903+ and PS7 everywhere honors VT
 # sequences in the host. Suppress them when stdout is redirected.
 $Script:IsTty = -not [Console]::IsOutputRedirected
@@ -72,7 +72,7 @@ function _HashFile([string]$file) {
     return (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLower()
 }
 
-# ---------- info ----------
+# Info
 function Cmd-Info {
     $sourceDir = _MoxRepo
     if ($sourceDir) { _Row 'Repo:' $sourceDir }
@@ -124,7 +124,7 @@ function Cmd-Info {
     }
 }
 
-# ---------- help ----------
+# Help
 function Cmd-Help {
     @"
 dotfiles — mox wrapper with status snapshot
@@ -147,7 +147,7 @@ For mox-specific help: mox --help
 "@ | Write-Host
 }
 
-# ---------- edit ----------
+# Edit
 function Cmd-Edit([string[]]$EditArgs) {
     if ($EditArgs.Count -ge 1 -and ($EditArgs[0] -in '-h', '--help')) {
         @"
@@ -215,7 +215,7 @@ Opens the source behind the managed path; run `mox apply` to write it live.
     }
 }
 
-# ---------- profile ----------
+# Profile
 function Cmd-Profile([string[]]$ProfileArgs) {
     if ($ProfileArgs.Count -ge 1 -and ($ProfileArgs[0] -in '-h', '--help')) {
         @"
@@ -252,7 +252,7 @@ Usage:
     & mox apply
 }
 
-# ---------- doctor ----------
+# Doctor
 function Cmd-Doctor([string[]]$DoctorArgs) {
     if ($DoctorArgs.Count -ge 1 -and ($DoctorArgs[0] -in '-h', '--help')) {
         @"
@@ -312,7 +312,7 @@ holt) is installed. Exits 0 when all checks pass, 1 if any failed.
     if ($Script:fails -gt 0) { exit 1 }
 }
 
-# ---------- upgrade ----------
+# Upgrade
 function Cmd-Upgrade([string[]]$UpgradeArgs) {
     $first = if ($UpgradeArgs.Count -ge 1) { $UpgradeArgs[0] } else { '' }
     switch ($first) {
@@ -465,7 +465,7 @@ Inside the menu:
     exit $LASTEXITCODE
 }
 
-# ---------- dispatch ----------
+# Dispatch
 $first = if ($args.Count -ge 1) { $args[0] } else { '' }
 $rest  = if ($args.Count -ge 2) { @($args[1..($args.Count - 1)]) } else { @() }
 

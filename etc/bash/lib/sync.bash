@@ -27,7 +27,7 @@ store::set _sync_blacklisted
 store::set _sync_installed
 store::map _sync_desc_map
 
-# ---------- query installed (OS-dispatched) ----------
+# Query installed (OS-dispatched)
 
 sync::_query_installed() {
   local os="$1"
@@ -144,7 +144,7 @@ sync::compute_missing() {
   done < "$pkg_file"
 }
 
-# ---------- description fetch ----------
+# Description fetch
 
 # Populate _sync_desc[] (parallel to _sync_items[]) by batching `brew desc`
 # calls per-kind. Empty string for items with no description.
@@ -272,7 +272,7 @@ sync::_fetch_descriptions() {
   done
 }
 
-# ---------- review TUI ----------
+# Review TUI
 
 # Pad an action label to ACTION_LABEL_WIDTH columns, accounting for visible
 # width (for CJK if anyone ever puts a multi-byte profile name).
@@ -469,7 +469,7 @@ sync::review() {
   return 0
 }
 
-# ---------- apply ----------
+# Apply
 
 # Format a parsed entry back into the file's flat-text syntax. Default
 # kind (e.g. "brew" on darwin) is dropped — bare names are formula entries.
@@ -551,7 +551,7 @@ sync::apply() {
   return 0
 }
 
-# ---------- main entry ----------
+# Main entry
 
 # sync::run [os] — the orchestration function the wrapper calls.
 sync::run() {

@@ -1,13 +1,11 @@
-# Compiled source #
-###################
+# Compiled source
 *.class
 *.dll
 *.exe
 *.o
 *.so
 
-# Packages #
-############
+# Packages
 *.7z
 *.jar
 *.rar
@@ -29,13 +27,11 @@
 *.deb
 *.rpm
 
-# Logs and databases #
-######################
+# Logs and databases
 *.log
 *.sqlite
 
-# OS generated files #
-######################
+# OS generated files
 .DS_Store
 .Trash
 
@@ -61,8 +57,7 @@ Desktop.ini
 # Git
 .git
 
-# Tool management #
-###################
+# Tool management
 
 # Mise
 mise.toml

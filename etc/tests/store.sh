@@ -31,7 +31,7 @@ _false() { local d="$1" rc="$2"
   else printf '  ✗ %s (got 0, expected nonzero)\n' "$d"; fails=$((fails+1)); fi; }
 _section() { printf '\n%s\n' "$1"; }
 
-# ---------- set ----------
+# Set
 _section "store::set basic add/has/del"
 store::set s1
 _false "has on empty set" "$(s1::has foo; echo $?)"
@@ -86,7 +86,7 @@ _false "5 has not 6's"      "$(s5::has only_in_6; echo $?)"
 _true  "6 has its own"      "$(s6::has only_in_6; echo $?)"
 _false "6 has not 5's"      "$(s6::has only_in_5; echo $?)"
 
-# ---------- map ----------
+# Map
 _section "store::map basic put/get/has/del"
 store::map m1
 _false "has on empty map" "$(m1::has foo; echo $?)"
@@ -139,7 +139,7 @@ _eq "space key"  "v with space" "$(m4::get 'k with space')"
 _eq "colon key"  "v::colon"     "$(m4::get 'k::colon')"
 _eq "dollar key" "v\$dollar"     "$(m4::get 'k$dollar')"
 
-# ---------- name validation ----------
+# Name validation
 _section "store rejects invalid names"
 out=$(store::set 'bad name' 2>&1; echo "rc=$?")
 case "$out" in
@@ -153,6 +153,6 @@ case "$out" in
   *) _eq "map: rejects ; in name" "warning + rc 2" "$out" ;;
 esac
 
-# ---------- summary ----------
+# Summary
 printf '\n%d passed, %d failed\n' "$passes" "$fails"
 exit "$fails"

@@ -18,7 +18,7 @@ $ErrorActionPreference = 'Stop'
 $Command = if ($args.Count -ge 1) { $args[0] } else { '' }
 $Rest    = if ($args.Count -ge 2) { @($args[1..($args.Count - 1)]) } else { @() }
 
-# --- paths ---
+# Paths
 function _Resolve-XdgPath([string]$envName, [string]$fallback) {
     $v = [Environment]::GetEnvironmentVariable($envName)
     if ($v) { return $v }
@@ -42,7 +42,7 @@ function _Warn([string]$msg) {
     [Console]::Error.WriteLine("theme: $msg")
 }
 
-# --- manifest reader ---
+# Manifest reader
 function _Manifest-Get([string]$family, [string]$key) {
     $file = Join-Path $Script:Manifests $family
     if (-not (Test-Path -LiteralPath $file)) { return $null }
@@ -118,7 +118,7 @@ function _Validate([string]$family, [string]$variant) {
     }
 }
 
-# --- state ---
+# State
 function _StateStr([string]$family, [string]$variant) {
     if ($variant) { return "$family/$variant" }
     return $family
@@ -158,7 +158,7 @@ function _Write-State([string]$value) {
     Move-Item -LiteralPath $tmp -Destination $Script:StateFile -Force
 }
 
-# --- naming ---
+# Naming
 function _TitleCase([string]$s) {
     if (-not $s) { return $s }
     return $s.Substring(0, 1).ToUpper() + $s.Substring(1)
@@ -194,7 +194,7 @@ function _Name([string]$family, [string]$variant, [string]$tool) {
     return $tmpl
 }
 
-# --- asset helpers ---
+# Asset helpers
 function _ApplyUrlTemplate([string]$tmpl, [string]$variant) {
     $tmpl = $tmpl.Replace('{variant}', $variant)
     $tmpl = $tmpl.Replace('{Variant}', (_TitleCase $variant))
@@ -235,7 +235,7 @@ function _Download([string]$url, [string]$target) {
     }
 }
 
-# --- lockfile ---
+# Lockfile
 function _LockGet([string]$key) {
     if (-not (Test-Path -LiteralPath $Script:Lock)) { return $null }
     foreach ($line in Get-Content -LiteralPath $Script:Lock) {
@@ -259,7 +259,7 @@ function _LockSet([string]$key, [string]$value) {
     $lines | Sort-Object | Set-Content -LiteralPath $Script:Lock -Encoding utf8
 }
 
-# --- reload ---
+# Reload
 function _Reload([string]$family, [string]$variant) {
     if (Get-Command nvim -ErrorAction SilentlyContinue) {
         $cs = _Name $family $variant 'nvim'
@@ -308,7 +308,7 @@ function _Warn-MissingAssets([string]$family, [string]$variant) {
     }
 }
 
-# --- iteration filter ---
+# Iteration filter
 $Script:FilterFam = ''
 $Script:FilterVar = ''
 
@@ -425,7 +425,7 @@ function _CbVerify {
     }
 }
 
-# --- subcommands ---
+# Subcommands
 function _Cmd-Get { Write-Output (_Current) }
 
 function _Cmd-List([string[]]$arr) {
@@ -542,7 +542,7 @@ Locations:
 "@
 }
 
-# --- dispatch ---
+# Dispatch
 switch ($Command) {
     ''        { _Cmd-Get }
     'get'     { _Cmd-Get }

@@ -40,7 +40,7 @@
 
 import msg store
 
-# ---------- selection storage ----------
+# Selection storage
 #
 # Three small containers back the selection state. We use store (which
 # code-generates per-instance helpers at module load) instead of a generic
@@ -56,7 +56,7 @@ store::set pick_selected
 store::set pick_changed
 store::map pick_last
 
-# ---------- state paths ----------
+# State paths
 
 pick::_state_dir() {
   printf '%s' "${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/pick"
@@ -80,7 +80,7 @@ pick::_safe_name() {
   printf '%s' "${s//\//-}"
 }
 
-# ---------- item parsing ----------
+# Item parsing
 #
 # Parse one item spec, populating these globals (function-scoped because
 # bash is dynamically scoped):
@@ -130,7 +130,7 @@ pick::_parse_item() {
   fi
 }
 
-# ---------- terminal helpers ----------
+# Terminal helpers
 
 pick::_cols() {
   if [[ -n "${_PICK_FORCE_COLS:-}" ]]; then
@@ -326,7 +326,7 @@ pick::_tui_close() {
   printf '\033[?1049l'  # leave alt screen
 }
 
-# ---------- key reader ----------
+# Key reader
 #
 # Returns a normalized key name on stdout. Recognized:
 #   up down left right space enter q esc help search a n
@@ -371,7 +371,7 @@ pick::_read_key() {
   esac
 }
 
-# ---------- rendering ----------
+# Rendering
 #
 # Reads from these caller-locals (dynamically scoped):
 #   _pick_n           number of items
@@ -675,7 +675,7 @@ EOF
   pick::_read_key >/dev/null
 }
 
-# ---------- non-interactive resolution ----------
+# Non-interactive resolution
 
 pick::_resolve_noninteractive() {
   local mode="${DOTFILES_PICK:-}"
@@ -744,7 +744,7 @@ pick::_resolve_noninteractive() {
   return 0
 }
 
-# ---------- state load / save ----------
+# State load / save
 
 pick::_load_last_selection() {
   # Reads the last-selection file (if any) into a fresh dict
@@ -798,7 +798,7 @@ pick::_log_run() {
   return 0
 }
 
-# ---------- step execution ----------
+# Step execution
 
 pick::_run_step() {
   # Args: name label
@@ -925,7 +925,7 @@ pick::_run_selected() {
   return "$failed"
 }
 
-# ---------- main entry ----------
+# Main entry
 
 pick() {
   local _pick_n=0

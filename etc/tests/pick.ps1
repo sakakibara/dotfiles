@@ -31,7 +31,7 @@ function Test-Eq([string]$desc, $expect, $actual) {
 }
 function Section([string]$s) { Write-Host ""; Write-Host $s }
 
-# ---------- item parsing ----------
+# Item parsing
 Section 'item parsing'
 
 $it = _ParseItem 'brew::setup'
@@ -78,7 +78,7 @@ $it = _ParseItem '==Section title'
 Test-Eq 'header state' 'header'        $it.State
 Test-Eq 'header label' 'Section title' $it.Label
 
-# ---------- non-interactive resolution ----------
+# Non-interactive resolution
 Section 'DOTFILES_PICK=all selects every non-disabled item'
 $Script:PickItems = @((_ParseItem 'a'), (_ParseItem '~b~missing'), (_ParseItem 'c'))
 $Script:PickSelected = @{}
@@ -115,7 +115,7 @@ Test-Eq 'spaces a' $true  $Script:PickSelected.ContainsKey('a')
 Test-Eq 'spaces b' $true  $Script:PickSelected.ContainsKey('b')
 Test-Eq 'spaces c' $false $Script:PickSelected.ContainsKey('c')
 
-# ---------- state save / load ----------
+# State save / load
 Section 'save & load round-trip'
 $env:DOTFILES_PICK_SCOPE = 'install'
 $Script:PickItems = @(

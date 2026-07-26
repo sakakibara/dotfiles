@@ -25,7 +25,7 @@ function Test-Eq([string]$desc, $expect, $actual) {
 }
 function Section([string]$s) { Write-Host ""; Write-Host $s }
 
-# ---------- _SyncParseLine ----------
+# _SyncParseLine
 Section '_SyncParseLine'
 $p = _SyncParseLine 'neovim'
 Test-Eq 'bare name'             ''      $p.Kind
@@ -65,7 +65,7 @@ $p = _SyncParseLine 'neovim # trailing comment'
 Test-Eq 'inline comment kind'   ''       $p.Kind
 Test-Eq 'inline comment name'   'neovim' $p.Name
 
-# ---------- _SyncAppliesTo ----------
+# _SyncAppliesTo
 Section '_SyncAppliesTo'
 $p = _SyncParseLine 'foo'
 Test-Eq 'no profile applies (personal)' $true (_SyncAppliesTo $p 'personal')
@@ -75,7 +75,7 @@ $p = _SyncParseLine 'foo @personal'
 Test-Eq 'personal-only on personal' $true  (_SyncAppliesTo $p 'personal')
 Test-Eq 'personal-only on work'     $false (_SyncAppliesTo $p 'work')
 
-# ---------- _SyncAll ----------
+# _SyncAll
 Section '_SyncAll'
 $tmp = New-TemporaryFile
 @(
@@ -93,7 +93,7 @@ Test-Eq '_SyncAll [1] kind'   'cask'   $entries[1].Kind
 Test-Eq '_SyncAll [2] name'   'slack'  $entries[2].Name
 Remove-Item -LiteralPath $tmp
 
-# ---------- Sync-FormatEntry ----------
+# Sync-FormatEntry
 Section 'Sync-FormatEntry'
 Test-Eq 'default kind dropped'      'neovim'          (Sync-FormatEntry 'scoop' 'neovim'  'scoop')
 Test-Eq 'non-default kind kept'     'cask:firefox'    (Sync-FormatEntry 'cask'  'firefox' 'scoop')
@@ -101,7 +101,7 @@ Test-Eq 'default + profile'         'neovim @work'    (Sync-FormatEntry 'scoop' 
 Test-Eq 'non-default + profile'     'cask:slack @work' (Sync-FormatEntry 'cask' 'slack'   'scoop' '@work')
 Test-Eq 'bucket/name kept as name'  'extras/firefox'  (Sync-FormatEntry 'scoop' 'extras/firefox' 'scoop')
 
-# ---------- _SyncCycleAction ----------
+# _SyncCycleAction
 Section '_SyncCycleAction (current=personal, other=work)'
 Test-Eq 'skip → add'           'add'        (_SyncCycleAction 'personal' 'work' 'skip')
 Test-Eq 'add → @personal'      '@personal'  (_SyncCycleAction 'personal' 'work' 'add')
@@ -112,7 +112,7 @@ Test-Eq 'block → skip'         'skip'       (_SyncCycleAction 'personal' 'work
 Section '_SyncCycleAction with no other profile'
 Test-Eq '@personal → block (no other)' 'block' (_SyncCycleAction 'personal' '' '@personal')
 
-# ---------- Sync-Apply (writes to file) ----------
+# Sync-Apply (writes to file)
 Section 'Sync-Apply writes packages + blacklist'
 $pkgFile  = New-TemporaryFile
 $bocFile  = New-TemporaryFile

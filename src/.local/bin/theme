@@ -43,7 +43,7 @@ readonly _LOCK="$_ASSETS/.lock"
 die()  { printf 'theme: %s\n' "$*" >&2; exit 1; }
 warn() { printf 'theme: %s\n' "$*" >&2; }
 
-# ------------- manifest reader -------------
+# Manifest reader
 _manifest_get() {
   local file="$_MANIFESTS/$1" key="$2" line k v
   [[ -f "$file" ]] || return 1
@@ -113,7 +113,7 @@ _validate() {
   fi
 }
 
-# ------------- state -------------
+# State
 _state_str() {
   if [[ -n "${2:-}" ]]; then
     printf '%s/%s\n' "$1" "$2"
@@ -157,7 +157,7 @@ _write_state() {
   mv "$_STATE_FILE.tmp" "$_STATE_FILE"
 }
 
-# ------------- naming -------------
+# Naming
 _title() { printf '%s%s' "$(printf '%s' "${1:0:1}" | tr '[:lower:]' '[:upper:]')" "${1:1}"; }
 
 # Built-in default template per (tool, has-variant). Override via
@@ -208,7 +208,7 @@ _name() {
   printf '%s\n' "$tmpl"
 }
 
-# ------------- asset helpers -------------
+# Asset helpers
 _apply_url_template() {
   local tmpl="$1" variant="$2" Variant
   Variant=$(_title "${variant:-}")
@@ -284,7 +284,7 @@ _lock_set() {
   sort -o "$_LOCK" "$_LOCK"
 }
 
-# ------------- reload -------------
+# Reload
 _reload() {
   local family="$1" variant="$2"
 
@@ -354,7 +354,7 @@ _warn_missing_assets() {
   fi
 }
 
-# ------------- iteration filter (for install / refresh / verify) -------------
+# Iteration filter (for install / refresh / verify)
 _parse_filter() {
   __filter_fam=""
   __filter_var=""
@@ -476,7 +476,7 @@ __cb_verify() {
   fi
 }
 
-# ------------- subcommands -------------
+# Subcommands
 cmd_get() { _current; }
 
 cmd_list() {
@@ -590,7 +590,7 @@ Locations:
 EOF
 }
 
-# ------------- dispatch -------------
+# Dispatch
 case "${1:-}" in
   ""|get)         shift 2>/dev/null || true; cmd_get "$@" ;;
   list)           shift; cmd_list "$@" ;;

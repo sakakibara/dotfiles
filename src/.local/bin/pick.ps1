@@ -37,7 +37,7 @@
 
 $ErrorActionPreference = 'Stop'
 
-# ---------- state paths ----------
+# State paths
 function _Resolve-XdgPath([string]$envName, [string]$fallback) {
     $v = [Environment]::GetEnvironmentVariable($envName)
     if ($v) { return $v }
@@ -55,7 +55,7 @@ function _PickStateFile {
 function _PickRunLogFile { Join-Path $Script:PickStateDir 'run-log.tsv' }
 function _PickSafeName([string]$s) { $s -replace '::', '-' -replace '/', '-' }
 
-# ---------- item parsing ----------
+# Item parsing
 # Returns a hashtable: @{ State; Name; Label; Reason; Hash }
 function _ParseItem([string]$spec) {
     $out = @{ State = 'normal'; Name = ''; Label = ''; Reason = ''; Hash = '' }
@@ -95,7 +95,7 @@ function _ParseItem([string]$spec) {
     return $out
 }
 
-# ---------- terminal helpers ----------
+# Terminal helpers
 function _PickCols { try { [Console]::WindowWidth } catch { 80 } }
 function _PickRows { try { [Console]::WindowHeight } catch { 24 } }
 
@@ -108,7 +108,7 @@ function _PickTrunc([string]$s, [int]$max) {
     return ($s.Substring(0, $max - 1) + '…')
 }
 
-# ---------- alt-screen + raw mode ----------
+# Alt-screen + raw mode
 function _PickTuiOpen {
     [Console]::Write([char]27 + '[?1049h')   # alt screen
     [Console]::CursorVisible = $false
@@ -118,7 +118,7 @@ function _PickTuiClose {
     [Console]::Write([char]27 + '[?1049l')   # leave alt screen
 }
 
-# ---------- key reader ----------
+# Key reader
 # Returns one of: up, down, left, right, space, enter, q, esc, search,
 # help, a, n, or the literal printable char.
 function _PickReadKey {
@@ -159,7 +159,7 @@ function _PickReadFilterEvent {
     return @{ Kind = 'char'; Char = [string]$k.KeyChar }
 }
 
-# ---------- rendering ----------
+# Rendering
 # Render is parameter-driven: read state from the caller's scope via the
 # $Script:Pick* shared variables (set up by Invoke-Pick).
 
@@ -311,7 +311,7 @@ function _PickRenderHelp {
     [void](_PickReadKey)
 }
 
-# ---------- non-interactive resolution ----------
+# Non-interactive resolution
 function _PickResolveNonInteractive {
     $mode = [Environment]::GetEnvironmentVariable('DOTFILES_PICK')
     if (-not $mode -and (-not [Console]::IsInputRedirected) -and (-not [Console]::IsOutputRedirected)) {
@@ -365,7 +365,7 @@ function _PickResolveNonInteractive {
     return $false
 }
 
-# ---------- state load / save ----------
+# State load / save
 function _PickLoadLastSelection {
     $Script:PickLastSelection = @{}
     $file = _PickStateFile
@@ -408,7 +408,7 @@ function _PickLogRun([string]$name, [int]$exitCode, [int]$durMs) {
     Add-Content -LiteralPath (_PickRunLogFile) -Value $line
 }
 
-# ---------- step execution ----------
+# Step execution
 function _PickRunStep([string]$name, [string]$label) {
     if (-not (Test-Path -LiteralPath $Script:PickLogDir)) {
         [void](New-Item -ItemType Directory -Path $Script:PickLogDir -Force)
@@ -503,7 +503,7 @@ function _PickRunSelected {
     return $failed
 }
 
-# ---------- main entry ----------
+# Main entry
 # Usage: Invoke-Pick @('+name=label', '~name~reason', '==Section', 'name|hash', ...)
 # Returns the count of failed steps (0 = success). Cancel = 130.
 function Invoke-Pick {

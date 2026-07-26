@@ -36,7 +36,7 @@ TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 export XDG_STATE_HOME="$TMP/state"
 
-# ---------- item parsing ----------
+# Item parsing
 _section "item parsing"
 
 pick::_parse_item "brew::setup"
@@ -79,7 +79,7 @@ _eq "hash with reason — hash"   "deadbeef"     "$_pick_hash"
 pick::_parse_item "noHash=label"
 _eq "absent hash → empty" "" "$_pick_hash"
 
-# ---------- non-interactive resolution ----------
+# Non-interactive resolution
 _section "DOTFILES_PICK=all selects every non-disabled item"
 (
   _pick_n=3
@@ -190,7 +190,7 @@ _section "no DOTFILES_PICK + no tty → loud error (exit 2)"
 )
 _eq "exits with 2" "2" "$?"
 
-# ---------- state save / load ----------
+# State save / load
 _section "save & load round-trip"
 (
   export DOTFILES_PICK_SCOPE="install"
@@ -225,7 +225,7 @@ _eq "state file contents" $'brew\t,holt\t,' "$contents"
 rc=$?
 _eq "loaded brew+holt, not mise (encoded as 0+1*10=10)" "10" "$rc"
 
-# ---------- step execution ----------
+# Step execution
 _section "step execution: success records run-log + exits 0"
 TMP_LOGS="$XDG_STATE_HOME/dotfiles/pick/logs"
 TMP_RUNLOG="$XDG_STATE_HOME/dotfiles/pick/run-log.tsv"
@@ -328,7 +328,7 @@ _section "empty selection is a clean no-op"
 )
 _eq "empty selection exits 0" "0" "$?"
 
-# ---------- multibyte / Unicode handling ----------
+# Multibyte / Unicode handling
 _section "char width: ASCII = 1, CJK = 2, control = 0"
 _eq "ASCII 'a'"   "1" "$(pick::_char_width 'a')"
 _eq "ASCII space" "1" "$(pick::_char_width ' ')"
@@ -371,12 +371,12 @@ pick::_matches_filter "Πρόγραμμα" "πρόγρα"; _true "Greek case-ins
 pick::_matches_filter "Привет" "пРи";       _true "Cyrillic case-insensitive substring" "$?"
 pick::_matches_filter "Кошка" "ZIG";        _false "non-matching Cyrillic"            "$?"
 
-# ---------- safe filename helper ----------
+# Safe filename helper
 _section "safe filename"
 _eq "double-colon → dash" "step--ok" "$(pick::_safe_name 'step::ok')"
 _eq "slash → dash"        "a-b-c"    "$(pick::_safe_name 'a/b/c')"
 
-# ---------- hash diff ----------
+# Hash diff
 _section "hash diff: state file persists name<TAB>hash"
 (
   export DOTFILES_PICK_SCOPE="hash-test"

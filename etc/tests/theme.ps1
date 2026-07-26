@@ -11,7 +11,7 @@ $ErrorActionPreference = 'Stop'
 $repo  = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
 $theme = Join-Path $repo 'src/.local/bin/theme.ps1'
 
-# ---------- harness ----------
+# Harness
 $fails = 0; $passes = 0
 function Check([string]$desc, $expect, $actual) {
     if ($expect -ceq $actual) {
@@ -54,7 +54,7 @@ function Run-ThemeSilent {
     return $LASTEXITCODE
 }
 
-# ---------- setup ----------
+# Setup
 $testDir = Join-Path ([IO.Path]::GetTempPath()) ("theme-tests-" + [Guid]::NewGuid())
 [void](New-Item -ItemType Directory -Path $testDir -Force)
 
@@ -107,7 +107,7 @@ asset.kitty.url = http://localhost:$port/kitty/{variant}.conf
 asset.kitty.url = http://localhost:$port/dracula.conf
 "@
 
-    # ---------- tests ----------
+    # Tests
     Section 'list'
     CheckLines 'lists families alphabetically' @('catppuccin', 'dracula') (Run-Theme list)
     CheckLines "lists variants for variant'd family" @('latte', 'frappe', 'macchiato', 'mocha') (Run-Theme list catppuccin)

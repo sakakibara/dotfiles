@@ -20,7 +20,7 @@ $ErrorActionPreference = 'Stop'
 # Pull in pick.ps1 for shared TUI primitives.
 . (Join-Path $PSScriptRoot 'pick.ps1')
 
-# ---------- packages.txt parser ----------
+# packages.txt parser
 #
 # Returns @{ Kind; Name; Profiles } for the given line, or $null for
 # blank/comment lines.
@@ -81,7 +81,7 @@ function _SyncCurrentProfile {
     return 'personal'
 }
 
-# ---------- query installed (Windows) ----------
+# Query installed (Windows)
 
 # Run scoop export + winget export concurrently and emit one
 # 'kind<TAB>name' per installed entry. JSON parsing is more reliable than
@@ -189,7 +189,7 @@ function Sync-ComputeMissing([string]$pkg_file, [string]$default_kind, [string]$
     return ,$out
 }
 
-# ---------- description fetch ----------
+# Description fetch
 #
 # scoop info <name> emits a "Description: …" line per package. winget show
 # <id> emits "Description: …" too. Each call is one subprocess; we run the
@@ -249,7 +249,7 @@ function _SyncFetchDescriptions([array]$items) {
     return $desc
 }
 
-# ---------- review TUI ----------
+# Review TUI
 
 # Returns the next action in the cycle: skip → add → @<current> → @<other>
 # → block → skip. Mirrors sync::_cycle_action in bash.
@@ -413,7 +413,7 @@ function Sync-Review {
     return 0
 }
 
-# ---------- apply ----------
+# Apply
 
 # Format @{ Kind; Name } back into packages.txt's flat-text syntax.
 # Default kind drops the prefix (bare names = default kind).
@@ -479,7 +479,7 @@ function Sync-Apply([string]$pkg_file, [string]$blacklist_file, [string]$default
     }
 }
 
-# ---------- main entry ----------
+# Main entry
 
 function Sync-Run {
     if (-not (Get-Command mox -ErrorAction SilentlyContinue)) {

@@ -45,14 +45,14 @@ function Run-Wrapper {
     return @{ Out = $text; Rc = $rc }
 }
 
-# ---------- top-level help ----------
+# Top-level help
 Section 'top-level help lists every custom subcommand'
 $r = Run-Wrapper '--help'
 foreach ($cmd in 'info', 'install', 'sync', 'edit', 'profile', 'doctor', 'upgrade') {
     Match "help mentions $cmd" "dotfiles $cmd" $r.Out
 }
 
-# ---------- per-subcommand --help ----------
+# Per-subcommand --help
 Section 'each subcommand --help works and mentions the command name'
 foreach ($cmd in 'install', 'sync', 'edit', 'profile', 'doctor', 'upgrade') {
     $r = Run-Wrapper $cmd '--help'
@@ -66,7 +66,7 @@ foreach ($cmd in 'install', 'sync', 'edit', 'profile', 'doctor', 'upgrade') {
     }
 }
 
-# ---------- edit ----------
+# Edit
 Section 'edit with no pattern errors loudly'
 $r = Run-Wrapper 'edit'
 Match 'edit no-arg error message' 'usage: dotfiles edit <pattern>' $r.Out
@@ -79,7 +79,7 @@ Match 'non-match error mentions pattern' 'no managed file matches' $r.Out
 if ($r.Rc -ne 0) { Write-Host '  ✓ edit non-match exits non-zero'; $passes++ }
 else             { Write-Host "  ✗ edit non-match should exit non-zero (got $($r.Rc))"; $fails++ }
 
-# ---------- profile ----------
+# Profile
 Section 'profile with no arg prints current profile'
 $r = Run-Wrapper 'profile'
 if ($r.Rc -eq 0) {
@@ -103,7 +103,7 @@ Match 'rejects unknown profile' 'unknown profile' $r.Out
 if ($r.Rc -ne 0) { Write-Host '  ✓ unknown profile exits non-zero'; $passes++ }
 else             { Write-Host "  ✗ unknown profile should exit non-zero"; $fails++ }
 
-# ---------- upgrade ----------
+# Upgrade
 Section 'upgrade --help mentions --all and Windows package managers'
 $r = Run-Wrapper 'upgrade' '--help'
 Match 'upgrade --help mentions --all'  '--all'  $r.Out
@@ -124,14 +124,14 @@ Match 'upgrade unknown flag error' 'unknown flag' $r.Out
 if ($r.Rc -ne 0) { Write-Host '  ✓ upgrade --bogus exits non-zero'; $passes++ }
 else             { Write-Host "  ✗ upgrade --bogus should exit non-zero"; $fails++ }
 
-# ---------- install ----------
+# Install
 Section 'install --help describes interactive picker'
 $r = Run-Wrapper 'install' '--help'
 Match 'install --help mentions menu'   'menu'   $r.Out
 Match 'install --help mentions all'    ' all '  $r.Out
 Match 'install --help mentions Install-Scoop' 'Install-Scoop' $r.Out
 
-# ---------- doctor ----------
+# Doctor
 Section "doctor --help describes what's checked"
 $r = Run-Wrapper 'doctor' '--help'
 Match 'doctor --help mentions profile'  'profile' $r.Out

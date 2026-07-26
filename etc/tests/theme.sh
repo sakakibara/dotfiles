@@ -7,7 +7,7 @@
 
 set -uo pipefail
 
-# ------------- harness -------------
+# Harness
 fails=0; passes=0
 
 _check() {
@@ -42,7 +42,7 @@ _fail_check() {
 
 _section() { printf '\n%s\n' "$1"; }
 
-# ------------- setup -------------
+# Setup
 TEST_DIR=$(mktemp -d)
 trap 'rm -rf "$TEST_DIR"; [[ -n "${SERVER_PID:-}" ]] && kill $SERVER_PID 2>/dev/null; true' EXIT
 
@@ -76,7 +76,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 THEME="$REPO_ROOT/src/.local/bin/theme"
 chmod +x "$THEME"
 
-# ------------- tests -------------
+# Tests
 
 _section "list"
 _check_lines "lists families alphabetically" \
@@ -163,7 +163,7 @@ _check "install <no-variant family> fetches its single asset" \
   "dracula.conf" \
   "$(ls "$XDG_DATA_HOME/dotfiles/themes/kitty/" 2>/dev/null)"
 
-# ------------- final report -------------
+# Final report
 echo
 printf '%d passed, %d failed\n' "$passes" "$fails"
 [[ "$fails" -eq 0 ]]

@@ -11,9 +11,7 @@
 
 local M = {}
 
--- ============================================================================
--- PALETTE + HIGHLIGHTS
--- ============================================================================
+-- Palette + highlights
 
 -- Derive palette from CURRENT colorscheme's standard highlight groups.
 -- Works with any theme (catppuccin, tokyonight, gruvbox, kanagawa, etc.)
@@ -167,18 +165,14 @@ local function define_highlights()
   hl("StslPos",       { fg = p.fg_bold,  bg = p.bg_mid, bold = true })
 end
 
--- ============================================================================
--- POWERLINE SYMBOLS
--- ============================================================================
+-- Powerline symbols
 
 -- 6 levels of horizontal-bar glyphs (U+1FB76..U+1FB7B). Used as a 2-char
 -- scrollbar: picks one glyph for the cursor's vertical position in the
 -- file and renders it twice. Matches old heirline scrollbar.
 local BAR_BLOCKS = { "🭶", "🭷", "🭸", "🭹", "🭺", "🭻" }
 
--- ============================================================================
--- PUBLIC SEGMENT BUILDERS (for tests)
--- ============================================================================
+-- Public segment builders (for tests)
 
 local MODE_NAMES = {
   n = "NORMAL", no = "O-PEND", niI = "NORMAL", niR = "NORMAL", niV = "NORMAL",
@@ -212,9 +206,7 @@ function M._segments.scrollbar(lnum, total)
   return string.rep(BAR_BLOCKS[i], 2)
 end
 
--- ============================================================================
--- CLICK DISPATCHER
--- ============================================================================
+-- Click dispatcher
 
 local click_handlers = {}
 
@@ -228,9 +220,7 @@ local function clickable(id, fn, content)
   return string.format("%%%d@v:lua.Lib.statusline.click@%s%%X", id, content)
 end
 
--- ============================================================================
--- CACHE
--- ============================================================================
+-- Cache
 --
 -- Each buffer gets its own cache in vim.b[buf]._sl_cache (a table of strings).
 -- Segments re-compute only when their invalidation event fires.
@@ -252,9 +242,7 @@ local function invalidate(buf, ...)
   vim.b[buf]._sl_cache = c
 end
 
--- ============================================================================
--- SEGMENT BUILDERS (cache-backed)
--- ============================================================================
+-- Segment builders (cache-backed)
 
 local function build_macro()
   local reg = vim.fn.reg_recording()
@@ -551,9 +539,7 @@ local function end_cap()
   return "%#StslCapR#" .. SEP.cap_r
 end
 
--- ============================================================================
--- SPECIAL BUFFER VARIANTS
--- ============================================================================
+-- Special buffer variants
 
 local function render_special(buf)
   local bt = vim.bo[buf].buftype
@@ -575,9 +561,7 @@ local function render_special(buf)
   return nil
 end
 
--- ============================================================================
--- RENDER (hot path)
--- ============================================================================
+-- Render (hot path)
 
 -- Inactive render: dim file path only, no segments. Quick + cheap.
 local function render_inactive(buf)
@@ -677,9 +661,7 @@ function M.render()
   return left .. path .. "%=" .. right
 end
 
--- ============================================================================
--- SETUP
--- ============================================================================
+-- Setup
 
 function M.setup()
   define_highlights()
