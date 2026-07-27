@@ -24,12 +24,21 @@
 # position this row order implies (last in the prepend group).
 
 [[paths]]
+# Before the pnpm home dir: a binary present in both must resolve to the
+# bin copy, which is where current pnpm installs land.
+# pnpm's own installer adds this dir to fish only; zsh has no equivalent.
+dir = "$HOME/.local/share/pnpm/bin"
+prepend = true
+shells = ["fish"]
+
+[[paths]]
 dir = "$HOME/.local/share/pnpm"
 prepend = true
 
 [[paths]]
-# pnpm's own installer adds this block to fish only; zsh has no equivalent.
-dir = "$HOME/.local/share/pnpm/bin"
+# Ghostty's CLI dir, previously injected by its installer into fish's
+# universal fish_user_paths (now cleared; this row is its managed home).
+dir = "/Applications/Ghostty.app/Contents/MacOS"
 prepend = true
 shells = ["fish"]
 
