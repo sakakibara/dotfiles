@@ -1,37 +1,26 @@
 # Dotfiles
 
-Personal dotfiles, managed with mox.
-
-mox is a prefix-free dotfiles manager: it keeps config files in their native
-format under `src/` (no `dot_` prefixes, no template language in file bodies)
-and composes per-machine output from axis overlays. Where a file needs to vary
-by OS, architecture, or profile, that variation is expressed with overlay
-filenames or in-file `# mox:` directives rather than a templated body.
+Personal dotfiles, managed with [mox](https://github.com/sakakibara/mox):
+config files in their native format under `src/`, composed per machine from
+axis overlays -- no filename prefixes, no template language in file bodies.
 
 ## Layout
 
-- **`src/`** - managed files, laid out exactly as they land under `$HOME`.
-  `src/.zshrc` -> `~/.zshrc`, `src/.config/nvim/` -> `~/.config/nvim/`,
-  `src/.local/bin/` -> `~/.local/bin/`, and so on.
-- **`data/`** - shared, committed data consumed while composing files (e.g.
-  `data/abbreviations.toml`, `data/signing.toml`).
-- **`scripts/pre/`, `scripts/post/`** - setup scripts run by `mox apply`,
-  before (`pre`) and after (`post`) files are written. OS-gated scripts live in
-  `os=macos/`, `os=linux/`, `os=windows/` subdirectories and run only on that
-  OS.
-- **`etc/`** - support library: package lists, CI helpers, tests, the
-  agent-sandbox image, and shared bash/PowerShell libraries.
+| Path | What lives there |
+| --- | --- |
+| `src/` | Managed files, laid out exactly as they land under `$HOME`: `src/.zshrc` -> `~/.zshrc`, `src/.config/nvim/` -> `~/.config/nvim/` |
+| `data/` | Shared, committed data consumed while composing (`data/abbreviations.toml`, `data/paths.toml`, `data/signing.toml`, ...) |
+| `scripts/pre/`, `scripts/post/` | Setup scripts run by `mox apply`, before/after files are written; OS-gated ones live under `os=macos/`, `os=linux/`, `os=windows/` |
+| `etc/` | Support library: package lists, CI helpers, tests, the agent-sandbox image, shared bash/PowerShell libraries |
 
-Two idioms express per-OS / per-profile variation:
+Per-OS / per-profile variation uses mox's two idioms:
 
-- **Overlay filenames** for structured or verbatim files. A `.d/` directory
-  beside the base name holds axis overlays, e.g.
-  `src/.config/aerospace/aerospace.toml.d/os=macos.toml` is merged in only on
-  macOS.
-- **In-file directives** for code and text files. A leading `# mox: when
-  os=macos` (or `os=windows`) gates a whole file; an inline `# mox: when <expr>
-  ... # mox: end` region gates a section. Axes include `os`, `arch`, `profile`,
-  and any fact the source compares against.
+- **Overlay filenames** for structured files: a `.d/` directory beside the
+  base holds axis overlays, e.g.
+  `aerospace.toml.d/os=macos.toml` merges in only on macOS.
+- **In-file directives** for code and text: a leading `# mox: when
+  os=macos` gates a whole file; a `# mox: when <expr> ... # mox: end`
+  region gates a section.
 
 ## Installation
 
@@ -62,200 +51,142 @@ To review the repo before anything touches `$HOME`, drop `--apply`: the clone
 lands in `~/.local/share/mox/dotfiles` (the default `MOX_REPO`), and a later
 `mox apply` composes and writes the live files. On first apply mox interviews
 you for any missing machine-local facts (email, profile, locale, timezone,
-signing keys) and stores them in `~/.config/mox/facts.toml`, which is never
-committed to the repo.
+signing keys) and stores them in `$XDG_CONFIG_HOME/mox/facts.toml`, which is
+never committed to the repo.
 
 ## Manual per-machine setup
 
-A handful of steps can't be automated because they require GUI interaction or
-local-only credential bootstrap. Do these once per new machine.
+Everything else is automated; these need GUI interaction or local credential
+bootstrap, once per new machine.
 
 ### Commit signing (1Password SSH agent)
 
-Commit signing uses an SSH key stored in 1Password. The public-key string and
-the gitconfig are committed to this repo, but each machine needs 1Password
-installed and the SSH agent toggled on:
+The public key and gitconfig are committed; each machine just needs the agent:
 
-1. Install 1Password (via brew/scoop/distro package, or downloaded from
-   1password.com).
-2. Sign in to your 1Password account.
-3. Open 1Password -> **Settings -> Developer -> "Use the SSH agent"** -> toggle
-   on. (1Password's setup wizard may also offer to write an `IdentityAgent`
-   line into `~/.ssh/config`. **Decline.** The mox-managed `~/.ssh/config`
-   handles that, gated behind the `use_1password_ssh_agent` fact - see the `#
-   mox: when use_1password_ssh_agent=true` region in `src/.ssh/config`.)
+1. Install 1Password (brew/scoop/distro package, or 1password.com).
+2. Sign in.
+3. **Settings -> Developer -> "Use the SSH agent"** -> on. If the wizard
+   offers to write an `IdentityAgent` line into `~/.ssh/config`,
+   **decline** -- the mox-managed `~/.ssh/config` handles it, gated behind
+   the `use_1password_ssh_agent` fact.
 4. `mox apply` (if not already done).
 
-After that, every commit gets signed; the green "Verified" badge appears on
-GitHub. `git log --show-signature` works locally too.
-
-If you skip this on a machine, commits still work but go out unsigned. Nothing
-fails; you just don't get the badge for that machine's commits.
+Every commit is then signed (green "Verified" badge on GitHub;
+`git log --show-signature` locally). Skipping this on a machine costs only
+the badge -- commits still work, unsigned.
 
 ### Commit signing inside agent-sandbox containers
 
-The same 1Password key signs commits made inside `agent-sandbox` containers, so
-sandbox commits also get the Verified badge. Setup is automatic on macOS and
-Linux; one extra setting on Windows + WSL.
+The same key signs commits made inside `agent-sandbox` containers:
 
-- **macOS host**: nothing extra. agent-sandbox starts a tiny `socat` relay on
-  `127.0.0.1:19988` on first launch (1Password's macOS Unix socket can't be
-  bind-mounted directly into Linux containers; the relay bridges via TCP).
-  socat is installed via `etc/darwin/packages.txt`.
-- **Linux host**: nothing extra. agent-sandbox bind-mounts
-  `~/.1password/agent.sock` into the container directly (Linux-to-Linux Unix
-  sockets work). Make sure `socat` is installed (used inside the container; the
-  package is in the sandbox image).
-- **Windows + WSL2 host**: enable 1Password's WSL integration in the Windows
-  1Password app: **Settings -> Developer -> Integrate with WSL** -> on. After
-  that, `~/.1password/agent.sock` exists inside WSL and the Linux branch of
-  agent-sandbox handles it transparently. Run agent-sandbox from inside WSL
-  (it's a bash script and won't run from PowerShell or git-bash).
-- **Native Windows (no WSL)**: agent-sandbox itself doesn't run there. Out of
-  scope.
+| Host | Setup | How the agent reaches the container |
+| --- | --- | --- |
+| macOS | none | a `socat` relay on `127.0.0.1:19988`, started on first launch (the macOS Unix socket can't be bind-mounted into Linux containers); socat comes from `etc/darwin/packages.txt` |
+| Linux | none | `~/.1password/agent.sock` bind-mounted directly |
+| Windows + WSL2 | 1Password app: **Settings -> Developer -> Integrate with WSL** -> on | `~/.1password/agent.sock` appears inside WSL; run agent-sandbox from inside WSL (it's a bash script) |
+| Native Windows | -- | out of scope; agent-sandbox doesn't run there |
 
-The 1Password SSH agent only exposes keys listed in
-`~/.config/1Password/ssh/agent.toml` (mox-managed). The whitelist contains the
-personal signing key on every machine, plus a work signing key gated to the
-work profile (`# mox: when profile=work`), so a compromised container can
-request a signature with a listed key (each request fires a host-side biometric
+The agent only exposes keys listed in the mox-managed
+`~/.config/1Password/ssh/agent.toml`: the personal signing key everywhere,
+plus a work key gated to `profile=work`. A compromised container can request
+a signature with a listed key (each request fires a host-side biometric
 prompt) but cannot enumerate or use any other vault key.
 
-### One-time, ever (already done; documented for future reference)
-
-These were done once globally and don't repeat per-machine:
+### One-time, ever (already done; documented for reference)
 
 - Generated the SSH signing key in 1Password.
-- Pasted the public key string into `data/signing.toml` (`personal_key`).
-- Registered the same public key on GitHub (Settings -> SSH and GPG keys, type
-  "Signing Key").
+- Pasted the public key into `data/signing.toml` (`personal_key`).
+- Registered it on GitHub (Settings -> SSH and GPG keys, type "Signing Key").
 
-To rotate the key in the future: regenerate in 1Password, replace
-`personal_key`, register the new public key on GitHub, optionally remove the old
-one.
+Rotation: regenerate in 1Password, replace `personal_key`, register the new
+public key on GitHub, optionally remove the old one.
 
 ### Multiple GitHub accounts (identity, signing & gh)
 
-Commit identity (name/email), signing key, and which account `gh` and HTTPS
-`git` authenticate as are all chosen **by the repo's remote URL** - never
-per-machine, never a per-repo `.git/config`. The personal account is committed;
-work/client accounts live only in machine-local mox config, so employer names
-never reach this repo. Account auto-switch resolves at invocation time: a `gh`
-shim in `~/.local/bin` and the git credential helper both ask `account-token`
-for the repo's token, so it works with no `gh auth switch` in every context -
-shells, editors, scripts, and non-interactive agent sessions. Windows uses the
-same design: `gh.ps1`/`gh.cmd` shim twins, the same sh-run credential helper,
-and a run-once script that keeps `~/.local/bin` in front of the user Path.
+Commit identity, signing key, and which account `gh` and HTTPS `git`
+authenticate as are all chosen **by the repo's remote URL** -- never
+per-machine, never a per-repo `.git/config`. The personal account is
+committed; work/client accounts live only in machine-local mox config, so
+employer names never reach this repo. Auto-switch resolves at invocation
+time -- a `gh` shim in `~/.local/bin` and the git credential helper both ask
+`account-token` for the repo's token -- so it works with no `gh auth switch`
+in shells, editors, scripts, and agent sessions alike. Windows mirrors the
+design (`gh.ps1`/`gh.cmd` shims, the same credential helper, a run-once
+script keeping `~/.local/bin` in front of the user Path).
 
-Per-account git identity includes (the `[includeIf]` routing and one
-`id-<slug>.inc` per account) are composed from a machine-local, never-committed
-identities data file; `scripts/post/git-identities.sh` clears the generated
-files so removing an account also removes its include. To add an account: `gh
-auth login` as the account (required - auto-switch reads its stored gh token),
-add the account to your local identities data (email, match URLs, gh account),
-optionally wire a signing key, then `mox apply`.
+Per-account git identity includes are composed from a machine-local,
+never-committed identities data file; `scripts/post/git-identities.sh`
+clears the generated files so removing an account also removes its include.
+To add an account:
 
-## After install
+1. `gh auth login` as the account (auto-switch reads its stored token).
+2. Add it to the local identities data (email, match URLs, gh account).
+3. Optionally wire a signing key.
+4. `mox apply`.
 
-`mox apply` runs the setup scripts in `scripts/pre/` before writing file targets
-and `scripts/post/` after files are in place (theme assets, and the holt
-workspace setup, which needs the applied holt config). Scripts run in filename
-order within each phase; the phase prefix on each name (`apps-`, `runtime-`,
-`tools`, `workspace-`, `theme`, `git-identities`) sorts them into dependency
-order. OS-specific scripts live under `os=macos/`, `os=linux/`, `os=windows/`
-and run only on the matching OS.
+## Setup scripts
 
-- **`scripts/pre/os=macos/apps-brew.sh`** / **`scripts/pre/os=linux/apps-linux-packages.sh`**:
-  native package install via `etc/darwin/packages.txt` or
-  `etc/linux/packages-*.txt` (auto-detects fedora/debian/arch/suse).
-- **`scripts/pre/runtime-mise.sh`**: language toolchains via mise.
-- **`scripts/pre/os=linux/tools.sh`**: binary tools fetched outside the system
-  package manager (starship, gh, lazygit, lazydocker, cargo-installed Rust
-  tools).
-- **`scripts/post/workspace-holt.sh`**: workspace setup via holt - installs
-  holt if missing, links `~/Life` and `~/Work` to the synced root, and runs
-  `holt sync` to (re)build project hubs from their markers. Runs *after* files
-  so it can read the applied `~/.config/holt/config.toml`.
-- **`scripts/post/theme.sh`**: downloads theme assets referenced by manifests
-  under `~/.config/dotfiles/themes/`, verifies their sha256, and seeds
-  `~/.local/state/dotfiles/theme` with the manifest's default. Runs after files
-  because it depends on `~/.local/bin/theme` being in place. After this, `theme
-  set <family>/<variant>` switches everything (kitty, wezterm, tmux, nvim, fish
-  colors, fzf, vivid) at once.
-- **`scripts/post/git-identities.sh`**: regenerates the local, never-committed
-  per-account git identity includes.
+`mox apply` runs `scripts/pre/` before writing files and `scripts/post/`
+after. Filename order within each phase is dependency order (the `apps-`,
+`runtime-`, `tools`, `workspace-`, `theme`, `git-identities` prefixes sort
+it); `os=...` subdirectories gate by OS.
 
-On Windows, `mox apply` runs the PowerShell counterparts under
-`scripts/pre/os=windows/` and `scripts/post/os=windows/`: `apps-scoop.ps1`
-(scoop + winget package install via `etc/windows/packages.txt`),
-`runtime-mise.ps1` (mise toolchains), `workspace-holt.ps1` (holt workspace
-setup), `theme.ps1` (theme assets), plus `tools-path.ps1` and
-`hide-dotfiles.ps1`. The wrapper-level `dotfiles` command on Windows is
-`src/.local/bin/dotfiles.ps1`; its subcommands work the same as the bash side.
+| Script | What it does |
+| --- | --- |
+| `pre/os=macos/apps-brew.sh`, `pre/os=linux/apps-linux-packages.sh` | native packages from `etc/darwin/packages.txt` / `etc/linux/packages-*.txt` (auto-detects fedora/debian/arch/suse) |
+| `pre/runtime-mise.sh` | language toolchains via mise |
+| `pre/os=linux/tools.sh` | binaries outside the system package manager (starship, gh, lazygit, lazydocker, cargo tools) |
+| `post/workspace-holt.sh` | installs holt if missing, links `~/Life`/`~/Work` to the synced root, `holt sync` rebuilds project hubs; runs post so it can read the applied holt config |
+| `post/theme.sh` | downloads theme assets per the manifests, verifies sha256, seeds the default; runs post because it needs `~/.local/bin/theme` in place |
+| `post/git-identities.sh` | regenerates the local per-account git identity includes |
+
+Windows runs the PowerShell counterparts under `scripts/*/os=windows/`:
+`apps-scoop.ps1` (scoop + winget via `etc/windows/packages.txt`),
+`runtime-mise.ps1`, `workspace-holt.ps1`, `theme.ps1`, plus `tools-path.ps1`
+and `hide-dotfiles.ps1`.
 
 ## The `dotfiles` wrapper
 
-The `dotfiles` command sits in front of `mox` and adds a status snapshot plus
-the steps mox doesn't cover natively. Anything it doesn't recognize is forwarded
-to mox (with a typo-aware error if the subcommand isn't valid for mox either).
+`dotfiles` sits in front of `mox`: a status snapshot plus the steps mox
+doesn't cover. Anything it doesn't recognize is forwarded to mox (with a
+typo-aware error when the subcommand isn't valid for mox either).
 
-```sh
-dotfiles                          # status snapshot - repo, branch, drift, theme, tools
-dotfiles info                     # same as bare invocation
+| Command | What it does |
+| --- | --- |
+| `dotfiles` / `dotfiles info` | status snapshot: repo, branch, drift, theme, tools |
+| `dotfiles apply` / `status` / `diff` | mox pass-through (`apply` re-sources the shell rc on success) |
+| `dotfiles install` | interactive step menu, pre-checking steps whose inputs changed; `install all` runs every step, `install brew mise` only the named ones |
+| `dotfiles sync` | review installed-but-untracked packages |
+| `dotfiles edit <pattern>` | fuzzy-find a managed file, open its source via `mox edit` |
+| `dotfiles profile [name]` | print the active profile / switch the profile fact and re-apply |
+| `dotfiles doctor` | health-check mox, packages, theme, mise, holt |
+| `dotfiles upgrade [--all]` | mox self-update; `--all` also sources + brew (macOS) + mise + holt (Linux distro packages stay manual) |
 
-# mox pass-through
-dotfiles apply                    # mox apply (re-sources the shell rc on success)
-dotfiles status                   # mox status - drift between source and $HOME
-dotfiles diff                     # mox diff - what an apply would change
+Per-step install output lands in `~/.local/state/dotfiles/pick/logs/`; a TSV
+run history at `~/.local/state/dotfiles/pick/run-log.tsv`.
 
-# Install / package management
-dotfiles install                  # menu (pre-checks items whose inputs changed)
-dotfiles install all              # run every step non-interactively
-dotfiles install brew mise        # run only the named steps
-dotfiles sync                     # review installed-but-untracked packages
-
-# Editing
-dotfiles edit <pattern>           # fuzzy-find a managed file and open it via mox edit
-
-# Profile / health
-dotfiles profile                  # print the active profile
-dotfiles profile work             # switch the profile fact and re-apply
-dotfiles doctor                   # health-check mox, packages, theme, mise, holt
-
-# Upgrades
-dotfiles upgrade                  # mox binary self-update
-dotfiles upgrade --all            # mox + sources + brew (macOS) + mise + holt
-                                  # (Linux distro packages are skipped - run `sudo dnf upgrade` / `apt upgrade` manually)
-```
-
-Per-step install output lands in `~/.local/state/dotfiles/pick/logs/`; a TSV run
-history lives at `~/.local/state/dotfiles/pick/run-log.tsv`.
-
-Daily edit gesture: `dotfiles edit <pattern>` (or `mox edit <path>` directly) -
-both open the *source* under `src/` and apply on save, no drift round-trip.
-When something OTHER than your editor (an app, the OS) writes into a managed
-file, reconcile the change back into the `src/` source before the next apply.
+Editing, the two mox motions: tweak a config by editing the **live** file
+where it lives, then `mox commit` routes it back into `src/` (an app's or
+the OS's writes surface the same way -- `mox apply` will prompt to commit or
+overwrite the drift, never clobber it). For **structure** -- overlays,
+`# mox: when` regions, new variation -- edit the source: `dotfiles edit
+<pattern>` fuzzy-finds it, and the nvim integration applies on save, no
+drift round-trip.
 
 ## Theme system
 
-Switch theme:
-
 ```sh
-theme catppuccin/frappe         # explicit family/variant
-theme set frappe                # within current family
+theme catppuccin/frappe         # switch: explicit family/variant
+theme set frappe                # switch within current family
 theme reload                    # re-fire reload signals without state change
-theme list                      # discover families
-theme list catppuccin           # discover variants
-```
-
-Manage assets:
-
-```sh
-theme install                   # download missing
+theme list [family]             # discover families / variants
+theme install                   # download missing assets
 theme refresh                   # force re-download, update lockfile
 theme verify                    # check cache against lockfile
 ```
 
-Add a new theme family: drop a manifest at `~/.config/dotfiles/themes/<family>`
-(flat key=value, see `src/.config/dotfiles/themes/catppuccin` for the shape) and
-run `theme refresh <family>` to populate the lockfile.
+One switch restyles everything at once: kitty, wezterm, tmux, nvim, fish
+colors, fzf, vivid. To add a family, drop a manifest at
+`~/.config/dotfiles/themes/<family>` (flat key=value; see
+`src/.config/dotfiles/themes/catppuccin` for the shape) and run
+`theme refresh <family>` to populate the lockfile.
