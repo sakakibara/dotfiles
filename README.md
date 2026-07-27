@@ -46,8 +46,8 @@ mox apply                     # write the live files into $HOME
 default `MOX_REPO`) so you can review it before anything touches `$HOME`; `mox
 apply` then composes and writes the live files. On first run mox interviews you
 for any missing machine-local facts (email, profile, locale, timezone, signing
-keys) and stores them in `~/.config/mox/facts.toml`; tool-presence extras go in
-`~/.config/mox/extras.toml`. Neither file is ever committed to the repo.
+keys) and stores them in `~/.config/mox/facts.toml`, which is never committed
+to the repo.
 
 The same two commands work on macOS, Linux, and Windows.
 
