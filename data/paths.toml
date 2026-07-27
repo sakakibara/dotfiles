@@ -1,0 +1,63 @@
+# Single source of truth for PATH. Composed by mox data loops into
+# .config/fish/conf.d/paths.fish (fish) and .config/zsh/paths.zsh (zsh).
+#
+# Each entry is a [[paths]] table with:
+#   dir      directory to add; captures allowed (e.g. <machine.brew_prefix>/bin)
+#   when     optional executable name; entry is rendered only if on PATH at
+#            apply time (the abbreviations idiom)
+#   shells   optional list, default ["zsh", "fish"]
+#   prepend  optional bool; true prepends ahead of inherited PATH (default:
+#            append). Never written false -- omit the field instead.
+#
+# Row order is PATH order within each of the prepend/append groups. Both
+# composed fragments existence-check a row's directory at shell start (a
+# directory that does not exist is silently skipped) -- uniform across
+# shells and rows, regardless of whether a row also carries `when`.
+#
+# NOT a row here: brew's <brew_prefix>/bin and <brew_prefix>/sbin. A row's
+# `dir` is spliced into the composed fragment via <entry.dir>, which inserts
+# the field's raw string and does not re-expand captures inside it -- so a
+# machine capture written in a TOML value here (unlike one written directly
+# in a template) never resolves; it would render as the literal, uninterp-
+# olated text. Both fragments instead carry brew's two dirs as static
+# `<machine.brew_prefix>` lines gated `when tool=brew`, in the same relative
+# position this row order implies (last in the prepend group).
+
+[[paths]]
+dir = "$HOME/.local/share/pnpm"
+prepend = true
+
+[[paths]]
+# pnpm's own installer adds this block to fish only; zsh has no equivalent.
+dir = "$HOME/.local/share/pnpm/bin"
+prepend = true
+shells = ["fish"]
+
+[[paths]]
+# Holds the gh shim, which must shadow brew's gh -- kept first among the
+# plain tool-home rows below.
+dir = "$HOME/.local/bin"
+prepend = true
+
+[[paths]]
+dir = "$HOME/.cargo/bin"
+prepend = true
+
+[[paths]]
+dir = "$HOME/.nimble/bin"
+prepend = true
+
+[[paths]]
+dir = "$HOME/.fzf/bin"
+prepend = true
+
+[[paths]]
+dir = "$HOME/.go/bin"
+prepend = true
+
+[[paths]]
+dir = "$HOME/.config/emacs/bin"
+prepend = true
+
+# brew's <brew_prefix>/bin and <brew_prefix>/sbin: see the note above --
+# not expressible as a row, carried as static lines in each fragment.
