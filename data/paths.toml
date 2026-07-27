@@ -13,15 +13,6 @@
 # composed fragments existence-check a row's directory at shell start (a
 # directory that does not exist is silently skipped) -- uniform across
 # shells and rows, regardless of whether a row also carries `when`.
-#
-# NOT a row here: brew's <brew_prefix>/bin and <brew_prefix>/sbin. A row's
-# `dir` is spliced into the composed fragment via <entry.dir>, which inserts
-# the field's raw string and does not re-expand captures inside it -- so a
-# machine capture written in a TOML value here (unlike one written directly
-# in a template) never resolves; it would render as the literal, uninterp-
-# olated text. Both fragments instead carry brew's two dirs as static
-# `<machine.brew_prefix>` lines gated `when tool=brew`, in the same relative
-# position this row order implies (last in the prepend group).
 
 [[paths]]
 # Before the pnpm home dir: a binary present in both must resolve to the
@@ -68,5 +59,12 @@ prepend = true
 dir = "$HOME/.config/emacs/bin"
 prepend = true
 
-# brew's <brew_prefix>/bin and <brew_prefix>/sbin: see the note above --
-# not expressible as a row, carried as static lines in each fragment.
+[[paths]]
+dir = "<machine.brew_prefix>/bin"
+prepend = true
+when = "brew"
+
+[[paths]]
+dir = "<machine.brew_prefix>/sbin"
+prepend = true
+when = "brew"

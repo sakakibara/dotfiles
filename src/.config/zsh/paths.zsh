@@ -24,17 +24,6 @@ function __mox_paths_rebuild {
   [[ -d "$__mox_d" ]] && app+=("$__mox_d")
   # mox: end
 
-  # brew: <machine.brew_prefix> is a machine capture. A registry row's
-  # `dir` is spliced in verbatim (data/paths.toml explains why), so a
-  # capture written there never resolves -- these two are static lines
-  # instead, gated the same way (`when`, here as a region directive).
-  # mox: when tool=brew
-  __mox_d="<machine.brew_prefix>/bin"
-  [[ -d "$__mox_d" ]] && pre+=("$__mox_d")
-  __mox_d="<machine.brew_prefix>/sbin"
-  [[ -d "$__mox_d" ]] && pre+=("$__mox_d")
-  # mox: end
-
   managed=("${pre[@]}" "${app[@]}")
   for d in "${path[@]}"; do
     keep=1
