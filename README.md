@@ -32,19 +32,19 @@ dotfiles in a single step.
 #### sh & curl
 
 ```sh
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/sakakibara/mox/main/install.sh)" -- init --clone https://github.com/sakakibara/dotfiles --apply
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/sakakibara/mox/main/install.sh)" -- init --clone sakakibara --apply
 ```
 
 #### sh & wget
 
 ```sh
-sh -c "$(wget -qO- https://raw.githubusercontent.com/sakakibara/mox/main/install.sh)" -- init --clone https://github.com/sakakibara/dotfiles --apply
+sh -c "$(wget -qO- https://raw.githubusercontent.com/sakakibara/mox/main/install.sh)" -- init --clone sakakibara --apply
 ```
 
 #### powershell
 
 ```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/sakakibara/mox/main/install.ps1))) init --clone https://github.com/sakakibara/dotfiles --apply
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/sakakibara/mox/main/install.ps1))) init --clone sakakibara --apply
 ```
 
 To review the repo before anything touches `$HOME`, drop `--apply`: the clone
