@@ -54,6 +54,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      - name: Install zsh + fish + luajit + lua5.4
+        run: sudo apt-get update && sudo apt-get install -y zsh fish luajit lua5.4
       - name: Install mox
         run: |
           mkdir -p "$HOME/.local/bin"
