@@ -14,12 +14,12 @@ function __mox_paths_rebuild
     set -l pre
     set -l app
 
-    # mox: for entry in "data/paths.toml" where (not entry.shells or entry.shells has "fish") and (not entry.when or (entry.when = "brew_prefix" and brew_prefix)) and entry.prepend
+    # mox: for entry in "data/paths.toml" where (not entry.shells or entry.shells has "fish") and (not entry.when or tool = entry.when or bound entry.when) and entry.prepend
     set -l __mox_d "<entry.dir>"
     test -d $__mox_d; and set -a pre $__mox_d
     # mox: end
 
-    # mox: for entry in "data/paths.toml" where (not entry.shells or entry.shells has "fish") and (not entry.when or (entry.when = "brew_prefix" and brew_prefix)) and not entry.prepend
+    # mox: for entry in "data/paths.toml" where (not entry.shells or entry.shells has "fish") and (not entry.when or tool = entry.when or bound entry.when) and not entry.prepend
     set -l __mox_d "<entry.dir>"
     test -d $__mox_d; and set -a app $__mox_d
     # mox: end

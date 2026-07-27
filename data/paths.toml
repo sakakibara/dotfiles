@@ -3,10 +3,9 @@
 #
 # Each entry is a [[paths]] table with:
 #   dir      directory to add; captures allowed (e.g. <machine.brew_prefix>/bin)
-#   when     optional derived-fact name (data/facts.toml); entry is rendered
-#            only once that fact is bound (fragments below test
-#            `entry.when = "<name>" and <name>`, since the fact -- not a
-#            tool -- is what "installed" means for a package-manager home)
+#   when     optional gate: an executable name or a derived-fact name
+#            (data/facts.toml); the row is included when either is present
+#            (fragments below test `tool = entry.when or bound entry.when`)
 #   shells   optional list, default ["zsh", "fish"]
 #   prepend  optional bool; true prepends ahead of inherited PATH (default:
 #            append). Never written false -- omit the field instead.
