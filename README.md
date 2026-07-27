@@ -35,21 +35,35 @@ Two idioms express per-OS / per-profile variation:
 
 ## Installation
 
-With mox installed, clone this repo and apply it:
+Use one of the one-liners below to install mox (checksum-verified) and the
+dotfiles in a single step.
+
+### One-liners
+
+#### sh & curl
 
 ```sh
-mox init --clone <repo-url>   # clone into ~/.local/share/mox/dotfiles for review
-mox apply                     # write the live files into $HOME
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/sakakibara/mox/main/install.sh)" -- init --clone https://github.com/sakakibara/dotfiles --apply
 ```
 
-`mox init --clone` clones the repo into `~/.local/share/mox/dotfiles` (the
-default `MOX_REPO`) so you can review it before anything touches `$HOME`; `mox
-apply` then composes and writes the live files. On first run mox interviews you
-for any missing machine-local facts (email, profile, locale, timezone, signing
-keys) and stores them in `~/.config/mox/facts.toml`, which is never committed
-to the repo.
+#### sh & wget
 
-The same two commands work on macOS, Linux, and Windows.
+```sh
+sh -c "$(wget -qO- https://raw.githubusercontent.com/sakakibara/mox/main/install.sh)" -- init --clone https://github.com/sakakibara/dotfiles --apply
+```
+
+#### powershell
+
+```powershell
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/sakakibara/mox/main/install.ps1))) init --clone https://github.com/sakakibara/dotfiles --apply
+```
+
+To review the repo before anything touches `$HOME`, drop `--apply`: the clone
+lands in `~/.local/share/mox/dotfiles` (the default `MOX_REPO`), and a later
+`mox apply` composes and writes the live files. On first apply mox interviews
+you for any missing machine-local facts (email, profile, locale, timezone,
+signing keys) and stores them in `~/.config/mox/facts.toml`, which is never
+committed to the repo.
 
 ## Manual per-machine setup
 
