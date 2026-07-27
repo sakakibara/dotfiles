@@ -10,16 +10,16 @@ axis overlays -- no filename prefixes, no template language in file bodies.
 | --- | --- |
 | `src/` | Managed files, laid out exactly as they land under `$HOME`: `src/.zshrc` -> `~/.zshrc`, `src/.config/nvim/` -> `~/.config/nvim/` |
 | `data/` | Shared, committed data consumed while composing (`data/abbreviations.toml`, `data/paths.toml`, `data/signing.toml`, ...) |
-| `scripts/pre/`, `scripts/post/` | Setup scripts run by `mox apply`, before/after files are written; OS-gated ones live under `os=macos/`, `os=linux/`, `os=windows/` |
+| `scripts/pre/`, `scripts/post/` | Setup scripts run by `mox apply`, before/after files are written; OS-gated ones live under `os=darwin/`, `os=linux/`, `os=windows/` |
 | `etc/` | Support library: package lists, CI helpers, tests, the agent-sandbox image, shared bash/PowerShell libraries |
 
 Per-OS / per-profile variation uses mox's two idioms:
 
 - **Overlay filenames** for structured files: a `.d/` directory beside the
   base holds axis overlays, e.g.
-  `aerospace.toml.d/os=macos.toml` merges in only on macOS.
+  `aerospace.toml.d/os=darwin.toml` merges in only on macOS.
 - **In-file directives** for code and text: a leading `# mox: when
-  os=macos` gates a whole file; a `# mox: when <expr> ... # mox: end`
+  os=darwin` gates a whole file; a `# mox: when <expr> ... # mox: end`
   region gates a section.
 
 ## Installation
@@ -133,7 +133,7 @@ it); `os=...` subdirectories gate by OS.
 
 | Script | What it does |
 | --- | --- |
-| `pre/os=macos/apps-brew.sh`, `pre/os=linux/apps-linux-packages.sh` | native packages from `etc/darwin/packages.txt` / `etc/linux/packages-*.txt` (auto-detects fedora/debian/arch/suse) |
+| `pre/os=darwin/apps-brew.sh`, `pre/os=linux/apps-linux-packages.sh` | native packages from `etc/darwin/packages.txt` / `etc/linux/packages-*.txt` (auto-detects fedora/debian/arch/suse) |
 | `pre/runtime-mise.sh` | language toolchains via mise |
 | `pre/os=linux/tools.sh` | binaries outside the system package manager (starship, gh, lazygit, lazydocker, cargo tools) |
 | `post/workspace-holt.sh` | installs holt if missing, links `~/Life`/`~/Work` to the synced root, `holt sync` rebuilds project hubs; runs post so it can read the applied holt config |
