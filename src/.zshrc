@@ -60,41 +60,44 @@ export NLS_LANG="<machine.nls_lang | default "AMERICAN_AMERICA.AL32UTF8">"
 # Disable microsoft .NET telemetry
 export DOTNET_CLI_TELEMETRY_OPTOUT=1
 
-# Add path
+# Homebrew's non-PATH exports (HOMEBREW_PREFIX/CELLAR/REPOSITORY, MANPATH,
+# INFOPATH). Its own PATH mutation is filtered out of shellenv's output --
+# that effect is a data/paths.toml row instead, so it isn't set twice.
+function _brew_shellenv_no_path {
+  "$1" shellenv | grep -v path_helper
+}
 if [[ "${OSTYPE}" == darwin* ]]; then
   if [[ -f "/opt/homebrew/bin/brew" ]]; then
-    _evalcache /opt/homebrew/bin/brew shellenv
+    _evalcache _brew_shellenv_no_path /opt/homebrew/bin/brew
   elif [[ -f "/usr/local/bin/brew" ]]; then
-    _evalcache /usr/local/bin/brew shellenv
+    _evalcache _brew_shellenv_no_path /usr/local/bin/brew
   fi
-fi
-
-if [[ -d "${XDG_CONFIG_HOME}/emacs/bin" ]]; then
-  path=(
-    "${XDG_CONFIG_HOME}/emacs/bin"
-    ${path}
-  )
 fi
 
 export GOPATH="${HOME}/.go"
 
-path=(
-  # ~/.local/bin first: it holds the gh shim, which must shadow brew's gh.
-  "${HOME}/.local/bin"
-  "${HOME}/.cargo/bin"
-  "${HOME}/.nimble/bin"
-  "${HOME}/.fzf/bin"
-  "${GOPATH}/bin"
-  ${path}
-)
-
 if [[ -d "${XDG_DATA_HOME}/pnpm" ]]; then
   export PNPM_HOME="${XDG_DATA_HOME}/pnpm"
-  path=(
-    "${PNPM_HOME}"
-    ${path}
-  )
 fi
+
+# PATH itself: single source of truth in data/paths.toml, composed into
+# ~/.config/zsh/paths.zsh. __mox_paths_sync re-sources it whenever its mtime
+# changes, so a `mox apply` that touches the registry takes effect at the
+# next prompt, without a new shell.
+zmodload zsh/stat 2>/dev/null
+typeset -g __mox_paths_file="${HOME}/.config/zsh/paths.zsh"
+typeset -g __mox_paths_mtime=""
+
+function __mox_paths_sync {
+  local -a st
+  zstat -A st +mtime -- "$__mox_paths_file" 2>/dev/null || return
+  [[ "$st[1]" == "$__mox_paths_mtime" ]] && return
+  __mox_paths_mtime=$st[1]
+  source "$__mox_paths_file"
+}
+
+__mox_paths_sync
+precmd_functions+=(__mox_paths_sync)
 
 # Set editor
 if (( ${+commands[nvim]} )); then

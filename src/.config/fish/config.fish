@@ -64,36 +64,29 @@ set -gx NLS_LANG "<machine.nls_lang | default "AMERICAN_AMERICA.AL32UTF8">"
 # Disable microsoft .NET telemetry
 set -gx DOTNET_CLI_TELEMETRY_OPTOUT 1
 
-# Add path
+# Homebrew's non-PATH exports (HOMEBREW_PREFIX/CELLAR/REPOSITORY, MANPATH,
+# INFOPATH). Its own PATH mutation is filtered out of shellenv's output --
+# that effect is a data/paths.toml row instead, so it isn't set twice.
+function _brew_shellenv_no_path
+    $argv[1] shellenv | grep -v fish_add_path
+end
 if string match -q -- $OSNAME macos
     if test -f /opt/homebrew/bin/brew
-        _evalcache /opt/homebrew/bin/brew shellenv
+        _evalcache _brew_shellenv_no_path /opt/homebrew/bin/brew
     end
     if test -f /usr/local/bin/brew
-        _evalcache /usr/local/bin/brew shellenv
+        _evalcache _brew_shellenv_no_path /usr/local/bin/brew
     end
-end
-
-if test -d $XDG_CONFIG_HOME/emacs/bin
-    fish_add_path $XDG_CONFIG_HOME/emacs/bin
 end
 
 set -gx GOPATH $HOME/.go
 
-fish_add_path $GOPATH/bin
-fish_add_path $HOME/.fzf/bin
-fish_add_path $HOME/.nimble/bin
-fish_add_path $HOME/.cargo/bin
-
-# ~/.local/bin holds the gh shim, which must shadow brew's gh -- force it in
-# front of $PATH directly (matching zsh's order); plain fish_add_path goes to
-# fish_user_paths, which lands behind brew shellenv's entries.
-fish_add_path --move --path $HOME/.local/bin
-
 if test -d $XDG_DATA_HOME/pnpm
     set -gx PNPM_HOME $XDG_DATA_HOME/pnpm
-    fish_add_path $PNPM_HOME
 end
+
+# PATH itself is single-source-of-truth data (data/paths.toml), composed
+# and live-synced by conf.d/paths.fish -- see that file.
 
 # Set editor
 if test (command -v nvim)
@@ -185,7 +178,4 @@ source ~/.orbstack/shell/init2.fish 2>/dev/null || :
 
 # pnpm
 set -gx PNPM_HOME "$HOME/.local/share/pnpm"
-if not string match -q -- "$PNPM_HOME/bin" $PATH
-  set -gx PATH "$PNPM_HOME/bin" $PATH
-end
 # pnpm end
