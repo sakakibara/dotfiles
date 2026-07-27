@@ -14,12 +14,12 @@ function __mox_paths_rebuild {
   local -a pre app managed rest
   local d m keep __mox_d
 
-  # mox: for entry in "data/paths.toml" where (not entry.shells or entry.shells has "zsh") and (not entry.when or tool = entry.when) and entry.prepend
+  # mox: for entry in "data/paths.toml" where (not entry.shells or entry.shells has "zsh") and (not entry.when or (entry.when = "brew_prefix" and brew_prefix)) and entry.prepend
   __mox_d="<entry.dir>"
   [[ -d "$__mox_d" ]] && pre+=("$__mox_d")
   # mox: end
 
-  # mox: for entry in "data/paths.toml" where (not entry.shells or entry.shells has "zsh") and (not entry.when or tool = entry.when) and not entry.prepend
+  # mox: for entry in "data/paths.toml" where (not entry.shells or entry.shells has "zsh") and (not entry.when or (entry.when = "brew_prefix" and brew_prefix)) and not entry.prepend
   __mox_d="<entry.dir>"
   [[ -d "$__mox_d" ]] && app+=("$__mox_d")
   # mox: end

@@ -3,8 +3,10 @@
 #
 # Each entry is a [[paths]] table with:
 #   dir      directory to add; captures allowed (e.g. <machine.brew_prefix>/bin)
-#   when     optional executable name; entry is rendered only if on PATH at
-#            apply time (the abbreviations idiom)
+#   when     optional derived-fact name (data/facts.toml); entry is rendered
+#            only once that fact is bound (fragments below test
+#            `entry.when = "<name>" and <name>`, since the fact -- not a
+#            tool -- is what "installed" means for a package-manager home)
 #   shells   optional list, default ["zsh", "fish"]
 #   prepend  optional bool; true prepends ahead of inherited PATH (default:
 #            append). Never written false -- omit the field instead.
@@ -62,9 +64,9 @@ prepend = true
 [[paths]]
 dir = "<machine.brew_prefix>/bin"
 prepend = true
-when = "brew"
+when = "brew_prefix"
 
 [[paths]]
 dir = "<machine.brew_prefix>/sbin"
 prepend = true
-when = "brew"
+when = "brew_prefix"

@@ -1,0 +1,32 @@
+# Repo-derived single-value machine facts mox has no built-in knowledge of.
+#
+# Each entry is a [[facts]] table with:
+#   name        fact-name charset (same as an axis name)
+#   env         optional override variable, consulted first; must itself
+#               name an existing directory to win
+#   candidates  paths tried in order when env yields nothing; ~ expands to
+#               home; first existing candidate binds the fact
+#
+# Nothing existing (env unset/rejected and no candidate exists) leaves the
+# row unbound -- no fact, no error. A bound row is an ordinary machine fact:
+# <machine.NAME> captures it, `when NAME` tests its presence.
+
+[[facts]]
+name = "brew_prefix"
+env = "HOMEBREW_PREFIX"
+candidates = ["/opt/homebrew", "/usr/local", "~/.linuxbrew"]
+
+[[facts]]
+name = "cargo_home"
+env = "CARGO_HOME"
+candidates = ["~/.cargo"]
+
+[[facts]]
+name = "gopath"
+env = "GOPATH"
+candidates = ["~/.go"]
+
+[[facts]]
+name = "pnpm_home"
+env = "PNPM_HOME"
+candidates = ["~/.local/share/pnpm"]
