@@ -18,7 +18,7 @@
 #
 # Comments: `#` starts a comment. Blank lines and trailing whitespace ignored.
 
-import store
+import msg store
 
 # Set of <kind>:<name> entries from the optional blacklist file passed to
 # packages::filtered. Defined once at load; cleared/repopulated each call.
@@ -27,7 +27,11 @@ store::set _packages_blacklist
 # Resolve the current profile. Priority:
 #   1. DOTFILES_PROFILE env var (fastest, when a setup script exports it)
 #   2. the `profile` fact reported by `mox facts`
-#   3. fallback: "personal"
+#
+# Neither resolving is a hard error: callers run outside `mox apply`, where
+# there is no unbound-fact guard, so this must not guess. Prints to stderr
+# and returns 1 — run in `$(...)`, so callers MUST check the exit status
+# (a bare `exit 1` here would only exit the subshell).
 packages::current_profile() {
   if [[ -n "${DOTFILES_PROFILE:-}" ]]; then
     printf '%s' "$DOTFILES_PROFILE"
@@ -41,7 +45,8 @@ packages::current_profile() {
       return
     fi
   fi
-  printf 'personal'
+  msg::error "profile fact is unset; run 'mox facts set profile <personal|work>'"
+  return 1
 }
 
 # Parse one packages-file line into globals:

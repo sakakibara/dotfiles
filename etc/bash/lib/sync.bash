@@ -418,7 +418,7 @@ sync::_cycle_action() {
 # Returns 0 if user pressed enter, 130 if they cancelled.
 sync::review() {
   local current other
-  current=$(packages::current_profile)
+  current=$(packages::current_profile) || return 1
   case "$current" in
     personal) other=work ;;
     work)     other=personal ;;
@@ -587,7 +587,7 @@ sync::run() {
       blacklist_file="$source_dir/etc/linux/packages-blacklist.txt"
       ;;
   esac
-  profile=$(packages::current_profile)
+  profile=$(packages::current_profile) || return 1
 
   msg::heading "Computing untracked packages…"
   _sync_items=()

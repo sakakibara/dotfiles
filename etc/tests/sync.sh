@@ -235,5 +235,12 @@ Name        : bar
 Summary     : the bar daemon: with colon" \
   "the foo tool" "the bar daemon: with colon"
 
+_section "sync::review: aborts (no TUI, no guessed profile) when profile unresolvable"
+(
+  DOTFILES_PROFILE='' PATH=/nonexistent sync::review >/dev/null 2>"$TMP/review.err"
+)
+rc=$?
+_eq "sync::review propagates the resolver failure instead of opening the TUI" "1" "$rc"
+
 printf '\n%d passed, %d failed\n' "$passes" "$fails"
 exit "$((fails > 0 ? 1 : 0))"

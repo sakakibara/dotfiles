@@ -149,5 +149,18 @@ _section "current_profile: env var wins"
 DOTFILES_PROFILE=test-profile out=$(packages::current_profile)
 _eq "DOTFILES_PROFILE wins" "test-profile" "$out"
 
+_section "current_profile: fails loudly when nothing resolves"
+out=$(DOTFILES_PROFILE='' PATH=/nonexistent packages::current_profile 2>"$TMP/current_profile.err")
+rc=$?
+_eq "unresolvable profile: exits non-zero" "1" "$rc"
+_eq "unresolvable profile: prints nothing on stdout" "" "$out"
+err=$(<"$TMP/current_profile.err")
+case "$err" in
+  *"profile fact is unset"*"mox facts set profile"*)
+    _eq "unresolvable profile: stderr names the fix" "match" "match" ;;
+  *)
+    _eq "unresolvable profile: stderr names the fix" "match" "no match: $err" ;;
+esac
+
 printf '\n%d passed, %d failed\n' "$passes" "$fails"
 exit "$((fails > 0 ? 1 : 0))"

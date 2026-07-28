@@ -54,7 +54,7 @@ linux::install_packages() {
   local file="$source_dir/etc/linux/packages-${distro}.txt"
   local blacklist="$source_dir/etc/linux/packages-blacklist.txt"
   local profile
-  profile=$(packages::current_profile)
+  profile=$(packages::current_profile) || return 1
 
   if [[ ! -f "$file" ]]; then
     msg::error "no package list at $file"

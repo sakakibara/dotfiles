@@ -42,7 +42,7 @@ brew::setup() {
   local file blacklist profile
   file=$(brew::_packages_file)
   blacklist=$(brew::_blacklist_file)
-  profile=$(packages::current_profile)
+  profile=$(packages::current_profile) || return 1
 
   if [[ ! -r "$file" ]]; then
     msg::error "missing package list: $file"
