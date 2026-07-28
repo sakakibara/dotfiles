@@ -235,7 +235,10 @@ Usage:
 
     if ($ProfileArgs.Count -eq 0) {
         $current = _MoxProfile
-        if (-not $current) { $current = 'personal' }
+        if (-not $current) {
+            [Console]::Error.WriteLine("dotfiles profile: profile fact is unset; run 'mox facts set profile <personal|work>'")
+            exit 1
+        }
         Write-Host $current
         return
     }

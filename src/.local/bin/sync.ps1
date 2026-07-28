@@ -69,6 +69,9 @@ function _SyncAppliesTo([hashtable]$parsed, [string]$current) {
     return ($parsed.Profiles -contains $current)
 }
 
+# Neither DOTFILES_PROFILE nor a `mox facts` value resolving is a hard
+# error: sync runs outside `mox apply`, where there is no unbound-fact
+# guard, so this must not guess "personal".
 function _SyncCurrentProfile {
     if ($env:DOTFILES_PROFILE) { return $env:DOTFILES_PROFILE }
     if (Get-Command mox -ErrorAction SilentlyContinue) {
@@ -78,7 +81,8 @@ function _SyncCurrentProfile {
             }
         } catch { }
     }
-    return 'personal'
+    [Console]::Error.WriteLine("sync: profile fact is unset; run 'mox facts set profile <personal|work>'")
+    exit 1
 }
 
 # Query installed (Windows)

@@ -1,8 +1,16 @@
 # packages — shared parser for the per-OS package list files (analog of
 # etc/bash/lib/packages.bash). Used by sync.ps1 and the install libraries.
 
-# Resolve the active profile, falling back to "personal" when nothing
-# answers. Result is the bare profile name (no quotes / colors).
+Import-Module (Join-Path $PSScriptRoot 'Msg.psm1') -Force
+
+# Resolve the active profile. Result is the bare profile name (no quotes /
+# colors).
+#
+# Neither DOTFILES_PROFILE nor a `mox facts` value resolving is a hard
+# error: callers run outside `mox apply`, where there is no unbound-fact
+# guard, so this must not guess. Throws a terminating error instead —
+# callers run with $ErrorActionPreference = 'Stop', so this halts the
+# calling command rather than proceeding with a guessed profile.
 function Get-DotfilesProfile {
     if ($env:DOTFILES_PROFILE) { return $env:DOTFILES_PROFILE }
     if (Get-Command mox -ErrorAction SilentlyContinue) {
@@ -11,7 +19,8 @@ function Get-DotfilesProfile {
             if ($line) { return $line.Matches[0].Groups[1].Value }
         } catch { }
     }
-    return 'personal'
+    Write-Failure "profile fact is unset; run 'mox facts set profile <personal|work>'"
+    throw 'profile fact is unset'
 }
 
 # Parse one line into @{ Kind; Name; Profiles }, or $null for blank /
