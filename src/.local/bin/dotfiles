@@ -210,7 +210,11 @@ EOF
   if [[ -z "${1:-}" ]]; then
     local current
     current=$(mox facts </dev/null 2>/dev/null | awk -F' = ' '$1 == "profile" { gsub(/"/, "", $2); print $2 }' || true)
-    printf '%s\n' "${current:-personal}"
+    if [[ -z "$current" ]]; then
+      printf "dotfiles profile: profile fact is unset; run 'mox facts set profile <personal|work>'\n" >&2
+      return 1
+    fi
+    printf '%s\n' "$current"
     return 0
   fi
 
