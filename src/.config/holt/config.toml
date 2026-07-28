@@ -1,3 +1,4 @@
+# mox: default holt_backend="icloud"
 [workspace]
 # mox: when holt_backend=icloud
 backend   = "icloud"
