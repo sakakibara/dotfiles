@@ -7,7 +7,7 @@ variants = latte, frappe, macchiato, mocha
 
 # Asset URLs. {variant} and {Variant} are substituted at fetch time.
 asset.kitty.url = https://raw.githubusercontent.com/catppuccin/kitty/main/themes/{variant}.conf
-asset.fish.url  = https://raw.githubusercontent.com/catppuccin/fish/main/themes/Catppuccin%20{Variant}.theme
+asset.fish.url  = https://raw.githubusercontent.com/catppuccin/fish/main/themes/static/catppuccin-{variant}.theme
 
 # Naming overrides. Built-in defaults handle nvim/tmux/vivid; wezterm matches
 # the {Family} {Variant} default, so it's omitted here. Listed for documentation.
