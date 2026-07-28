@@ -4,7 +4,7 @@ mox trigger hash "$MOX_REPO/etc/linux/packages-fedora.txt" "$MOX_REPO/etc/linux/
 # the linux/packages library code change.
 source "$MOX_REPO/etc/bash/lib/init.bash"
 
-export DOTFILES_PROFILE="${MOX_FACT_PROFILE:-personal}"
+export DOTFILES_PROFILE="$MOX_FACT_PROFILE"
 
 import unix linux
 

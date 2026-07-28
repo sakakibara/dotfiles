@@ -5,7 +5,7 @@ mox trigger hash "$MOX_REPO/etc/darwin/packages.txt" "$MOX_REPO/etc/darwin/packa
 source "$MOX_REPO/etc/bash/lib/init.bash"
 
 # Bake the profile into the env so brew::setup doesn't need to shell out.
-export DOTFILES_PROFILE="${MOX_FACT_PROFILE:-personal}"
+export DOTFILES_PROFILE="$MOX_FACT_PROFILE"
 
 import unix darwin brew
 
