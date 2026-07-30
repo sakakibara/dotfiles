@@ -1,0 +1,143 @@
+#!/usr/bin/env bash
+# Host-tamper gate. Runs a real container against a synthetic host tree with the
+# default-mode mount plan, has it attempt every known write into host agent
+# state, and fails if anything outside SHARED_PATHS changed.
+#
+# The mount plan here mirrors _run_args default mode; agent_sandbox_security.sh
+# asserts the wrapper actually emits that shape. Both are needed: that suite
+# stubs docker and cannot observe behaviour, this one observes behaviour but
+# does not read the wrapper.
+set -euo pipefail
+
+IMAGE="${ASB_ISOLATION_IMAGE:-agent-sandbox:latest}"
+
+command -v docker >/dev/null 2>&1 || { echo "SKIP: docker unavailable" >&2; exit 0; }
+docker image inspect "$IMAGE" >/dev/null 2>&1 || { echo "SKIP: $IMAGE not built" >&2; exit 0; }
+
+work=$(mktemp -d)
+trap 'chmod -R u+w "$work" 2>/dev/null || true; rm -rf "$work"' EXIT
+
+# Paths a sandbox is allowed to modify. Everything else in the host agent tree
+# must be byte-identical afterwards. Keep this list short and justified.
+SHARED_PATHS=(
+  './.claude/projects'
+  './.claude/history.jsonl'
+  './.claude/.credentials.json'
+)
+
+HH="$work/host"
+mkdir -p "$HH/.agents/hooks" "$HH/.agents/skills/demo" \
+         "$HH/.claude/plugins/cache/demo/1.0.0/hooks" \
+         "$HH/.claude/projects/-demo/memory" "$HH/.claude/backups"
+
+printf 'guard\n'            > "$HH/.agents/hooks/instruction-trust-guard.sh"
+printf 'stage guard\n'      > "$HH/.agents/hooks/git-stage-guard.sh"
+printf 'global rules\n'     > "$HH/.agents/instructions.md"
+printf 'demo skill\n'       > "$HH/.agents/skills/demo/SKILL.md"
+chmod +x "$HH/.agents/hooks/"*.sh
+
+printf '{"hooks":{}}\n'     > "$HH/.claude/settings.json"
+printf 'plugin hook\n'      > "$HH/.claude/plugins/cache/demo/1.0.0/hooks/run-hook.cmd"
+chmod +x "$HH/.claude/plugins/cache/demo/1.0.0/hooks/run-hook.cmd"
+printf '{"demo":{}}\n'      > "$HH/.claude/plugins/installed_plugins.json"
+printf 'notes\n'            > "$HH/.claude/projects/-demo/memory/notes.md"
+printf '{}\n'               > "$HH/.claude.json"
+
+ln -s ../.agents/instructions.md "$HH/.claude/CLAUDE.md"
+ln -s ../.agents/hooks           "$HH/.claude/hooks"
+ln -s ../.agents/skills          "$HH/.claude/skills"
+
+manifest() {
+  ( cd "$1" && find . -mindepth 1 -print | LC_ALL=C sort | while IFS= read -r p; do
+      if [[ -L "$p" ]]; then
+        printf '%s\tsymlink\t%s\n' "$p" "$(readlink "$p")"
+      elif [[ -d "$p" ]]; then
+        printf '%s\tdir\n' "$p"
+      elif [[ -f "$p" ]]; then
+        printf '%s\tfile\t%s\n' "$p" "$(shasum -a 256 "$p" | cut -d' ' -f1)"
+      else
+        printf '%s\tother\n' "$p"
+      fi
+    done )
+}
+
+mkdir -p "$work/repo" "$work/slot/.claude"
+printf 'x\n' > "$work/repo/file.txt"
+printf 'history\n' > "$HH/.claude/history.jsonl"
+printf 'creds\n'   > "$HH/.claude/.credentials.json"
+
+# Seeding, mirroring _ensure_sandbox_home.
+cp "$HH/.claude.json" "$work/slot/.claude.json"
+cp "$HH/.claude/settings.json" "$work/slot/.claude/settings.json"
+mkdir -p "$work/slot/.claude/plugins/cache"
+cp "$HH/.claude/plugins/installed_plugins.json" "$work/slot/.claude/plugins/installed_plugins.json"
+ln -sfn ../.agents/instructions.md "$work/slot/.claude/CLAUDE.md"
+ln -sfn ../.agents/hooks           "$work/slot/.claude/hooks"
+ln -sfn ../.agents/skills          "$work/slot/.claude/skills"
+
+manifest "$HH" > "$work/before.txt"
+
+# Default-mode mount plan (mirrors _run_args).
+docker run --rm \
+  -e AGENT_SANDBOX=1 -e HOST_HOME="$HH" -e SANDBOX_AGENT_KIND=claude \
+  -v "$work/slot":"$HH" \
+  -v "$HH/.agents":"$HH/.agents":ro \
+  -v "$HH/.agents":/home/claude/.agents:ro \
+  -v "$HH/.claude/plugins/cache":"$HH/.claude/plugins/cache":ro \
+  -v "$HH/.claude/projects":"$HH/.claude/projects" \
+  -v "$HH/.claude/history.jsonl":"$HH/.claude/history.jsonl" \
+  -v "$HH/.claude/.credentials.json":"$HH/.claude/.credentials.json" \
+  -v "$work/repo":"$work/repo" \
+  -w "$work/repo" \
+  --entrypoint sh "$IMAGE" -c '
+    set -u
+    C="$HOST_HOME/.claude"
+    t() { sudo sh -c "$1" >/dev/null 2>&1 || true; }
+    t "rm -f $C/CLAUDE.md && echo TAMPERED > $C/CLAUDE.md"
+    t "rm -f $C/hooks && mkdir -p $C/hooks && echo TAMPERED > $C/hooks/evil.sh"
+    t "rm -f $C/skills && mkdir -p $C/skills && echo TAMPERED > $C/skills/evil.md"
+    t "echo TAMPERED > $C/settings.json"
+    t "echo TAMPERED > $C/settings.local.json"
+    t "echo TAMPERED > $C/plugins/cache/demo/1.0.0/hooks/run-hook.cmd"
+    t "echo TAMPERED > $C/plugins/installed_plugins.json"
+    t "mkdir -p $C/commands && echo TAMPERED > $C/commands/evil.md"
+    t "mkdir -p $C/agents   && echo TAMPERED > $C/agents/evil.md"
+    t "mkdir -p $C/rules    && echo TAMPERED > $C/rules/evil.md"
+    t "mkdir -p $C/routines && echo TAMPERED > $C/routines/evil.md"
+    t "echo TAMPERED > $C/scheduled_tasks.json"
+    t "echo TAMPERED > $HOST_HOME/.agents/hooks/instruction-trust-guard.sh"
+    t "echo TAMPERED > $HOST_HOME/.claude.json"
+    exit 0
+  ' >/dev/null 2>&1
+
+manifest "$HH" > "$work/after.txt"
+
+allowed() {
+  local p="$1" s
+  for s in "${SHARED_PATHS[@]}"; do
+    [[ "$p" == "$s" || "$p" == "$s"/* ]] && return 0
+  done
+  return 1
+}
+
+violations=0
+while IFS= read -r line; do
+  path="${line%%$'\t'*}"
+  allowed "$path" && continue
+  printf 'TAMPERED: %s\n' "$line" >&2
+  violations=$((violations + 1))
+done < <(LC_ALL=C comm -13 "$work/before.txt" "$work/after.txt")
+
+while IFS= read -r line; do
+  path="${line%%$'\t'*}"
+  allowed "$path" && continue
+  printf 'REMOVED/CHANGED: %s\n' "$line" >&2
+  violations=$((violations + 1))
+done < <(LC_ALL=C comm -23 "$work/before.txt" "$work/after.txt")
+
+if ((violations)); then
+  echo "FAIL: sandbox modified $violations host path(s) outside the shared set" >&2
+  exit 1
+fi
+
+echo 'agent sandbox isolation tests passed'

@@ -232,21 +232,51 @@ _strict_cl_volume() {
   printf '%s-cl\n' "$1"
 }
 
-# Per-slot agent home, mounted at the host home path. Seeded from the host's
-# .claude.json once so trust records, MCP config and onboarding carry over;
-# it diverges after that, which is what keeps concurrent host and sandbox
-# sessions off the same file.
-_sandbox_home() {
-  local dir="${XDG_DATA_HOME:-$HOME/.local/share}/agent-sandbox/home/$1"
-  mkdir -p "$dir"
-  if [[ ! -e "$dir/.claude.json" ]]; then
-    if [[ -f "$HOME/.claude.json" ]]; then
-      cp "$HOME/.claude.json" "$dir/.claude.json"
-    else
-      printf '{}\n' > "$dir/.claude.json"
-    fi
+# Per-slot agent home, mounted at the host home path. The agent state directory
+# is sandbox-owned: host content reaches it only through the explicit binds in
+# _run_args, so anything a session writes - including paths a future release
+# adds - stays here instead of reaching the host tree. Seeded from the host's
+# .claude.json and settings files so trust records, MCP config, onboarding and
+# hook declarations carry over; they diverge after that.
+_sandbox_home_path() {
+  printf '%s/agent-sandbox/home/%s\n' "${XDG_DATA_HOME:-$HOME/.local/share}" "$1"
+}
+
+_ensure_sandbox_home() {
+  local dir; dir=$(_sandbox_home_path "$1")
+  mkdir -p "$dir/.claude"
+
+  local f
+  for f in .claude.json; do
+    [[ -e "$dir/$f" ]] && continue
+    if [[ -f "$HOME/$f" ]]; then cp "$HOME/$f" "$dir/$f"; else printf '{}\n' > "$dir/$f"; fi
+  done
+  # Re-copied every launch, not seeded once: the host stays authoritative for
+  # settings and hook declarations, and anything a session wrote into its own
+  # copy is discarded at the next start. A model change made inside a sandbox
+  # therefore does not survive container recreation.
+  for f in settings.json settings.local.json; do
+    [[ -f "$HOME/.claude/$f" ]] && cp -f "$HOME/.claude/$f" "$dir/.claude/$f"
+  done
+
+  # Plugin code lives in cache/ and is mounted read-only; the metadata beside it
+  # is rewritten at startup, so the sandbox gets its own copies rather than
+  # failing every launch or being handed write access to the host's.
+  if [[ -d "$HOME/.claude/plugins" ]]; then
+    mkdir -p "$dir/.claude/plugins/cache"
+    for f in config.json installed_plugins.json known_marketplaces.json plugin-catalog-cache.json; do
+      [[ -e "$dir/.claude/plugins/$f" ]] && continue
+      [[ -f "$HOME/.claude/plugins/$f" ]] && cp "$HOME/.claude/plugins/$f" "$dir/.claude/plugins/$f"
+    done
   fi
-  printf '%s\n' "$dir"
+
+  # Mirror the host layout so instructions, hooks and skills resolve through
+  # the read-only .agents mount. Recreated each launch: a session that replaces
+  # a link only affects its own copy, and the next launch restores it.
+  for f in CLAUDE.md:instructions.md hooks:hooks skills:skills; do
+    rm -rf "$dir/.claude/${f%%:*}"
+    ln -sfn "../.agents/${f##*:}" "$dir/.claude/${f%%:*}"
+  done
 }
 
 _container_exists()  { docker container inspect "$1" >/dev/null 2>&1; }
@@ -451,11 +481,18 @@ _run_args() {
   if [[ "$mode" != "strict" ]]; then
     args+=( -e "HOST_HOME=$HOME" -e "SANDBOX_AGENT_KIND=$AGENT_KIND" )
     if [[ "$AGENT_KIND" == "claude" ]]; then
-      args+=( -v "$(_sandbox_home "$name")":"$HOME" )
+      args+=( -v "$(_sandbox_home_path "$name")":"$HOME" )
       if [[ -d "$HOME/.agents" ]]; then
         args+=( -v "$HOME/.agents":"$HOME/.agents":ro
                 -v "$HOME/.agents":/home/claude/.agents:ro )
       fi
+      [[ -d "$HOME/.claude/plugins/cache" ]] &&
+        args+=( -v "$HOME/.claude/plugins/cache":"$HOME/.claude/plugins/cache":ro )
+      local shared
+      for shared in projects history.jsonl .credentials.json; do
+        [[ -e "$HOME/.claude/$shared" ]] &&
+          args+=( -v "$HOME/.claude/$shared":"$HOME/.claude/$shared" )
+      done
     fi
   fi
 
@@ -466,12 +503,14 @@ _run_args() {
       for ws in "${WORKSPACES[@]}"; do
         args+=( -v "$ws":"$ws" )
       done
-      args+=( -v "$HOME/.$AGENT_KIND":"$HOME/.$AGENT_KIND" )
+      [[ "$AGENT_KIND" == claude ]] ||
+        args+=( -v "$HOME/.$AGENT_KIND":"$HOME/.$AGENT_KIND" )
       ;;
     worktree)
       local wt; wt=$(_worktree_path "$repo" "$name")
-      args+=( -v "$wt":"$repo"
-              -v "$HOME/.$AGENT_KIND":"$HOME/.$AGENT_KIND" )
+      args+=( -v "$wt":"$repo" )
+      [[ "$AGENT_KIND" == claude ]] ||
+        args+=( -v "$HOME/.$AGENT_KIND":"$HOME/.$AGENT_KIND" )
       ;;
     strict)
       args+=( -v "$(_strict_ws_volume "$name")":"$repo"
@@ -783,6 +822,7 @@ cmd_default() {
     worktree) _ensure_worktree "$repo" "$name" ;;
     strict)   _ensure_strict_volumes "$repo" "$name" ;;
   esac
+  [[ "$ISO_MODE" == strict || "$AGENT_KIND" != claude ]] || _ensure_sandbox_home "$name"
   local label; label=$(_session_label_for "$name" "$NAME_OVERRIDE")
 
   _info "creating $name (perm=$PERM_MODE iso=$ISO_MODE)"
@@ -817,6 +857,7 @@ cmd_start() {
     worktree) _ensure_worktree "$repo" "$name" ;;
     strict)   _ensure_strict_volumes "$repo" "$name" ;;
   esac
+  [[ "$ISO_MODE" == strict || "$AGENT_KIND" != claude ]] || _ensure_sandbox_home "$name"
   local label; label=$(_session_label_for "$name" "$NAME_OVERRIDE")
   _info "creating detached $name (perm=$PERM_MODE iso=$ISO_MODE)"
   local run_args=() c_args=() line
@@ -1159,14 +1200,17 @@ Multi-repo (default mode only):
                                 with --worktree or --strict.
 
 Isolation modes (ISO):
-  (default)   bind-mount cwd at its host path, with the selected agent's
-              state directory RW. Risk: the agent can delete the cwd or
-              corrupt its state.
+  (default)   bind-mount cwd at its host path. For Claude the agent state
+              directory is a per-slot sandbox-owned copy: host settings,
+              instructions, hooks, skills and plugin code are read-only or
+              not shared at all, and only projects/ (session history) and
+              .credentials.json are writable host paths. Codex state stays
+              fully RW. Risk: the agent can delete the cwd.
               External symlink targets are not mounted implicitly.
 
   --worktree  bind-mount a fresh `git worktree add` at the host repo path.
-              Main checkout is unreachable from the container. The selected
-              agent's state remains RW (same as default).
+              Main checkout is unreachable from the container. Agent state
+              is handled exactly as in default mode.
               Cheap "just in case" upgrade; one extra arg.
 
   --strict    the host repo path is a docker volume seeded from the cwd repo.

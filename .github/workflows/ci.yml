@@ -153,6 +153,7 @@ jobs:
         run: bash etc/tests/dotfiles_wrapper.sh
       - name: agent sandbox security
         run: bash etc/tests/agent_sandbox_security.sh
+      - run: bash etc/tests/agent_sandbox_isolation.sh
 
   pwsh-tests:
     name: PowerShell tests (Windows)

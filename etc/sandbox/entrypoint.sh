@@ -61,12 +61,11 @@ EOF
   export GIT_CONFIG_GLOBAL="$GLOBAL_GIT"
 fi
 
-# Default/worktree mode: the wrapper bind-mounts ~/.claude and
-# ~/.claude.json at the HOST's absolute path (e.g. /Users/sho/.claude),
-# not at /home/claude/.claude. claude-code records absolute install
-# paths in installed_plugins.json that point at the host's path; without
-# this, plugin lookups inside the container fail with "not found in
-# marketplace" because /Users/sho/.claude doesn't exist in the image.
+# Default/worktree mode: the wrapper mounts a per-slot agent home at the
+# HOST's absolute home path, not at /home/claude. claude-code records
+# absolute install paths in installed_plugins.json that point at the host's
+# path; without this, plugin lookups inside the container fail with
+# "not found in marketplace" because that path does not exist in the image.
 # Symlink /home/claude/.claude (and .claude.json) to the host paths so
 # both $HOME-relative AND host-absolute lookups resolve.
 if [[ -n "${HOST_HOME:-}" && "$HOST_HOME" != "$HOME" ]]; then

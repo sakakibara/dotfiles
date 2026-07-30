@@ -10,10 +10,12 @@
 #     ~/.local/share/mise/installs/node, shadowed by mise's shims via PATH.
 #
 # Filesystem layout inside the container:
-#   /workspace                    bind-mount of the host repo (rw)
-#   /home/claude/.claude          bind-mount of host ~/.claude (rw, shared
-#                                 auth + memory; per-project memory paths
-#                                 already encode the project)
+#   <host repo path>              bind-mount of the host repo (rw)
+#   /home/claude/.claude          symlink to a per-slot agent home mounted at
+#                                 the host home path (rw, sandbox-owned).
+#                                 Host content reaches it only through the
+#                                 explicit binds in the wrapper: projects/ and
+#                                 .credentials.json rw, plugins/cache ro.
 #   /home/claude/.config/git      bind-mount of host ~/.config/git (ro):
 #                                 config, ignore, and per-account *.inc
 
