@@ -104,7 +104,7 @@ _sanitize_basename() {
 #   suffix order: [-mode][-name | -N]
 #   - mode suffix:  "-wt" for --worktree, "-strict" for --strict, none for default
 #   - name suffix:  "-<sanitized-X>" when user passes --name X (named slot)
-#   - integer N:    auto-bumped suffix when the user runs `csb new` for
+#   - integer N:    auto-bumped suffix when the user runs `agent-sandbox new` for
 #                   parallel sessions, OR when cross-repo basename collision
 #                   forces a different name. N starts at 2 (first session
 #                   has no suffix).
