@@ -335,7 +335,7 @@ _resolve_workspace_links() {
   local a b keep
   while IFS= read -r a; do
     keep=1
-    for b in "${LINK_TARGETS[@]}"; do
+    for b in ${LINK_TARGETS[@]+"${LINK_TARGETS[@]}"}; do
       [[ "$a" == "$b"/* ]] && { keep=0; break; }
     done
     ((keep)) && LINK_TARGETS+=( "$a" )
