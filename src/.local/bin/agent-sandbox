@@ -244,7 +244,14 @@ _sandbox_home_path() {
 
 _ensure_sandbox_home() {
   local dir; dir=$(_sandbox_home_path "$1")
+  mkdir -p "$dir"
+  [[ "$AGENT_KIND" == codex ]] && { _seed_codex_home "$dir"; return; }
   mkdir -p "$dir/.claude"
+
+  local ws
+  for ws in "${WORKSPACES[@]}"; do
+    mkdir -p "$HOME/.claude/projects/$(printf '%s' "$ws" | tr '/.' '--')"
+  done
 
   local f
   for f in .claude.json; do
@@ -277,6 +284,26 @@ _ensure_sandbox_home() {
     rm -rf "$dir/.claude/${f%%:*}"
     ln -sfn "../.agents/${f##*:}" "$dir/.claude/${f%%:*}"
   done
+}
+
+# Codex equivalent. Same split: config, hook declarations and instruction
+# sources are re-copied from the host every launch and sandbox-local
+# thereafter; auth, session history and the plugin cache are bound in
+# _run_args. config.toml carries the hook trust ledger, so a session that
+# rewrites a hook cannot also re-bless it for the host.
+_seed_codex_home() {
+  local dir="$1" f
+  mkdir -p "$dir/.codex/plugins/cache"
+  for f in config.toml config.json hooks.json instructions.md installation_id version.json; do
+    [[ -f "$HOME/.codex/$f" ]] && cp -f "$HOME/.codex/$f" "$dir/.codex/$f"
+  done
+  for f in rules skills; do
+    [[ -d "$HOME/.codex/$f" ]] || continue
+    rm -rf "$dir/.codex/$f"
+    cp -R "$HOME/.codex/$f" "$dir/.codex/$f"
+  done
+  rm -rf "$dir/.codex/AGENTS.md"
+  ln -sfn ../.agents/instructions.md "$dir/.codex/AGENTS.md"
 }
 
 _container_exists()  { docker container inspect "$1" >/dev/null 2>&1; }
@@ -480,21 +507,41 @@ _run_args() {
   # so it is mounted read-only at both paths or neither resolves.
   if [[ "$mode" != "strict" ]]; then
     args+=( -e "HOST_HOME=$HOME" -e "SANDBOX_AGENT_KIND=$AGENT_KIND" )
+    args+=( -v "$(_sandbox_home_path "$name")":"$HOME" )
+    [[ -d "$HOME/.agents" ]] && args+=( -v "$HOME/.agents":"$HOME/.agents":ro )
+    local shared
     if [[ "$AGENT_KIND" == "claude" ]]; then
-      args+=( -v "$(_sandbox_home_path "$name")":"$HOME" )
-      if [[ -d "$HOME/.agents" ]]; then
-        args+=( -v "$HOME/.agents":"$HOME/.agents":ro
-                -v "$HOME/.agents":/home/claude/.agents:ro )
-      fi
       [[ -d "$HOME/.claude/plugins/cache" ]] &&
         args+=( -v "$HOME/.claude/plugins/cache":"$HOME/.claude/plugins/cache":ro )
-      local shared
-      for shared in projects history.jsonl .credentials.json; do
+      for shared in history.jsonl .credentials.json; do
         [[ -e "$HOME/.claude/$shared" ]] &&
           args+=( -v "$HOME/.claude/$shared":"$HOME/.claude/$shared" )
       done
+      # Only the workspaces' own session history, not all of projects/. Each
+      # project's memory/ is host instruction input, so it is re-mounted
+      # read-only on top of the writable transcript directory.
+      local ws enc pdir
+      for ws in "${WORKSPACES[@]}"; do
+        enc=$(printf '%s' "$ws" | tr '/.' '--')
+        pdir="$HOME/.claude/projects/$enc"
+        [[ -d "$pdir" ]] || continue
+        args+=( -v "$pdir":"$pdir" )
+        [[ -d "$pdir/memory" ]] && args+=( -v "$pdir/memory":"$pdir/memory":ro )
+      done
+    else
+      [[ -d "$HOME/.codex/plugins/cache" ]] &&
+        args+=( -v "$HOME/.codex/plugins/cache":"$HOME/.codex/plugins/cache":ro )
+      for shared in auth.json history.jsonl sessions; do
+        [[ -e "$HOME/.codex/$shared" ]] &&
+          args+=( -v "$HOME/.codex/$shared":"$HOME/.codex/$shared" )
+      done
     fi
   fi
+
+  # Hook commands are declared as $HOME/.agents/... and $HOME is /home/claude
+  # inside the container, so this one is needed in every mode - including
+  # strict, whose guards would otherwise never run.
+  [[ -d "$HOME/.agents" ]] && args+=( -v "$HOME/.agents":/home/claude/.agents:ro )
 
   case "$mode" in
     default)
@@ -502,15 +549,19 @@ _run_args() {
       local ws
       for ws in "${WORKSPACES[@]}"; do
         args+=( -v "$ws":"$ws" )
+        # git runs these on the HOST after the sandbox exits. hooks/ alone is
+        # not enough: core.hooksPath in config redirects it elsewhere, and
+        # filter/diff/fsmonitor entries are executed too, so both are read-only
+        # or neither is worth mounting. A worktree's .git is a file, so this
+        # matches only a real checkout - a worktree's hooks live in the main
+        # repo, which is not mounted at all.
+        [[ -d "$ws/.git/hooks" ]] && args+=( -v "$ws/.git/hooks":"$ws/.git/hooks":ro )
+        [[ -f "$ws/.git/config" ]] && args+=( -v "$ws/.git/config":"$ws/.git/config":ro )
       done
-      [[ "$AGENT_KIND" == claude ]] ||
-        args+=( -v "$HOME/.$AGENT_KIND":"$HOME/.$AGENT_KIND" )
       ;;
     worktree)
       local wt; wt=$(_worktree_path "$repo" "$name")
       args+=( -v "$wt":"$repo" )
-      [[ "$AGENT_KIND" == claude ]] ||
-        args+=( -v "$HOME/.$AGENT_KIND":"$HOME/.$AGENT_KIND" )
       ;;
     strict)
       args+=( -v "$(_strict_ws_volume "$name")":"$repo"
@@ -822,7 +873,7 @@ cmd_default() {
     worktree) _ensure_worktree "$repo" "$name" ;;
     strict)   _ensure_strict_volumes "$repo" "$name" ;;
   esac
-  [[ "$ISO_MODE" == strict || "$AGENT_KIND" != claude ]] || _ensure_sandbox_home "$name"
+  [[ "$ISO_MODE" == strict ]] || _ensure_sandbox_home "$name"
   local label; label=$(_session_label_for "$name" "$NAME_OVERRIDE")
 
   _info "creating $name (perm=$PERM_MODE iso=$ISO_MODE)"
@@ -857,7 +908,7 @@ cmd_start() {
     worktree) _ensure_worktree "$repo" "$name" ;;
     strict)   _ensure_strict_volumes "$repo" "$name" ;;
   esac
-  [[ "$ISO_MODE" == strict || "$AGENT_KIND" != claude ]] || _ensure_sandbox_home "$name"
+  [[ "$ISO_MODE" == strict ]] || _ensure_sandbox_home "$name"
   local label; label=$(_session_label_for "$name" "$NAME_OVERRIDE")
   _info "creating detached $name (perm=$PERM_MODE iso=$ISO_MODE)"
   local run_args=() c_args=() line
@@ -1215,9 +1266,10 @@ Isolation modes (ISO):
 
   --strict    the host repo path is a docker volume seeded from the cwd repo.
               ~/.claude is a docker volume seeded once from host ~/.claude.
-              Without --signing, the long-running container has no host
-              bind mounts. Host repo and host ~/.claude cannot be touched
-              by the container at all.
+              The only host bind mount is ~/.agents read-only, so the
+              configured hooks still run; --signing adds the Git config.
+              Host repo and host ~/.claude cannot be written by the
+              container at all.
               Use `agent-sandbox export` to git-fetch changes back to
               the host repo as refs/sandbox-export/*; review and merge
               at your own pace.

@@ -23,6 +23,9 @@ SHARED_PATHS=(
   './.claude/projects'
   './.claude/history.jsonl'
   './.claude/.credentials.json'
+  './.codex/sessions'
+  './.codex/history.jsonl'
+  './.codex/auth.json'
 )
 
 HH="$work/host"
@@ -47,6 +50,14 @@ ln -s ../.agents/instructions.md "$HH/.claude/CLAUDE.md"
 ln -s ../.agents/hooks           "$HH/.claude/hooks"
 ln -s ../.agents/skills          "$HH/.claude/skills"
 
+mkdir -p "$HH/.codex/sessions" "$HH/.codex/rules" "$HH/.codex/plugins/cache/demo"
+printf '{"hooks":{}}\n'  > "$HH/.codex/hooks.json"
+printf 'trust = "yes"\n' > "$HH/.codex/config.toml"
+printf 'rules\n'         > "$HH/.codex/rules/default.rules"
+printf 'auth\n'          > "$HH/.codex/auth.json"
+printf 'plugin\n'        > "$HH/.codex/plugins/cache/demo/run.sh"
+ln -s ../.agents/instructions.md "$HH/.codex/AGENTS.md"
+
 manifest() {
   ( cd "$1" && find . -mindepth 1 -print | LC_ALL=C sort | while IFS= read -r p; do
       if [[ -L "$p" ]]; then
@@ -63,6 +74,9 @@ manifest() {
 
 mkdir -p "$work/repo" "$work/slot/.claude"
 printf 'x\n' > "$work/repo/file.txt"
+git -C "$work/repo" init -q
+printf 'hook\n' > "$work/repo/.git/hooks/pre-commit"
+repo_before=$(manifest "$work/repo/.git")
 printf 'history\n' > "$HH/.claude/history.jsonl"
 printf 'creds\n'   > "$HH/.claude/.credentials.json"
 
@@ -88,6 +102,8 @@ docker run --rm \
   -v "$HH/.claude/history.jsonl":"$HH/.claude/history.jsonl" \
   -v "$HH/.claude/.credentials.json":"$HH/.claude/.credentials.json" \
   -v "$work/repo":"$work/repo" \
+  -v "$work/repo/.git/hooks":"$work/repo/.git/hooks":ro \
+  -v "$work/repo/.git/config":"$work/repo/.git/config":ro \
   -w "$work/repo" \
   --entrypoint sh "$IMAGE" -c '
     set -u
@@ -107,6 +123,38 @@ docker run --rm \
     t "echo TAMPERED > $C/scheduled_tasks.json"
     t "echo TAMPERED > $HOST_HOME/.agents/hooks/instruction-trust-guard.sh"
     t "echo TAMPERED > $HOST_HOME/.claude.json"
+    t "echo TAMPERED > $PWD/.git/hooks/pre-commit"
+    t "echo hooksPath-injection > $PWD/.git/config"
+    exit 0
+  ' >/dev/null 2>&1
+
+# Codex mount plan (mirrors _run_args for AGENT_KIND=codex).
+mkdir -p "$work/slotx/.codex/plugins/cache"
+cp "$HH/.codex/hooks.json"  "$work/slotx/.codex/hooks.json"
+cp "$HH/.codex/config.toml" "$work/slotx/.codex/config.toml"
+cp -R "$HH/.codex/rules"    "$work/slotx/.codex/rules"
+ln -sfn ../.agents/instructions.md "$work/slotx/.codex/AGENTS.md"
+
+docker run --rm \
+  -e AGENT_SANDBOX=1 -e HOST_HOME="$HH" -e SANDBOX_AGENT_KIND=codex \
+  -v "$work/slotx":"$HH" \
+  -v "$HH/.agents":"$HH/.agents":ro \
+  -v "$HH/.agents":/home/claude/.agents:ro \
+  -v "$HH/.codex/plugins/cache":"$HH/.codex/plugins/cache":ro \
+  -v "$HH/.codex/auth.json":"$HH/.codex/auth.json" \
+  -v "$HH/.codex/sessions":"$HH/.codex/sessions" \
+  -v "$work/repo":"$work/repo" \
+  -w "$work/repo" \
+  --entrypoint sh "$IMAGE" -c '
+    set -u
+    X="$HOST_HOME/.codex"
+    t() { sudo sh -c "$1" >/dev/null 2>&1 || true; }
+    t "echo TAMPERED > $X/hooks.json"
+    t "echo TAMPERED > $X/config.toml"
+    t "rm -f $X/AGENTS.md && echo TAMPERED > $X/AGENTS.md"
+    t "echo TAMPERED > $X/rules/default.rules"
+    t "echo TAMPERED > $X/plugins/cache/demo/run.sh"
+    t "mkdir -p $X/skills && echo TAMPERED > $X/skills/evil.md"
     exit 0
   ' >/dev/null 2>&1
 
@@ -137,6 +185,12 @@ done < <(LC_ALL=C comm -23 "$work/before.txt" "$work/after.txt")
 
 if ((violations)); then
   echo "FAIL: sandbox modified $violations host path(s) outside the shared set" >&2
+  exit 1
+fi
+
+if [[ "$repo_before" != "$(manifest "$work/repo/.git")" ]]; then
+  echo 'FAIL: sandbox modified the host repository git directory' >&2
+  diff <(printf '%s\n' "$repo_before") <(manifest "$work/repo/.git") >&2 || true
   exit 1
 fi
 

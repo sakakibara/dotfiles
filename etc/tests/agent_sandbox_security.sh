@@ -141,11 +141,17 @@ log=$(cat "$work/docker.log")
 : > "$work/docker.log"
 : > "$work/herdr.log"
 mkdir -p "$work/home/.codex"
+printf '{"hooks":{}}
+' > "$work/home/.codex/hooks.json"
+ln -sfn ../.agents/instructions.md "$work/home/.codex/AGENTS.md"
 HERDR_ENV=1 HERDR_PANE_ID=pane-test run_sandbox codex "$work/fixture"
 log=$(cat "$work/docker.log")
 [[ "$log" == *'<--label> <agent-sandbox.agent=codex>'* ]] || { echo 'FAIL: Codex agent label missing' >&2; exit 1; }
 [[ "$log" == *'<codex> <--sandbox> <workspace-write> <--ask-for-approval> <on-request>'* ]] || { echo 'FAIL: Codex launch arguments missing' >&2; exit 1; }
-[[ "$log" == *"$work/home/.codex:$work/home/.codex"* ]] || { echo 'FAIL: Codex state mount missing' >&2; exit 1; }
+[[ "$log" != *"$work/home/.codex:$work/home/.codex"* ]] || { echo 'FAIL: Codex state directory is mounted wholesale' >&2; exit 1; }
+[[ "$log" == *"data/agent-sandbox/home/agent-sandbox-fixture-codex:$work/home"* ]] || { echo 'FAIL: Codex per-slot agent home not mounted' >&2; exit 1; }
+[[ -f "$work/data/agent-sandbox/home/agent-sandbox-fixture-codex/.codex/hooks.json" ]] || { echo 'FAIL: Codex hook declarations not seeded into the slot' >&2; exit 1; }
+[[ -L "$work/data/agent-sandbox/home/agent-sandbox-fixture-codex/.codex/AGENTS.md" ]] || { echo 'FAIL: Codex instruction symlink not recreated' >&2; exit 1; }
 for value in '.claude.json' '.claude:' '.config/git'; do
   [[ "$log" != *"$value"* ]] || { echo "FAIL: Codex launch exposed $value" >&2; exit 1; }
 done
