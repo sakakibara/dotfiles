@@ -330,6 +330,7 @@ _agent_args() {
       esac
       ;;
   esac
+  args+=( ${AGENT_EXTRA[@]+"${AGENT_EXTRA[@]}"} )
   printf '%s\n' "${args[@]}"
 }
 
@@ -630,6 +631,7 @@ _parse_common_flags() {
   SIGNING=0
   WORKSPACES=()
   RESUME_FLAGS=()
+  AGENT_EXTRA=()
   while (($#)); do
     case "$1" in
       --auto)     PERM_MODE="auto";   shift ;;
@@ -672,6 +674,15 @@ _parse_common_flags() {
     esac
   done
   REMAINING=( "$@" )
+
+  local i
+  for i in "${!REMAINING[@]}"; do
+    if [[ "${REMAINING[$i]}" == "--" ]]; then
+      AGENT_EXTRA=( "${REMAINING[@]:i+1}" )
+      REMAINING=( "${REMAINING[@]:0:i}" )
+      break
+    fi
+  done
 
   if ((RUN_REPO_SETUP && SIGNING)); then
     _die "--repo-setup and --signing cannot be combined"
@@ -1048,9 +1059,9 @@ cmd_help() {
 agent-sandbox - Docker-isolated coding agents.
 
 Usage:
-  agent-sandbox [claude|codex] [PERM] [ISO] [repo]
-  agent-sandbox [claude|codex] start [PERM] [ISO] [repo]
-  agent-sandbox [claude|codex] new [PERM] [ISO] [--name X] [repo]
+  agent-sandbox [claude|codex] [PERM] [ISO] [repo] [-- AGENT ARGS]
+  agent-sandbox [claude|codex] start [PERM] [ISO] [repo] [-- AGENT ARGS]
+  agent-sandbox [claude|codex] new [PERM] [ISO] [--name X] [repo] [-- AGENT ARGS]
                                             alias for the default; always
                                             creates a fresh sandbox (auto-
                                             numbered: <base>, <base>-2, ...)
@@ -1100,6 +1111,12 @@ Agent selection:
 Optional capabilities:
   --repo-setup  trusted repos only: run setup and mise install at startup
   --signing     forward the host signing agent and Git identity configuration
+
+Agent passthrough:
+  [repo] -- ARGS           everything after -- is appended to the agent's
+                           own argument list verbatim, e.g.
+                           `agent-sandbox . -- --debug`. A positional repo
+                           is required before -- (use . for the cwd).
 
 Resume passthrough:
   --continue, -c           continue the most recent session in the cwd

@@ -112,6 +112,17 @@ for value in 'ASB_REPO_SETUP' 'SANDBOX_AGENT_HOST' 'SANDBOX_AGENT_SOCK' '.config
 done
 
 : > "$work/docker.log"
+run_sandbox "$work/fixture" -- --debug --verbose
+log=$(cat "$work/docker.log")
+[[ "$log" == *'<--permission-mode> <acceptEdits> <--debug> <--verbose>'* ]] || { echo 'FAIL: agent passthrough did not reach the agent' >&2; exit 1; }
+[[ "$log" == *"$work/fixture:$work/fixture"* ]] || { echo 'FAIL: agent passthrough swallowed the repo path' >&2; exit 1; }
+
+: > "$work/docker.log"
+run_sandbox codex "$work/fixture" -- --search
+log=$(cat "$work/docker.log")
+[[ "$log" == *'<on-request> <--search>'* ]] || { echo 'FAIL: Codex agent passthrough did not reach the agent' >&2; exit 1; }
+
+: > "$work/docker.log"
 run_sandbox --signing "$work/fixture"
 log=$(cat "$work/docker.log")
 [[ "$log" == *"$work/home/.config/git:/home/claude/.config/git:ro"* ]] || { echo 'FAIL: signing mode omitted Git configuration' >&2; exit 1; }
