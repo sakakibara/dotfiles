@@ -55,12 +55,12 @@ Codex workspace authorization is checked against resolved filesystem targets. A 
 
 Specs, plans, design docs, and any markdown from superpowers-style planning skills are PROJECT DOCUMENTATION, not source. By default they never go inside a git repo's working tree (any path under `git rev-parse --show-toplevel`) - keeping them out prevents accidental doc commits. They belong in the project's synced `docs/` sibling. Resolve the target:
 
-1. **cwd under a hub project** (`<hub_root>/<org>/<project>/`): write to `<project>/docs/superpowers/{specs,plans}/<YYYY-MM-DD>-<topic>.md`.
+1. **cwd under a hub project** (`<hub_root>/<org>/<project>/`): write to `<project>/docs/{specs,plans,research,handoffs}/<YYYY-MM-DD>-<topic>.md`.
 2. **cwd inside a repo working tree** (under `code_root`): find the hub project bridging it - `holt list` and match, or the `<hub_root>/*/*/code/<repo>` symlink that resolves to this repo root (usually `<project>` == `<repo>` for the primary repo). Write to that project's `docs/` as in (1).
 3. **cwd maps to no hub project** (third-party clones, some work repos): check project memory (`~/.claude/projects/<encoded-cwd>/memory/`) for a recorded docs location; if none, ASK before writing and propose saving the mapping to memory.
-4. Create the `docs/` target if absent. A prompt that says "save to `docs/superpowers/...`" means this resolved absolute target, not that relative path taken from cwd.
+4. Create the `docs/` target if absent. A prompt or skill that says "save to `docs/superpowers/...`" means this resolved absolute target with the `superpowers/` level dropped - the directory holds all project documentation, not one tool's output.
 
-**Inside agent-sandbox** (`AGENT_SANDBOX=1`): the wrapper bind-mounts only the cwd. Started from the hub project root, the `docs/` symlink is mounted - resolve as above. For Claude sessions started inside a repo or elsewhere outside the hub, write to `~/.claude/superpowers/<repo>/{specs,plans}/<date>-<topic>.md` instead. `~/.claude/` persists and stays visible to host Claude Code. Detect the hub case by whether cwd sits under a project root containing both a `code/` symlink directory and a `docs/` symlink.
+**Inside agent-sandbox** (`AGENT_SANDBOX=1`): the wrapper bind-mounts only the cwd. Started from the hub project root, the `docs/` symlink is mounted - resolve as above. For Claude sessions started inside a repo or elsewhere outside the hub, write to `~/.claude/agent-docs/<repo>/{specs,plans,research,handoffs}/<date>-<topic>.md` instead. `~/.claude/` persists and stays visible to host Claude Code. Detect the hub case by whether cwd sits under a project root containing both a `code/` symlink directory and a `docs/` symlink.
 
 **Opt-in exception:** a project may version-control its docs inside its repo when the documents ARE its primary artifact (spec-first design work, or when git history for the docs is wanted). This needs the user's explicit instruction and a note in that project's memory; when a project is so configured, follow its recorded arrangement - do not "correct" it by moving docs back out.
 
