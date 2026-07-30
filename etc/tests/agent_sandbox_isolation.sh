@@ -15,7 +15,18 @@ command -v docker >/dev/null 2>&1 || { echo "SKIP: docker unavailable" >&2; exit
 docker image inspect "$IMAGE" >/dev/null 2>&1 || { echo "SKIP: $IMAGE not built" >&2; exit 0; }
 
 work=$(mktemp -d)
-trap 'chmod -R u+w "$work" 2>/dev/null || true; rm -rf "$work"' EXIT
+
+# The tamper container writes as root. On Linux those files are root-owned on
+# the host too, so the plain remove fails; hand ownership back from inside a
+# container rather than requiring sudo on the runner. macOS maps ownership to
+# the invoking user already, where the first remove succeeds.
+cleanup() {
+  rm -rf "$work" 2>/dev/null && return 0
+  docker run --rm -v "$work":/w --user 0 "$IMAGE" \
+    chown -R "$(id -u):$(id -g)" /w >/dev/null 2>&1 || true
+  rm -rf "$work"
+}
+trap cleanup EXIT
 
 # Paths a sandbox is allowed to modify. Everything else in the host agent tree
 # must be byte-identical afterwards. Keep this list short and justified.
