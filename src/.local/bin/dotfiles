@@ -48,21 +48,24 @@ cmd_info() {
   fi
 
   if command -v mox >/dev/null 2>&1; then
-    local status_out drift
-    status_out=$(mox status 2>/dev/null || true)
-    drift=$(printf '%s\n' "$status_out" | awk 'NF && $1 != "clean" && $1 != "GATED"')
+    local drift count
+    # `mox status --porcelain` emits one drifted unit per line, tab-separated:
+    # kind, key, first_contact, path. Consume that instead of scraping the
+    # human table. It reports true drift -- a file that needs a decision
+    # (--overwrite or commit) -- not one a plain `mox apply` would just create
+    # or update. Needs mox >= 0.8.0.
+    drift=$(mox status --porcelain 2>/dev/null || true)
     if [[ -z "$drift" ]]; then
       _row "Drift:" "none"
     else
-      local count
       count=$(printf '%s\n' "$drift" | wc -l | tr -d ' ')
       _row "Drift:" "$count file(s)"
-      # List each drifted entry on its own indented line. `mox status` emits
-      # `  <state>  <path>` per managed file; non-clean, non-GATED states are
-      # the drift. 8 leading spaces aligns with the _row value column.
-      while IFS= read -r line; do
-        [[ -z "$line" ]] && continue
-        printf '        %s%s%s\n' "$C_DIM" "${line#  }" "$C_RESET"
+      # Show each drifted path (home-relative), tagged with its kind. Paths on
+      # this OS are '/'-separated, so the porcelain path field carries no
+      # backslash escaping to undo; 8 leading spaces align with the value column.
+      while IFS=$'\t' read -r kind _ _ path; do
+        [[ -z "$path" ]] && continue
+        printf '        %s%s (%s)%s\n' "$C_DIM" "${path#"$HOME"/}" "$kind" "$C_RESET"
       done <<<"$drift"
     fi
   fi

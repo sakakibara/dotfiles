@@ -72,6 +72,27 @@ function _HashFile([string]$file) {
     return (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLower()
 }
 
+# Reverse mox's --porcelain field escaping (\\ \t \n \r). Windows paths are
+# backslash-separated, so the porcelain path field always carries doubled
+# backslashes; single-pass so a literal `\t` in a path is never re-read as a tab.
+function _UnescapePorcelain([string]$s) {
+    $sb = [System.Text.StringBuilder]::new()
+    for ($i = 0; $i -lt $s.Length; $i++) {
+        if ($s[$i] -eq '\' -and $i + 1 -lt $s.Length) {
+            $i++
+            switch ($s[$i]) {
+                't' { [void]$sb.Append("`t") }
+                'n' { [void]$sb.Append("`n") }
+                'r' { [void]$sb.Append("`r") }
+                '\' { [void]$sb.Append('\') }
+                default { [void]$sb.Append('\'); [void]$sb.Append($s[$i]) }
+            }
+        }
+        else { [void]$sb.Append($s[$i]) }
+    }
+    return $sb.ToString()
+}
+
 # Info
 function Cmd-Info {
     $sourceDir = _MoxRepo
@@ -88,19 +109,24 @@ function Cmd-Info {
     }
 
     if (_Have mox) {
-        # `mox status` emits `  <state>  <path>` per managed file; non-clean,
-        # non-GATED states are the drift. 8 leading spaces align with the
-        # _Row value column.
-        $drift = @((& mox status 2>$null) | Where-Object {
-            $t = $_.Trim()
-            $t -and (($t -split '\s+')[0] -notin 'clean', 'GATED')
-        })
+        # `mox status --porcelain` emits one drifted unit per line, tab-
+        # separated: kind, key, first_contact, path (path C-escaped). Consume
+        # that instead of scraping the human table. It reports true drift -- a
+        # file needing a decision -- not one a plain `mox apply` would just
+        # create or update. Needs mox >= 0.8.0.
+        $drift = @((& mox status --porcelain 2>$null) | Where-Object { $_ -ne '' })
         if ($drift.Count -eq 0) {
             _Row 'Drift:' 'none'
         } else {
             _Row 'Drift:' "$($drift.Count) file(s)"
             foreach ($line in $drift) {
-                Write-Host ('        {0}{1}{2}' -f $Script:Dim, ($line -replace '^  ', ''), $Script:Reset)
+                $f = $line -split "`t"
+                $kind = $f[0]
+                $path = _UnescapePorcelain $f[3]
+                if ($HOME -and $path.StartsWith($HOME)) {
+                    $path = $path.Substring($HOME.Length).TrimStart('\', '/')
+                }
+                Write-Host ('        {0}{1} ({2}){3}' -f $Script:Dim, $path, $kind, $Script:Reset)
             }
         }
     }
