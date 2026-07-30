@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # agent-sandbox - Docker-isolated coding agents, one container per repo.
 #
-# Default behaviour: in a repo, `agent-sandbox` starts a container with
+# Default behavior: in a repo, `agent-sandbox` starts a container with
 # `claude --remote-control --permission-mode acceptEdits` inside and
 # attaches an interactive TTY. Selecting `codex` runs Codex instead. The
 # container is ephemeral and is removed when the agent exits.
@@ -557,6 +557,11 @@ _run_args() {
         # repo, which is not mounted at all.
         [[ -d "$ws/.git/hooks" ]] && args+=( -v "$ws/.git/hooks":"$ws/.git/hooks":ro )
         [[ -f "$ws/.git/config" ]] && args+=( -v "$ws/.git/config":"$ws/.git/config":ro )
+        # Project-scoped agent config declares hooks and MCP servers that a
+        # host session in this repo would honor. It is configuration, not
+        # source, so the agent has no reason to rewrite its own permissions.
+        [[ -d "$ws/.claude" ]] && args+=( -v "$ws/.claude":"$ws/.claude":ro )
+        [[ -f "$ws/.mcp.json" ]] && args+=( -v "$ws/.mcp.json":"$ws/.mcp.json":ro )
       done
       ;;
     worktree)

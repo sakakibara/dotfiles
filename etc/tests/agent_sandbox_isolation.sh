@@ -76,7 +76,11 @@ mkdir -p "$work/repo" "$work/slot/.claude"
 printf 'x\n' > "$work/repo/file.txt"
 git -C "$work/repo" init -q
 printf 'hook\n' > "$work/repo/.git/hooks/pre-commit"
+mkdir -p "$work/repo/.claude"
+printf '{"hooks":{}}\n' > "$work/repo/.claude/settings.json"
+printf '{"mcpServers":{}}\n' > "$work/repo/.mcp.json"
 repo_before=$(manifest "$work/repo/.git")
+proj_before=$(manifest "$work/repo/.claude")$(shasum -a 256 "$work/repo/.mcp.json")
 printf 'history\n' > "$HH/.claude/history.jsonl"
 printf 'creds\n'   > "$HH/.claude/.credentials.json"
 
@@ -104,6 +108,8 @@ docker run --rm \
   -v "$work/repo":"$work/repo" \
   -v "$work/repo/.git/hooks":"$work/repo/.git/hooks":ro \
   -v "$work/repo/.git/config":"$work/repo/.git/config":ro \
+  -v "$work/repo/.claude":"$work/repo/.claude":ro \
+  -v "$work/repo/.mcp.json":"$work/repo/.mcp.json":ro \
   -w "$work/repo" \
   --entrypoint sh "$IMAGE" -c '
     set -u
@@ -125,6 +131,8 @@ docker run --rm \
     t "echo TAMPERED > $HOST_HOME/.claude.json"
     t "echo TAMPERED > $PWD/.git/hooks/pre-commit"
     t "echo hooksPath-injection > $PWD/.git/config"
+    t "echo TAMPERED > $PWD/.claude/settings.json"
+    t "echo TAMPERED > $PWD/.mcp.json"
     exit 0
   ' >/dev/null 2>&1
 
@@ -185,6 +193,11 @@ done < <(LC_ALL=C comm -23 "$work/before.txt" "$work/after.txt")
 
 if ((violations)); then
   echo "FAIL: sandbox modified $violations host path(s) outside the shared set" >&2
+  exit 1
+fi
+
+if [[ "$proj_before" != "$(manifest "$work/repo/.claude")$(shasum -a 256 "$work/repo/.mcp.json")" ]]; then
+  echo 'FAIL: sandbox modified project-scoped agent configuration' >&2
   exit 1
 fi
 
