@@ -232,6 +232,23 @@ _strict_cl_volume() {
   printf '%s-cl\n' "$1"
 }
 
+# Per-slot agent home, mounted at the host home path. Seeded from the host's
+# .claude.json once so trust records, MCP config and onboarding carry over;
+# it diverges after that, which is what keeps concurrent host and sandbox
+# sessions off the same file.
+_sandbox_home() {
+  local dir="${XDG_DATA_HOME:-$HOME/.local/share}/agent-sandbox/home/$1"
+  mkdir -p "$dir"
+  if [[ ! -e "$dir/.claude.json" ]]; then
+    if [[ -f "$HOME/.claude.json" ]]; then
+      cp "$HOME/.claude.json" "$dir/.claude.json"
+    else
+      printf '{}\n' > "$dir/.claude.json"
+    fi
+  fi
+  printf '%s\n' "$dir"
+}
+
 _container_exists()  { docker container inspect "$1" >/dev/null 2>&1; }
 _container_running() {
   [[ "$(docker container inspect -f '{{.State.Running}}' "$1" 2>/dev/null)" == "true" ]]
@@ -419,22 +436,26 @@ _run_args() {
     esac
   fi
 
-  # Bind-mount $HOME/.claude.json (the live config file separate from
-  # the .claude/ directory) for default + worktree. Touch it first if
-  # missing so docker doesn't auto-create a directory at the bind path.
-  # Mount at the HOST's absolute path (not /home/claude/.claude.json)
-  # so absolute paths embedded in plugin/installed_plugins.json - which
-  # claude-code records as host-side `/Users/<host>/.claude/...` - still
-  # resolve inside the container. The entrypoint symlinks
-  # /home/claude/.claude.json to this so $HOME-relative lookups work too.
-  # For strict mode, the file is seeded into the cl_volume during
-  # _ensure_strict_volumes; the entrypoint symlinks it into place so
-  # writes persist in the volume.
+  # Mount a per-slot host directory at the host home path. claude-code resolves
+  # the /home/claude/.claude.json symlink and writes its temp file beside the
+  # realpath, so a single-file bind mount leaves that temp write in a directory
+  # docker auto-creates root-owned: every config write then degrades to a
+  # non-atomic in-place rewrite of a file the host reads concurrently. A real
+  # directory makes the parent writable and .claude.json a real file, so the
+  # rename is atomic and the sandbox's config no longer shares the host's.
+  # The host path is mirrored so the absolute paths claude-code records in
+  # plugins/installed_plugins.json still resolve inside the container.
+  # ~/.agents carries CLAUDE.md, hooks and skills; ~/.claude symlinks into it
+  # by host-absolute path while settings.json invokes hooks as $HOME/.agents,
+  # so it is mounted read-only at both paths or neither resolves.
   if [[ "$mode" != "strict" ]]; then
     args+=( -e "HOST_HOME=$HOME" -e "SANDBOX_AGENT_KIND=$AGENT_KIND" )
     if [[ "$AGENT_KIND" == "claude" ]]; then
-      [[ -e "$HOME/.claude.json" ]] || touch "$HOME/.claude.json"
-      args+=( -v "$HOME/.claude.json":"$HOME/.claude.json" )
+      args+=( -v "$(_sandbox_home "$name")":"$HOME" )
+      if [[ -d "$HOME/.agents" ]]; then
+        args+=( -v "$HOME/.agents":"$HOME/.agents":ro
+                -v "$HOME/.agents":/home/claude/.agents:ro )
+      fi
     fi
   fi
 
@@ -548,11 +569,11 @@ _ensure_strict_volumes() {
       --label "agent-sandbox.host-repo=${repo}" \
       --label "agent-sandbox.kind=workspace" \
       "$ws" >/dev/null
-    docker run --rm \
+    docker run --rm --user 0 \
       -v "$repo":/src:ro \
       -v "$ws":/dst \
       "$IMAGE" \
-      sh -c 'cp -a /src/. /dst/' >/dev/null
+      sh -c 'cp -a /src/. /dst/ && chown -R 1000:1000 /dst' >/dev/null
   fi
 
   if ! docker volume inspect "$cl" >/dev/null 2>&1; then
@@ -562,11 +583,11 @@ _ensure_strict_volumes() {
       "$cl" >/dev/null
     if [[ -d "$HOME/.claude" ]]; then
       _info "seeding $cl from ~/.claude (one time only)"
-      docker run --rm \
+      docker run --rm --user 0 \
         -v "$HOME/.claude":/src:ro \
         -v "$cl":/dst \
         "$IMAGE" \
-        sh -c 'cp -a /src/. /dst/' >/dev/null
+        sh -c 'cp -a /src/. /dst/ && chown -R 1000:1000 /dst' >/dev/null
     fi
     # Also seed ~/.claude.json into the volume root as `.asb-claude.json`.
     # The entrypoint symlinks `$HOME/.claude.json` to it so reads/writes
@@ -574,11 +595,11 @@ _ensure_strict_volumes() {
     # bouncing off the ephemeral image filesystem.
     if [[ -f "$HOME/.claude.json" ]]; then
       _info "seeding $cl with ~/.claude.json (as .asb-claude.json)"
-      docker run --rm \
-        -v "$HOME":/host:ro \
+      docker run --rm --user 0 \
+        -v "$HOME/.claude.json":/seed.json:ro \
         -v "$cl":/dst \
         "$IMAGE" \
-        sh -c 'cp /host/.claude.json /dst/.asb-claude.json' >/dev/null
+        sh -c 'cp /seed.json /dst/.asb-claude.json && chown 1000:1000 /dst/.asb-claude.json' >/dev/null
     fi
   fi
 }

@@ -84,6 +84,7 @@ run_sandbox() {
   ASB_CONTAINER_STATE="$work/containers" \
   HOME="$work/home" \
   XDG_CACHE_HOME="$work/cache" \
+  XDG_DATA_HOME="$work/data" \
   MOX_REPO="$repo" \
   PATH="$work/bin:$PATH" \
     bash "$script" "$@"
@@ -110,6 +111,16 @@ log=$(cat "$work/docker.log")
 for value in 'ASB_REPO_SETUP' 'SANDBOX_AGENT_HOST' 'SANDBOX_AGENT_SOCK' '.config/git' "$work/home:$work/home" '.codex'; do
   [[ "$log" != *"$value"* ]] || { echo "FAIL: default mode exposed optional capability $value" >&2; exit 1; }
 done
+
+: > "$work/docker.log"
+mkdir -p "$work/home/.agents"
+run_sandbox "$work/fixture"
+log=$(cat "$work/docker.log")
+[[ "$log" == *"data/agent-sandbox/home/agent-sandbox-fixture:$work/home"* ]] || { echo 'FAIL: per-slot agent home not mounted at the host home path' >&2; exit 1; }
+[[ "$log" != *"$work/home/.claude.json:"* ]] || { echo 'FAIL: .claude.json is still bind-mounted as a single file' >&2; exit 1; }
+[[ "$log" == *"$work/home/.agents:$work/home/.agents:ro"* ]] || { echo 'FAIL: ~/.agents not mounted read-only at the host path' >&2; exit 1; }
+[[ "$log" == *"$work/home/.agents:/home/claude/.agents:ro"* ]] || { echo 'FAIL: ~/.agents not mounted read-only for hook resolution' >&2; exit 1; }
+[[ -f "$work/data/agent-sandbox/home/agent-sandbox-fixture/.claude.json" ]] || { echo 'FAIL: per-slot agent home was not seeded with .claude.json' >&2; exit 1; }
 
 : > "$work/docker.log"
 run_sandbox "$work/fixture" -- --debug --verbose
