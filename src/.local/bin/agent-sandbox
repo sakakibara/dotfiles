@@ -306,6 +306,42 @@ _seed_codex_home() {
   ln -sfn ../.agents/instructions.md "$dir/.codex/AGENTS.md"
 }
 
+# Directory symlinks inside a workspace, resolved to their real paths. A view
+# assembled from links - a holt hub project, whose code/, docs/ and assets/ all
+# point elsewhere - is useless in a container unless the targets come with it.
+# Depth 2 covers both the top-level links and code/<repo>. Results land in
+# LINK_TARGETS, deduped, with any target that contains another dropped so a
+# parent and its child are not both mounted.
+_resolve_workspace_links() {
+  local ws="$1" link target raw candidate seen=()
+  LINK_TARGETS=()
+  while IFS= read -r link; do
+    target=$(cd "$link" 2>/dev/null && pwd -P) || continue
+    # The physical path is what docker needs; the literal target is what the
+    # link inside the container will point at. They differ wherever a parent
+    # is itself a symlink (/var -> /private/var on macOS), and the link only
+    # resolves in the container if both are present.
+    raw=$(readlink "$link")
+    for candidate in "$target" "$raw"; do
+      [[ "$candidate" == /* ]] || continue
+      case "$candidate" in
+        "$ws" | "$ws"/* | / | "$HOME") continue ;;
+      esac
+      [[ "$ws" == "$candidate"/* ]] && continue
+      seen+=( "$candidate" )
+    done
+  done < <(find "$ws" -mindepth 1 -maxdepth 2 -type l 2>/dev/null)
+
+  local a b keep
+  while IFS= read -r a; do
+    keep=1
+    for b in "${LINK_TARGETS[@]}"; do
+      [[ "$a" == "$b"/* ]] && { keep=0; break; }
+    done
+    ((keep)) && LINK_TARGETS+=( "$a" )
+  done < <(printf '%s\n' ${seen[@]+"${seen[@]}"} | LC_ALL=C sort -u)
+}
+
 _container_exists()  { docker container inspect "$1" >/dev/null 2>&1; }
 _container_running() {
   [[ "$(docker container inspect -f '{{.State.Running}}' "$1" 2>/dev/null)" == "true" ]]
@@ -547,8 +583,13 @@ _run_args() {
     default)
       # One bind per explicitly selected workspace path.
       local ws
+      local target
       for ws in "${WORKSPACES[@]}"; do
         args+=( -v "$ws":"$ws" )
+        _resolve_workspace_links "$ws"
+        for target in ${LINK_TARGETS[@]+"${LINK_TARGETS[@]}"}; do
+          args+=( -v "$target":"$target" )
+        done
         # git runs these on the HOST after the sandbox exits. hooks/ alone is
         # not enough: core.hooksPath in config redirects it elsewhere, and
         # filter/diff/fsmonitor entries are executed too, so both are read-only
@@ -784,7 +825,9 @@ _parse_common_flags() {
         done
         [[ ${#WORKSPACES[@]} -gt 0 ]] || _die "--workspace requires at least one path"
         ;;
-      --) shift; break ;;
+      # Left in place so the split below sees it: everything after it is agent
+      # arguments, whether or not a positional repo came first.
+      --) break ;;
       -*) _die "unknown option: $1" ;;
       *)  break ;;
     esac
@@ -1262,7 +1305,10 @@ Isolation modes (ISO):
               not shared at all, and only projects/ (session history) and
               .credentials.json are writable host paths. Codex state stays
               fully RW. Risk: the agent can delete the cwd.
-              External symlink targets are not mounted implicitly.
+              Directory symlinks in the workspace (depth 2) are resolved and
+              their targets mounted too, so a view assembled from links - a
+              hub project's code/, docs/, assets/ - works without naming each
+              path. A link to the host home is never followed.
 
   --worktree  bind-mount a fresh `git worktree add` at the host repo path.
               Main checkout is unreachable from the container. Agent state

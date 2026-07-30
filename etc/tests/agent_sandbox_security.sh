@@ -129,6 +129,25 @@ log=$(cat "$work/docker.log")
 [[ "$log" == *"$work/fixture:$work/fixture"* ]] || { echo 'FAIL: agent passthrough swallowed the repo path' >&2; exit 1; }
 
 : > "$work/docker.log"
+mkdir -p "$work/hub/code" "$work/real/repo" "$work/real/design docs"
+ln -s "$work/real/repo" "$work/hub/code/repo"
+ln -s "$work/real/design docs" "$work/hub/docs"
+run_sandbox "$work/hub"
+log=$(cat "$work/docker.log")
+real_phys=$(cd "$work/real" && pwd -P)
+[[ "$log" == *"$real_phys/repo:$real_phys/repo"* ]] || { echo 'FAIL: hub code symlink target not mounted' >&2; exit 1; }
+[[ "$log" == *"$work/real/repo:$work/real/repo"* ]] || { echo 'FAIL: hub code symlink literal target not mounted' >&2; exit 1; }
+want_spaced=$(printf '%q' "$real_phys/design docs:$real_phys/design docs")
+[[ "$log" == *"$want_spaced"* ]] || { echo 'FAIL: hub docs symlink target with a space not mounted' >&2; exit 1; }
+[[ "$log" != *"$work/home:$work/home"* ]] || { echo 'FAIL: a symlink to the host home was followed' >&2; exit 1; }
+
+: > "$work/docker.log"
+( cd "$work/fixture" && run_sandbox --bypass -- --debug )
+log=$(cat "$work/docker.log")
+[[ "$log" == *'<--dangerously-skip-permissions> <--debug>'* ]] || { echo 'FAIL: passthrough without a positional repo did not reach the agent' >&2; exit 1; }
+[[ "$log" == *"$work/fixture:$work/fixture"* ]] || { echo 'FAIL: passthrough without a positional repo lost the cwd workspace' >&2; exit 1; }
+
+: > "$work/docker.log"
 run_sandbox codex "$work/fixture" -- --search
 log=$(cat "$work/docker.log")
 [[ "$log" == *'<on-request> <--search>'* ]] || { echo 'FAIL: Codex agent passthrough did not reach the agent' >&2; exit 1; }
