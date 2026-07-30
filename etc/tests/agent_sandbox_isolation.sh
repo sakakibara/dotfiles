@@ -5,7 +5,7 @@
 #
 # The mount plan here mirrors _run_args default mode; agent_sandbox_security.sh
 # asserts the wrapper actually emits that shape. Both are needed: that suite
-# stubs docker and cannot observe behaviour, this one observes behaviour but
+# stubs docker and cannot observe behavior, this one observes behavior but
 # does not read the wrapper.
 set -euo pipefail
 
@@ -20,7 +20,7 @@ trap 'chmod -R u+w "$work" 2>/dev/null || true; rm -rf "$work"' EXIT
 # Paths a sandbox is allowed to modify. Everything else in the host agent tree
 # must be byte-identical afterwards. Keep this list short and justified.
 SHARED_PATHS=(
-  './.claude/projects'
+  './.claude/projects/WSENC'
   './.claude/history.jsonl'
   './.claude/.credentials.json'
   './.codex/sessions'
@@ -93,6 +93,11 @@ ln -sfn ../.agents/instructions.md "$work/slot/.claude/CLAUDE.md"
 ln -sfn ../.agents/hooks           "$work/slot/.claude/hooks"
 ln -sfn ../.agents/skills          "$work/slot/.claude/skills"
 
+WSENC=$(printf '%s' "$work/repo" | tr '/.' '--')
+mkdir -p "$HH/.claude/projects/$WSENC/memory"
+printf 'proj notes\n' > "$HH/.claude/projects/$WSENC/memory/notes.md"
+SHARED_PATHS=("${SHARED_PATHS[@]/.\/.claude\/projects\/WSENC/./.claude/projects/$WSENC}")
+
 manifest "$HH" > "$work/before.txt"
 
 # Default-mode mount plan (mirrors _run_args).
@@ -102,7 +107,8 @@ docker run --rm \
   -v "$HH/.agents":"$HH/.agents":ro \
   -v "$HH/.agents":/home/claude/.agents:ro \
   -v "$HH/.claude/plugins/cache":"$HH/.claude/plugins/cache":ro \
-  -v "$HH/.claude/projects":"$HH/.claude/projects" \
+  -v "$HH/.claude/projects/$WSENC":"$HH/.claude/projects/$WSENC" \
+  -v "$HH/.claude/projects/$WSENC/memory":"$HH/.claude/projects/$WSENC/memory":ro \
   -v "$HH/.claude/history.jsonl":"$HH/.claude/history.jsonl" \
   -v "$HH/.claude/.credentials.json":"$HH/.claude/.credentials.json" \
   -v "$work/repo":"$work/repo" \
@@ -129,6 +135,9 @@ docker run --rm \
     t "echo TAMPERED > $C/scheduled_tasks.json"
     t "echo TAMPERED > $HOST_HOME/.agents/hooks/instruction-trust-guard.sh"
     t "echo TAMPERED > $HOST_HOME/.claude.json"
+    t "echo TAMPERED > $C/projects/-demo/memory/notes.md"
+    t "mkdir -p $C/projects/-other && echo TAMPERED > $C/projects/-other/x.jsonl"
+    t "echo TAMPERED > $C/projects/'"$WSENC"'/memory/notes.md"
     t "echo TAMPERED > $PWD/.git/hooks/pre-commit"
     t "echo hooksPath-injection > $PWD/.git/config"
     t "echo TAMPERED > $PWD/.claude/settings.json"
@@ -168,8 +177,15 @@ docker run --rm \
 
 manifest "$HH" > "$work/after.txt"
 
+# Paths that must NOT change even though they sit inside a shared prefix.
+# memory/ is host instruction input; projects/ is otherwise session history.
+DENIED_PATHS=( "./.claude/projects/$WSENC/memory" )
+
 allowed() {
   local p="$1" s
+  for s in "${DENIED_PATHS[@]}"; do
+    [[ "$p" == "$s" || "$p" == "$s"/* ]] && return 1
+  done
   for s in "${SHARED_PATHS[@]}"; do
     [[ "$p" == "$s" || "$p" == "$s"/* ]] && return 0
   done
