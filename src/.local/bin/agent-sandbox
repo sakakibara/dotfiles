@@ -929,9 +929,13 @@ cmd_default() {
   while IFS= read -r line || [[ -n "$line" ]]; do run_args+=("$line"); done < <(_run_args "$repo" "$name" "$ISO_MODE")
   while IFS= read -r line || [[ -n "$line" ]]; do c_args+=("$line"); done < <(_agent_args "$PERM_MODE" "$label")
   _print_banner "$name" "$repo" "$label" "$PERM_MODE" "$ISO_MODE"
+  # Report identity only. `report-agent` would claim hook authority over the
+  # pane's state, and the wrapper never observes a transition - it would pin
+  # the pane to whatever it sent once and shadow herdr's screen detection,
+  # which reads the agent's own output through the container just fine.
   local herdr_source="agent-sandbox:$name" rc=0
   if [[ "${HERDR_ENV:-}" == "1" && -n "${HERDR_PANE_ID:-}" ]] && command -v herdr >/dev/null 2>&1; then
-    herdr pane report-agent "$HERDR_PANE_ID" --source "$herdr_source" --agent "$AGENT_KIND" --state unknown >/dev/null 2>&1 || true
+    herdr pane report-agent-session "$HERDR_PANE_ID" --source "$herdr_source" --agent "$AGENT_KIND" >/dev/null 2>&1 || true
   fi
   if docker run --rm -it "${run_args[@]}" "$IMAGE" "$AGENT_KIND" "${c_args[@]}"; then rc=0; else rc=$?; fi
   if [[ "${HERDR_ENV:-}" == "1" && -n "${HERDR_PANE_ID:-}" ]] && command -v herdr >/dev/null 2>&1; then
