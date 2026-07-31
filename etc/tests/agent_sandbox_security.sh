@@ -21,6 +21,7 @@ cat > "$work/bin/docker" <<'EOF'
 #!/usr/bin/env bash
 {
   printf 'docker'
+  [[ -n "${HERDR_AGENT:-}" ]] && printf ' {HERDR_AGENT=%s}' "$HERDR_AGENT"
   printf ' <%q>' "$@"
   printf '\n'
 } >> "$ASB_TEST_LOG"
@@ -54,11 +55,6 @@ fi
 exit 0
 EOF
 chmod +x "$work/bin/docker"
-cat > "$work/bin/herdr" <<'EOF'
-#!/usr/bin/env bash
-printf '%s\n' "$*" >> "$ASB_HERDR_LOG"
-EOF
-chmod +x "$work/bin/herdr"
 cat > "$work/bin/codex" <<'EOF'
 #!/usr/bin/env bash
 python3 - <<'PY'
@@ -84,7 +80,6 @@ ln -s "$script" "$work/bin/agent-sandbox"
 
 run_sandbox() {
   ASB_TEST_LOG="$work/docker.log" \
-  ASB_HERDR_LOG="$work/herdr.log" \
   ASB_CONTAINER_STATE="$work/containers" \
   HOME="$work/home" \
   XDG_CACHE_HOME="$work/cache" \
@@ -113,6 +108,7 @@ ln -s "$work/home" "$work/fixture/external-home"
 run_sandbox "$work/fixture"
 log=$(cat "$work/docker.log")
 [[ "$log" == *'<claude> <--remote-control>'*'<--permission-mode> <acceptEdits>'* ]] || { echo 'FAIL: default mode is not Claude acceptEdits' >&2; exit 1; }
+[[ "$log" == *'{HERDR_AGENT=claude} <run>'* ]] || { echo 'FAIL: docker run lacks the herdr agent hint, so a sandbox pane shows no agent identity or status' >&2; exit 1; }
 for value in 'ASB_REPO_SETUP' 'SANDBOX_AGENT_HOST' 'SANDBOX_AGENT_SOCK' "$work/home:$work/home" '.codex'; do
   [[ "$log" != *"$value"* ]] || { echo "FAIL: default mode exposed optional capability $value" >&2; exit 1; }
 done
@@ -172,12 +168,11 @@ log=$(cat "$work/docker.log")
 [[ "$log" != *'account-token'* ]] || { echo 'FAIL: signing mode exposes the git account token' >&2; exit 1; }
 
 : > "$work/docker.log"
-: > "$work/herdr.log"
 mkdir -p "$work/home/.codex"
 printf '{"hooks":{}}
 ' > "$work/home/.codex/hooks.json"
 ln -sfn ../.agents/instructions.md "$work/home/.codex/AGENTS.md"
-HERDR_ENV=1 HERDR_PANE_ID=pane-test run_sandbox codex "$work/fixture"
+run_sandbox codex "$work/fixture"
 log=$(cat "$work/docker.log")
 [[ "$log" == *'<--label> <agent-sandbox.agent=codex>'* ]] || { echo 'FAIL: Codex agent label missing' >&2; exit 1; }
 [[ "$log" == *'<codex> <--sandbox> <workspace-write> <--ask-for-approval> <on-request>'* ]] || { echo 'FAIL: Codex launch arguments missing' >&2; exit 1; }
@@ -188,9 +183,8 @@ log=$(cat "$work/docker.log")
 for value in '.claude.json' '.claude:'; do
   [[ "$log" != *"$value"* ]] || { echo "FAIL: Codex launch exposed $value" >&2; exit 1; }
 done
-herdr_log=$(cat "$work/herdr.log")
-[[ "$herdr_log" == *'report-agent pane-test'*'--agent codex --state unknown'* ]] || { echo 'FAIL: herdr was not told an agent occupies the pane, so a sandbox is invisible in the panel' >&2; exit 1; }
-[[ "$herdr_log" == *'release-agent pane-test'*'--agent codex'* ]] || { echo 'FAIL: herdr did not receive Codex release' >&2; exit 1; }
+[[ "$log" == *'{HERDR_AGENT=codex} <run>'* ]] || { echo 'FAIL: docker run lacks the herdr agent hint, so a sandbox pane shows no agent identity or status' >&2; exit 1; }
+grep 'HERDR_AGENT=' "$work/docker.log" | grep -qv '{HERDR_AGENT=codex} <run>' && { echo 'FAIL: the herdr agent hint leaked beyond the agent run command' >&2; exit 1; }
 
 : > "$work/docker.log"
 run_sandbox codex --resume "$work/fixture"
@@ -203,13 +197,11 @@ log=$(tail -1 "$work/docker.log")
 [[ "$log" == *'<codex> <resume> <session-name> <--sandbox>'* ]] || { echo 'FAIL: named Codex resume lost its argument' >&2; exit 1; }
 
 : > "$work/docker.log"
-: > "$work/herdr.log"
 set +e
-ASB_DOCKER_EXIT=23 HERDR_ENV=1 HERDR_PANE_ID=pane-test run_sandbox codex "$work/fixture"
+ASB_DOCKER_EXIT=23 run_sandbox codex "$work/fixture"
 status=$?
 set -e
 [[ $status -eq 23 ]] || { echo "FAIL: agent exit status changed to $status" >&2; exit 1; }
-[[ $(cat "$work/herdr.log") == *'release-agent pane-test'* ]] || { echo 'FAIL: herdr release missing after agent failure' >&2; exit 1; }
 
 git -C "$work/fixture" init -q
 git -C "$work/fixture" add input.txt
