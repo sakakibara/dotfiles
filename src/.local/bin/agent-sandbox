@@ -242,9 +242,16 @@ _sandbox_home_path() {
   printf '%s/agent-sandbox/home/%s\n' "${XDG_DATA_HOME:-$HOME/.local/share}" "$1"
 }
 
+# Where a sandboxed session writes specs and plans when its cwd maps to no hub
+# project. Outside the agent state directory on purpose: that is sandbox-local,
+# so anything written inside it dies with the slot.
+_agent_docs_path() {
+  printf '%s/agent-docs\n' "${XDG_DATA_HOME:-$HOME/.local/share}"
+}
+
 _ensure_sandbox_home() {
   local dir; dir=$(_sandbox_home_path "$1")
-  mkdir -p "$dir"
+  mkdir -p "$dir" "$(_agent_docs_path)"
   [[ "$AGENT_KIND" == codex ]] && { _seed_codex_home "$dir"; return; }
   mkdir -p "$dir/.claude"
 
@@ -490,8 +497,31 @@ _run_args() {
   # by the repo's GitHub remote exactly as on the host (the op-ssh-sign ->
   # ssh-keygen swap happens there). Honors the host global ignore too, so
   # `git add` doesn't pick up editor/OS detritus.
-  if ((SIGNING)) && [[ -d "$HOME/.config/git" ]]; then
-    args+=( -v "$HOME/.config/git":/home/claude/.config/git:ro )
+  # Identity by value, not by forwarding the config directory: that directory
+  # also holds credential helpers and an account token, which have no business
+  # in a sandbox. Resolved against the repo so includeIf rules pick the same
+  # account git would pick on the host. Without this a sandbox cannot commit.
+  local git_name git_email
+  git_name=$(git -C "$repo" config user.name 2>/dev/null || true)
+  git_email=$(git -C "$repo" config user.email 2>/dev/null || true)
+  [[ -n "$git_name" ]] && args+=( -e "GIT_AUTHOR_NAME=$git_name" -e "GIT_COMMITTER_NAME=$git_name" )
+  [[ -n "$git_email" ]] && args+=( -e "GIT_AUTHOR_EMAIL=$git_email" -e "GIT_COMMITTER_EMAIL=$git_email" )
+  # The global ignore keeps `git add` off editor and OS detritus. Single file,
+  # no secrets, read-only.
+  [[ -f "$HOME/.config/git/ignore" ]] &&
+    args+=( -v "$HOME/.config/git/ignore":/home/claude/.config/git/ignore:ro )
+
+  # --signing additionally needs the config and signer list to resolve the
+  # signing key. Mounted file by file so the token beside them never enters.
+  if ((SIGNING)); then
+    local gf
+    for gf in config allowed_signers personal.inc identities.local.inc; do
+      [[ -f "$HOME/.config/git/$gf" ]] &&
+        args+=( -v "$HOME/.config/git/$gf":/home/claude/.config/git/"$gf":ro )
+    done
+    for gf in "$HOME"/.config/git/id-*.inc; do
+      [[ -f "$gf" ]] && args+=( -v "$gf":/home/claude/.config/git/"${gf##*/}":ro )
+    done
   fi
 
   # SSH commit-signing via the host's 1Password agent. Two transports:
@@ -545,6 +575,11 @@ _run_args() {
     args+=( -e "HOST_HOME=$HOME" -e "SANDBOX_AGENT_KIND=$AGENT_KIND" )
     args+=( -v "$(_sandbox_home_path "$name")":"$HOME" )
     [[ -d "$HOME/.agents" ]] && args+=( -v "$HOME/.agents":"$HOME/.agents":ro )
+    # Specs and plans written from a sandbox outside a hub project land here.
+    # The agent state directory is sandbox-local, so without this mount they
+    # would vanish with the slot instead of reaching the host.
+    local agent_docs; agent_docs=$(_agent_docs_path)
+    [[ -d "$agent_docs" ]] && args+=( -v "$agent_docs":"$agent_docs" )
     local shared
     if [[ "$AGENT_KIND" == "claude" ]]; then
       [[ -d "$HOME/.claude/plugins/cache" ]] &&
@@ -553,16 +588,16 @@ _run_args() {
         [[ -e "$HOME/.claude/$shared" ]] &&
           args+=( -v "$HOME/.claude/$shared":"$HOME/.claude/$shared" )
       done
-      # Only the workspaces' own session history, not all of projects/. Each
-      # project's memory/ is host instruction input, so it is re-mounted
-      # read-only on top of the writable transcript directory.
+      # Only the workspaces' own session history and memory, not all of
+      # projects/. Writable: memory is agent-authored by design, and a session
+      # that cannot record it loses the feature. The narrowing is what matters
+      # - a sandbox can reach the project it was launched for and no other.
       local ws enc pdir
       for ws in "${WORKSPACES[@]}"; do
         enc=$(printf '%s' "$ws" | tr '/.' '--')
         pdir="$HOME/.claude/projects/$enc"
         [[ -d "$pdir" ]] || continue
         args+=( -v "$pdir":"$pdir" )
-        [[ -d "$pdir/memory" ]] && args+=( -v "$pdir/memory":"$pdir/memory":ro )
       done
     else
       [[ -d "$HOME/.codex/plugins/cache" ]] &&

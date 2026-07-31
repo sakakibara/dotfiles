@@ -7,6 +7,10 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 mkdir -p "$work/bin" "$work/home/.config/git" "$work/cache" "$work/fixture"
 printf '%s\n' test > "$work/fixture/input.txt"
+printf '[user]\n\tname = Fixture User\n\temail = fixture@test.invalid\n' > "$work/home/.config/git/config"
+printf 'signers\n' > "$work/home/.config/git/allowed_signers"
+printf 'ignored.txt\n' > "$work/home/.config/git/ignore"
+printf 'SECRET-TOKEN-VALUE\n' > "$work/home/.config/git/account-token"
 
 help=$(bash "$script" help)
 for value in run-untrusted --repo-setup --signing 'claude|codex'; do
@@ -85,6 +89,7 @@ run_sandbox() {
   HOME="$work/home" \
   XDG_CACHE_HOME="$work/cache" \
   XDG_DATA_HOME="$work/data" \
+  XDG_CONFIG_HOME="$work/home/.config" \
   MOX_REPO="$repo" \
   PATH="$work/bin:$PATH" \
     bash "$script" "$@"
@@ -108,7 +113,7 @@ ln -s "$work/home" "$work/fixture/external-home"
 run_sandbox "$work/fixture"
 log=$(cat "$work/docker.log")
 [[ "$log" == *'<claude> <--remote-control>'*'<--permission-mode> <acceptEdits>'* ]] || { echo 'FAIL: default mode is not Claude acceptEdits' >&2; exit 1; }
-for value in 'ASB_REPO_SETUP' 'SANDBOX_AGENT_HOST' 'SANDBOX_AGENT_SOCK' '.config/git' "$work/home:$work/home" '.codex'; do
+for value in 'ASB_REPO_SETUP' 'SANDBOX_AGENT_HOST' 'SANDBOX_AGENT_SOCK' "$work/home:$work/home" '.codex'; do
   [[ "$log" != *"$value"* ]] || { echo "FAIL: default mode exposed optional capability $value" >&2; exit 1; }
 done
 
@@ -121,6 +126,13 @@ log=$(cat "$work/docker.log")
 [[ "$log" == *"$work/home/.agents:$work/home/.agents:ro"* ]] || { echo 'FAIL: ~/.agents not mounted read-only at the host path' >&2; exit 1; }
 [[ "$log" == *"$work/home/.agents:/home/claude/.agents:ro"* ]] || { echo 'FAIL: ~/.agents not mounted read-only for hook resolution' >&2; exit 1; }
 [[ -f "$work/data/agent-sandbox/home/agent-sandbox-fixture/.claude.json" ]] || { echo 'FAIL: per-slot agent home was not seeded with .claude.json' >&2; exit 1; }
+[[ "$log" == *"$work/data/agent-docs:$work/data/agent-docs"* ]] || { echo 'FAIL: the agent docs directory is not mounted, so sandbox specs cannot reach the host' >&2; exit 1; }
+[[ "$log" == *'<GIT_AUTHOR_EMAIL=fixture@test.invalid>'* ]] || { echo 'FAIL: git identity is not passed, so the sandbox cannot commit' >&2; exit 1; }
+want_name=$(printf '%q' 'GIT_COMMITTER_NAME=Fixture User')
+[[ "$log" == *"$want_name"* ]] || { echo 'FAIL: committer identity is not passed' >&2; exit 1; }
+[[ "$log" != *"$work/home/.config/git:"* ]] || { echo 'FAIL: the whole git config directory is mounted, exposing credential helpers and the account token' >&2; exit 1; }
+[[ "$log" != *'account-token'* ]] || { echo 'FAIL: the git account token is exposed to the sandbox' >&2; exit 1; }
+[[ "$log" == *"$work/home/.config/git/ignore:/home/claude/.config/git/ignore:ro"* ]] || { echo 'FAIL: the global git ignore is not mounted' >&2; exit 1; }
 
 : > "$work/docker.log"
 run_sandbox "$work/fixture" -- --debug --verbose
@@ -155,7 +167,9 @@ log=$(cat "$work/docker.log")
 : > "$work/docker.log"
 run_sandbox --signing "$work/fixture"
 log=$(cat "$work/docker.log")
-[[ "$log" == *"$work/home/.config/git:/home/claude/.config/git:ro"* ]] || { echo 'FAIL: signing mode omitted Git configuration' >&2; exit 1; }
+[[ "$log" == *"$work/home/.config/git/config:/home/claude/.config/git/config:ro"* ]] || { echo 'FAIL: signing mode omitted Git configuration' >&2; exit 1; }
+[[ "$log" == *"$work/home/.config/git/allowed_signers:/home/claude/.config/git/allowed_signers:ro"* ]] || { echo 'FAIL: signing mode omitted the signer list' >&2; exit 1; }
+[[ "$log" != *'account-token'* ]] || { echo 'FAIL: signing mode exposes the git account token' >&2; exit 1; }
 
 : > "$work/docker.log"
 : > "$work/herdr.log"
@@ -171,7 +185,7 @@ log=$(cat "$work/docker.log")
 [[ "$log" == *"data/agent-sandbox/home/agent-sandbox-fixture-codex:$work/home"* ]] || { echo 'FAIL: Codex per-slot agent home not mounted' >&2; exit 1; }
 [[ -f "$work/data/agent-sandbox/home/agent-sandbox-fixture-codex/.codex/hooks.json" ]] || { echo 'FAIL: Codex hook declarations not seeded into the slot' >&2; exit 1; }
 [[ -L "$work/data/agent-sandbox/home/agent-sandbox-fixture-codex/.codex/AGENTS.md" ]] || { echo 'FAIL: Codex instruction symlink not recreated' >&2; exit 1; }
-for value in '.claude.json' '.claude:' '.config/git'; do
+for value in '.claude.json' '.claude:'; do
   [[ "$log" != *"$value"* ]] || { echo "FAIL: Codex launch exposed $value" >&2; exit 1; }
 done
 herdr_log=$(cat "$work/herdr.log")

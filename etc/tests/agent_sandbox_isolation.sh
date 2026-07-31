@@ -119,7 +119,6 @@ docker run --rm \
   -v "$HH/.agents":/home/claude/.agents:ro \
   -v "$HH/.claude/plugins/cache":"$HH/.claude/plugins/cache":ro \
   -v "$HH/.claude/projects/$WSENC":"$HH/.claude/projects/$WSENC" \
-  -v "$HH/.claude/projects/$WSENC/memory":"$HH/.claude/projects/$WSENC/memory":ro \
   -v "$HH/.claude/history.jsonl":"$HH/.claude/history.jsonl" \
   -v "$HH/.claude/.credentials.json":"$HH/.claude/.credentials.json" \
   -v "$work/repo":"$work/repo" \
@@ -188,9 +187,10 @@ docker run --rm \
 
 manifest "$HH" > "$work/after.txt"
 
-# Paths that must NOT change even though they sit inside a shared prefix.
-# memory/ is host instruction input; projects/ is otherwise session history.
-DENIED_PATHS=( "./.claude/projects/$WSENC/memory" )
+# memory/ under the launched workspace is deliberately writable - it is
+# agent-authored and must reach the host. Other projects stay unreachable,
+# which the shared-path list already enforces.
+DENIED_PATHS=()
 
 allowed() {
   local p="$1" s
