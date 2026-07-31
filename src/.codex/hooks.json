@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$HOME/.agents/hooks/instruction-trust-guard.sh\"",
+            "command": "bash \"$HOME/.agents/hooks/instruction-trust-guard.sh\"",
             "timeout": 10,
             "statusMessage": "Reinforcing repository instruction boundaries"
           }
@@ -19,15 +19,21 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$HOME/.agents/hooks/git-stage-guard.sh\"",
+            "command": "bash \"$HOME/.agents/hooks/git-stage-guard.sh\"",
             "timeout": 10,
             "statusMessage": "Checking explicit git staging"
           },
           {
             "type": "command",
-            "command": "\"$HOME/.agents/hooks/commit-jargon-guard.sh\"",
+            "command": "bash \"$HOME/.agents/hooks/commit-jargon-guard.sh\"",
             "timeout": 10,
             "statusMessage": "Checking commit message"
+          },
+          {
+            "type": "command",
+            "command": "python3 \"$HOME/.agents/hooks/commit-style-guard.py\"",
+            "timeout": 10,
+            "statusMessage": "Checking commit message style"
           }
         ]
       }

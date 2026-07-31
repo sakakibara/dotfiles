@@ -137,6 +137,20 @@ else
   skips+=("python3")
 fi
 
+# A hook registration that names a file which does not exist fails open: the
+# agent reports a non-blocking error and proceeds unguarded. Hooks are invoked
+# through an explicit interpreter so the executable bit cannot break them, but
+# a stale path still can.
+for reg in src/.claude/settings.json src/.codex/hooks.json; do
+  [[ -f "$reg" ]] || continue
+  while IFS= read -r hook; do
+    if [[ ! -f "src/.agents/hooks/$hook" ]]; then
+      echo "FAIL: $reg registers a hook that does not exist: $hook" >&2
+      fails=$((fails + 1))
+    fi
+  done < <(grep -o '\.agents/hooks/[A-Za-z0-9_.-]*' "$reg" | sed 's|.*/||' | sort -u)
+done
+
 _promote_ci_skips
 
 if [[ $fails -gt 0 ]]; then

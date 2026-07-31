@@ -11,7 +11,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.agents/hooks/instruction-trust-guard.sh"
+            "command": "bash $HOME/.agents/hooks/instruction-trust-guard.sh"
           }
         ]
       }
@@ -22,11 +22,15 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.agents/hooks/git-stage-guard.sh"
+            "command": "bash $HOME/.agents/hooks/git-stage-guard.sh"
           },
           {
             "type": "command",
-            "command": "$HOME/.agents/hooks/commit-jargon-guard.sh"
+            "command": "bash $HOME/.agents/hooks/commit-jargon-guard.sh"
+          },
+          {
+            "type": "command",
+            "command": "python3 $HOME/.agents/hooks/commit-style-guard.py"
           }
         ]
       }
