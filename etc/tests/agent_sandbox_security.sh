@@ -189,8 +189,7 @@ for value in '.claude.json' '.claude:'; do
   [[ "$log" != *"$value"* ]] || { echo "FAIL: Codex launch exposed $value" >&2; exit 1; }
 done
 herdr_log=$(cat "$work/herdr.log")
-[[ "$herdr_log" == *'report-agent-session pane-test'*'--agent codex'* ]] || { echo 'FAIL: herdr did not receive the Codex agent identity' >&2; exit 1; }
-[[ "$herdr_log" != *'--state'* ]] || { echo 'FAIL: the wrapper claimed state authority it cannot maintain' >&2; exit 1; }
+[[ "$herdr_log" == *'report-agent pane-test'*'--agent codex --state unknown'* ]] || { echo 'FAIL: herdr was not told an agent occupies the pane, so a sandbox is invisible in the panel' >&2; exit 1; }
 [[ "$herdr_log" == *'release-agent pane-test'*'--agent codex'* ]] || { echo 'FAIL: herdr did not receive Codex release' >&2; exit 1; }
 
 : > "$work/docker.log"
