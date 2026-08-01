@@ -123,9 +123,11 @@ log=$(cat "$work/docker.log")
 [[ "$log" == *"$work/home/.agents:/home/claude/.agents:ro"* ]] || { echo 'FAIL: ~/.agents not mounted read-only for hook resolution' >&2; exit 1; }
 [[ -f "$work/data/agent-sandbox/home/agent-sandbox-fixture/.claude.json" ]] || { echo 'FAIL: per-slot agent home was not seeded with .claude.json' >&2; exit 1; }
 [[ "$log" == *"$work/data/agent-docs:$work/data/agent-docs"* ]] || { echo 'FAIL: the agent docs directory is not mounted, so sandbox specs cannot reach the host' >&2; exit 1; }
-[[ "$log" == *'<GIT_AUTHOR_EMAIL=fixture@test.invalid>'* ]] || { echo 'FAIL: git identity is not passed, so the sandbox cannot commit' >&2; exit 1; }
-want_name=$(printf '%q' 'GIT_COMMITTER_NAME=Fixture User')
-[[ "$log" == *"$want_name"* ]] || { echo 'FAIL: committer identity is not passed' >&2; exit 1; }
+[[ "$log" == *'<GIT_CONFIG_KEY_1=user.email>'*'<GIT_CONFIG_VALUE_1=fixture@test.invalid>'* ]] || { echo 'FAIL: git identity is not passed as env config, so the sandbox cannot commit and `git config user.email` reads empty' >&2; exit 1; }
+want_name=$(printf '%q' 'GIT_CONFIG_VALUE_0=Fixture User')
+[[ "$log" == *'<GIT_CONFIG_KEY_0=user.name>'*"$want_name"* ]] || { echo 'FAIL: user.name is not passed as env config' >&2; exit 1; }
+[[ "$log" == *'<GIT_CONFIG_COUNT=2>'* ]] || { echo 'FAIL: GIT_CONFIG_COUNT is missing, so git ignores the identity env config' >&2; exit 1; }
+[[ "$log" != *'GH_TOKEN'* ]] || { echo 'FAIL: a GitHub token reached the sandbox' >&2; exit 1; }
 [[ "$log" != *"$work/home/.config/git:"* ]] || { echo 'FAIL: the whole git config directory is mounted, exposing credential helpers and the account token' >&2; exit 1; }
 [[ "$log" != *'account-token'* ]] || { echo 'FAIL: the git account token is exposed to the sandbox' >&2; exit 1; }
 [[ "$log" == *"$work/home/.config/git/ignore:/home/claude/.config/git/ignore:ro"* ]] || { echo 'FAIL: the global git ignore is not mounted' >&2; exit 1; }

@@ -62,6 +62,8 @@ Specs, plans, design docs, and any markdown from superpowers-style planning skil
 
 **Inside agent-sandbox** (`AGENT_SANDBOX=1`): the wrapper bind-mounts only the cwd. Started from the hub project root, the `docs/` symlink is mounted - resolve as above. For Claude sessions started inside a repo or elsewhere outside the hub, write to `$XDG_DATA_HOME/agent-docs/<repo>/{specs,plans,research,handoffs}/<date>-<topic>.md` instead. The wrapper bind-mounts that directory, so it reaches the host; the agent state directory does not - it is sandbox-local and anything written there dies with the slot. Detect the hub case by whether cwd sits under a project root containing both a `code/` symlink directory and a `docs/` symlink.
 
+Also inside agent-sandbox: no GitHub credentials enter the container - `gh` is stubbed by design, not broken, so do not install or authenticate it. Queue push, PR, and CI operations for the host session.
+
 **Opt-in exception:** a project may version-control its docs inside its repo when the documents ARE its primary artifact (spec-first design work, or when git history for the docs is wanted). This needs the user's explicit instruction and a note in that project's memory; when a project is so configured, follow its recorded arrangement - do not "correct" it by moving docs back out.
 
 ## Working principles

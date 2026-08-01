@@ -69,6 +69,19 @@ RUN useradd --create-home --shell /bin/bash --uid 1000 claude \
 COPY entrypoint.sh /usr/local/bin/agent-sandbox-entrypoint
 RUN chmod 755 /usr/local/bin/agent-sandbox-entrypoint
 
+# gh stub: no GitHub credentials enter the container, so the real gh would
+# only dead-end at auth - or worse, coax a device-flow login that mints a
+# full-account token inside the sandbox. Shadows /usr/bin so an apt install
+# doesn't resurrect that path; steps aside if a token is ever provided.
+RUN printf '%s\n' \
+      '#!/bin/sh' \
+      '[ -n "$GH_TOKEN" ] && [ -x /usr/bin/gh ] && exec /usr/bin/gh "$@"' \
+      'echo "gh is unavailable in agent-sandbox: no GitHub credentials enter the container (by design)." >&2' \
+      'echo "Commit locally; leave push, PR creation, and CI-status checks to the host session." >&2' \
+      'exit 1' \
+      > /usr/local/bin/gh \
+    && chmod 755 /usr/local/bin/gh
+
 USER claude
 WORKDIR /workspace
 
