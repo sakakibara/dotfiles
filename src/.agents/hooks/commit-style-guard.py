@@ -5,6 +5,7 @@ configured here, and a rule only applies where the history is overwhelmingly
 consistent - a mixed history means the project has no convention to enforce.
 Exit 2 -> model rewrites the message."""
 import json
+import os
 import re
 import shlex
 import subprocess
@@ -19,19 +20,35 @@ CONVENTIONAL = re.compile(r"^[a-z]+(\([^)]*\))?!?: .")
 
 
 def commit_messages(cmd):
-    """Subject and body for each `git commit` in the command, via a real
-    shell-word parse rather than a regex over the raw string."""
+    """Subject, body and target directory for each `git commit` in the
+    command, via a real shell-word parse rather than a regex over the raw
+    string. The target directory follows `git -C <path>` and any `cd <path>`
+    earlier in the command, so the style is judged against the repository
+    the commit actually lands in, not the session's working directory."""
     try:
         words = shlex.split(cmd)
     except ValueError:
         return []
-    out, i = [], 0
+    out, i, cwd = [], 0, None
     while i < len(words):
+        if words[i] == "cd" and i + 1 < len(words) and not words[i + 1].startswith("-"):
+            dest = os.path.expanduser(words[i + 1])
+            cwd = dest if os.path.isabs(dest) else os.path.join(cwd or ".", dest)
+            i += 2
+            continue
         if words[i] != "git":
             i += 1
             continue
-        j = i + 1
+        j, cdir = i + 1, cwd
         while j < len(words) and words[j].startswith("-"):
+            if words[j] == "-C" and j + 1 < len(words):
+                dest = os.path.expanduser(words[j + 1])
+                cdir = dest if os.path.isabs(dest) else os.path.join(cdir or ".", dest)
+                j += 2
+                continue
+            if words[j] == "-c" and j + 1 < len(words):
+                j += 2
+                continue
             j += 1
         if j >= len(words) or words[j] != "commit":
             i += 1
@@ -55,15 +72,16 @@ def commit_messages(cmd):
             if "\n\n" in subject:
                 subject, tail = subject.split("\n\n", 1)
                 rest = [tail] + rest
-            out.append((subject.strip(), [r for r in rest if r.strip()]))
+            out.append((subject.strip(), [r for r in rest if r.strip()], cdir))
         i = k if k > i else i + 1
     return out
 
 
-def history():
+def history(cdir=None):
     try:
         raw = subprocess.run(
-            ["git", "log", f"-n{SAMPLE}", "--format=%s%x00%b%x1e"],
+            ["git"] + (["-C", cdir] if cdir else [])
+            + ["log", f"-n{SAMPLE}", "--format=%s%x00%b%x1e"],
             capture_output=True, text=True, timeout=10, check=True).stdout
     except Exception:
         return []
@@ -121,16 +139,18 @@ def main():
         cmd = json.load(sys.stdin).get("tool_input", {}).get("command", "")
     except Exception:
         return 0
-    if not cmd or not re.search(r"(^|[;&|(]|&&|\|\|)\s*git\s+commit", cmd):
+    if not cmd or not re.search(r"(^|[;&|(]|&&|\|\|)\s*git\b[^;&|]*\bcommit\b", cmd):
         return 0
     proposed = commit_messages(cmd)
     if not proposed:
         return 0
-    entries = history()
-    if len(entries) < MIN_SAMPLE:
-        return 0
-
-    for subject, body in proposed:
+    histories = {}
+    for subject, body, cdir in proposed:
+        if cdir not in histories:
+            histories[cdir] = history(cdir)
+        entries = histories[cdir]
+        if len(entries) < MIN_SAMPLE:
+            continue
         found = violations(subject, body, entries)
         if found:
             print("BLOCKED: commit message does not match this repository's "
