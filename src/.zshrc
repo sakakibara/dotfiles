@@ -575,7 +575,7 @@ if [[ -z "${ZSH_COMPDUMP}" ]]; then
   ZSH_COMPDUMP="${XDG_CACHE_HOME:-$HOME/.cache}/zsh/zcompdump"
 fi
 # #q expands globs in conditional expressions
-if [[ $ZSH_COMPDUMP(#qNmh-20) ]]; then
+if [[ $ZSH_COMPDUMP(#qNmh-20) && $ZSH_COMPDUMP -nt ${HOME}/.zcomp ]]; then
   # -C (skip function check) implies -i (skip security check).
   compinit -C -d "$ZSH_COMPDUMP"
 else
