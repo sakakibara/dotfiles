@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Compose-check every managed file via `mox export --resolved`, then
+# Compose-check every managed file via `mox export`, then
 # syntax-check the composed output. Runs the export for the darwin, linux,
 # and windows gating branches so each axis path is exercised, asserts a
 # clean compose (0 failed) for each, and parses every composed file we have
@@ -40,7 +40,7 @@ EOF
 fails=0
 for os in darwin linux windows; do
   out_dir="$work/export-$os"
-  out=$(MOX_OS="$os" mox export --resolved "$out_dir" 2>&1)
+  out=$(MOX_OS="$os" mox export "$out_dir" 2>&1)
   rc=$?
   printf '%s\n%s\n' "== MOX_OS=$os ==" "$out"
   if (( rc != 0 )) || [[ "$out" != *", 0 failed)"* ]]; then
