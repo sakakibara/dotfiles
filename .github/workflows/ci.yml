@@ -6,6 +6,13 @@ on:
   pull_request:
   workflow_dispatch:
 
+# The mox release these tests run against. Pinned rather than tracking
+# `latest`: unpinned, the same commit passes or fails depending on what mox
+# shipped most recently, and a breaking CLI change lands here as a mystery
+# failure in an unrelated push. Bump it deliberately when adopting a release.
+env:
+  MOX_VERSION: v0.10.0
+
 jobs:
   syntax:
     name: Syntax (${{ matrix.os }})
@@ -59,7 +66,7 @@ jobs:
       - name: Install mox
         run: |
           mkdir -p "$HOME/.local/bin"
-          curl -fsSL https://github.com/sakakibara/mox/releases/latest/download/mox-x86_64-linux.tar.gz -o /tmp/mox.tar.gz
+          curl -fsSL "https://github.com/sakakibara/mox/releases/download/$MOX_VERSION/mox-x86_64-linux.tar.gz" -o /tmp/mox.tar.gz
           tar xzf /tmp/mox.tar.gz -C "$HOME/.local/bin"
           echo "$HOME/.local/bin" >> $GITHUB_PATH
       - run: bash etc/ci/render.sh
@@ -138,7 +145,7 @@ jobs:
             *) echo "unsupported: $(uname -s)-$(uname -m)" >&2; exit 1 ;;
           esac
           mkdir -p "$HOME/.local/bin"
-          curl -fsSL "https://github.com/sakakibara/mox/releases/latest/download/$asset" -o "$RUNNER_TEMP/mox.tar.gz"
+          curl -fsSL "https://github.com/sakakibara/mox/releases/download/$MOX_VERSION/$asset" -o "$RUNNER_TEMP/mox.tar.gz"
           tar xzf "$RUNNER_TEMP/mox.tar.gz" -C "$HOME/.local/bin"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: store (set + map containers)
@@ -161,10 +168,10 @@ jobs:
       - uses: actions/checkout@v5
       - name: Install mox (used by dotfiles_wrapper smoke tests)
         shell: pwsh
-        # Pull the latest release binary directly. scoop/winget add ~30s of
+        # Pull the pinned release binary directly. scoop/winget add ~30s of
         # cold-start vs ~3s for a single archive download.
         run: |
-          $url = 'https://github.com/sakakibara/mox/releases/latest/download/mox-x86_64-windows.zip'
+          $url = "https://github.com/sakakibara/mox/releases/download/$env:MOX_VERSION/mox-x86_64-windows.zip"
           $zip = "$env:RUNNER_TEMP/mox.zip"
           $dest = "$env:RUNNER_TEMP/mox"
           Invoke-WebRequest $url -OutFile $zip
