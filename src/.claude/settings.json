@@ -43,6 +43,10 @@
     "frontend-design@claude-plugins-official": false,
     "superpowers@claude-plugins-official": true
   },
+  "statusLine": {
+    "type": "command",
+    "command": "bash $HOME/.claude/statusline.sh"
+  },
   "tui": "fullscreen",
   "agentPushNotifEnabled": true
 }
