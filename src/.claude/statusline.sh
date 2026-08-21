@@ -4,15 +4,11 @@ command -v jq >/dev/null 2>&1 || exit 0
 
 input=$(cat)
 
-IFS=$'\t' read -r model dir ctx five five_at week week_at added removed <<<"$(
+IFS=$'\t' read -r model dir ctx added removed <<<"$(
   jq -r '[
     (.model.display_name // "?"),
     (.workspace.current_dir // .cwd // "?"),
     ((.context_window.used_percentage // 0) | floor),
-    ((.rate_limits.five_hour.used_percentage // -1) | floor),
-    (.rate_limits.five_hour.resets_at // 0),
-    ((.rate_limits.seven_day.used_percentage // -1) | floor),
-    (.rate_limits.seven_day.resets_at // 0),
     (.cost.total_lines_added // 0),
     (.cost.total_lines_removed // 0)
   ] | @tsv' <<<"$input" 2>/dev/null
@@ -90,22 +86,28 @@ if [ -n "$branch" ]; then
 fi
 
 right_segs=("$(meter ctx "$ctx" '')")
-if [ "$five" -ge 0 ]; then
-  at=''
-  [ "$five_at" -gt 0 ] && at=" @$(epoch_fmt "$five_at" %H:%M)"
-  right_segs+=("$(meter 5h "$five" "$at")")
-fi
-if [ "$week" -ge 0 ]; then
-  at=''
-  if [ "$week_at" -gt 0 ]; then
-    if [ $((week_at - $(date +%s))) -lt 86400 ]; then
-      at=" @$(epoch_fmt "$week_at" %H:%M)"
+now=$(date +%s)
+while IFS=$'\t' read -r key pct at; do
+  [ -n "$key" ] || continue
+  label=$(printf '%s' "$key" | sed -e 's/five_hour/5h/g' -e 's/seven_day/wk/g' -e 's/_/ /g')
+  at_txt=''
+  if [ "$at" -gt 0 ]; then
+    if [ $((at - now)) -lt 86400 ]; then
+      at_txt=" @$(epoch_fmt "$at" %H:%M)"
     else
-      at=" @$(epoch_fmt "$week_at" %a)"
+      at_txt=" @$(epoch_fmt "$at" %a)"
     fi
   fi
-  right_segs+=("$(meter wk "$week" "$at")")
-fi
+  right_segs+=("$(meter "$label" "$pct" "$at_txt")")
+done <<<"$(
+  jq -r '.rate_limits // {} | to_entries[]
+    | select((.value | type) == "object")
+    | select((.value.used_percentage | type) == "number")
+    | [.key,
+       (.value.used_percentage | floor),
+       (if (.value.resets_at | type) == "number" then (.value.resets_at | floor) else 0 end)]
+    | @tsv' <<<"$input" 2>/dev/null
+)"
 if [ "$((added + removed))" -gt 0 ]; then
   right_segs+=("$(printf '\033[2m+%s/-%s\033[0m' "$added" "$removed")")
 fi
