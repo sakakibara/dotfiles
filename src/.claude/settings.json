@@ -14,6 +14,16 @@
             "command": "bash $HOME/.agents/hooks/instruction-trust-guard.sh"
           }
         ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $HOME/.claude/hooks/herdr-agent-state.sh session",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "PreToolUse": [
