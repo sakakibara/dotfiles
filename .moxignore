@@ -47,3 +47,8 @@
 *.ps1
 *.cmd
 # mox: end
+
+# opencode: providers and models are machine-local. The tracked
+# opencode.jsonc carries only settings that are safe to publish.
+.config/opencode/config.json
+.config/opencode/auth.json

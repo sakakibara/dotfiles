@@ -1,0 +1,14 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  // Sessions carry the contents of whatever repository is open. Nothing is
+  // uploaded, ever.
+  "share": "disabled",
+  // The binary belongs to the package manager, not to itself.
+  "autoupdate": false
+
+  // Providers and models are deliberately absent. opencode also merges
+  // ~/.config/opencode/config.json, which .moxignore keeps out of this
+  // repository - so which models a machine runs, and how many, stays local
+  // to that machine.
+}
