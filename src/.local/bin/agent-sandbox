@@ -62,6 +62,160 @@ RUN_REPO_SETUP=0
 SIGNING=0
 AGENT_KIND=claude
 
+# Agent registry
+AGENT_KINDS=(claude codex)
+AGENT_DEFAULT=claude
+
+_is_agent_kind() {
+  local kind="${1:-}" k
+  for k in "${AGENT_KINDS[@]}"; do
+    [[ "$k" == "$kind" ]] && return 0
+  done
+  return 1
+}
+
+_agent_display_name() {
+  case "$1" in
+    claude) printf 'Claude\n' ;;
+    codex)  printf 'Codex\n' ;;
+  esac
+}
+
+_agent_supports_strict() { [[ "$1" == claude ]]; }
+
+_agent_has_remote_control() { [[ "$1" == claude ]]; }
+
+# Agent CLI args. The label (when given) is passed via `claude --name`
+# so the iOS app shows a stable, distinguishable session label instead
+# of the auto-derived first-prompt-summary that drifts over time.
+_agent_args() {
+  local perm="$1" label="${2:-}"
+  local args=()
+  case "$AGENT_KIND" in
+    claude)
+      args=( --remote-control )
+      [[ -n "$label" ]] && args+=( --name "$label" )
+      case "$perm" in
+        auto) args+=( --permission-mode acceptEdits ) ;;
+        bypass) args+=( --dangerously-skip-permissions ) ;;
+        *) _die "unknown permission mode: $perm" ;;
+      esac
+      [[ ${#RESUME_FLAGS[@]} -gt 0 ]] && args+=( "${RESUME_FLAGS[@]}" )
+      ;;
+    codex)
+      case "$perm" in
+        auto) args+=( --sandbox workspace-write --ask-for-approval on-request ) ;;
+        bypass) args+=( --dangerously-bypass-approvals-and-sandbox ) ;;
+        *) _die "unknown permission mode: $perm" ;;
+      esac
+      case "${RESUME_FLAGS[0]:-}" in
+        --continue) args=( resume --last "${args[@]}" ) ;;
+        --resume)
+          if [[ ${#RESUME_FLAGS[@]} -gt 1 ]]; then
+            args=( resume "${RESUME_FLAGS[1]}" "${args[@]}" )
+          else
+            args=( resume "${args[@]}" )
+          fi
+          ;;
+      esac
+      ;;
+  esac
+  args+=( ${AGENT_EXTRA[@]+"${AGENT_EXTRA[@]}"} )
+  printf '%s\n' "${args[@]}"
+}
+
+_seed_agent_home() {
+  case "$1" in
+    claude) _seed_claude_home "$2" ;;
+    codex)  _seed_codex_home "$2" ;;
+  esac
+}
+
+_seed_claude_home() {
+  local dir="$1"
+  mkdir -p "$dir/.claude"
+
+  local ws
+  for ws in "${WORKSPACES[@]}"; do
+    mkdir -p "$HOME/.claude/projects/$(printf '%s' "$ws" | tr '/.' '--')"
+  done
+
+  local f
+  for f in .claude.json; do
+    [[ -e "$dir/$f" ]] && continue
+    if [[ -f "$HOME/$f" ]]; then cp "$HOME/$f" "$dir/$f"; else printf '{}\n' > "$dir/$f"; fi
+  done
+  # Re-copied every launch: the host stays authoritative, and a session cannot
+  # persist edits. A model change inside a sandbox does not survive recreation.
+  for f in settings.json settings.local.json; do
+    [[ -f "$HOME/.claude/$f" ]] && cp -f "$HOME/.claude/$f" "$dir/.claude/$f"
+  done
+
+  # Metadata beside cache/ is rewritten at startup, so the slot gets its own.
+  if [[ -d "$HOME/.claude/plugins" ]]; then
+    mkdir -p "$dir/.claude/plugins/cache"
+    for f in config.json installed_plugins.json known_marketplaces.json plugin-catalog-cache.json; do
+      [[ -e "$dir/.claude/plugins/$f" ]] && continue
+      [[ -f "$HOME/.claude/plugins/$f" ]] && cp "$HOME/.claude/plugins/$f" "$dir/.claude/plugins/$f"
+    done
+  fi
+
+  # Recreated each launch so a session cannot durably replace them.
+  for f in CLAUDE.md:instructions.md hooks:hooks skills:skills; do
+    rm -rf "$dir/.claude/${f%%:*}"
+    ln -sfn "../.agents/${f##*:}" "$dir/.claude/${f%%:*}"
+  done
+}
+
+# Codex equivalent. config.toml carries the hook trust ledger, so it is copied
+# rather than shared.
+_seed_codex_home() {
+  local dir="$1" f
+  mkdir -p "$dir/.codex/plugins/cache"
+  for f in config.toml config.json hooks.json instructions.md installation_id version.json; do
+    [[ -f "$HOME/.codex/$f" ]] && cp -f "$HOME/.codex/$f" "$dir/.codex/$f"
+  done
+  for f in rules skills; do
+    [[ -d "$HOME/.codex/$f" ]] || continue
+    rm -rf "$dir/.codex/$f"
+    cp -R "$HOME/.codex/$f" "$dir/.codex/$f"
+  done
+  rm -rf "$dir/.codex/AGENTS.md"
+  ln -sfn ../.agents/instructions.md "$dir/.codex/AGENTS.md"
+}
+
+_agent_shared_mounts() {
+  local args=() shared
+  case "$1" in
+    claude)
+      [[ -d "$HOME/.claude/plugins/cache" ]] &&
+        args+=( -v "$HOME/.claude/plugins/cache":"$HOME/.claude/plugins/cache":ro )
+      for shared in history.jsonl .credentials.json; do
+        [[ -e "$HOME/.claude/$shared" ]] &&
+          args+=( -v "$HOME/.claude/$shared":"$HOME/.claude/$shared" )
+      done
+      # Only the launched workspaces' own history and memory, not all projects.
+      local ws enc pdir
+      for ws in "${WORKSPACES[@]}"; do
+        enc=$(printf '%s' "$ws" | tr '/.' '--')
+        pdir="$HOME/.claude/projects/$enc"
+        [[ -d "$pdir" ]] || continue
+        args+=( -v "$pdir":"$pdir" )
+      done
+      ;;
+    codex)
+      [[ -d "$HOME/.codex/plugins/cache" ]] &&
+        args+=( -v "$HOME/.codex/plugins/cache":"$HOME/.codex/plugins/cache":ro )
+      for shared in auth.json history.jsonl sessions; do
+        [[ -e "$HOME/.codex/$shared" ]] &&
+          args+=( -v "$HOME/.codex/$shared":"$HOME/.codex/$shared" )
+      done
+      ;;
+  esac
+  ((${#args[@]})) || return 0
+  printf '%s\n' "${args[@]}"
+}
+
 _require_docker() {
   command -v docker >/dev/null 2>&1 \
     || _die "docker not found on PATH (install OrbStack via brew)"
@@ -119,7 +273,7 @@ _container_name_base() {
     worktree) mode_suffix="-wt" ;;
     strict)   mode_suffix="-strict" ;;
   esac
-  [[ "$AGENT_KIND" == "claude" ]] || mode_suffix="-${AGENT_KIND}${mode_suffix}"
+  [[ "$AGENT_KIND" == "$AGENT_DEFAULT" ]] || mode_suffix="-${AGENT_KIND}${mode_suffix}"
   if [[ -n "$name_override" ]]; then
     name_suffix="-$(printf '%s' "$name_override" | tr -c 'A-Za-z0-9_.-' '_')"
   fi
@@ -161,7 +315,7 @@ _containers_for_target() {
 
 _containers_for_repo() {
   local repo="$1" selected="$AGENT_KIND" agent
-  for agent in claude codex; do
+  for agent in "${AGENT_KINDS[@]}"; do
     AGENT_KIND="$agent"
     _containers_for_target "$repo" "default" ""
     _containers_for_target "$repo" "worktree" ""
@@ -246,56 +400,7 @@ _agent_docs_path() {
 _ensure_sandbox_home() {
   local dir; dir=$(_sandbox_home_path "$1")
   mkdir -p "$dir" "$(_agent_docs_path)"
-  [[ "$AGENT_KIND" == codex ]] && { _seed_codex_home "$dir"; return; }
-  mkdir -p "$dir/.claude"
-
-  local ws
-  for ws in "${WORKSPACES[@]}"; do
-    mkdir -p "$HOME/.claude/projects/$(printf '%s' "$ws" | tr '/.' '--')"
-  done
-
-  local f
-  for f in .claude.json; do
-    [[ -e "$dir/$f" ]] && continue
-    if [[ -f "$HOME/$f" ]]; then cp "$HOME/$f" "$dir/$f"; else printf '{}\n' > "$dir/$f"; fi
-  done
-  # Re-copied every launch: the host stays authoritative, and a session cannot
-  # persist edits. A model change inside a sandbox does not survive recreation.
-  for f in settings.json settings.local.json; do
-    [[ -f "$HOME/.claude/$f" ]] && cp -f "$HOME/.claude/$f" "$dir/.claude/$f"
-  done
-
-  # Metadata beside cache/ is rewritten at startup, so the slot gets its own.
-  if [[ -d "$HOME/.claude/plugins" ]]; then
-    mkdir -p "$dir/.claude/plugins/cache"
-    for f in config.json installed_plugins.json known_marketplaces.json plugin-catalog-cache.json; do
-      [[ -e "$dir/.claude/plugins/$f" ]] && continue
-      [[ -f "$HOME/.claude/plugins/$f" ]] && cp "$HOME/.claude/plugins/$f" "$dir/.claude/plugins/$f"
-    done
-  fi
-
-  # Recreated each launch so a session cannot durably replace them.
-  for f in CLAUDE.md:instructions.md hooks:hooks skills:skills; do
-    rm -rf "$dir/.claude/${f%%:*}"
-    ln -sfn "../.agents/${f##*:}" "$dir/.claude/${f%%:*}"
-  done
-}
-
-# Codex equivalent. config.toml carries the hook trust ledger, so it is copied
-# rather than shared.
-_seed_codex_home() {
-  local dir="$1" f
-  mkdir -p "$dir/.codex/plugins/cache"
-  for f in config.toml config.json hooks.json instructions.md installation_id version.json; do
-    [[ -f "$HOME/.codex/$f" ]] && cp -f "$HOME/.codex/$f" "$dir/.codex/$f"
-  done
-  for f in rules skills; do
-    [[ -d "$HOME/.codex/$f" ]] || continue
-    rm -rf "$dir/.codex/$f"
-    cp -R "$HOME/.codex/$f" "$dir/.codex/$f"
-  done
-  rm -rf "$dir/.codex/AGENTS.md"
-  ln -sfn ../.agents/instructions.md "$dir/.codex/AGENTS.md"
+  _seed_agent_home "$AGENT_KIND" "$dir"
 }
 
 # Directory symlinks inside a workspace, resolved to their real paths. A view
@@ -385,55 +490,17 @@ _print_banner() {
   else
     printf '   workspace: %s\n' "$repo"
   fi
-  [[ "$AGENT_KIND" == "claude" && -n "$label" ]] && printf '   ios label: %s\n' "$label"
+  _agent_has_remote_control "$AGENT_KIND" && [[ -n "$label" ]] &&
+    printf '   ios label: %s\n' "$label"
   if [[ "$perm" != "?" || "$iso" != "?" ]]; then
     printf '   mode:      perm=%s iso=%s repo-setup=%s signing=%s\n' "$perm" "$iso" "$RUN_REPO_SETUP" "$SIGNING"
   fi
-  if [[ "$AGENT_KIND" == "claude" ]]; then
+  if _agent_has_remote_control "$AGENT_KIND"; then
     printf '   detach:    Ctrl-p Ctrl-q (drive from the Claude app; removed on exit)\n'
   else
-    printf '   exit:      quit Codex to remove the container\n'
+    printf '   exit:      quit %s to remove the container\n' "$(_agent_display_name "$AGENT_KIND")"
   fi
   printf '%s=====================================================%s\n' "$C_DIM" "$C_RESET"
-}
-
-# Agent CLI args. The label (when given) is passed via `claude --name`
-# so the iOS app shows a stable, distinguishable session label instead
-# of the auto-derived first-prompt-summary that drifts over time.
-_agent_args() {
-  local perm="$1" label="${2:-}"
-  local args=()
-  case "$AGENT_KIND" in
-    claude)
-      args=( --remote-control )
-      [[ -n "$label" ]] && args+=( --name "$label" )
-      case "$perm" in
-        auto) args+=( --permission-mode acceptEdits ) ;;
-        bypass) args+=( --dangerously-skip-permissions ) ;;
-        *) _die "unknown permission mode: $perm" ;;
-      esac
-      [[ ${#RESUME_FLAGS[@]} -gt 0 ]] && args+=( "${RESUME_FLAGS[@]}" )
-      ;;
-    codex)
-      case "$perm" in
-        auto) args+=( --sandbox workspace-write --ask-for-approval on-request ) ;;
-        bypass) args+=( --dangerously-bypass-approvals-and-sandbox ) ;;
-        *) _die "unknown permission mode: $perm" ;;
-      esac
-      case "${RESUME_FLAGS[0]:-}" in
-        --continue) args=( resume --last "${args[@]}" ) ;;
-        --resume)
-          if [[ ${#RESUME_FLAGS[@]} -gt 1 ]]; then
-            args=( resume "${RESUME_FLAGS[1]}" "${args[@]}" )
-          else
-            args=( resume "${args[@]}" )
-          fi
-          ;;
-      esac
-      ;;
-  esac
-  args+=( ${AGENT_EXTRA[@]+"${AGENT_EXTRA[@]}"} )
-  printf '%s\n' "${args[@]}"
 }
 
 # iOS-app-visible label. Prefix with 🛡 so sandbox sessions are
@@ -556,29 +623,9 @@ _run_args() {
     local agent_docs; agent_docs=$(_agent_docs_path)
     [[ -d "$agent_docs" ]] && args+=( -v "$agent_docs":"$agent_docs" )
     local shared
-    if [[ "$AGENT_KIND" == "claude" ]]; then
-      [[ -d "$HOME/.claude/plugins/cache" ]] &&
-        args+=( -v "$HOME/.claude/plugins/cache":"$HOME/.claude/plugins/cache":ro )
-      for shared in history.jsonl .credentials.json; do
-        [[ -e "$HOME/.claude/$shared" ]] &&
-          args+=( -v "$HOME/.claude/$shared":"$HOME/.claude/$shared" )
-      done
-      # Only the launched workspaces' own history and memory, not all projects.
-      local ws enc pdir
-      for ws in "${WORKSPACES[@]}"; do
-        enc=$(printf '%s' "$ws" | tr '/.' '--')
-        pdir="$HOME/.claude/projects/$enc"
-        [[ -d "$pdir" ]] || continue
-        args+=( -v "$pdir":"$pdir" )
-      done
-    else
-      [[ -d "$HOME/.codex/plugins/cache" ]] &&
-        args+=( -v "$HOME/.codex/plugins/cache":"$HOME/.codex/plugins/cache":ro )
-      for shared in auth.json history.jsonl sessions; do
-        [[ -e "$HOME/.codex/$shared" ]] &&
-          args+=( -v "$HOME/.codex/$shared":"$HOME/.codex/$shared" )
-      done
-    fi
+    while IFS= read -r shared; do
+      args+=( "$shared" )
+    done < <(_agent_shared_mounts "$AGENT_KIND")
   fi
 
   # Needed in every mode, strict included, or its guards never run.
@@ -846,8 +893,8 @@ _parse_common_flags() {
   if ((RUN_REPO_SETUP && SIGNING)); then
     _die "--repo-setup and --signing cannot be combined"
   fi
-  if [[ "$AGENT_KIND" == "codex" && "$ISO_MODE" == "strict" ]]; then
-    _die "--strict is not yet supported for Codex; use default or --worktree"
+  if [[ "$ISO_MODE" == "strict" ]] && ! _agent_supports_strict "$AGENT_KIND"; then
+    _die "--strict is not yet supported for $(_agent_display_name "$AGENT_KIND"); use default or --worktree"
   fi
 
   if [[ ${#WORKSPACES[@]} -gt 1 ]] && [[ "$ISO_MODE" != "default" ]]; then
@@ -1031,7 +1078,7 @@ cmd_stop() {
   _container_exists "$name" || _die "$name does not exist"
   [[ -z "$repo" ]] && repo=$(_container_workspace_label "$name")
   local container_agent; container_agent=$(_container_agent_label "$name")
-  [[ "$container_agent" == "claude" || "$container_agent" == "codex" ]] || _die "$name has no valid agent label"
+  _is_agent_kind "$container_agent" || _die "$name has no valid agent label"
   local container_iso; container_iso=$(_container_iso_label "$name")
   [[ "$container_iso" == "default" || "$container_iso" == "worktree" || "$container_iso" == "strict" ]] || _die "$name has no valid isolation label"
   docker rm -f "$name" >/dev/null
@@ -1338,7 +1385,7 @@ EOF
 }
 
 main() {
-  if [[ "${1:-}" == "claude" || "${1:-}" == "codex" ]]; then
+  if _is_agent_kind "${1:-}"; then
     AGENT_KIND="$1"
     shift
   fi
