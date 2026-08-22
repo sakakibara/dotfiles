@@ -114,12 +114,18 @@ def message_from_rev(rev, cdir):
         return ""
 
 
+# A commit's arguments end at the next command. Without this the scan runs on
+# into unrelated words - a later `sed -n` reads as the commit's own `-n`.
+NEWLINE = "\x01nl\x01"
+STOP = {"git", ";", "&&", "||", "|", "&", "(", ")", "{", "}", NEWLINE}
+
+
 def scan_args(argv, heredocs, cdir):
     """Message and bypass flag from the arguments following `commit`."""
     messages, k, amend, reuse, no_verify = [], 0, False, None, False
     while k < len(argv):
         w = argv[k]
-        if w == "git" and messages:
+        if w in STOP:
             break
         if w in ("--no-verify", "-n"):
             no_verify = True
@@ -167,6 +173,9 @@ def commit_messages(cmd, aliases):
     the command, so the message is judged against the repository the commit
     actually lands in, not the session's working directory."""
     cmd, heredocs = split_heredocs(cmd)
+    # shlex folds a newline into ordinary whitespace, which would let the scan
+    # run from one command straight into the next.
+    cmd = cmd.replace("\n", f" {NEWLINE} ")
     try:
         words = shlex.split(cmd)
     except ValueError:
