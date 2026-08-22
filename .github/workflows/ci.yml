@@ -160,6 +160,8 @@ jobs:
         run: bash etc/tests/dotfiles_wrapper.sh
       - name: agent sandbox security
         run: bash etc/tests/agent_sandbox_security.sh
+      - name: commit message rules
+        run: bash etc/tests/commit_rules.sh
 
   pwsh-tests:
     name: PowerShell tests (Windows)

@@ -23,6 +23,7 @@
     "etc/sandbox/entrypoint.sh",
     "etc/tests/agent-instructions.sh",
     "etc/tests/agent_sandbox_security.sh",
+    "etc/tests/commit_rules.sh",
     "scripts/check/codex-config",
     "src/.agents/hooks/commit-msg-check.py",
     "src/.agents/hooks/commit_rules.py",
