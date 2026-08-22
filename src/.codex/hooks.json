@@ -25,12 +25,6 @@
           },
           {
             "type": "command",
-            "command": "bash \"$HOME/.agents/hooks/commit-jargon-guard.sh\"",
-            "timeout": 10,
-            "statusMessage": "Checking commit message"
-          },
-          {
-            "type": "command",
             "command": "python3 \"$HOME/.agents/hooks/commit-style-guard.py\"",
             "timeout": 10,
             "statusMessage": "Checking commit message style"

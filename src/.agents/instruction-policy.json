@@ -23,7 +23,8 @@
     "etc/sandbox/entrypoint.sh",
     "etc/tests/agent-instructions.sh",
     "etc/tests/agent_sandbox_security.sh",
-    "src/.agents/hooks/commit-jargon-guard.sh",
+    "scripts/check/codex-config",
+    "src/.agents/hooks/commit_rules.py",
     "src/.agents/hooks/git-stage-guard.sh",
     "src/.agents/hooks/instruction-audit.py",
     "src/.agents/hooks/instruction-trust-guard.sh",
@@ -46,7 +47,6 @@
     "src/.codex/hooks.json",
     "src/.config/fish/completions/agent-sandbox.fish",
     "src/.local/bin/agent-sandbox",
-    "src/.zcomp/_agent-sandbox",
-    "scripts/check/codex-config"
+    "src/.zcomp/_agent-sandbox"
   ]
 }

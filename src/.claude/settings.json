@@ -37,10 +37,6 @@
           },
           {
             "type": "command",
-            "command": "bash $HOME/.agents/hooks/commit-jargon-guard.sh"
-          },
-          {
-            "type": "command",
             "command": "python3 $HOME/.agents/hooks/commit-style-guard.py"
           }
         ]
