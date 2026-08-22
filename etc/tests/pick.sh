@@ -463,7 +463,7 @@ case "$out" in
   *) _eq "expected changed=mise,fresh,…" "match" "$out" ;;
 esac
 case "$out" in
-  *"changed=brew,"*|*"changed=brew,"*",fresh,"*) _eq "brew should NOT be in changed" "true" "$out" ;;
+  *"changed=brew,"*) _eq "brew should NOT be in changed" "true" "$out" ;;
   *) _true "brew NOT in changed (unchanged hash)" 0 ;;
 esac
 

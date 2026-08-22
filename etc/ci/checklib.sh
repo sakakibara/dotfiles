@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Shared syntax-check primitives for etc/ci scripts. Sourced, not executed:
 # the caller owns file discovery; this owns how to check one file and the
 # skip bookkeeping (a missing tool is a skip locally, a failure under CI).

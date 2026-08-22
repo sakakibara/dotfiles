@@ -63,6 +63,7 @@ else
   if [ ${#p} -gt 40 ]; then
     tail=${p##*/}
     rest=${p%/*}
+    # shellcheck disable=SC2088  # display text, never resolved as a path
     p="~/.../${rest##*/}/$tail"
   fi
   loc_seg=$(printf '\033[34m%s\033[0m' "$p")

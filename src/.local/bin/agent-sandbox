@@ -34,7 +34,7 @@ else
   C_DIM=""; C_BOLD=""; C_RED=""; C_YELLOW=""; C_RESET=""
 fi
 
-DISPLAY_NAME=agent-sandbox
+DISPLAY_NAME='agent-sandbox'
 _die()  { printf '%s%s: %s%s\n' "$C_RED" "$DISPLAY_NAME" "$*" "$C_RESET" >&2; exit 1; }
 _warn() { printf '%s%s: %s%s\n' "$C_YELLOW" "$DISPLAY_NAME" "$*" "$C_RESET" >&2; }
 _info() { printf '%s%s:%s %s\n' "$C_DIM" "$DISPLAY_NAME" "$C_RESET" "$*"; }
@@ -141,10 +141,13 @@ _seed_claude_home() {
   done
 
   local f
-  for f in .claude.json; do
-    [[ -e "$dir/$f" ]] && continue
-    if [[ -f "$HOME/$f" ]]; then cp "$HOME/$f" "$dir/$f"; else printf '{}\n' > "$dir/$f"; fi
-  done
+  if [[ ! -e "$dir/.claude.json" ]]; then
+    if [[ -f "$HOME/.claude.json" ]]; then
+      cp "$HOME/.claude.json" "$dir/.claude.json"
+    else
+      printf '{}\n' > "$dir/.claude.json"
+    fi
+  fi
   # Re-copied every launch: the host stays authoritative, and a session cannot
   # persist edits. A model change inside a sandbox does not survive recreation.
   for f in settings.json settings.local.json; do
@@ -371,7 +374,8 @@ _worktree_path() {
 }
 
 _worktree_branch() {
-  local name="$2" short="${name#${NAME_PREFIX}-}"
+  local name="$2"
+  local short="${name#${NAME_PREFIX}-}"
   printf 'agent-sandbox/%s\n' "$short"
 }
 
@@ -430,6 +434,7 @@ _resolve_workspace_links() {
   done < <(find "$ws" -mindepth 1 -maxdepth 2 -type l 2>/dev/null)
 
   local a b keep
+  [[ ${#seen[@]} -eq 0 ]] && return 0
   while IFS= read -r a; do
     keep=1
     for b in ${LINK_TARGETS[@]+"${LINK_TARGETS[@]}"}; do
@@ -571,10 +576,10 @@ _run_args() {
     local gf
     for gf in config allowed_signers personal.inc identities.local.inc; do
       [[ -f "$HOME/.config/git/$gf" ]] &&
-        args+=( -v "$HOME/.config/git/$gf":/home/claude/.config/git/"$gf":ro )
+        args+=( -v "$HOME/.config/git/$gf:/home/claude/.config/git/$gf:ro" )
     done
     for gf in "$HOME"/.config/git/id-*.inc; do
-      [[ -f "$gf" ]] && args+=( -v "$gf":/home/claude/.config/git/"${gf##*/}":ro )
+      [[ -f "$gf" ]] && args+=( -v "$gf:/home/claude/.config/git/${gf##*/}:ro" )
     done
   fi
 

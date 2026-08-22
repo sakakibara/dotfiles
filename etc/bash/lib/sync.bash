@@ -305,6 +305,7 @@ sync::_action_label_v() {
 sync::_render() {
   local cursor="$1" current="$2"
   local cols rows
+  # shellcheck disable=SC2034  # consumed by a sourced helper
   cols=$(pick::_cols)
   rows=$(pick::_rows)
 

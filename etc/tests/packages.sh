@@ -146,6 +146,7 @@ _eq "other (unknown profile): all gated entries skipped" \
     "pkg=slack=work|pkg=obsidian=personal|cask=figma=work,personal|" "$out"
 
 _section "current_profile: env var wins"
+# shellcheck disable=SC2034  # consumed by a sourced helper
 DOTFILES_PROFILE=test-profile out=$(packages::current_profile)
 _eq "DOTFILES_PROFILE wins" "test-profile" "$out"
 

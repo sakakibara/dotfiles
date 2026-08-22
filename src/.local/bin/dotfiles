@@ -255,8 +255,10 @@ EOF
   set +e +u +o pipefail
 
   local fails=0 passes=0
-  local pass_glyph="${C_BOLD}$(printf '\033[1;32m')✓$(printf '\033[0m')"
-  local fail_glyph="${C_BOLD}$(printf '\033[1;31m')✖$(printf '\033[0m')"
+  local pass_glyph
+  pass_glyph="${C_BOLD}$(printf '\033[1;32m')✓$(printf '\033[0m')"
+  local fail_glyph
+  fail_glyph="${C_BOLD}$(printf '\033[1;31m')✖$(printf '\033[0m')"
   _check() {
     local desc="$1" rc="$2" detail="${3:-}"
     if (( rc == 0 )); then
@@ -278,6 +280,7 @@ EOF
   local source_dir
   source_dir=$(_mox_repo)
   [[ -n "$source_dir" && -d "$source_dir" ]]
+  # shellcheck disable=SC2319  # the preceding condition is the check
   _check "mox repo resolves to a directory" $?
 
   local profile=""
@@ -285,6 +288,7 @@ EOF
     profile=$(mox facts </dev/null 2>/dev/null | awk -F' = ' '$1 == "profile" { gsub(/"/, "", $2); print $2 }' || true)
   fi
   [[ -n "$profile" ]]
+  # shellcheck disable=SC2319  # the preceding condition is the check
   _check "profile resolves" $? "$profile"
 
   if [[ -n "$source_dir" ]]; then
