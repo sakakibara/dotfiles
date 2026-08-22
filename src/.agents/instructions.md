@@ -200,7 +200,7 @@ Distinguish "verification wasn't run" from "no runnable verification exists": a 
 
 ### Match each repo's commit message style
 
-Check the target repo's convention with `git log --oneline -10` BEFORE composing a message, and adopt it. Common: conventional commits (`feat:`, `fix(scope):`, `chore:`) on most public projects; terse one-liner imperative (no body/trailers); or mixed - inspect before assuming. Boilerplate commits aren't exempt: the first commit in a conventional-commit project is `chore: initial commit`, not `Initial commit`. A cross-reference to a real git object (`Companion to cb1c4c4.`) is fine; a reference to a spec/plan FILE is not (it lives outside the repo and won't survive a fresh clone).
+Check the target repo's convention with `git log -10 --format='%B'` BEFORE composing a message, and adopt it. Never judge style from `--oneline` or `%s`: `--oneline` strips bodies and trailers, and `%s` collapses a wrapped subject onto one line, so every repo looks subject-only and the check cannot fail. `%B` is the complete raw message. Match body-vs-subject-only from what it actually shows. Common: conventional commits (`feat:`, `fix(scope):`, `chore:`) on most public projects; terse one-liner imperative (no body/trailers); or mixed - inspect before assuming. Boilerplate commits aren't exempt: the first commit in a conventional-commit project is `chore: initial commit`, not `Initial commit`. A cross-reference to a real git object (`Companion to cb1c4c4.`) is fine; a reference to a spec/plan FILE is not (it lives outside the repo and won't survive a fresh clone).
 
 ## Public / published repos
 
