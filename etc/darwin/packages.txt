@@ -67,6 +67,7 @@ herdr
 jq
 lazydocker
 lazygit
+mlx-lm
 neovim
 nnn
 protobuf

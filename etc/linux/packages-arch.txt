@@ -17,6 +17,7 @@ imagemagick
 jq
 neovim
 nnn
+ollama
 ripgrep
 tree
 wget
