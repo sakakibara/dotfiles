@@ -68,3 +68,6 @@ mise.toml
 .aider*
 .vscode/
 .idea/
+
+# Agent per-repo local settings (never shared)
+.claude/settings.local.json
