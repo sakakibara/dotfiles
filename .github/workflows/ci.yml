@@ -13,6 +13,16 @@ on:
 env:
   MOX_VERSION: v0.10.0
 
+# The agents baked into the sandbox image. Pinned here and nowhere else: the
+# Dockerfile still defaults to `latest`, so a machine running `agent-sandbox`
+# gets current agents, while a push is judged against a fixed image rather than
+# whatever npm published in the last hour. The drift workflow builds unpinned on
+# a schedule, so upstream breakage still surfaces - just not as a mystery
+# failure on unrelated work. Bump these deliberately.
+  CLAUDE_CODE_VERSION: 2.1.239
+  CODEX_VERSION: 0.149.0
+  OPENCODE_VERSION: 1.18.21
+
 jobs:
   syntax:
     name: Syntax (${{ matrix.os }})
@@ -238,6 +248,11 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Build the sandbox image
-        run: docker build -t agent-sandbox:latest etc/sandbox
+        run: |
+          docker build -t agent-sandbox:latest \
+            --build-arg "CLAUDE_CODE_VERSION=$CLAUDE_CODE_VERSION" \
+            --build-arg "CODEX_VERSION=$CODEX_VERSION" \
+            --build-arg "OPENCODE_VERSION=$OPENCODE_VERSION" \
+            etc/sandbox
       - name: Host-tamper gate
         run: bash etc/tests/agent_sandbox_isolation.sh

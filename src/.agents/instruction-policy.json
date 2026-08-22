@@ -16,6 +16,7 @@
   ],
   "audited_files": [
     ".github/workflows/ci.yml",
+    ".github/workflows/drift.yml",
     ".mox/attributes.toml",
     ".moxignore",
     "etc/ci/syntax.sh",

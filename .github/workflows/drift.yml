@@ -1,0 +1,50 @@
+name: Drift
+
+# Every pinned upstream is checked against its current release here. A pin keeps
+# an unrelated push from failing because someone else shipped an hour ago; this
+# workflow is what stops that same pin from hiding a breaking release until the
+# day it is bumped. It never runs on push, so it cannot fail unrelated work.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * 1'
+
+jobs:
+  drift-sandbox-image:
+    name: Drift - sandbox image against current agents
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build with the newest published agents
+        run: docker build -t agent-sandbox:latest etc/sandbox
+      - name: Report what landed
+        run: |
+          docker run --rm agent-sandbox:latest sh -c \
+            'claude --version; codex --version; opencode --version'
+      - name: Host-tamper gate
+        run: bash etc/tests/agent_sandbox_isolation.sh
+
+  drift-mox:
+    name: Drift - dotfiles against the current mox release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install zsh + fish + luajit + lua5.4
+        run: sudo apt-get update && sudo apt-get install -y zsh fish luajit lua5.4
+      - name: Install the newest mox release
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          url=$(curl -fsSL https://api.github.com/repos/sakakibara/mox/releases/latest \
+            | grep -o '"browser_download_url": *"[^"]*mox-x86_64-linux\.tar\.gz"' \
+            | cut -d'"' -f4)
+          [ -n "$url" ] || { echo "no linux asset on the latest release" >&2; exit 1; }
+          curl -fsSL "$url" -o /tmp/mox.tar.gz
+          tar xzf /tmp/mox.tar.gz -C "$HOME/.local/bin"
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Report what landed
+        run: mox version
+      - name: Compose check
+        run: bash etc/ci/render.sh
+      - name: Wrapper behaviour
+        run: bash etc/tests/dotfiles_wrapper.sh
