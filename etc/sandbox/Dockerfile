@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 #
-# agent-sandbox image - Debian-based, Claude Code and Codex preinstalled, mise for
-# per-project toolchains.
+# agent-sandbox image - Debian-based, Claude Code, Codex and opencode
+# preinstalled, mise for per-project toolchains.
 #
 # Two node installations on purpose:
 #   - apt-installed system node (linked to the `claude` global) - stable,
@@ -23,6 +23,7 @@ FROM debian:trixie-slim
 
 ARG CLAUDE_CODE_VERSION=latest
 ARG CODEX_VERSION=latest
+ARG OPENCODE_VERSION=latest
 
 ENV DEBIAN_FRONTEND=noninteractive \
     LANG=en_US.UTF-8 \
@@ -91,7 +92,8 @@ WORKDIR /workspace
 # writing the new version, and the updater silently fails. Per-user prefix
 # at /home/claude/.local lets auto-update overwrite in place.
 RUN npm config set prefix /home/claude/.local \
- && npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION} @openai/codex@${CODEX_VERSION}
+ && npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION} @openai/codex@${CODEX_VERSION} \
+                   opencode-ai@${OPENCODE_VERSION}
 
 # mise - for per-project toolchains. Image only ships mise itself; each
 # project's .mise.toml triggers `mise install` at entrypoint time.

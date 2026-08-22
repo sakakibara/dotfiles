@@ -189,6 +189,132 @@ done
 grep 'HERDR_AGENT=' "$work/docker.log" | grep -qv '{HERDR_AGENT=codex} <run>' && { echo 'FAIL: the herdr agent hint leaked beyond the agent run command' >&2; exit 1; }
 
 : > "$work/docker.log"
+mkdir -p "$work/home/.config/opencode" "$work/home/.local/share/opencode"
+printf '{"$schema":"https://opencode.ai/config.json","provider":{"local":{"options":{"baseURL":"http://127.0.0.1:19999/v1"}}}}\n' > "$work/home/.config/opencode/opencode.jsonc"
+printf 'token\n' > "$work/home/.local/share/opencode/auth.json"
+run_sandbox opencode "$work/fixture"
+log=$(cat "$work/docker.log")
+slot="$work/data/agent-sandbox/home/agent-sandbox-fixture-opencode"
+[[ "$log" == *'<--label> <agent-sandbox.agent=opencode>'* ]] || { echo 'FAIL: opencode agent label missing' >&2; exit 1; }
+# opencode allows everything unless told otherwise, so --auto must supply the
+# permission block; a bare launch would be a fully permissive agent.
+[[ "$log" == *'OPENCODE_CONFIG_CONTENT='* ]] || { echo 'FAIL: opencode launch carried no inline config' >&2; exit 1; }
+[[ "$log" == *'permission'*'edit'*'allow'*'bash'*'ask'* ]] || { echo 'FAIL: opencode default mode did not restrict permissions' >&2; exit 1; }
+# These ride on the injected config, which outranks every file, so they hold
+# even on a machine with no opencode configuration to seed from.
+[[ "$log" == *'share'*'disabled'* ]] || { echo 'FAIL: opencode session sharing was not disabled for the sandbox' >&2; exit 1; }
+[[ "$log" == *'autoupdate'*'false'* ]] || { echo 'FAIL: opencode self-update was not disabled for the sandbox' >&2; exit 1; }
+[[ "$log" == *'<opencode>'* ]] || { echo 'FAIL: opencode was not launched' >&2; exit 1; }
+[[ "$log" != *'<opencode> <--auto>'* ]] || { echo 'FAIL: opencode default mode used the bypass flag' >&2; exit 1; }
+[[ "$log" != *"$work/home/.config/opencode:"* ]] || { echo 'FAIL: opencode config directory is mounted wholesale' >&2; exit 1; }
+[[ "$log" != *"$work/home/.local/share/opencode:"* ]] || { echo 'FAIL: opencode data directory is mounted wholesale' >&2; exit 1; }
+[[ "$log" == *"$work/home/.local/share/opencode/auth.json:$work/home/.local/share/opencode/auth.json"* ]] || { echo 'FAIL: opencode credentials not shared with the host' >&2; exit 1; }
+[[ -f "$slot/.config/opencode/opencode.jsonc" ]] || { echo 'FAIL: opencode config not seeded into the slot' >&2; exit 1; }
+[[ -d "$slot/.local/state/opencode" ]] || { echo 'FAIL: opencode state directory not seeded into the slot' >&2; exit 1; }
+grep -q 'host.docker.internal:19999' "$slot/.config/opencode/opencode.jsonc" || { echo 'FAIL: a host loopback model endpoint was not rewritten for the container' >&2; exit 1; }
+grep -q '127.0.0.1' "$slot/.config/opencode/opencode.jsonc" && { echo 'FAIL: the slot config still points at the container loopback' >&2; exit 1; }
+grep -q '127.0.0.1' "$work/home/.config/opencode/opencode.jsonc" || { echo 'FAIL: the host opencode config was rewritten and must not be' >&2; exit 1; }
+for value in '.claude.json' '.codex:'; do
+  [[ "$log" != *"$value"* ]] || { echo "FAIL: opencode launch exposed $value" >&2; exit 1; }
+done
+[[ "$log" == *'{HERDR_AGENT=opencode} <run>'* ]] || { echo 'FAIL: docker run lacks the herdr agent hint for opencode' >&2; exit 1; }
+
+: > "$work/docker.log"
+mv "$work/home/.config/opencode/opencode.jsonc" "$work/home/.config/opencode/.stashed"
+run_sandbox opencode "$work/fixture"
+log=$(tail -1 "$work/docker.log")
+[[ "$log" == *'share'*'disabled'* ]] || { echo 'FAIL: sharing is disabled only when a host config exists to seed' >&2; exit 1; }
+[[ "$log" == *'autoupdate'*'false'* ]] || { echo 'FAIL: self-update is disabled only when a host config exists to seed' >&2; exit 1; }
+mv "$work/home/.config/opencode/.stashed" "$work/home/.config/opencode/opencode.jsonc"
+
+# A loopback address means the host, which is not the container's loopback.
+# Every form it can take must be rewritten, and nothing that merely contains the
+# word must be.
+rw=$(mktemp -d)
+check_rewrite() {
+  printf '{"baseURL":"%s"}\n' "$1" > "$rw/c.json"
+  bash -c 'source <(sed -n "/^_rewrite_loopback/,/^}/p" "$1"); _rewrite_loopback "$2"' _ "$script" "$rw/c.json"
+  local got; got=$(sed 's/.*"baseURL":"\([^"]*\)".*/\1/' "$rw/c.json")
+  if [[ "$2" == rewrite ]]; then
+    [[ "$got" == *host.docker.internal* ]] || { echo "FAIL: $1 was not redirected to the host" >&2; exit 1; }
+  else
+    [[ "$got" == "$1" ]] || { echo "FAIL: $1 was redirected and should not be" >&2; exit 1; }
+  fi
+}
+check_rewrite 'http://127.0.0.1:1234/v1'          rewrite
+check_rewrite 'http://localhost:1234/v1'          rewrite
+check_rewrite 'http://[::1]:1234/v1'              rewrite
+check_rewrite 'http://localhost/v1'               rewrite
+check_rewrite 'http://127.0.0.1'                  rewrite
+check_rewrite 'https://api.example.com/v1'        leave
+check_rewrite 'https://localhost.example.com/v1'  leave
+check_rewrite 'https://my-localhost-proxy.net/v1' leave
+rm -rf "$rw"
+
+# A model id reaches injected JSON, so an id that would break that document is
+# refused. Ids arriving from a server are filtered by the same rule.
+id_ok() { bash -c 'source <(sed -n "/^_valid_model_id/,/^}/p" "$1"); _valid_model_id "$2"' _ "$script" "$1"; }
+for good in 'vendor.2:30b-q4' 'namespace/Model-Name' 'a_b.c-d@e+f'; do
+  id_ok "$good" || { echo "FAIL: a legitimate model id was rejected: $good" >&2; exit 1; }
+done
+for bad in 'bad","x":"y' 'has space' 'quote"inside' 'new
+line'; do
+  id_ok "$bad" && { echo "FAIL: a model id that breaks injected JSON was accepted: $bad" >&2; exit 1; }
+done
+
+# The branch name must not depend on a variable the caller happens to have in
+# scope: git rejects a ref that ends in a slash, so an empty one is fatal.
+branch=$(bash -c 'NAME_PREFIX=agent-sandbox
+source <(sed -n "/^_worktree_branch/,/^}/p" "$1")
+_worktree_branch /repo agent-sandbox-fixture-wt' _ "$script")
+[[ "$branch" == "agent-sandbox/fixture-wt" ]] || { echo "FAIL: worktree branch name is '$branch', not derived from the container name" >&2; exit 1; }
+[[ "$branch" != */ ]] || { echo 'FAIL: worktree branch name ends in a slash, which git refuses' >&2; exit 1; }
+
+: > "$work/docker.log"
+run_sandbox opencode --model local-model-x "$work/fixture"
+log=$(tail -1 "$work/docker.log")
+[[ "$log" == *'local-model-x'* ]] || { echo 'FAIL: a named model never reached the opencode configuration' >&2; exit 1; }
+[[ "$log" == *'host.docker.internal:8080'* || "$log" == *'host.docker.internal:11434'* ]] || { echo 'FAIL: the model provider does not point at the host server' >&2; exit 1; }
+
+# a model name must not be a flag the other agents silently discard
+: > "$work/docker.log"
+run_sandbox claude --model a-claude-model "$work/fixture"
+log=$(tail -1 "$work/docker.log")
+[[ "$log" == *'<--model> <a-claude-model>'* ]] || { echo 'FAIL: --model is silently ignored for Claude' >&2; exit 1; }
+: > "$work/docker.log"
+run_sandbox codex --model a-codex-model "$work/fixture"
+log=$(tail -1 "$work/docker.log")
+[[ "$log" == *'<--model> <a-codex-model>'* ]] || { echo 'FAIL: --model is silently ignored for Codex' >&2; exit 1; }
+
+# a model id that would break the injected JSON takes every setting in that
+# document down with it, so it is refused rather than emitted
+set +e
+out=$(run_sandbox opencode --model 'bad","x":"y' "$work/fixture" 2>&1)
+rc=$?
+set -e
+[[ $rc -ne 0 && "$out" == *'--model accepts'* ]] || { echo 'FAIL: a model id that breaks the injected JSON was accepted' >&2; exit 1; }
+set +e
+out=$(run_sandbox claude --model-port 9999 "$work/fixture" 2>&1); rc=$?
+set -e
+[[ $rc -ne 0 && "$out" == *'opencode only'* ]] || { echo 'FAIL: --model-port was accepted for an agent that ignores it' >&2; exit 1; }
+
+: > "$work/docker.log"
+run_sandbox opencode --bypass "$work/fixture"
+log=$(tail -1 "$work/docker.log")
+[[ "$log" == *'<opencode> <--auto>'* ]] || { echo 'FAIL: opencode bypass did not auto-approve' >&2; exit 1; }
+[[ "$log" != *'permission'* ]] || { echo 'FAIL: opencode bypass still sent a permission block' >&2; exit 1; }
+
+: > "$work/docker.log"
+run_sandbox opencode --continue "$work/fixture"
+log=$(tail -1 "$work/docker.log")
+[[ "$log" == *'<opencode> <--continue>'* ]] || { echo 'FAIL: opencode continue lost its flag' >&2; exit 1; }
+
+: > "$work/docker.log"
+run_sandbox opencode --resume=abc123 "$work/fixture"
+log=$(tail -1 "$work/docker.log")
+[[ "$log" == *'<opencode> <--session> <abc123>'* ]] || { echo 'FAIL: opencode named resume did not map to --session' >&2; exit 1; }
+
+: > "$work/docker.log"
 run_sandbox codex --resume "$work/fixture"
 log=$(tail -1 "$work/docker.log")
 [[ "$log" == *'<codex> <resume> <--sandbox>'* && "$log" != *"<''>"* ]] || { echo 'FAIL: bare Codex resume emitted a session argument' >&2; exit 1; }

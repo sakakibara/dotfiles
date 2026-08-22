@@ -1,4 +1,15 @@
 #compdef agent-sandbox
+
+# Models the local server is serving. A server that is not running simply
+# offers nothing to complete.
+__agent_sandbox_models() {
+  local port=${opt_args[--model-port]:-8080}
+  [[ $(uname) == Darwin ]] || port=${opt_args[--model-port]:-11434}
+  local -a models
+  models=( ${(f)"$(curl -fsS --max-time 1 "http://127.0.0.1:${port}/v1/models" 2>/dev/null \
+    | grep -o '"id"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/.*"\([^"]*\)"$/\1/')"} )
+  (( ${#models} )) && _describe 'model' models
+}
 # Completion for agent-sandbox.
 
 _agent_sandbox() {
@@ -7,6 +18,7 @@ _agent_sandbox() {
   subcommands=(
     'claude:run Claude Code'
     'codex:run Codex'
+    'opencode:run opencode'
     'new:start a fresh attached sandbox'
     'start:start detached'
     'run-untrusted:run repository code without host or network access'
@@ -29,6 +41,8 @@ _agent_sandbox() {
     '--strict[isolate via docker volumes]' \
     '*--workspace[mount one or more repos (default iso only)]:repo:_files -/' \
     '--name[named slot (overrides auto-bumped suffix)]:name:' \
+    '--model[model the local server serves]:model:__agent_sandbox_models'
+    '--model-port[port the local model server listens on]:port:'
     '(-c --continue)'{-c,--continue}'[continue the most recent agent session]' \
     '(-r --resume)'{-r,--resume}'[resume an agent session (or picker)]:session:' \
     '1: :->cmd' \
@@ -40,7 +54,7 @@ _agent_sandbox() {
       ;;
     args)
       verb="$words[2]"
-      if [[ "$verb" == claude || "$verb" == codex ]]; then
+      if [[ "$verb" == claude || "$verb" == codex || "$verb" == opencode ]]; then
         if (( CURRENT == 3 )); then
           local -a agent_subcommands
           agent_subcommands=(

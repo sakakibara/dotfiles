@@ -78,6 +78,19 @@ if [[ -n "${HOST_HOME:-}" && "$HOST_HOME" != "$HOME" ]]; then
   if [[ "${SANDBOX_AGENT_KIND:-}" == "codex" && -d "$HOST_HOME/.codex" && ! -e "$HOME/.codex" ]]; then
     ln -sfn "$HOST_HOME/.codex" "$HOME/.codex"
   fi
+  # opencode splits its state across XDG directories and scaffolds them on first
+  # run, so the image already carries empty ones. Those shadow the per-slot state
+  # unless replaced outright - they hold nothing, the slot is authoritative, and
+  # the container is ephemeral. The cache is deliberately left container-local.
+  if [[ "${SANDBOX_AGENT_KIND:-}" == "opencode" ]]; then
+    for d in .config/opencode .local/share/opencode .local/state/opencode; do
+      [[ -d "$HOST_HOME/$d" ]] || continue
+      [[ -L "$HOME/$d" ]] && continue
+      mkdir -p "$HOME/$(dirname "$d")"
+      rm -rf "${HOME:?}/${d:?}"
+      ln -sfn "$HOST_HOME/$d" "$HOME/$d"
+    done
+  fi
 fi
 
 # Strict-mode bridge: the wrapper seeds host's ~/.claude.json into the

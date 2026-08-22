@@ -3,11 +3,12 @@
 #
 # Default behavior: in a repo, `agent-sandbox` starts a container with
 # `claude --remote-control --permission-mode acceptEdits` inside and
-# attaches an interactive TTY. Selecting `codex` runs Codex instead. The
+# attaches an interactive TTY. Selecting `codex` or `opencode` runs that
+# agent instead. The
 # container is ephemeral and is removed when the agent exits.
 #
 # Subcommands:
-#   agent-sandbox [claude|codex] [--auto|--bypass] [--continue|--resume] [repo]
+#   agent-sandbox [claude|codex|opencode] [--auto|--bypass] [--continue|--resume] [repo]
 #                                              start + attach (default; auto)
 #   agent-sandbox run-untrusted [repo] -- COMMAND
 #                                              run repo code without host access
@@ -63,7 +64,7 @@ SIGNING=0
 AGENT_KIND=claude
 
 # Agent registry
-AGENT_KINDS=(claude codex)
+AGENT_KINDS=(claude codex opencode)
 AGENT_DEFAULT=claude
 
 _is_agent_kind() {
@@ -78,12 +79,70 @@ _agent_display_name() {
   case "$1" in
     claude) printf 'Claude\n' ;;
     codex)  printf 'Codex\n' ;;
+    opencode) printf 'opencode\n' ;;
   esac
 }
 
 _agent_supports_strict() { [[ "$1" == claude ]]; }
 
 _agent_has_remote_control() { [[ "$1" == claude ]]; }
+
+# A model id ends up inside injected JSON. Anything outside this set would
+# break that document, and a broken document drops every setting in it.
+_valid_model_id() {
+  [[ "$1" =~ ^[A-Za-z0-9._:@/+-]+$ ]]
+}
+
+_opencode_model_port() {
+  [[ -n "$MODEL_PORT" ]] && { printf '%s\n' "$MODEL_PORT"; return; }
+  [[ "$(uname)" == "Darwin" ]] && printf '8080\n' || printf '11434\n'
+}
+
+# Model ids the local server is actually serving. Only consulted when no model
+# was named, so the usual path makes no network call at all.
+_opencode_served_models() {
+  local port="$1"
+  curl -fsS --max-time 2 "http://127.0.0.1:${port}/v1/models" 2>/dev/null \
+    | head -c 65536 \
+    | grep -o '"id"[[:space:]]*:[[:space:]]*"[^"]*"' \
+    | sed 's/.*"\([^"]*\)"$/\1/'
+}
+
+_opencode_inline_config() {
+  # Injected rather than left to the seeded config file: this tier outranks
+  # every file, so the sandbox never shares a session or replaces its own
+  # binary even when no host configuration exists to copy in.
+  local parts=( '"share":"disabled"' '"autoupdate":false' )
+  [[ "$PERM_MODE" == auto ]] && parts+=( '"permission":{"edit":"allow","bash":"ask"}' )
+  [[ -f "$HOME/.agents/instructions.md" ]] &&
+    parts+=( "\"instructions\":[\"$HOME/.agents/instructions.md\"]" )
+
+  # A named model needs no lookup. Without one, ask the server: a single served
+  # model is unambiguous and becomes the default, several are all offered and
+  # the choice is left explicit rather than guessed.
+  local port models=() m
+  port=$(_opencode_model_port)
+  if [[ -n "${MODEL_ID:-}" ]]; then
+    models=( "$MODEL_ID" )
+  else
+    # A server returning something unusable is skipped, not propagated.
+    while IFS= read -r m; do
+      [[ -n "$m" ]] && _valid_model_id "$m" && models+=( "$m" )
+    done < <(_opencode_served_models "$port")
+  fi
+
+  if [[ ${#models[@]} -gt 0 ]]; then
+    local entries=()
+    for m in "${models[@]}"; do entries+=( "\"$m\":{}" ); done
+    local IFS=,
+    parts+=( "\"provider\":{\"local\":{\"npm\":\"@ai-sdk/openai-compatible\",\"name\":\"Local\",\"options\":{\"baseURL\":\"http://host.docker.internal:${port}/v1\"},\"models\":{${entries[*]}}}}" )
+    unset IFS
+    [[ ${#models[@]} -eq 1 ]] && parts+=( "\"model\":\"local/${models[0]}\"" )
+  fi
+
+  local IFS=,
+  printf '{%s}\n' "${parts[*]}"
+}
 
 # Agent CLI args. The label (when given) is passed via `claude --name`
 # so the iOS app shows a stable, distinguishable session label instead
@@ -95,6 +154,7 @@ _agent_args() {
     claude)
       args=( --remote-control )
       [[ -n "$label" ]] && args+=( --name "$label" )
+      [[ -n "${MODEL_ID:-}" ]] && args+=( --model "$MODEL_ID" )
       case "$perm" in
         auto) args+=( --permission-mode acceptEdits ) ;;
         bypass) args+=( --dangerously-skip-permissions ) ;;
@@ -103,6 +163,7 @@ _agent_args() {
       [[ ${#RESUME_FLAGS[@]} -gt 0 ]] && args+=( "${RESUME_FLAGS[@]}" )
       ;;
     codex)
+      [[ -n "${MODEL_ID:-}" ]] && args+=( --model "$MODEL_ID" )
       case "$perm" in
         auto) args+=( --sandbox workspace-write --ask-for-approval on-request ) ;;
         bypass) args+=( --dangerously-bypass-approvals-and-sandbox ) ;;
@@ -119,6 +180,23 @@ _agent_args() {
           ;;
       esac
       ;;
+    opencode)
+      case "$perm" in
+        auto) ;;
+        bypass) args+=( --auto ) ;;
+        *) _die "unknown permission mode: $perm" ;;
+      esac
+      case "${RESUME_FLAGS[0]:-}" in
+        --continue) args+=( --continue ) ;;
+        --resume)
+          if [[ ${#RESUME_FLAGS[@]} -gt 1 ]]; then
+            args+=( --session "${RESUME_FLAGS[1]}" )
+          else
+            _die "opencode has no resume picker; pass --resume <session-id>, use --continue, or switch sessions in the TUI"
+          fi
+          ;;
+      esac
+      ;;
   esac
   args+=( ${AGENT_EXTRA[@]+"${AGENT_EXTRA[@]}"} )
   printf '%s\n' "${args[@]}"
@@ -128,6 +206,7 @@ _seed_agent_home() {
   case "$1" in
     claude) _seed_claude_home "$2" ;;
     codex)  _seed_codex_home "$2" ;;
+    opencode) _seed_opencode_home "$2" ;;
   esac
 }
 
@@ -187,6 +266,38 @@ _seed_codex_home() {
   ln -sfn ../.agents/instructions.md "$dir/.codex/AGENTS.md"
 }
 
+_seed_opencode_home() {
+  local dir="$1" f
+  mkdir -p "$dir/.config/opencode" "$dir/.local/share/opencode" \
+           "$dir/.local/state/opencode" "$dir/.cache/opencode"
+  for f in opencode.json opencode.jsonc; do
+    [[ -f "$HOME/.config/opencode/$f" ]] &&
+      cp -f "$HOME/.config/opencode/$f" "$dir/.config/opencode/$f"
+  done
+  for f in agent command plugin skills; do
+    [[ -d "$HOME/.config/opencode/$f" ]] || continue
+    rm -rf "$dir/.config/opencode/$f"
+    cp -R "$HOME/.config/opencode/$f" "$dir/.config/opencode/$f"
+  done
+  # A model server on the host's loopback is unreachable from the container,
+  # whose loopback is its own. Only the slot copy is rewritten; the host config
+  # keeps working unchanged outside the sandbox.
+  for f in opencode.json opencode.jsonc; do
+    [[ -f "$dir/.config/opencode/$f" ]] || continue
+    _rewrite_loopback "$dir/.config/opencode/$f"
+  done
+}
+
+_rewrite_loopback() {
+  local file="$1" tmp="$1.asb"
+  # The delimiter after the host covers every form the address can take: a
+  # port, a path, or the end of the JSON string.
+  sed -e 's|://127\.0\.0\.1\([:/"]\)|://host.docker.internal\1|g' \
+      -e 's|://localhost\([:/"]\)|://host.docker.internal\1|g' \
+      -e 's|://\[::1\]\([:/"]\)|://host.docker.internal\1|g' \
+      "$file" > "$tmp" && mv "$tmp" "$file"
+}
+
 _agent_shared_mounts() {
   local args=() shared
   case "$1" in
@@ -212,6 +323,12 @@ _agent_shared_mounts() {
       for shared in auth.json history.jsonl sessions; do
         [[ -e "$HOME/.codex/$shared" ]] &&
           args+=( -v "$HOME/.codex/$shared":"$HOME/.codex/$shared" )
+      done
+      ;;
+    opencode)
+      for shared in auth.json storage; do
+        [[ -e "$HOME/.local/share/opencode/$shared" ]] &&
+          args+=( -v "$HOME/.local/share/opencode/$shared":"$HOME/.local/share/opencode/$shared" )
       done
       ;;
   esac
@@ -624,6 +741,12 @@ _run_args() {
   # host-absolute path while settings.json invokes hooks as $HOME/.agents.
   if [[ "$mode" != "strict" ]]; then
     args+=( -e "HOST_HOME=$HOME" -e "SANDBOX_AGENT_KIND=$AGENT_KIND" )
+    if [[ "$AGENT_KIND" == opencode ]]; then
+      local oc_config; oc_config=$(_opencode_inline_config)
+      [[ -n "$oc_config" ]] && args+=( -e "OPENCODE_CONFIG_CONTENT=$oc_config" )
+      [[ "$(uname)" == "Linux" ]] &&
+        args+=( --add-host host.docker.internal:host-gateway )
+    fi
     args+=( -v "$(_sandbox_home_path "$name")":"$HOME" )
     [[ -d "$HOME/.agents" ]] && args+=( -v "$HOME/.agents":"$HOME/.agents":ro )
     # core.hooksPath expands against $HOME, which is this path in these modes.
@@ -848,6 +971,8 @@ _parse_common_flags() {
   WORKSPACES=()
   RESUME_FLAGS=()
   AGENT_EXTRA=()
+  MODEL_ID=""
+  MODEL_PORT=""
   while (($#)); do
     case "$1" in
       --auto)     PERM_MODE="auto";   shift ;;
@@ -856,6 +981,10 @@ _parse_common_flags() {
       --strict)   ISO_MODE="strict";  shift ;;
       --repo-setup) RUN_REPO_SETUP=1; shift ;;
       --signing) SIGNING=1; shift ;;
+      --model)      MODEL_ID="${2:-}"; [[ -z "$MODEL_ID" ]] && _die "--model requires an argument"; shift 2 ;;
+      --model=*)    MODEL_ID="${1#--model=}"; shift ;;
+      --model-port) MODEL_PORT="${2:-}"; [[ -z "$MODEL_PORT" ]] && _die "--model-port requires an argument"; shift 2 ;;
+      --model-port=*) MODEL_PORT="${1#--model-port=}"; shift ;;
       --name)     NAME_OVERRIDE="${2:-}"; [[ -z "$NAME_OVERRIDE" ]] && _die "--name requires an argument"; shift 2 ;;
       --name=*)   NAME_OVERRIDE="${1#--name=}"; shift ;;
       # Resume passthrough. --continue and --resume reach claude as-is so
@@ -902,6 +1031,13 @@ _parse_common_flags() {
     fi
   done
 
+  if [[ -n "$MODEL_ID" ]] && ! _valid_model_id "$MODEL_ID"; then
+    _die "--model accepts letters, digits and . _ : @ / + - only: $MODEL_ID"
+  fi
+  if [[ -n "$MODEL_PORT" ]]; then
+    [[ "$MODEL_PORT" =~ ^[0-9]+$ ]] || _die "--model-port must be a port number: $MODEL_PORT"
+    [[ "$AGENT_KIND" == opencode ]] || _die "--model-port applies to opencode only"
+  fi
   if ((RUN_REPO_SETUP && SIGNING)); then
     _die "--repo-setup and --signing cannot be combined"
   fi
@@ -1227,7 +1363,11 @@ _plist_path() {
 
 cmd_enable_autostart() {
   local repo plist self
-  repo=$(_resolve_repo "${1:-}")
+  _parse_common_flags "$@"
+  repo=$(_resolve_repo "${REMAINING[0]:-}")
+  local MODEL_ARGS=""
+  [[ -n "$MODEL_ID" ]] && MODEL_ARGS=$(printf '\n    <string>--model</string>\n    <string>%s</string>' "$MODEL_ID")
+  [[ -n "$MODEL_PORT" ]] && MODEL_ARGS+=$(printf '\n    <string>--model-port</string>\n    <string>%s</string>' "$MODEL_PORT")
   plist=$(_plist_path "$repo")
   self=$(command -v agent-sandbox) || _die "agent-sandbox not on PATH"
   mkdir -p "$(dirname "$plist")" "$CACHE_DIR"
@@ -1243,7 +1383,7 @@ cmd_enable_autostart() {
   <array>
     <string>$self</string>
     <string>$AGENT_KIND</string>
-    <string>start</string>
+    <string>start</string>${MODEL_ARGS}
     <string>$repo</string>
   </array>
   <key>RunAtLoad</key>
@@ -1278,9 +1418,9 @@ cmd_help() {
 agent-sandbox - Docker-isolated coding agents.
 
 Usage:
-  agent-sandbox [claude|codex] [PERM] [ISO] [repo] [-- AGENT ARGS]
-  agent-sandbox [claude|codex] start [PERM] [ISO] [repo] [-- AGENT ARGS]
-  agent-sandbox [claude|codex] new [PERM] [ISO] [--name X] [repo] [-- AGENT ARGS]
+  agent-sandbox [claude|codex|opencode] [PERM] [ISO] [repo] [-- AGENT ARGS]
+  agent-sandbox [claude|codex|opencode] start [PERM] [ISO] [repo] [-- AGENT ARGS]
+  agent-sandbox [claude|codex|opencode] new [PERM] [ISO] [--name X] [repo] [-- AGENT ARGS]
                                             alias for the default; always
                                             creates a fresh sandbox (auto-
                                             numbered: <base>, <base>-2, ...)
@@ -1305,14 +1445,14 @@ Usage:
   agent-sandbox help
 
 Naming:
-  Containers: agent-sandbox-<base>[-codex][-wt|-strict][-name | -N]
+  Containers: agent-sandbox-<base>[-codex|-opencode][-wt|-strict][-name | -N]
     base   = sanitized repo basename
-    agent  = -codex for Codex (Claude has no agent suffix)
+    agent  = -codex or -opencode (Claude has no agent suffix)
     mode   = -wt | -strict (default mode has no mode suffix)
     name   = sanitized --name X (named slot)
     N      = auto-bumped integer (parallel sessions; cross-repo collision)
 
-  iOS labels: 🛡 <base>[-codex][-mode][-name | -N] (or 🛡 <X> with --name)
+  iOS labels: 🛡 <base>[-codex|-opencode][-mode][-name | -N] (or 🛡 <X> with --name)
 
   Cross-repo basename collision: first repo to claim `<base>` wins; the
   second auto-bumps to `<base>-2`. Detected via the workspace label set
@@ -1322,10 +1462,29 @@ Permission modes (PERM):
   --auto      (default) acceptEdits mode; prompts on high-risk operations
   --bypass    no permission prompts; explicit opt-in for trusted work
 
+  opencode allows everything by default, so --auto supplies a permission
+  block (edit allow, bash ask) rather than relying on its default. The
+  block merges with your own opencode config; it does not replace it.
+
 Agent selection:
   agent-sandbox claude  run Claude Code; supports every isolation mode
   agent-sandbox codex   run Codex; supports default and --worktree
+  agent-sandbox opencode
+                        run opencode; supports default and --worktree
   Omitting the agent selects Claude.
+
+Model selection:
+  --model ID        model for this sandbox, whichever agent runs. For opencode
+                    it names a model on the host model server; for Claude and
+                    Codex it is passed to the agent directly. Omitted for
+                    opencode, the server is asked what it serves: exactly one
+                    model becomes the default, several are all offered and the
+                    choice stays explicit (`-- -m local/<id>`). Shell completion
+                    lists what is running.
+  --model-port N    opencode only: port the host model server listens on
+                    (default 8080 on macOS, 11434 elsewhere). A second server on
+                    another port is how two containers run different models at
+                    once.
 
 Optional capabilities:
   --repo-setup  trusted repos only: run setup and mise install at startup
@@ -1391,7 +1550,8 @@ Untrusted execution:
 
 Lifecycle: containers are ephemeral and disappear when the selected agent
 exits. Claude sessions can detach with Ctrl-p Ctrl-q and continue through
-Claude remote control. Codex sessions have no remote-control detach path.
+Claude remote control. Codex and opencode sessions have no remote-control
+detach path.
 Resume a past conversation in a fresh container with --continue / --resume.
 EOF
 }

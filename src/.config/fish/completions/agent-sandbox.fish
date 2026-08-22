@@ -1,6 +1,7 @@
 # Subcommands.
 complete -c agent-sandbox -f -n '__fish_use_subcommand' -a claude            -d 'run Claude Code'
 complete -c agent-sandbox -f -n '__fish_use_subcommand' -a codex             -d 'run Codex'
+complete -c agent-sandbox -f -n '__fish_use_subcommand' -a opencode          -d 'run opencode'
 complete -c agent-sandbox -f -n '__fish_use_subcommand' -a new               -d 'start a fresh attached sandbox'
 complete -c agent-sandbox -f -n '__fish_use_subcommand' -a start             -d 'start detached'
 complete -c agent-sandbox -f -n '__fish_use_subcommand' -a run-untrusted     -d 'run repository code without host or network access'
@@ -12,12 +13,12 @@ complete -c agent-sandbox -f -n '__fish_use_subcommand' -a rebuild           -d 
 complete -c agent-sandbox -f -n '__fish_use_subcommand' -a enable-autostart  -d 'LaunchAgent: start at login'
 complete -c agent-sandbox -f -n '__fish_use_subcommand' -a disable-autostart -d 'remove LaunchAgent'
 complete -c agent-sandbox -f -n '__fish_use_subcommand' -a help              -d 'usage'
-complete -c agent-sandbox -f -n '__fish_seen_subcommand_from claude codex' -a 'new start stop list info rebuild enable-autostart disable-autostart help'
+complete -c agent-sandbox -f -n '__fish_seen_subcommand_from claude codex opencode' -a 'new start stop list info rebuild enable-autostart disable-autostart help'
 
 # Permission + isolation flags - valid both at top level (the implicit
 # default subcommand) and on `start`.
 function __fish_asb_takes_run_flags
-    __fish_use_subcommand; or __fish_seen_subcommand_from claude codex new start
+    __fish_use_subcommand; or __fish_seen_subcommand_from claude codex opencode new start
 end
 complete -c agent-sandbox -f -n __fish_asb_takes_run_flags -l auto      -d 'auto permission mode'
 complete -c agent-sandbox -f -n __fish_asb_takes_run_flags -l bypass    -d 'bypass permission mode'
@@ -46,3 +47,12 @@ complete -c agent-sandbox -f -n '__fish_seen_subcommand_from stop'   -l purge -d
 complete -c agent-sandbox -f -n '__fish_seen_subcommand_from stop'   -l relay -d 'stop the 1password agent relay'
 complete -c agent-sandbox -f -n '__fish_seen_subcommand_from export' -a '(__fish_asb_strict)'
 complete -c agent-sandbox -f -n '__fish_seen_subcommand_from run-untrusted' -l image -d 'container image' -r
+
+function __agent_sandbox_models
+    set -l port 8080
+    test (uname) = Darwin; or set port 11434
+    curl -fsS --max-time 1 "http://127.0.0.1:$port/v1/models" 2>/dev/null \
+        | grep -o '"id"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/.*"\([^"]*\)"$/\1/'
+end
+complete -c agent-sandbox -f -l model -d 'model the local server serves' -a '(__agent_sandbox_models)'
+complete -c agent-sandbox -f -l model-port -d 'port the local model server listens on'
