@@ -233,7 +233,8 @@ mv "$work/home/.config/opencode/.stashed" "$work/home/.config/opencode/opencode.
 rw=$(mktemp -d)
 check_rewrite() {
   printf '{"baseURL":"%s"}\n' "$1" > "$rw/c.json"
-  bash -c 'source <(sed -n "/^_rewrite_loopback/,/^}/p" "$1"); _rewrite_loopback "$2"' _ "$script" "$rw/c.json"
+  sed -n '/^_rewrite_loopback/,/^}/p' "$script" > "$rw/fn.sh"
+  bash -c '. "$1"; _rewrite_loopback "$2"' _ "$rw/fn.sh" "$rw/c.json"
   local got; got=$(sed 's/.*"baseURL":"\([^"]*\)".*/\1/' "$rw/c.json")
   if [[ "$2" == rewrite ]]; then
     [[ "$got" == *host.docker.internal* ]] || { echo "FAIL: $1 was not redirected to the host" >&2; exit 1; }
@@ -253,7 +254,9 @@ rm -rf "$rw"
 
 # A model id reaches injected JSON, so an id that would break that document is
 # refused. Ids arriving from a server are filtered by the same rule.
-id_ok() { bash -c 'source <(sed -n "/^_valid_model_id/,/^}/p" "$1"); _valid_model_id "$2"' _ "$script" "$1"; }
+idfn=$(mktemp)
+sed -n '/^_valid_model_id/,/^}/p' "$script" > "$idfn"
+id_ok() { bash -c '. "$1"; _valid_model_id "$2"' _ "$idfn" "$1"; }
 for good in 'vendor.2:30b-q4' 'namespace/Model-Name' 'a_b.c-d@e+f'; do
   id_ok "$good" || { echo "FAIL: a legitimate model id was rejected: $good" >&2; exit 1; }
 done
@@ -264,9 +267,12 @@ done
 
 # The branch name must not depend on a variable the caller happens to have in
 # scope: git rejects a ref that ends in a slash, so an empty one is fatal.
+brfn=$(mktemp)
+sed -n '/^_worktree_branch/,/^}/p' "$script" > "$brfn"
 branch=$(bash -c 'NAME_PREFIX=agent-sandbox
-source <(sed -n "/^_worktree_branch/,/^}/p" "$1")
-_worktree_branch /repo agent-sandbox-fixture-wt' _ "$script")
+. "$1"
+_worktree_branch /repo agent-sandbox-fixture-wt' _ "$brfn")
+rm -f "$brfn"
 [[ "$branch" == "agent-sandbox/fixture-wt" ]] || { echo "FAIL: worktree branch name is '$branch', not derived from the container name" >&2; exit 1; }
 [[ "$branch" != */ ]] || { echo 'FAIL: worktree branch name ends in a slash, which git refuses' >&2; exit 1; }
 
