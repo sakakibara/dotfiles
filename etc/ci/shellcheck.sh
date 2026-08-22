@@ -25,16 +25,19 @@ command -v shellcheck >/dev/null 2>&1 || {
   exit 0
 }
 
-mapfile -t files < <(
-  git ls-files | while IFS= read -r f; do
-    [[ -f "$f" ]] || continue
-    case "$f" in
-      *.ps1|*.psm1) continue ;;
-      *.sh) printf '%s\n' "$f"; continue ;;
-    esac
-    head -1 "$f" 2>/dev/null | grep -Eq '^#!.*(\bbash\b|\bsh\b)' && printf '%s\n' "$f"
-  done
-)
+# Written for the bash a clean macOS ships (3.2): no mapfile, and no `case`
+# inside a command substitution, which that version's parser rejects.
+files=()
+while IFS= read -r f; do
+  [ -f "$f" ] || continue
+  [ "${f%.ps1}" != "$f" ] && continue
+  [ "${f%.psm1}" != "$f" ] && continue
+  if [ "${f%.sh}" != "$f" ]; then
+    files+=( "$f" )
+    continue
+  fi
+  head -1 "$f" 2>/dev/null | grep -Eq '^#!.*(\bbash\b|\bsh\b)' && files+=( "$f" )
+done < <(git ls-files)
 
 (( ${#files[@]} )) || { echo "no shell scripts found" >&2; exit 1; }
 

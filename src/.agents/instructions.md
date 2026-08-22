@@ -179,6 +179,19 @@ Comments tell WHAT the code does, not HOW; a wrong or stale comment is worse tha
 
 For section separators inside a code file, invoke the `code-section-markers` skill.
 
+### Shell scripts target the OS's own bash
+
+Write for the bash a clean install ships, not the one you happen to have. macOS
+ships 3.2, so no `mapfile`/`readarray`, no `declare -A`, no `${var,,}`/`${var^^}`,
+and no `case` inside a command substitution - 3.2's parser rejects the last one
+outright. A machine that has not been set up yet is exactly where mox runs first,
+so a script that needs a newer bash fails at the one moment it must work.
+
+Verify with the system bash explicitly (`/bin/bash -n script` on macOS), not the
+one on PATH; a Homebrew bash hides every one of these. The failure mode is worse
+than an error: `mapfile` under 3.2 sets nothing, so a checker reports success
+having examined zero files.
+
 ### ASCII-only punctuation
 
 No em-dash, en-dash, fancy ellipsis, smart quotes, or unicode arrows. Use ASCII: `-` (hyphen), `--` (emphasis), `...`, `"` and `'` (straight quotes), `->` (arrow). Applies to code, comments, commit messages, docs, and chat output.
