@@ -561,6 +561,10 @@ _run_args() {
   ((git_n)) && args+=( -e "GIT_CONFIG_COUNT=$git_n" )
   [[ -f "$HOME/.config/git/ignore" ]] &&
     args+=( -v "$HOME/.config/git/ignore":/home/claude/.config/git/ignore:ro )
+  # core.hooksPath in the host config resolves here; without the mount the
+  # commit-msg check is simply absent inside the container.
+  [[ -d "$HOME/.config/git/hooks" ]] &&
+    args+=( -v "$HOME/.config/git/hooks":/home/claude/.config/git/hooks:ro )
 
   # File by file so the token beside them never enters.
   if ((SIGNING)); then
@@ -617,6 +621,9 @@ _run_args() {
     args+=( -e "HOST_HOME=$HOME" -e "SANDBOX_AGENT_KIND=$AGENT_KIND" )
     args+=( -v "$(_sandbox_home_path "$name")":"$HOME" )
     [[ -d "$HOME/.agents" ]] && args+=( -v "$HOME/.agents":"$HOME/.agents":ro )
+    # core.hooksPath expands against $HOME, which is this path in these modes.
+    [[ -d "$HOME/.config/git/hooks" ]] &&
+      args+=( -v "$HOME/.config/git/hooks":"$HOME/.config/git/hooks":ro )
     # Specs and plans written from a sandbox outside a hub project land here.
     # The agent state directory is sandbox-local, so without this mount they
     # would vanish with the slot instead of reaching the host.

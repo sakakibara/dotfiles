@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Global hook dispatcher, installed via core.hooksPath.
+#
+# Setting core.hooksPath would otherwise disable every repository's own
+# .git/hooks, so each hook name here runs the repository's hook first and keeps
+# its exit status. commit-msg then applies the machine-wide message rules, which
+# is the one layer that sees every commit regardless of what produced it.
+set -uo pipefail
+
+name=${0##*/}
+
+git_dir=$(git rev-parse --git-dir 2>/dev/null) || git_dir=""
+if [ -n "$git_dir" ] && [ -x "$git_dir/hooks/$name" ]; then
+  "$git_dir/hooks/$name" "$@" || exit $?
+fi
+
+if [ "$name" = commit-msg ] && [ -f "$HOME/.agents/hooks/commit-msg-check.py" ]; then
+  # Refuse rather than skip. A check that quietly stops running is the failure
+  # this exists to prevent; --no-verify is the deliberate way past it.
+  for py in python3 python; do
+    if command -v "$py" >/dev/null 2>&1; then
+      exec "$py" "$HOME/.agents/hooks/commit-msg-check.py" "$@"
+    fi
+  done
+  echo "commit rejected: no python interpreter, so the commit message cannot be checked." >&2
+  echo "  Install python3, or use --no-verify deliberately for this one commit." >&2
+  exit 1
+fi
+
+exit 0

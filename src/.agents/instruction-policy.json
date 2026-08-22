@@ -24,6 +24,7 @@
     "etc/tests/agent-instructions.sh",
     "etc/tests/agent_sandbox_security.sh",
     "scripts/check/codex-config",
+    "src/.agents/hooks/commit-msg-check.py",
     "src/.agents/hooks/commit_rules.py",
     "src/.agents/hooks/git-stage-guard.sh",
     "src/.agents/hooks/instruction-audit.py",
@@ -46,6 +47,7 @@
     "src/.codex/AGENTS.md",
     "src/.codex/hooks.json",
     "src/.config/fish/completions/agent-sandbox.fish",
+    "src/.config/git/hooks/commit-msg",
     "src/.local/bin/agent-sandbox",
     "src/.zcomp/_agent-sandbox"
   ]
