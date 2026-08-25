@@ -3,7 +3,7 @@
 return Lib.lang.setup({
   cmd = "node",
   mason = { "svelte-language-server" },
-  parsers = { "svelte" },
+  parsers = { "svelte", "html", "css", "javascript" },
   servers = {
     svelte = {
       capabilities = {
