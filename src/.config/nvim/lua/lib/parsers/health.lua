@@ -83,6 +83,23 @@ function M.inherit_gaps(deps)
   return gaps
 end
 
+function M.buffer_gaps(deps)
+  local seen, gaps = {}, {}
+  for _, ft in ipairs(deps.buffer_fts()) do
+    if ft ~= "" and not seen[ft] then
+      seen[ft] = true
+      if #deps.parsers_for(ft) == 0 then
+        local lang = deps.lang_for_ft(ft)
+        if lang and deps.parser_available(lang) then
+          gaps[#gaps + 1] = { ft = ft, lang = lang }
+        end
+      end
+    end
+  end
+  table.sort(gaps, function(a, b) return a.ft < b.ft end)
+  return gaps
+end
+
 local function default_deps()
   local ts_parsers = require("nvim-treesitter.parsers")
   local install = require("nvim-treesitter.install")
@@ -94,6 +111,15 @@ local function default_deps()
       return entry and entry.requires or {}
     end,
     query_dir = function(lang) return install.get_package_path("runtime", "queries", lang) end,
+    buffer_fts = function()
+      local out = {}
+      for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+        if vim.api.nvim_buf_is_loaded(buf) then out[#out + 1] = vim.bo[buf].filetype end
+      end
+      return out
+    end,
+    lang_for_ft = vim.treesitter.language.get_lang,
+    parser_available = function(lang) return ts_parsers[lang] ~= nil end,
   }
 end
 
@@ -113,16 +139,25 @@ local function gather(deps)
   local gaps = M.inherit_gaps(deps)
   if #gaps == 0 then
     add("ok", "every registered parser provides the languages its queries inherit")
-    return items
+  else
+    for _, gap in ipairs(gaps) do
+      local parts = {}
+      for _, miss in ipairs(gap.missing) do
+        parts[#parts + 1] = ("%s (inherited by %s)"):format(miss.lang, miss.via)
+      end
+      add("warn", ("%s: no registered parser provides %s - those queries never load"):format(
+        gap.ft, table.concat(parts, ", ")))
+    end
   end
 
-  for _, gap in ipairs(gaps) do
-    local parts = {}
-    for _, miss in ipairs(gap.missing) do
-      parts[#parts + 1] = ("%s (inherited by %s)"):format(miss.lang, miss.via)
+  local buffers = M.buffer_gaps(deps)
+  if #buffers == 0 then
+    add("ok", "every open buffer has a parser registered for its filetype")
+  else
+    for _, gap in ipairs(buffers) do
+      add("warn", ("%s: no parser registered, though %s would serve it - highlighting is off in these buffers"):format(
+        gap.ft, gap.lang))
     end
-    add("warn", ("%s: no registered parser provides %s - those queries never load"):format(
-      gap.ft, table.concat(parts, ", ")))
   end
 
   return items

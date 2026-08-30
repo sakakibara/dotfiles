@@ -16,7 +16,8 @@ local function queries(tree)
   return function(lang) return root .. "/" .. lang end
 end
 
-local function deps(registry, requires, query_dir)
+local function deps(registry, requires, query_dir, opts)
+  opts = opts or {}
   return {
     fts = function()
       local out = vim.tbl_keys(registry)
@@ -26,7 +27,18 @@ local function deps(registry, requires, query_dir)
     parsers_for = function(ft) return registry[ft] or {} end,
     requires = function(lang) return (requires or {})[lang] or {} end,
     query_dir = query_dir,
+    buffer_fts = function() return opts.buffer_fts or {} end,
+    lang_for_ft = function(ft) return (opts.lang_of or {})[ft] or ft end,
+    parser_available = function(lang) return (opts.available or {})[lang] == true end,
   }
+end
+
+local function texts(items, kind)
+  local out = {}
+  for _, item in ipairs(items) do
+    if item.kind == kind then out[#out + 1] = item.text end
+  end
+  return out
 end
 
 T.describe("lib.parsers.health inherit_gaps", function()
@@ -121,25 +133,22 @@ T.describe("lib.parsers.health inherit_gaps", function()
 end)
 
 T.describe("lib.parsers.health report", function()
-  T.it("reports ok when every filetype provides the languages its queries inherit", function()
+  T.it("reports no warning when every filetype provides the languages its queries inherit", function()
     local H = fresh()
     local q = queries({ svelte = { highlights = "; inherits: html" }, html = { highlights = "(x) @y" } })
-    local r = H.report(deps({ svelte = { "svelte", "html" } }, {}, q))
-    T.eq(#r, 1)
-    T.eq(r[1].kind, "ok")
+    T.eq(texts(H.report(deps({ svelte = { "svelte", "html" } }, {}, q)), "warn"), {})
   end)
 
   T.it("warns naming the filetype, the missing language and what pulled it in", function()
     local H = fresh()
     local q = queries({ svelte = { highlights = "; inherits: html" } })
-    local r = H.report(deps({ svelte = { "svelte" } }, {}, q))
-    T.eq(#r, 1)
-    T.eq(r[1].kind, "warn")
-    T.truthy(r[1].text:match("svelte"))
-    T.truthy(r[1].text:match("html"))
+    local warns = texts(H.report(deps({ svelte = { "svelte" } }, {}, q)), "warn")
+    T.eq(#warns, 1)
+    T.truthy(warns[1]:match("svelte"))
+    T.truthy(warns[1]:match("html"))
   end)
 
-  T.it("warns once per filetype with a gap", function()
+  T.it("warns once per filetype with an inherit gap", function()
     local H = fresh()
     local q = queries({
       svelte = { highlights = "; inherits: html" },
@@ -147,9 +156,65 @@ T.describe("lib.parsers.health report", function()
       astro  = { highlights = "(x) @y" },
     })
     local r = H.report(deps({ svelte = { "svelte" }, vue = { "vue" }, astro = { "astro" } }, {}, q))
-    T.eq(#r, 2)
-    T.eq(r[1].kind, "warn")
-    T.eq(r[2].kind, "warn")
+    T.eq(#texts(r, "warn"), 2)
+  end)
+
+  T.it("warns naming an open filetype whose parser is available but unregistered", function()
+    local H = fresh()
+    local q = queries({ svelte = { highlights = "(x) @y" } })
+    local warns = texts(H.report(deps({ svelte = { "svelte" } }, {}, q, {
+      buffer_fts = { "xml" },
+      available = { xml = true },
+    })), "warn")
+    T.eq(#warns, 1)
+    T.truthy(warns[1]:match("xml"))
+  end)
+end)
+
+local function bdeps(buffer_fts, registry, lang_of, available)
+  return {
+    buffer_fts = function() return buffer_fts end,
+    parsers_for = function(ft) return (registry or {})[ft] or {} end,
+    lang_for_ft = function(ft) return (lang_of or {})[ft] or ft end,
+    parser_available = function(lang) return (available or {})[lang] == true end,
+  }
+end
+
+T.describe("lib.parsers.health buffer_gaps", function()
+  T.it("reports a filetype that has a parser available but none registered", function()
+    local H = fresh()
+    T.eq(H.buffer_gaps(bdeps({ "html" }, {}, {}, { html = true })), { { ft = "html", lang = "html" } })
+  end)
+
+  T.it("reports nothing when the filetype already has a registered parser", function()
+    local H = fresh()
+    T.eq(H.buffer_gaps(bdeps({ "html" }, { html = { "html" } }, {}, { html = true })), {})
+  end)
+
+  T.it("reports nothing when no parser exists for the filetype", function()
+    local H = fresh()
+    T.eq(H.buffer_gaps(bdeps({ "log" }, {}, {}, {})), {})
+  end)
+
+  T.it("reports a filetype once however many buffers share it", function()
+    local H = fresh()
+    T.eq(H.buffer_gaps(bdeps({ "html", "html", "html" }, {}, {}, { html = true })), { { ft = "html", lang = "html" } })
+  end)
+
+  T.it("names the parser that serves the filetype when they differ", function()
+    local H = fresh()
+    T.eq(
+      H.buffer_gaps(bdeps({ "javascriptreact" }, {}, { javascriptreact = "javascript" }, { javascript = true })),
+      { { ft = "javascriptreact", lang = "javascript" } }
+    )
+  end)
+
+  T.it("sorts by filetype", function()
+    local H = fresh()
+    T.eq(
+      H.buffer_gaps(bdeps({ "xml", "cs" }, {}, { cs = "c_sharp" }, { xml = true, c_sharp = true })),
+      { { ft = "cs", lang = "c_sharp" }, { ft = "xml", lang = "xml" } }
+    )
   end)
 end)
 
