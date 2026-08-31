@@ -9,11 +9,9 @@ return Lib.lang.setup({
   servers = { terraformls = {} },
   formatters = {
     terraform = { "terraform_fmt" },
-    tf = { "terraform_fmt" },
     ["terraform-vars"] = { "terraform_fmt" },
   },
   linters = {
     terraform = { "terraform_validate" },
-    tf = { "terraform_validate" },
   },
 })
