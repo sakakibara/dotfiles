@@ -8,40 +8,9 @@
 
 local M = {}
 
--- Default ft for mason/parsers when the caller doesn't pass spec.ft.
---
--- Two cases handled:
---   1. The lang/<x>.lua chunk's frame is on the stack (no Lua tail-call
---      eliminated it). Match its source path directly.
---   2. The chunk used `return Lib.lang.setup(...)`, a tail call — Lua
---      drops the chunk's frame and we never see lang/<x>.lua. Walk
---      further up to `config/plugins.lua`'s loader (which has work
---      after the require, so its frame survives) and read its `name`
---      local — that's the module path being loaded ("lang.<x>").
-local function caller_ft()
-  for level = 1, 16 do
-    local info = debug.getinfo(level, "S")
-    if not info then break end
-    local src = info.source or ""
-
-    local direct = src:match("/config/plugins/lang/([%w_]+)%.lua$")
-    if direct then return direct end
-
-    if src:match("/config/plugins%.lua$") then
-      for i = 1, 10 do
-        local lname, lvalue = debug.getlocal(level, i)
-        if not lname then break end
-        if lname == "name" and type(lvalue) == "string" then
-          local ft = lvalue:match("lang%.([%w_]+)$")
-          if ft then return ft end
-        end
-      end
-    end
-  end
-  return nil
-end
-
--- spec fields, all optional:
+-- spec fields; ft is required when the spec declares mason tools or
+-- parsers, the rest are optional:
+--   ft         string|{string,...}       — filetypes this spec registers for
 --   cmd        string                    — executable name; if missing, return early
 --   mason      {string,...}              — mason-tool-installer ensure_installed entries
 --   parsers    {string,...}              — nvim-treesitter parsers to install
@@ -74,6 +43,10 @@ end
 --   neotest    { [name] = factory_fn }   — Lib.neotest.add(name, factory) per entry
 --   plugins    {plugin_spec,...}         — pack specs returned to caller
 function M.setup(spec)
+  if (spec.mason or (spec.parsers and #spec.parsers > 0)) and not spec.ft then
+    error("Lib.lang.setup: ft is required when a spec declares mason tools or parsers")
+  end
+
   if (spec.parsers and #spec.parsers > 0) or spec.parsers_setup then
     -- Register parsers in the per-ft on-demand registry. The treesitter
     -- spec's FileType autocmd reads the registry and installs the
@@ -81,13 +54,8 @@ function M.setup(spec)
     -- is still fired at nvim-treesitter load time (rare; for parsers
     -- that need extra wiring beyond install).
     if spec.parsers and #spec.parsers > 0 then
-      -- Same resolution as mason: spec.ft, else the caller's filename.
-      local parser_ft = spec.ft or caller_ft()
-      if not parser_ft then
-        error("Lib.lang.setup: cannot determine ft for parsers (set spec.ft)")
-      end
       for _, parser in ipairs(spec.parsers) do
-        Lib.parsers.add(parser, { ft = parser_ft })
+        Lib.parsers.add(parser, { ft = spec.ft })
       end
     end
     if spec.parsers_setup then
@@ -100,16 +68,8 @@ function M.setup(spec)
   end
 
   if spec.mason then
-    -- Determine on-demand ft for mason tools. Priority:
-    --   1. spec.ft           — explicit override (e.g. multi-ft langs)
-    --   2. caller's filename — lang/<x>.lua → "<x>"  (covers most specs)
-    -- A ft must be resolvable; mason install is on-demand only.
-    local ft = spec.ft or caller_ft()
-    if not ft then
-      error("Lib.lang.setup: cannot determine ft for mason tools (set spec.ft explicitly)")
-    end
     for _, tool in ipairs(spec.mason) do
-      Lib.mason.add(tool, { ft = ft })
+      Lib.mason.add(tool, { ft = spec.ft })
     end
   end
 

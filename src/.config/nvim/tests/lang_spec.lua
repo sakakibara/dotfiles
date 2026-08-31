@@ -126,6 +126,28 @@ T.describe("lib.lang.setup", function()
     end)
   end)
 
+  T.it("errors when a spec registers mason tools without declaring ft", function()
+    with_mocks(function(_, lang)
+      local ok, err = pcall(lang.setup, { mason = { "tool1" } })
+      T.eq(ok, false)
+      T.truthy(tostring(err):find("ft is required"))
+    end)
+  end)
+
+  T.it("errors when a spec registers parsers without declaring ft", function()
+    with_mocks(function(_, lang)
+      local ok, err = pcall(lang.setup, { parsers = { "p1" } })
+      T.eq(ok, false)
+      T.truthy(tostring(err):find("ft is required"))
+    end)
+  end)
+
+  T.it("does not require ft for a spec that only returns plugins", function()
+    with_mocks(function(_, lang)
+      T.eq(lang.setup({ plugins = { { "user/plug" } } }), { { "user/plug" } })
+    end)
+  end)
+
   T.it("registers parsers even when cmd is not executable", function()
     with_mocks(function(rec, lang)
       lang.setup({
@@ -191,37 +213,6 @@ T.describe("lib.lang.setup", function()
       local specs = { { "owner/a" }, { "owner/b" } }
       local plugins = lang.setup({ plugins = specs })
       T.eq(plugins, specs)
-    end)
-  end)
-
-  -- Regression: lang/<x>.lua files using `return Lib.lang.setup(...)`
-  -- get tail-call-eliminated by Lua, removing the chunk frame from the
-  -- stack. caller_ft must still derive ft via the surviving
-  -- config/plugins.lua loader frame.
-  T.it("derives ft from config/plugins.lua loader name when chunk frame is TCO'd", function()
-    with_mocks(function(rec, lang)
-      -- Build the real-world stack shape:
-      --   * `append(name)` lives in config/plugins.lua (frame survives —
-      --     pcall is not in tail position so caller_ft can find it
-      --     and read the `name` local).
-      --   * The chunk it pcalls comes from lang/<x>.lua and tail-calls
-      --     lang.setup, which is what eliminates the chunk frame.
-      local loader_src = "@" .. vim.fn.stdpath("config") .. "/lua/config/plugins.lua"
-      local chunk_src  = "@" .. vim.fn.stdpath("config") .. "/lua/config/plugins/lang/x_test.lua"
-      local lang_chunk = assert(load(
-        "local setup = ...; return setup({ mason = { 'tool-x' } })",
-        chunk_src
-      ))
-      local make_append = assert(load([[
-        local lang_chunk, lang_setup = ...
-        return function(name)
-          local _ok = pcall(lang_chunk, lang_setup)
-          return _ok
-        end
-      ]], loader_src))
-      local append = make_append(lang_chunk, lang.setup)
-      append("lang.x_test")
-      T.truthy(vim.tbl_contains(rec.mason, "tool-x"))
     end)
   end)
 
