@@ -209,6 +209,19 @@ T.describe("lib.parsers.health buffer_gaps", function()
     })), {})
   end)
 
+  T.it("reports a filetype whose registered parsers exclude the one serving it", function()
+    local H = fresh()
+    T.eq(
+      H.buffer_gaps(deps({
+        registry = { eruby = { "ruby" } },
+        buffer_fts = { "eruby" },
+        langs = { eruby = "embedded_template" },
+        available = { embedded_template = true },
+      })),
+      { { ft = "eruby", lang = "embedded_template" } }
+    )
+  end)
+
   T.it("reports nothing when no parser exists for the filetype", function()
     local H = fresh()
     T.eq(H.buffer_gaps(deps({ buffer_fts = { "log" } })), {})

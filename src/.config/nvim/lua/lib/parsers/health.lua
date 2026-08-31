@@ -90,11 +90,9 @@ function M.buffer_gaps(deps)
   for _, ft in ipairs(deps.buffer_fts()) do
     if ft ~= "" and not seen[ft] then
       seen[ft] = true
-      if #deps.parsers_for(ft) == 0 then
-        local lang = deps.lang_for_ft(ft)
-        if lang and deps.parser_available(lang) then
-          gaps[#gaps + 1] = { ft = ft, lang = lang }
-        end
+      local lang = deps.lang_for_ft(ft)
+      if lang and not vim.tbl_contains(deps.parsers_for(ft), lang) and deps.parser_available(lang) then
+        gaps[#gaps + 1] = { ft = ft, lang = lang }
       end
     end
   end
@@ -135,7 +133,7 @@ local function describe_inherit(gap)
 end
 
 local function describe_buffer(gap)
-  return ("%s: no parser registered, though %s would serve it - highlighting is off in these buffers")
+  return ("%s: the %s parser serves this filetype but is not registered - highlighting is off in these buffers")
     :format(gap.ft, gap.lang)
 end
 
