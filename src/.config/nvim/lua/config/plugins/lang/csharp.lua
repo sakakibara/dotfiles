@@ -1,8 +1,8 @@
 local plugins = Lib.lang.setup({
   cmd = "dotnet",
-  ft = { "cs", "vb" },
+  ft = { "cs", "vb", "razor" },
   mason = { "omnisharp", "csharpier", "netcoredbg" },
-  parsers = { "c_sharp" },
+  parsers = { "c_sharp", "razor" },
   servers = {
     omnisharp = {
       handlers = {

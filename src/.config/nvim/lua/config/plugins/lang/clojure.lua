@@ -1,3 +1,9 @@
+Lib.parsers.add("fennel", { ft = "fennel" })
+Lib.parsers.add("scheme", { ft = "scheme" })
+Lib.parsers.add("janet_simple", { ft = "janet" })
+Lib.parsers.add("commonlisp", { ft = "lisp" })
+Lib.parsers.add("racket", { ft = "racket" })
+
 return Lib.lang.setup({
   cmd = "clj",
   ft = "clojure",
