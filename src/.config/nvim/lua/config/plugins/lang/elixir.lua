@@ -4,9 +4,9 @@ if vim.fn.executable("credo") == 1 then linters.elixir = { "credo" } end
 
 return Lib.lang.setup({
   cmd = "elixir",
-  ft = { "elixir", "heex", "eelixir" },
+  ft = { "elixir", "heex", "eelixir", "surface" },
   mason = { "elixir-ls" },
-  parsers = { "elixir", "heex", "eex" },
+  parsers = { "elixir", "heex", "eex", "surface" },
   servers = { elixirls = {} },
   linters = linters,
   neotest = { ["neotest-elixir"] = function() return require("neotest-elixir") end },

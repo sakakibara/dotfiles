@@ -1,5 +1,5 @@
 return Lib.lang.setup({
-  ft = "yaml",
+  ft = { "yaml", "yaml.docker-compose", "yaml.gitlab", "yaml.helm-values" },
   mason = { "yaml-language-server" },
   parsers = { "yaml" },
   servers = {

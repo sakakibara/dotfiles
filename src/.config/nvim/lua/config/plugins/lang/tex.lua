@@ -1,6 +1,6 @@
 return Lib.lang.setup({
   cmd = "pdflatex",
-  ft = { "tex", "bib" },
+  ft = { "tex", "plaintex", "bib" },
   mason = { "texlab" },
   parsers = { "latex", "bibtex" },
   servers = { texlab = {} },

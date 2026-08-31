@@ -1,5 +1,5 @@
 return Lib.lang.setup({
-  ft = { "css", "scss" },
+  ft = { "css", "scss", "less" },
   mason = { "css-lsp", "prettier" },
   parsers = { "css", "scss" },
   servers = {
@@ -10,5 +10,6 @@ return Lib.lang.setup({
   formatters = {
     css = { "prettier" },
     scss = { "prettier" },
+    less = { "prettier" },
   },
 })

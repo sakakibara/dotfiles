@@ -1,6 +1,6 @@
 return Lib.lang.setup({
   cmd = "clj",
-  ft = "clojure",
+  ft = { "clojure", "edn" },
   mason = { "clojure-lsp" },
   parsers = { "clojure" },
   servers = { clojure_lsp = {} },

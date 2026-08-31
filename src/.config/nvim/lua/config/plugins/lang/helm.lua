@@ -12,7 +12,7 @@ end)
 
 return Lib.lang.setup({
   cmd = "helm",
-  ft = "helm",
+  ft = { "helm", "yaml.helm-values" },
   mason = { "helm-ls" },
   parsers = { "helm", "gotmpl" },
   servers = { helm_ls = {} },
