@@ -1,20 +1,8 @@
 return Lib.lang.setup({
   cmd = "pdflatex",
+  ft = { "tex", "bib" },
   mason = { "texlab" },
   parsers = { "latex", "bibtex" },
-  parsers_setup = function()
-    -- latex treesitter highlight conflicts with vimtex's syntax; disable it.
-    local ok, configs = pcall(require, "nvim-treesitter.configs")
-    if ok and configs.get_module then
-      local hl = configs.get_module("highlight")
-      if hl then
-        hl.disable = hl.disable or {}
-        if type(hl.disable) == "table" then
-          table.insert(hl.disable, "latex")
-        end
-      end
-    end
-  end,
   servers = { texlab = {} },
   plugins = {
     {
