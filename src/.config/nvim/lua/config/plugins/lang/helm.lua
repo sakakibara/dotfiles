@@ -13,7 +13,7 @@ end)
 return Lib.lang.setup({
   cmd = "helm",
   mason = { "helm-ls" },
-  parsers = { "helm" },
+  parsers = { "helm", "gotmpl" },
   servers = { helm_ls = {} },
   plugins = {
     { "towolf/vim-helm", ft = "helm" },
