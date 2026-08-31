@@ -113,6 +113,7 @@ T.describe("lib.lang.setup", function()
   T.it("returns {} and skips registration when cmd is not executable", function()
     with_mocks(function(rec, lang)
       local plugins = lang.setup({
+        ft = "lang1",
         cmd = "definitely-not-a-real-binary-9f3c",
         mason = { "x" },
         parsers = { "x" },
@@ -122,6 +123,32 @@ T.describe("lib.lang.setup", function()
       T.eq(plugins, {})
       T.eq(rec.mason, {})
       T.eq(#rec.on_load, 0)
+    end)
+  end)
+
+  T.it("registers parsers even when cmd is not executable", function()
+    with_mocks(function(rec, lang)
+      lang.setup({
+        ft      = "lang1",
+        cmd     = "definitely-not-a-real-binary-9f3c",
+        mason   = { "tool1" },
+        parsers = { "p1", "p2" },
+        servers = { server1 = {} },
+      })
+      T.eq(rec.parsers, { "p1", "p2" })
+      T.eq(rec.mason, {})
+    end)
+  end)
+
+  T.it("runs parsers_setup even when cmd is not executable", function()
+    with_mocks(function(rec, lang)
+      lang.setup({
+        ft            = "lang1",
+        cmd           = "definitely-not-a-real-binary-9f3c",
+        parsers_setup = function() end,
+      })
+      T.eq(#rec.on_load, 1)
+      T.eq(rec.on_load[1].plugin, "nvim-treesitter")
     end)
   end)
 
