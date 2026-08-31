@@ -3,7 +3,8 @@
 -- per M4 simplification — angularls alone handles Angular templates.
 return Lib.lang.setup({
   cmd = "node",
-  mason = { "angular-language-server" },
+  ft = "htmlangular",
+  mason = { "angular-language-server", "prettier" },
   parsers = { "angular", "scss" },
   parsers_setup = function()
     -- Force angular treesitter parser on component HTML files (ft normally 'html')
