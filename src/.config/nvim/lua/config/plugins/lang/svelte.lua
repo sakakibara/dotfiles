@@ -7,6 +7,7 @@ return Lib.lang.setup({
   parsers = { "svelte", "html", "css", "javascript" },
   servers = {
     svelte = {
+      binary = "svelteserver",
       capabilities = {
         workspace = {
           didChangeWatchedFiles = vim.fn.has("nvim-0.10") == 0 and { dynamicRegistration = true } or nil,

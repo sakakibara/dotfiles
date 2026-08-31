@@ -7,6 +7,7 @@ return Lib.lang.setup({
   mason = { "powershell-editor-services" },
   servers = {
     powershell_es = {
+      binary = "pwsh",
       bundle_path = vim.fn.stdpath("data") .. "/mason/packages/powershell-editor-services",
     },
   },

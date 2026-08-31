@@ -7,6 +7,6 @@ return Lib.lang.setup({
   ft = "astro",
   mason = { "astro-language-server", "prettier" },
   parsers = { "astro", "css" },
-  servers = { astro = {} },
+  servers = { astro = { binary = "astro-ls" } },
   formatters = { astro = { "prettier" } },
 })

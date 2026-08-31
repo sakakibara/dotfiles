@@ -26,7 +26,10 @@ return Lib.lang.setup({
     tailwindcss = function()
       local ok, tw = pcall(require, "lspconfig.configs.tailwindcss")
       local from_lspconfig = ok and tw.default_config and tw.default_config.filetypes
-      return { filetypes = served(from_lspconfig or default_filetypes) }
+      return {
+        binary = "tailwindcss-language-server",
+        filetypes = served(from_lspconfig or default_filetypes),
+      }
     end,
   },
 })
