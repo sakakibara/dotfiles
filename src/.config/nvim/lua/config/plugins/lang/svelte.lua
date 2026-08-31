@@ -2,7 +2,7 @@
 -- for TS intelligence inside .svelte files. Skipped per M4 simplification.
 return Lib.lang.setup({
   cmd = "node",
-  mason = { "svelte-language-server" },
+  mason = { "svelte-language-server", "prettier" },
   parsers = { "svelte", "html", "css", "javascript" },
   servers = {
     svelte = {

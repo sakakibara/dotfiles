@@ -4,7 +4,7 @@
 -- until we revisit vtsls coordination.
 return Lib.lang.setup({
   cmd = "node",
-  mason = { "astro-language-server" },
+  mason = { "astro-language-server", "prettier" },
   parsers = { "astro", "css" },
   servers = { astro = {} },
   formatters = { astro = { "prettier" } },

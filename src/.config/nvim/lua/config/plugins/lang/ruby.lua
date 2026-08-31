@@ -1,7 +1,6 @@
--- erb-formatter not in mason registry; install via `gem install erb-formatter`.
 return Lib.lang.setup({
   cmd = "ruby",
-  mason = { "ruby-lsp", "rubocop" },
+  mason = { "ruby-lsp", "rubocop", "erb-formatter" },
   parsers = { "ruby" },
   servers = {
     -- ruby_lsp's lspconfig `cmd` is a function, so Lib.lsp.enable's

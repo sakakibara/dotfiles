@@ -1,6 +1,5 @@
--- markdown-toc not in mason registry; install via `npm i -g markdown-toc` if desired.
 return Lib.lang.setup({
-  mason = { "marksman", "prettier", "markdownlint-cli2" },
+  mason = { "marksman", "prettier", "markdownlint-cli2", "markdown-toc" },
   parsers = { "markdown", "markdown_inline" },
   servers = { marksman = {} },
   formatters = {
