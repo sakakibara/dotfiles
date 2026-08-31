@@ -50,7 +50,7 @@ vim.api.nvim_create_autocmd("FileType", {
 })
 
 return Lib.lang.setup({
-  ft = { "c", "cpp", "c.doxygen", "cpp.doxygen", "objc", "objcpp", "cuda" },
+  ft = { "c", "cpp", "objc", "objcpp", "cuda" },
   cmd = "gcc",
   mason = { "clangd", "codelldb" },
   parsers = { "c", "cpp", "objc", "cuda" },

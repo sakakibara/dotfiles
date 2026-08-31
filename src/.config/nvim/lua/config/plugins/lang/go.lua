@@ -1,8 +1,8 @@
 return Lib.lang.setup({
   cmd = "go",
-  ft = { "go", "gomod", "gosum", "gowork", "gotmpl" },
+  ft = { "go", "gomod", "gosum", "gowork" },
   mason = { "gopls", "goimports", "gofumpt", "delve" },
-  parsers = { "go", "gomod", "gowork", "gosum", "gotmpl" },
+  parsers = { "go", "gomod", "gowork", "gosum" },
   servers = {
     gopls = {
       settings = {

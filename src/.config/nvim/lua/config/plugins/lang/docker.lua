@@ -1,6 +1,6 @@
 return Lib.lang.setup({
   cmd = "docker",
-  ft = { "dockerfile", "yaml.docker-compose" },
+  ft = "dockerfile",
   mason = { "dockerfile-language-server", "docker-compose-language-service", "hadolint" },
   parsers = { "dockerfile" },
   servers = {

@@ -1,8 +1,8 @@
 return Lib.lang.setup({
   cmd = "ocaml",
-  ft = { "ocaml", "ocamlinterface", "ocamllex", "menhir", "reason", "dune" },
-  mason = { "ocamllsp" },
-  parsers = { "ocaml", "ocaml_interface", "ocamllex", "menhir" },
+  ft = { "ocaml", "dune" },
+  mason = { "ocaml-lsp" },
+  parsers = { "ocaml" },
   servers = {
     ocamllsp = {
       filetypes = {

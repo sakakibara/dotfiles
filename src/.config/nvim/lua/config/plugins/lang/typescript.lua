@@ -20,7 +20,7 @@ local ts_settings = {
 
 local plugins = Lib.lang.setup({
   cmd = "node",
-  ft = { "typescript", "typescriptreact", "typescript.tsx", "javascript", "javascriptreact", "javascript.jsx" },
+  ft = { "typescript", "typescriptreact", "javascript", "javascriptreact" },
   mason = { "vtsls", "js-debug-adapter", "prettier" },
   parsers = { "typescript", "tsx", "javascript" },
   servers = {
