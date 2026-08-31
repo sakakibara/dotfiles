@@ -1,5 +1,6 @@
 local plugins = Lib.lang.setup({
   cmd = "php",
+  ft = "php",
   mason = { "phpactor", "php-cs-fixer", "phpcs", "php-debug-adapter" },
   parsers = { "php" },
   servers = { phpactor = {} },

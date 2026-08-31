@@ -1,4 +1,5 @@
 return Lib.lang.setup({
+  ft = { "json", "jsonc", "json5" },
   mason = { "json-lsp" },
   -- nvim-treesitter main dropped the dedicated jsonc parser; the json
   -- parser handles jsonc buffers well enough.

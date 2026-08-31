@@ -3,6 +3,7 @@
 -- no nvim-lspconfig wiring needed.
 return Lib.lang.setup({
   cmd = "ghc",
+  ft = "haskell",
   parsers = { "haskell" },
   neotest = { ["neotest-haskell"] = function() return require("neotest-haskell") end },
   plugins = {

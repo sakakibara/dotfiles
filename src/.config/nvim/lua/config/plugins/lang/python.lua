@@ -1,5 +1,6 @@
 return Lib.lang.setup({
   cmd = "python3",
+  ft = { "python", "ninja", "rst" },
   mason = { "ruff", "debugpy" },
   parsers = { "python", "ninja", "rst" },
   servers = {

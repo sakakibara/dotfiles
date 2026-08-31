@@ -1,5 +1,6 @@
 return Lib.lang.setup({
   cmd = "ocaml",
+  ft = "ocaml",
   mason = { "ocamllsp" },
   parsers = { "ocaml" },
   servers = {

@@ -1,7 +1,8 @@
 return Lib.lang.setup({
   cmd = "ruby",
+  ft = { "ruby", "eruby" },
   mason = { "ruby-lsp", "rubocop", "erb-formatter" },
-  parsers = { "ruby" },
+  parsers = { "ruby", "embedded_template" },
   servers = {
     -- ruby_lsp's lspconfig `cmd` is a function, so Lib.lsp.enable's
     -- availability check needs an explicit binary hint (otherwise it

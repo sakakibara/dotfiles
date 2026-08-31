@@ -1,4 +1,5 @@
 return Lib.lang.setup({
+  ft = "yaml",
   mason = { "yaml-language-server" },
   parsers = { "yaml" },
   servers = {

@@ -8,6 +8,7 @@ for _, ft in ipairs(sql_ft) do
 end
 
 return Lib.lang.setup({
+  ft = "sql",
   mason = { "sqlfluff" },
   parsers = { "sql" },
   formatters = formatters_by_ft,

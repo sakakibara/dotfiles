@@ -1,5 +1,6 @@
 return Lib.lang.setup({
   cmd = "java",
+  ft = "java",
   mason = { "jdtls", "java-debug-adapter", "java-test" },
   parsers = { "java" },
   -- nvim-jdtls owns jdtls startup entirely; no nvim-lspconfig registration.

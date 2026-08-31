@@ -1,5 +1,6 @@
 return Lib.lang.setup({
   cmd = "zig",
+  ft = "zig",
   mason = { "zls" },
   parsers = { "zig" },
   servers = { zls = {} },

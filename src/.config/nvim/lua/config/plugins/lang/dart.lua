@@ -3,6 +3,7 @@
 -- through nvim-lspconfig either.
 return Lib.lang.setup({
   cmd = "dart",
+  ft = "dart",
   parsers = { "dart" },
   formatters = { dart = { "dart_format" } },
   plugins = {

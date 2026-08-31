@@ -4,6 +4,7 @@
 -- standard path for Scala users).
 return Lib.lang.setup({
   cmd = "scala",
+  ft = { "scala", "sbt" },
   parsers = { "scala" },
   plugins = {
     {

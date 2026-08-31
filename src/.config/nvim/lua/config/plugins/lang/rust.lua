@@ -6,6 +6,7 @@
 -- dropped — user has no global `diagnostics` variable in the ported config.
 return Lib.lang.setup({
   cmd = "rustc",
+  ft = { "rust", "ron" },
   mason = { "codelldb" },
   parsers = { "rust", "ron" },
   neotest = { rustaceanvim = function() return require("rustaceanvim.neotest") end },

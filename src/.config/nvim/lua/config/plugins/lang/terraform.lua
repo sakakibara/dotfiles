@@ -3,6 +3,7 @@
 -- Revisit if/when telescope lands.
 return Lib.lang.setup({
   cmd = "terraform",
+  ft = { "terraform", "terraform-vars", "hcl" },
   mason = { "terraform-ls" },
   parsers = { "terraform", "hcl" },
   servers = { terraformls = {} },

@@ -2,6 +2,8 @@
 -- installs it under its packages dir, which is what `bundle_path` points to below.
 return Lib.lang.setup({
   cmd = "pwsh",
+  ft = "ps1",
+  parsers = { "powershell" },
   mason = { "powershell-editor-services" },
   servers = {
     powershell_es = {

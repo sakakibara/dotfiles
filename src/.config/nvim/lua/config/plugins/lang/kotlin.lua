@@ -1,5 +1,6 @@
 local plugins = Lib.lang.setup({
   cmd = "kotlin",
+  ft = "kotlin",
   mason = { "kotlin-language-server", "ktlint", "kotlin-debug-adapter" },
   parsers = { "kotlin" },
   servers = { kotlin_language_server = {} },

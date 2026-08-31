@@ -1,5 +1,7 @@
 return Lib.lang.setup({
   cmd = "ansible",
+  ft = "yaml.ansible",
+  parsers = { "yaml" },
   mason = { "ansible-language-server", "ansible-lint" },
   servers = { ansiblels = {} },
   linters = { ["yaml.ansible"] = { "ansible_lint" } },

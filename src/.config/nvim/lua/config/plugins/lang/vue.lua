@@ -4,6 +4,7 @@
 -- revisit vtsls coordination (tier-5 typescript).
 return Lib.lang.setup({
   cmd = "node",
+  ft = "vue",
   mason = { "vue-language-server" },
   parsers = { "vue", "css" },
   servers = { vue_ls = {} },

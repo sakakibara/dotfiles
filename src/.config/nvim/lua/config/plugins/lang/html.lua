@@ -1,4 +1,5 @@
 return Lib.lang.setup({
+  ft = "html",
   mason = { "html-lsp", "prettier" },
   parsers = { "html", "css", "javascript" },
   servers = {

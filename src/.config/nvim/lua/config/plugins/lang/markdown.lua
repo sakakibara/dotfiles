@@ -1,4 +1,5 @@
 return Lib.lang.setup({
+  ft = { "markdown", "markdown.mdx" },
   mason = { "marksman", "prettier", "markdownlint-cli2", "markdown-toc" },
   parsers = { "markdown", "markdown_inline" },
   servers = { marksman = {} },
