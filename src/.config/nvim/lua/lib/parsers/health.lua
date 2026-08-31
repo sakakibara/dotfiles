@@ -3,68 +3,70 @@ local M = {}
 local MODELINE = "^;+%s*inherits%s*:?%s*([a-z_,()]+)%s*$"
 
 local function sorted_keys(set)
-  local out = vim.tbl_keys(set)
-  table.sort(out)
-  return out
+  local keys = vim.tbl_keys(set)
+  table.sort(keys)
+  return keys
 end
 
-local function inherited_langs(dir)
-  local required, optional = {}, {}
-  for _, path in ipairs(vim.fn.glob(dir .. "/*.scm", false, true)) do
+local function to_set(list)
+  local set = {}
+  for _, item in ipairs(list) do set[item] = true end
+  return set
+end
+
+local function closure(langs, requires)
+  local reached, queue = {}, vim.list_slice(langs)
+  while #queue > 0 do
+    local lang = table.remove(queue)
+    if not reached[lang] then
+      reached[lang] = true
+      vim.list_extend(queue, requires(lang))
+    end
+  end
+  return reached
+end
+
+local function inherits_of(lang, query_dir, with_optional)
+  local wanted = {}
+  for _, path in ipairs(vim.fn.glob(query_dir(lang) .. "/*.scm", false, true)) do
     for _, line in ipairs(vim.fn.readfile(path)) do
       if not vim.startswith(line, ";") then break end
-      local list = line:match(MODELINE)
-      if list then
-        for item in vim.gsplit(list, ",") do
-          if item:match("%(.*%)") then
-            optional[item:sub(2, #item - 1)] = true
-          else
-            required[item] = true
-          end
+      for item in vim.gsplit(line:match(MODELINE) or "", ",", { trimempty = true }) do
+        local optional = item:match("^%((.+)%)$")
+        if not optional then
+          wanted[item] = true
+        elseif with_optional then
+          wanted[optional] = true
         end
       end
     end
   end
-  return required, optional
-end
-
-local function provided_by(seed, requires)
-  local have, queue = {}, vim.list_slice(seed)
-  while #queue > 0 do
-    local lang = table.remove(queue)
-    if not have[lang] then
-      have[lang] = true
-      for _, req in ipairs(requires(lang)) do queue[#queue + 1] = req end
-    end
-  end
-  return have
+  wanted[lang] = nil
+  return sorted_keys(wanted)
 end
 
 local function missing_for(seed, deps)
-  local top_level = {}
-  for _, lang in ipairs(seed) do top_level[lang] = true end
-  local have = provided_by(seed, deps.requires)
-  local pending, done, missing = sorted_keys(have), {}, {}
-  while #pending > 0 do
-    local lang = table.remove(pending, 1)
-    if not done[lang] then
-      done[lang] = true
-      local required, optional = inherited_langs(deps.query_dir(lang))
-      local wanted = top_level[lang] and vim.tbl_extend("force", {}, required, optional) or required
-      for _, dep in ipairs(sorted_keys(wanted)) do
-        if not have[dep] and dep ~= lang then
+  local provided, top_level = closure(seed, deps.requires), to_set(seed)
+  local missing, frontier = {}, sorted_keys(provided)
+
+  while #frontier > 0 do
+    local discovered = {}
+    for _, lang in ipairs(frontier) do
+      for _, dep in ipairs(inherits_of(lang, deps.query_dir, top_level[lang])) do
+        if not provided[dep] then
           missing[#missing + 1] = { lang = dep, via = lang }
-          for _, pulled in ipairs(sorted_keys(provided_by({ dep }, deps.requires))) do
-            if not have[pulled] then
-              have[pulled] = true
-              pending[#pending + 1] = pulled
+          for pulled in pairs(closure({ dep }, deps.requires)) do
+            if not provided[pulled] then
+              provided[pulled] = true
+              discovered[pulled] = true
             end
           end
-          table.sort(pending)
         end
       end
     end
+    frontier = sorted_keys(discovered)
   end
+
   table.sort(missing, function(a, b)
     if a.lang ~= b.lang then return a.lang < b.lang end
     return a.via < b.via
@@ -84,7 +86,7 @@ function M.inherit_gaps(deps)
 end
 
 function M.buffer_gaps(deps)
-  local seen, gaps = {}, {}
+  local gaps, seen = {}, {}
   for _, ft in ipairs(deps.buffer_fts()) do
     if ft ~= "" and not seen[ft] then
       seen[ft] = true
@@ -112,15 +114,29 @@ local function default_deps()
     end,
     query_dir = function(lang) return install.get_package_path("runtime", "queries", lang) end,
     buffer_fts = function()
-      local out = {}
+      local fts = {}
       for _, buf in ipairs(vim.api.nvim_list_bufs()) do
-        if vim.api.nvim_buf_is_loaded(buf) then out[#out + 1] = vim.bo[buf].filetype end
+        if vim.api.nvim_buf_is_loaded(buf) then fts[#fts + 1] = vim.bo[buf].filetype end
       end
-      return out
+      return fts
     end,
     lang_for_ft = vim.treesitter.language.get_lang,
     parser_available = function(lang) return ts_parsers[lang] ~= nil end,
   }
+end
+
+local function describe_inherit(gap)
+  local parts = {}
+  for _, miss in ipairs(gap.missing) do
+    parts[#parts + 1] = ("%s (inherited by %s)"):format(miss.lang, miss.via)
+  end
+  return ("%s: no registered parser provides %s - those queries never load")
+    :format(gap.ft, table.concat(parts, ", "))
+end
+
+local function describe_buffer(gap)
+  return ("%s: no parser registered, though %s would serve it - highlighting is off in these buffers")
+    :format(gap.ft, gap.lang)
 end
 
 local function gather(deps)
@@ -136,27 +152,17 @@ local function gather(deps)
     deps = resolved
   end
 
-  local gaps = M.inherit_gaps(deps)
-  if #gaps == 0 then
-    add("ok", "every registered parser provides the languages its queries inherit")
-  else
-    for _, gap in ipairs(gaps) do
-      local parts = {}
-      for _, miss in ipairs(gap.missing) do
-        parts[#parts + 1] = ("%s (inherited by %s)"):format(miss.lang, miss.via)
-      end
-      add("warn", ("%s: no registered parser provides %s - those queries never load"):format(
-        gap.ft, table.concat(parts, ", ")))
-    end
-  end
-
-  local buffers = M.buffer_gaps(deps)
-  if #buffers == 0 then
-    add("ok", "every open buffer has a parser registered for its filetype")
-  else
-    for _, gap in ipairs(buffers) do
-      add("warn", ("%s: no parser registered, though %s would serve it - highlighting is off in these buffers"):format(
-        gap.ft, gap.lang))
+  local checks = {
+    { gaps = M.inherit_gaps(deps), describe = describe_inherit,
+      ok = "every registered parser provides the languages its queries inherit" },
+    { gaps = M.buffer_gaps(deps), describe = describe_buffer,
+      ok = "every open buffer has a parser registered for its filetype" },
+  }
+  for _, check in ipairs(checks) do
+    if #check.gaps == 0 then
+      add("ok", check.ok)
+    else
+      for _, gap in ipairs(check.gaps) do add("warn", check.describe(gap)) end
     end
   end
 
@@ -168,11 +174,8 @@ function M.report(deps) return gather(deps) end
 function M.check()
   vim.health.start("lib.parsers")
   for _, item in ipairs(gather()) do
-    if item.kind == "ok"        then vim.health.ok(item.text)
-    elseif item.kind == "warn"  then vim.health.warn(item.text)
-    elseif item.kind == "error" then vim.health.error(item.text)
-    else                             vim.health.info(item.text)
-    end
+    local emit = vim.health[item.kind] or vim.health.info
+    emit(item.text)
   end
 end
 
