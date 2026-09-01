@@ -5,14 +5,7 @@ return Lib.lang.setup({
   parsers = { "ocaml" },
   servers = {
     ocamllsp = {
-      filetypes = {
-        "ocaml",
-        "ocaml.menhir",
-        "ocaml.interface",
-        "ocaml.ocamllex",
-        "reason",
-        "dune",
-      },
+      filetypes = { "ocaml", "dune" },
       root_markers = {
         "*.opam",
         "esy.json",

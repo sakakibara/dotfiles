@@ -15,7 +15,10 @@ local default_filetypes = {
 }
 
 local function served(filetypes)
-  return vim.tbl_filter(function(ft) return not exclude[ft] end, filetypes)
+  local ok, known = pcall(vim.filetype._get_known_filetypes)
+  return vim.tbl_filter(function(ft)
+    return not exclude[ft] and (not ok or known[ft])
+  end, filetypes)
 end
 
 return Lib.lang.setup({

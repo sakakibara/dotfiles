@@ -17,6 +17,6 @@ return Lib.lang.setup({
   parsers = { "helm", "gotmpl" },
   servers = { helm_ls = {} },
   plugins = {
-    { "towolf/vim-helm", ft = "helm" },
+    { "towolf/vim-helm", lazy = false },
   },
 })

@@ -28,10 +28,8 @@ local plugins = Lib.lang.setup({
       filetypes = {
         "javascript",
         "javascriptreact",
-        "javascript.jsx",
         "typescript",
         "typescriptreact",
-        "typescript.tsx",
       },
       settings = {
         complete_function_calls = true,
