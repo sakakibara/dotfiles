@@ -20,6 +20,8 @@ Lib.parsers.add("query",   { ft = "query" })
 Lib.parsers.add("regex",   { ft = "regex", eager = true })
 Lib.parsers.add("bash",    { ft = { "bash", "sh", "zsh" }, eager = true })
 
+Lib.parsers.skip("xml", "xsd", "xslt", "svg")
+
 return {
   {
     "nvim-treesitter/nvim-treesitter",

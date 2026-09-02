@@ -30,6 +30,7 @@ local function deps(opts)
     buffer_fts = function() return opts.buffer_fts or {} end,
     lang_for_ft = function(ft) return (opts.langs or {})[ft] or ft end,
     parser_available = function(lang) return (opts.available or {})[lang] == true end,
+    skipped = function(ft) return (opts.skipped or {})[ft] == true end,
   }
 end
 
@@ -245,6 +246,15 @@ T.describe("lib.parsers.health buffer_gaps", function()
       })),
       { { ft = "javascriptreact", lang = "javascript" } }
     )
+  end)
+
+  T.it("ignores a filetype deliberately left without a parser", function()
+    local H = fresh()
+    T.eq(H.buffer_gaps(deps({
+      buffer_fts = { "xml" },
+      available = { xml = true },
+      skipped = { xml = true },
+    })), {})
   end)
 
   T.it("sorts by filetype", function()

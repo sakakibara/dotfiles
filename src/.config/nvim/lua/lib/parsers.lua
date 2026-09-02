@@ -8,6 +8,7 @@ local M = {}
 local by_ft = {} -- ft → list of parser names
 local seen  = {} -- (ft .. ":" .. name) → true
 local eager = {} -- name → true (parsers to install at startup, ft-independent)
+local skipped = {} -- ft → true (deliberately left to Vim's syntax engine)
 
 local function add_for_ft(name, ft)
   by_ft[ft] = by_ft[ft] or {}
@@ -39,6 +40,16 @@ function M.add(...)
       if opts.eager then eager[name] = true end
     end
   end
+end
+
+function M.skip(...)
+  for _, ft in ipairs({ ... }) do
+    if type(ft) == "string" then skipped[ft] = true end
+  end
+end
+
+function M.skipped(ft)
+  return skipped[ft] == true
 end
 
 function M.eager_list()
@@ -78,7 +89,7 @@ function M.src_block_for_buf(bufnr)
 end
 
 function M._reset()
-  by_ft, seen, eager = {}, {}, {}
+  by_ft, seen, eager, skipped = {}, {}, {}, {}
 end
 
 return M

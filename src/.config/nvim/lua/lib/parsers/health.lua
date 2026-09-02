@@ -88,7 +88,7 @@ end
 function M.buffer_gaps(deps)
   local gaps, seen = {}, {}
   for _, ft in ipairs(deps.buffer_fts()) do
-    if ft ~= "" and not seen[ft] then
+    if ft ~= "" and not seen[ft] and not deps.skipped(ft) then
       seen[ft] = true
       local lang = deps.lang_for_ft(ft)
       if lang and not vim.tbl_contains(deps.parsers_for(ft), lang) and deps.parser_available(lang) then
@@ -120,6 +120,7 @@ local function default_deps()
     end,
     lang_for_ft = vim.treesitter.language.get_lang,
     parser_available = function(lang) return ts_parsers[lang] ~= nil end,
+    skipped = Lib.parsers.skipped,
   }
 end
 
