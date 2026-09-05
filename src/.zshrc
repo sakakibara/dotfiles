@@ -75,6 +75,7 @@ if [[ "${OSTYPE}" == darwin* ]]; then
 fi
 
 export GOPATH="${HOME}/.go"
+export FVM_CACHE_PATH="${XDG_DATA_HOME}/fvm"
 
 if [[ -d "${XDG_DATA_HOME}/pnpm" ]]; then
   export PNPM_HOME="${XDG_DATA_HOME}/pnpm"
