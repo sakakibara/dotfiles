@@ -10,7 +10,7 @@ $XONSH_CACHE_SCRIPTS = True
 
 $_Z_DATA = $HOME + '/.config/xonsh/z'
 $_Z_CASE_SENSITIVE = False
-$STARSHIP_CONFIG = $HOME + '/.config/starship/config.toml'
+$STARSHIP_CONFIG = $HOME + '/.config/starship.toml'
 
 xontrib load prompt_starship zoxide
 
