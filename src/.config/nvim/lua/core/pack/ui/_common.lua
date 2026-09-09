@@ -30,7 +30,7 @@ M.keymaps = {
 -- The buffer-local autocmd reasserts these options on BufEnter/WinEnter/ModeChanged.
 function M.lock_pack_window(buf, win)
   -- winbar is owned by Lib.winbar.disable_special (with b:lib_winbar_keep
-  -- as the per-buffer opt-out) — don't reassert it here.
+  -- as the per-buffer opt-out) -- don't reassert it here.
   local function apply()
     if win == nil or not vim.api.nvim_win_is_valid(win) then return end
     vim.wo[win].number = false
@@ -60,10 +60,10 @@ function M.lock_pack_window(buf, win)
 end
 
 -- Decide which columns to include given available width.
--- min_widths: { col → byte width }
--- priorities: { col → integer (higher = keep longer) }
+-- min_widths: { col -> byte width }
+-- priorities: { col -> integer (higher = keep longer) }
 -- win_w: total width budget (e.g., from nvim_win_get_width)
--- Returns: { col → bool included }. Always tries to keep at least the highest-priority col.
+-- Returns: { col -> bool included }. Always tries to keep at least the highest-priority col.
 function M.plan_columns(min_widths, priorities, win_w)
   local include = {}
   local SEP = 2  -- two-space separator between columns

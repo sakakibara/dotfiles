@@ -43,7 +43,7 @@ local function gather()
     add("ok", "no spec validation warnings")
   end
 
-  -- Specs ↔ on-disk
+  -- Specs <-> on-disk
   local missing, no_tags = {}, {}
   for name, spec in pairs(Pack._specs or {}) do
     if not spec.dev then

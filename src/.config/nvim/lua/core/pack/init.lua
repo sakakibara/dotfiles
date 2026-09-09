@@ -10,7 +10,7 @@ M._load_reason = {} -- { [name] = { reason = "...", ts_ns = ..., parent = "..." 
 
 -- Forward declaration: load_spec is defined later (after run_config/packadd
 -- helpers) but needs to be referenced earlier by the keymaps stub callback.
--- Closure-captured by reference — assignment below populates the upvalue.
+-- Closure-captured by reference -- assignment below populates the upvalue.
 local load_spec
 
 local function _norm_modname(s)
@@ -24,7 +24,7 @@ end
 
 -- Resolve the plugin's Lua module name. Order:
 --   1. spec.main (explicit override)
---   2. derived from name (strip ".nvim" suffix) — works for the common case
+--   2. derived from name (strip ".nvim" suffix) -- works for the common case
 --   3. scan the plugin's lua/ directory for a top-level module whose
 --      normalized name matches the plugin's normalized name
 -- Exposed as M._resolve_main for tests.
@@ -121,7 +121,7 @@ load_spec = function(spec, reason)
   _loading[spec.name] = true
   M._load_reason[spec.name] = {
     reason = reason or "unknown",
-    ts_ns  = (vim.uv or vim.loop).hrtime(),
+    ts_ns  = vim.uv.hrtime(),
   }
   for _, dep_name in ipairs(spec.dependencies) do
     local dep = M._specs[dep_name]
@@ -150,11 +150,7 @@ local triggers = require("core.pack.triggers").create({
 M._schedule_refire = triggers.schedule_refire  -- exposed for tests
 
 local function install_all(specs)
-  local Lock    = require("core.pack.lock")
   local Install = require("core.pack.install")
-
-  -- One-shot migration from the old lockfile (no-op if our lockfile already populated).
-  Lock.migrate_from_vim_pack()
 
   -- For specs already on disk, packadd; for those not, install in parallel.
   local to_install = {}
@@ -169,13 +165,13 @@ local function install_all(specs)
   if #to_install > 0 then
     -- Block setup() on install completion so the eager load phase below
     -- finds every spec on disk. Without the wait, a fresh state dir means
-    -- load_spec calls run_config → require("<plugin>") → "module not found"
-    -- and packadd → E919, until the user manually restarts. vim.wait pumps
+    -- load_spec calls run_config -> require("<plugin>") -> "module not found"
+    -- and packadd -> E919, until the user manually restarts. vim.wait pumps
     -- the event loop so clone jobs progress and the install fidget updates.
     --
     -- Cold-install splash: a centered "first-run install" indicator that
     -- replaces the otherwise-blank screen during the wait. Updates from
-    -- on_progress; the splash is NOT closed here — the caller transitions
+    -- on_progress; the splash is NOT closed here -- the caller transitions
     -- it to the setup phase and closes it at VeryLazy so it covers eager
     -- loads too (otherwise nvim looks frozen for several seconds with no
     -- visual indicator of activity).
@@ -192,9 +188,9 @@ local function install_all(specs)
       on_complete = function()
         local installed_count = #to_install - vim.tbl_count(failed)
         -- Deferred so the notify call runs after eager loads complete and
-        -- snacks owns vim.notify — it then renders as a single toast
+        -- snacks owns vim.notify -- it then renders as a single toast
         -- (top-right) instead of going through the wrapper-A cmdline echo
-        -- path during the splash → snacks-load transition.
+        -- path during the splash -> snacks-load transition.
         vim.schedule(function()
           vim.notify(
             ("core.pack: installed %d plugins"):format(installed_count),
@@ -227,7 +223,7 @@ function M.setup(cfg)
   M._opts = {}
   -- NOTE: do NOT reset M._on_load here. Plugin spec files call
   -- Lib.plugin.on_load(...) as side effects at require-time, and
-  -- require("config.plugins") runs as setup's argument — before setup's
+  -- require("config.plugins") runs as setup's argument -- before setup's
   -- body. Resetting would wipe hooks that the caller just registered.
   M._on_load = M._on_load or {}
 
@@ -398,7 +394,7 @@ function M.setup(cfg)
   -- timeout because it keeps the splash up *exactly* as long as something
   -- (eager loads, then treesitter install via the rerouted logger) is
   -- still reporting progress, and closes promptly once the activity dies
-  -- down — independent of whether the actual install took 5s or 60s.
+  -- down -- independent of whether the actual install took 5s or 60s.
   if splash then
     -- Splash close: idle-debounce on status updates (most reliable
     -- "work has stopped" signal we have, given that cold-install work
@@ -443,7 +439,7 @@ end
 --
 -- Note: unlike spec.keys, add_keys does NOT install a stub on lazy plugins.
 -- To make a key load the plugin, put it in spec.keys. add_keys is for
--- augmenting — user overrides from after/, per-project rebindings, etc.
+-- augmenting -- user overrides from after/, per-project rebindings, etc.
 function M.add_keys(name, keys)
   local spec = M._specs[name]
   if not spec then

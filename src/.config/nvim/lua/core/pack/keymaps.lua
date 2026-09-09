@@ -1,7 +1,7 @@
--- Keymap installation, collision detection, and stub→real transition.
+-- Keymap installation, collision detection, and stub->real transition.
 --
 -- Two phases: (1) install_spec_keys installs the real mapping after a spec
--- runs run_config — zero wrapper overhead on every subsequent press. (2) For
+-- runs run_config -- zero wrapper overhead on every subsequent press. (2) For
 -- lazy plugins, install_spec_stubs installs a placeholder; on first press
 -- the stub loads the plugin (which installs the real mapping via
 -- install_spec_keys) and feedkeys ("m" mode) replays the key so the real
@@ -40,19 +40,19 @@ function M.create(deps)
 
   local key_registry      = {}  -- [mode..":"..lhs..":"..(ft or "")] = spec.name
   local warned_conflicts  = {}  -- [sig..":"..nameA..":"..nameB (sorted)] = true
-  local installed_global  = {}  -- [mode..":"..lhs] = spec.name — global maps we set
-  local warned_external   = {}  -- [mode..":"..lhs] = true — already-warned externals
-  local warned_external_ft = {} -- [mode..":"..lhs..":"..bufnr] = true — ft-scoped per-buffer dedup
+  local installed_global  = {}  -- [mode..":"..lhs] = spec.name -- global maps we set
+  local warned_external   = {}  -- [mode..":"..lhs] = true -- already-warned externals
+  local warned_external_ft = {} -- [mode..":"..lhs..":"..bufnr] = true -- ft-scoped per-buffer dedup
 
   -- Copy `existing` (a maparg(...,true) table) to `target_lhs` in `mode`.
   -- buf=nil installs globally; buf=<bufnr> installs buffer-locally (ft-scoped).
   -- Returns true if installation happened, false otherwise (caller decides
-  -- whether the failure is fatal — for `preserve`, it isn't: the spec's own
+  -- whether the failure is fatal -- for `preserve`, it isn't: the spec's own
   -- key still gets installed).
   local function preserve_mapping(existing, mode, target_lhs, source_lhs, buf)
     -- Preflight: don't clobber an already-bound target. For ft-scoped (buf
     -- non-nil), maparg without buffer context returns the global mapping
-    -- regardless — but ft-scoped install via vim.keymap.set with buffer = buf
+    -- regardless -- but ft-scoped install via vim.keymap.set with buffer = buf
     -- does not collide with the global, so the preflight uses the appropriate
     -- scope: buffer-local maparg if buf is set.
     local existing_target = (buf ~= nil)
@@ -136,7 +136,7 @@ function M.create(deps)
     local sig = conflict_key(mode, lhs, ft)
     local owner = key_registry[sig]
     if owner and owner ~= spec.name then
-      -- Dedup by canonical (sorted) pair so stub→real transitions don't re-warn:
+      -- Dedup by canonical (sorted) pair so stub->real transitions don't re-warn:
       -- the same pair of specs conflicting on the same lhs is one conflict,
       -- regardless of which spec registered first.
       local a, b = owner, spec.name
@@ -161,7 +161,7 @@ function M.create(deps)
     -- time (the mapping isn't global yet at registration), and for keys with
     -- rhs == nil (keymap is owned by the plugin's own setup, no install on
     -- our side). False-positive guards: skip when the existing mapping was
-    -- installed by core.pack itself — either via installed_global (real
+    -- installed by core.pack itself -- either via installed_global (real
     -- mappings from set_real_keymap) or via the desc prefix used by both
     -- set_real_keymap ("key: ") and set_stub_keymap ("lazy: ").
     if ft then return end
@@ -232,7 +232,7 @@ function M.create(deps)
 
     register_lhs(spec, m, lhs, k.ft, k)
 
-    -- rhs==nil means "plugin's own setup owns the keymap" — we only track it
+    -- rhs==nil means "plugin's own setup owns the keymap" -- we only track it
     -- for conflict detection and skip installing anything.
     if rhs == nil then return end
 

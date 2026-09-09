@@ -39,7 +39,7 @@ end
 -- <topic>` resolves to its docs. lazy.nvim auto-handles this on every
 -- install/update; without it, plugins ship with their .txt files but
 -- no tags index, and :help silently misses everything outside the
--- already-loaded set. Idempotent — :helptags rewrites the file.
+-- already-loaded set. Idempotent -- :helptags rewrites the file.
 function M.generate_helptags(dir)
   local doc = dir .. "/doc"
   if vim.fn.isdirectory(doc) == 1 then
@@ -53,7 +53,7 @@ end
 -- check it out directly so cold installs are reproducible across
 -- machines. Falls back to a fresh resolve when the lock entry is
 -- missing or the SHA isn't in the cloned repo (force-pushed branch,
--- removed commit, etc.) — `:Pack update` is what recomputes.
+-- removed commit, etc.) -- `:Pack update` is what recomputes.
 local pin_to_version = async(function(spec, dir)
   local locked = Lock.get(spec.name)
   if locked and type(locked.rev) == "string"
@@ -66,7 +66,7 @@ local pin_to_version = async(function(spec, dir)
         spec.name, locked.rev:sub(1, 8)),
       vim.log.levels.WARN)
   end
-  -- "pinned" is degenerate on a fresh clone (no lockfile rev yet) — fall
+  -- "pinned" is degenerate on a fresh clone (no lockfile rev yet) -- fall
   -- back to the default branch so the install has something to check
   -- out. Subsequent updates honor the pin via the version.resolve path.
   local effective = spec
@@ -105,7 +105,7 @@ M.run_build = async(function(spec, path, opts)
 
   -- During the build, surface progress via the fidget summary. After
   -- run_build returns, the calling pool's on_progress overwrites the
-  -- text — that's the intentional handoff.
+  -- text -- that's the intentional handoff.
   if opts.fidget then opts.fidget:set_status("core.pack", "building " .. spec.name) end
 
   local function fail(err)
@@ -114,7 +114,7 @@ M.run_build = async(function(spec, path, opts)
     -- the plugin should still load. Build artifacts (e.g. compiled
     -- treesitter parsers) can be regenerated separately by re-running
     -- the install hook. Marking the spec as failed would silently
-    -- disable the plugin entirely on next startup — far more disruptive
+    -- disable the plugin entirely on next startup -- far more disruptive
     -- than the build failure (which the user will see and can address).
     vim.notify(("core.pack: %s: build failed: %s"):format(spec.name, tostring(err)),
       vim.log.levels.ERROR)
@@ -125,13 +125,13 @@ M.run_build = async(function(spec, path, opts)
     -- Dump function bytecode and run it in a clean `nvim --headless`
     -- subprocess so the main UI stays responsive during heavy work
     -- (e.g. organ.nvim's grammar_install compiles two treesitter
-    -- parsers, which used to block for seconds). The subprocess
+    -- parsers). The subprocess
     -- prepends the plugin path to rtp so `require()` resolves the
     -- plugin's own modules. Fresh process means no stale `package.loaded`
     -- entries to clear, and no rtp pollution to roll back.
     --
-    -- The build receives { name, path } only; spec is no longer passed
-    -- (arbitrary tables are not generally serializable across processes).
+    -- The build receives { name, path } only, since arbitrary tables are
+    -- not generally serializable across processes.
     -- A build that needs spec data can re-derive it via `require()`
     -- against the prepended rtp.
     local ok_dump, dumped = pcall(string.dump, b)
@@ -341,7 +341,7 @@ end
 -- Best-effort guess at a plugin's main lua module name, mirroring
 -- Pack._resolve_main. Used to point the smoke subprocess at something
 -- to require. Returns nil when there's no `lua/` directory or no
--- name-matching entry — in that case smoke is skipped (vimscript-only
+-- name-matching entry -- in that case smoke is skipped (vimscript-only
 -- plugins, etc.).
 local function derive_main(dir, spec_name)
   local lua = dir .. "/lua"
@@ -597,7 +597,7 @@ end
 
 -- \037 is octal for 0x1F (the section delimiter byte). Octal escapes are
 -- POSIX printf; \xNN is a bash extension that dash (Ubuntu /bin/sh) treats
--- literally — silently breaking the parser without an error code.
+-- literally -- silently breaking the parser without an error code.
 local RESOLVE_SCRIPT = [[
 git -C "$1" tag --list
 printf '\037'
@@ -706,7 +706,7 @@ M.update = function(specs, names, opts)
         if opts.target == "lockfile" then
           local entry = Lock.get(t.name)
           if not entry then
-            vim.notify(("core.pack: %s not in lockfile — skipping"):format(t.name), vim.log.levels.WARN)
+            vim.notify(("core.pack: %s not in lockfile -- skipping"):format(t.name), vim.log.levels.WARN)
           else
             t.target_rev = entry.rev
             t.checkout_ref = entry.rev
@@ -751,15 +751,15 @@ M.update = function(specs, names, opts)
     end
     if #tag_skipped > 0 then
       vim.notify(
-        ("core.pack: tag SHA mismatch (force-tagged?) — refusing %d update(s):\n  %s\n  Run :Pack uninstall && :Pack install <name> to accept the new SHA."):format(
+        ("core.pack: tag SHA mismatch (force-tagged?) -- refusing %d update(s):\n  %s\n  Run :Pack uninstall && :Pack install <name> to accept the new SHA."):format(
           #tag_skipped, table.concat(tag_skipped, "\n  ")),
         vim.log.levels.WARN)
     end
 
     -- Branch force-push detection (opt-in via vim.g.core_pack_warn_branch_rewrite).
     -- If the new HEAD doesn't have the old HEAD as an ancestor, the
-    -- branch was rewritten. Doesn't refuse the update — branch rewrites
-    -- are sometimes legitimate (rebase, squash) — just informs the user
+    -- branch was rewritten. Doesn't refuse the update -- branch rewrites
+    -- are sometimes legitimate (rebase, squash) -- just informs the user
     -- so they can investigate when the signal matters to them.
     if vim.g.core_pack_warn_branch_rewrite then
       local rewrites = {}
@@ -885,7 +885,7 @@ M.update = function(specs, names, opts)
 end
 
 -- Uninstall named plugins: remove their on-disk dirs and lockfile
--- entries. The spec itself stays in the dotfiles config — running
+-- entries. The spec itself stays in the dotfiles config -- running
 -- :Pack install (or just relaunching nvim) will reinstall. Useful as
 -- a wipe-and-refresh when a plugin's state is broken or its build
 -- artifacts need regenerating.

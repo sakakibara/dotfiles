@@ -8,7 +8,7 @@ local function render(buf, win, pending, marked, expanded)
   local header = ("core.pack: %d of %d marked   <Tab> toggle  a all  u none  <C-d> expand  <CR> apply  q cancel")
     :format(marked_count, #pending)
 
-  local row_to_index = {}  -- buffer row → pending index (for keymap targeting)
+  local row_to_index = {}  -- buffer row -> pending index (for keymap targeting)
   local highlights = {}    -- { { row, col_start, col_end, hl_group }, ... }
 
   -- Name column: longest actual name, floor 16, cap 50.

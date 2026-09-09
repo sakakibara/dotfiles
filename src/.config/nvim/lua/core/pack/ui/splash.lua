@@ -2,7 +2,7 @@ local M = {}
 
 -- Cold-install splash. Shown only when pack.setup is blocking on a fresh
 -- install (#to_install > 0 in install_all). A full-screen floating buffer
--- with a centered, themed box — replaces the otherwise-blank screen and
+-- with a centered, themed box -- replaces the otherwise-blank screen and
 -- all half-rendered chrome (statusline, winbar, tabline) during the
 -- cold-start vim.wait.
 function M.cold_install_splash(total)
@@ -14,7 +14,7 @@ function M.cold_install_splash(total)
   pcall(vim.api.nvim_buf_set_name, buf, "core.pack: install")
 
   -- Save every piece of chrome we hide so :close() restores cleanly.
-  -- cmdheight is set high (not 0) — a 0-height cmdline guarantees the
+  -- cmdheight is set high (not 0) -- a 0-height cmdline guarantees the
   -- press-enter prompt for any message, and that prompt blocks the
   -- main thread so vim.defer_fn / vim.on_key can't fire to close the
   -- splash. Splash floats over everything, so the visually-large
@@ -74,14 +74,14 @@ function M.cold_install_splash(total)
   -- usually unobtrusive against the splash. shortmess "aTF" forces
   -- single-line truncation so multi-line messages can't overflow, and
   -- suppresses the "filename Nl, Mb" file-info message that nvim emits
-  -- on every :edit (including the argv buffer at startup) — which would
+  -- on every :edit (including the argv buffer at startup) -- which would
   -- otherwise flash briefly in the bottom-left strip during splash.
   vim.o.cmdheight   = 1
   vim.o.more        = false
   vim.opt.shortmess:append("aTF")
   -- Hide the terminal cursor via DECTCEM (CSI ?25 l). The TUI cursor is
   -- ultimately rendered by the terminal, not nvim, so highlight tweaks
-  -- and `guicursor` settings only affect shape/color — not visibility.
+  -- and `guicursor` settings only affect shape/color -- not visibility.
   -- The escape sequence directly tells the terminal to hide its cursor.
   -- Restored with CSI ?25 h on :close().
   pcall(io.stdout.write, io.stdout, "\27[?25l")
@@ -145,7 +145,7 @@ function M.cold_install_splash(total)
       local bar_filled = ("▰"):rep(filled)
       local bar_empty  = ("▱"):rep(BAR - filled)
       -- Pad `done` digits to the width of `total`, so the count column
-      -- has constant width regardless of how far we've progressed —
+      -- has constant width regardless of how far we've progressed --
       -- otherwise prog_pad_left changes when `done` crosses 10/100,
       -- visibly shifting the entire bar by one cell every decade.
       local digits = #tostring(total)
@@ -176,7 +176,7 @@ function M.cold_install_splash(total)
       "│" .. center("")                         .. "│",
       "│" .. mid_line                           .. "│",
       "│" .. center("")                         .. "│",
-      "│" .. center("installing missing plugins — no restart needed") .. "│",
+      "│" .. center("installing missing plugins -- no restart needed") .. "│",
       "│" .. center("")                         .. "│",
       "╰" .. ("─"):rep(BOX_W - 2) .. "╯",
     }
@@ -238,7 +238,7 @@ function M.cold_install_splash(total)
     if phase == "install" then
       -- Progress segments: filled (String), empty (Comment), N/M (Constant).
       -- Byte offsets are deterministic because the progress line is
-      -- ASCII spaces + N×▰ + M×▱ + "  " + ASCII count.
+      -- ASCII spaces + Nx▰ + Mx▱ + "  " + ASCII count.
       local prog_row    = box_top + 4
       local prog_inner  = pad_left + 3  -- skip left "│"
       local filled_sb   = prog_inner + prog_pad_left

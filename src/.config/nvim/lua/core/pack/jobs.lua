@@ -1,5 +1,5 @@
 local M = {}
-local uv = vim.uv or vim.loop
+local uv = vim.uv
 
 local TIMEOUT_MS = 10 * 60 * 1000
 local POLL_MS = 25

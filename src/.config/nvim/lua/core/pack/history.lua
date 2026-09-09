@@ -8,8 +8,6 @@ local function dir()
   return M._dir_override or (vim.fn.stdpath("config") .. "/pack-lock-history")
 end
 
-function M._dir() return dir() end
-
 local function ensure_dir()
   vim.fn.mkdir(dir(), "p")
 end

@@ -12,7 +12,7 @@ local function name_complete(Pack, arglead, predicate)
 end
 
 -- Build the status buffer payload (lines + highlight ranges) for :Pack
--- status. Pure function: reads Pack state, returns rendering data — no
+-- status. Pure function: reads Pack state, returns rendering data -- no
 -- side effects. Trigger column has a fixed 180-char width budget since
 -- :Pack status renders before the scratch window is open and can't see
 -- the real window width yet.
@@ -228,7 +228,7 @@ local function subcommands(Pack)
       local function apply(snapshot)
         local data = History.restore(snapshot.ts)
         if not data then vim.notify("core.pack: restore failed", vim.log.levels.ERROR); return end
-        vim.notify(("core.pack: restored snapshot %s — run :Pack! update to apply"):format(snapshot.iso))
+        vim.notify(("core.pack: restored snapshot %s -- run :Pack! update to apply"):format(snapshot.iso))
       end
 
       -- Numeric arg = direct index (1 = newest).
@@ -255,7 +255,7 @@ local function subcommands(Pack)
       local entries = Log.list({ limit = limit })
       if #entries == 0 then vim.notify("core.pack: no log entries"); return end
 
-      local lines = { ("core.pack log — last %d entries"):format(#entries), "" }
+      local lines = { ("core.pack log -- last %d entries"):format(#entries), "" }
       local highlights = { { 0, 0, #lines[1], "Title" } }
 
       -- Compute name column width: longest actual, floor 16, cap 40.

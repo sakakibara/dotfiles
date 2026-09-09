@@ -10,13 +10,13 @@
 -- fan-out at the source: N specs sharing BufWritePre produce 1 re-fire, not N.
 -- The dedup/guard/retry below are defense-in-depth for edge cases:
 --
--- - Dedup: two different trigger sites (e.g. cascaded BufReadPre→BufReadPost)
+-- - Dedup: two different trigger sites (e.g. cascaded BufReadPre->BufReadPost)
 --   scheduling the same-key refire in one tick collapse to one.
 -- - Re-entrancy guard: `vim.schedule` alone does NOT break autocmd nesting
---   when a handler pumps the event loop (BufWritePre → conform.format →
---   vim.wait(1000) — libuv runs pending schedule callbacks during that
+--   when a handler pumps the event loop (BufWritePre -> conform.format ->
+--   vim.wait(1000) -- libuv runs pending schedule callbacks during that
 --   wait). Guard short-circuits any same-key recursion.
--- - Retry slot: a schedule arriving while active must not be dropped —
+-- - Retry slot: a schedule arriving while active must not be dropped --
 --   park it and replay after active clears.
 --
 -- Keyed by (event, buffer, pattern): different buffers/patterns are
@@ -40,7 +40,7 @@ function M.create(deps)
   schedule_refire = function(event, opts)
     local key = event .. "\0" .. (opts.buffer or 0) .. "\0" .. (opts.pattern or "")
     if active[key] then
-      -- Park the request — we'll replay once active clears. Latest-wins is
+      -- Park the request -- we'll replay once active clears. Latest-wins is
       -- correct for lazy-load: each call carries opts from one original
       -- event fire, and the re-fire just needs to give handlers a chance
       -- to catch up on the current state.
@@ -71,7 +71,7 @@ function M.create(deps)
     -- Group specs by triggering event/pattern/ft. Matches lazy.nvim's design:
     -- one once=true autocmd per trigger group loads all specs registered to
     -- it, so N specs sharing BufWritePre fan into 1 handler, not N. Prevents
-    -- the E218 nesting class of bugs at the structural level — no runtime
+    -- the E218 nesting class of bugs at the structural level -- no runtime
     -- dedup needed for the common case.
     local user_groups  = {}  -- [pattern] -> { specs = {...} }
     local event_groups = {}  -- [event]   -> { specs = {...} }
@@ -104,7 +104,7 @@ function M.create(deps)
         for _, ft in ipairs(fts) do push(ft_groups, ft, spec) end
       end
 
-      -- cmd (lazy only) — registered per-command, not per-spec, so no
+      -- cmd (lazy only) -- registered per-command, not per-spec, so no
       -- grouping concern; two specs binding the same command is already a
       -- user error caught at vim.api.nvim_create_user_command.
       if spec.lazy and spec.cmd then

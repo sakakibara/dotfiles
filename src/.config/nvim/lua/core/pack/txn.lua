@@ -4,7 +4,7 @@
 -- restart and Pack.setup picks it up to resume.
 --
 -- Stored as JSON at $XDG_STATE_HOME/nvim/core-pack/update.txn.json. Only
--- the fields needed to reconstruct apply_pending input are persisted —
+-- the fields needed to reconstruct apply_pending input are persisted --
 -- the spec table itself is rebuilt from M._specs at resume time.
 
 local M = {}

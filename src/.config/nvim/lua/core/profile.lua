@@ -8,12 +8,6 @@ function M.start()
   t0 = uv.hrtime()
 end
 
-function M.mark(name, kind)
-  if not t0 then return end
-  local ns = uv.hrtime() - t0
-  table.insert(spans, { name = name, ms = ns / 1e6, kind = kind or "event" })
-end
-
 function M.span(name, kind, fn)
   local s = uv.hrtime()
   fn()
@@ -79,7 +73,7 @@ function M._structured_report()
   if name_max > 40 then name_max = 40 end
 
   local lines = {
-    ("core.pack profile — %d plugins, %.2f ms total"):format(#sorted, total_ms),
+    ("core.pack profile -- %d plugins, %.2f ms total"):format(#sorted, total_ms),
     "",
   }
   local highlights = { { 0, 0, #lines[1], "Title" } }
@@ -91,7 +85,7 @@ function M._structured_report()
     local name_padded = ("%-" .. name_max .. "s"):format(name)
 
     -- Bar: relative to heaviest plugin (so slowest = full bar). Percentages
-    -- below stay relative to wall-clock total — that's the meaningful number.
+    -- below stay relative to wall-clock total -- that's the meaningful number.
     local bar_share = (max_plugin_ms > 0) and (e.total_ms / max_plugin_ms) or 0
     local filled = math.floor(bar_share * BAR_WIDTH + 0.5)
     if filled > BAR_WIDTH then filled = BAR_WIDTH end

@@ -15,7 +15,7 @@ function M.validate(ref)
 end
 
 -- Compose a fully-qualified refspec. Used for human-readable display
--- and for passing to rev-parse — never used as a checkout argument
+-- and for passing to rev-parse -- never used as a checkout argument
 -- directly (checkout always uses the SHA from .resolve()).
 function M.qualified(kind, name)
   if kind == "tag"    then return "refs/tags/" .. name end

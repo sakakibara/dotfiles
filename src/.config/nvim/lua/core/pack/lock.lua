@@ -1,14 +1,9 @@
 local M = {}
 
-M._path_override = nil           -- tests
-M._vim_pack_path_override = nil  -- tests
+M._path_override = nil  -- tests
 
 local function default_path()
   return vim.fn.stdpath("config") .. "/pack-lock.json"
-end
-
-local function vim_pack_default_path()
-  return vim.fn.stdpath("config") .. "/nvim-pack-lock.json"
 end
 
 function M.path()
@@ -35,12 +30,12 @@ end
 
 -- Pretty-print the lockfile: top-level keys sorted, "plugins" object's
 -- inner entries each on their own indented line in alphabetical order.
--- Per-plugin entries stay on a single line — they're small and the diff
+-- Per-plugin entries stay on a single line -- they're small and the diff
 -- value is at the plugin-name layer.
 -- Serialize a plugin entry as a single-line JSON object with keys in a
 -- deterministic alphabetical order. vim.json.encode by itself doesn't
 -- guarantee key order, so two encodes of the same table can produce
--- different bytes — which would defeat the byte-equality skip in
+-- different bytes -- which would defeat the byte-equality skip in
 -- M.write and cause spurious lockfile rewrites on every startup.
 local function encode_entry(entry)
   local keys = vim.tbl_keys(entry); table.sort(keys)
@@ -77,11 +72,8 @@ function M.write(data)
   local p = M.path()
   vim.fn.mkdir(vim.fn.fnamemodify(p, ":h"), "p")
   local payload = pretty_encode(data)
-  -- Skip the write if the on-disk bytes are already what we'd write.
-  -- Avoids touching mtime / triggering `git status` churn on no-ops,
-  -- and means a single format-conversion write happens once when the
-  -- legacy single-line lockfile is first encountered (after that the
-  -- file matches the pretty-printed payload and no-op skips kick in).
+  -- Skip the write if the on-disk bytes are already what we'd write, so a
+  -- no-op does not touch mtime or churn `git status`.
   local existing_fd = io.open(p, "r")
   if existing_fd then
     local existing = existing_fd:read("*a")
@@ -144,19 +136,6 @@ function M.delete(name)
   local data = M.read()
   data.plugins[name] = nil
   M.write(data)
-end
-
-function M.migrate_from_vim_pack()
-  local existing = M.read()
-  if next(existing.plugins) ~= nil then return false end
-  local src_path = M._vim_pack_path_override or vim_pack_default_path()
-  local fd = io.open(src_path, "r")
-  if not fd then return false end
-  local raw = fd:read("*a"); fd:close()
-  local ok, src = pcall(vim.json.decode, raw)
-  if not ok or type(src) ~= "table" or type(src.plugins) ~= "table" then return false end
-  M.write({ version = 1, plugins = src.plugins })
-  return true
 end
 
 return M

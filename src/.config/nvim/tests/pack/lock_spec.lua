@@ -38,28 +38,4 @@ T.describe("core.pack.lock", function()
     T.eq(L.read().plugins.a, nil)
   end)
 
-  T.it("migrate_from_vim_pack copies entries when target missing", function()
-    local L = fresh_lock()
-    local src_path = vim.fn.tempname() .. "-vimpack.json"
-    local f = io.open(src_path, "w")
-    f:write('{"plugins":{"x":{"src":"u/x","rev":"deadbeef"}}}')
-    f:close()
-    L._vim_pack_path_override = src_path
-    local migrated = L.migrate_from_vim_pack()
-    T.truthy(migrated)
-    T.eq(L.read().plugins.x.rev, "deadbeef")
-  end)
-
-  T.it("migrate_from_vim_pack is a no-op when target already populated", function()
-    local L = fresh_lock()
-    L.set("existing", { src = "u/e", rev = "1" })
-    local src_path = vim.fn.tempname() .. "-vimpack.json"
-    local f = io.open(src_path, "w")
-    f:write('{"plugins":{"x":{"src":"u/x","rev":"deadbeef"}}}')
-    f:close()
-    L._vim_pack_path_override = src_path
-    local migrated = L.migrate_from_vim_pack()
-    T.eq(migrated, false)
-    T.eq(L.read().plugins.x, nil)
-  end)
 end)
