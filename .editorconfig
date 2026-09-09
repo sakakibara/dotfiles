@@ -1,26 +1,14 @@
 #.editorconfig
 
-[*.txt]
-end_of_line = crlf
-
-[*.{md,org}]
+[*]
+charset = utf-8
 end_of_line = lf
-indent_size = 4
-trim_trailing_whitespace = false
 insert_final_newline = true
 
-[*.{js,jsx,json,py,fish}]
-indent_style = space
-indent_size = 4
+[*.md]
 end_of_line = lf
-trim_trailing_whitespace = true
-insert_final_newline = true
-
-[*.{sh,bash,lua,html,css,sass,scss,tmpl}]
-indent_style = space
 indent_size = 2
-end_of_line = lf
-trim_trailing_whitespace = true
+trim_trailing_whitespace = false
 insert_final_newline = true
 
 [.*rc]
@@ -30,9 +18,33 @@ end_of_line = lf
 trim_trailing_whitespace = true
 insert_final_newline = true
 
-[*.go]
-indent_style = tab
-indent_size = 8
+[{*.py,*.fish,*.ps1,*.psm1,.xonshrc}]
+indent_style = space
+indent_size = 4
 end_of_line = lf
 trim_trailing_whitespace = true
 insert_final_newline = true
+
+[*.{sh,bash,zsh,zabbr,lua,el,css,json,jsonc,toml,yaml,yml,scm,tmTheme,txt,conf}]
+indent_style = space
+indent_size = 2
+end_of_line = lf
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+[*.{inc,gen}]
+indent_style = tab
+end_of_line = lf
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+[{src/.claude/hooks,src/.claude/skills,src/.claude/CLAUDE.md,src/.codex/AGENTS.md,src/.config/opencode/AGENTS.md}]
+insert_final_newline = false
+
+[{pack-lock.json,_tailwind_palette.lua,*.tmTheme}]
+insert_final_newline = false
+
+[*.icns]
+charset = unset
+end_of_line = unset
+insert_final_newline = false
