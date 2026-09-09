@@ -1,7 +1,11 @@
-# macOS packages-blacklist — entries (in the same syntax as packages.txt)
+# macOS packages-blacklist -- entries (in the same syntax as packages.txt)
 # that `dotfiles sync` should never offer to re-add. Use this for one-off
 # installs you don't want tracked across machines.
 #
 # Examples:
 #   cask:some-internal-tool
 #   experimental-formula
+
+# Provided by mise (src/.config/mise/config.toml); a brew copy may linger
+# on a machine set up before that.
+usage

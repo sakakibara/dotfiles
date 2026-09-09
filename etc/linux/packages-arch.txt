@@ -1,6 +1,7 @@
-# Native packages for Arch/Manjaro/EndeavourOS. Best-effort — CI validates
-# against archlinux:latest container. Arch tends to have everything in
-# extra/community; this list mirrors what's in Brewfile minus macOS-specific.
+# Native packages for Arch/Manjaro/EndeavourOS. CI validates against the
+# archlinux:latest container. A subset of etc/darwin/packages.txt: the CLI
+# tools and build packages Arch ships in its own repos; the library formulae Homebrew
+# lists come in as dependencies here.
 #
 # CLI tools and shells
 bash
@@ -12,6 +13,7 @@ fzf
 gawk
 github-cli
 git
+git-lfs
 gnupg
 imagemagick
 jq
@@ -19,6 +21,7 @@ neovim
 nnn
 ollama
 ripgrep
+starship
 tree
 wget
 yt-dlp

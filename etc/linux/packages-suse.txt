@@ -1,6 +1,6 @@
-# Native packages for openSUSE Leap/Tumbleweed (and SLES). Best-effort —
-# CI validates against opensuse/tumbleweed:latest. Some tools (gh, lazygit,
-# etc.) may need extras.bash if not in default zypper repos.
+# Native packages for openSUSE Leap/Tumbleweed (and SLES). CI validates
+# against opensuse/tumbleweed:latest. Tools outside the default zypper repos
+# (lazygit, lazydocker) come from etc/bash/lib/tools.bash.
 #
 # CLI tools and shells
 bash
@@ -12,11 +12,14 @@ fzf
 gawk
 gh
 git
+git-lfs
 gpg2
 ImageMagick
 jq
 neovim
+nnn
 ripgrep
+starship
 tree
 wget
 yt-dlp

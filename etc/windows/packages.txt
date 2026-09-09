@@ -1,20 +1,20 @@
-# Windows packages — bare names install via scoop's default bucket; entries
+# Windows packages -- bare names install via scoop's default bucket; entries
 # of the form `bucket/name` use that scoop bucket; `winget:Pkg.Id` falls back
 # to winget when scoop doesn't have the package. Profile gating uses the same
 # trailing ` @profile1,profile2` syntax as the macOS / Linux files.
 #
 # Companion: etc/windows/packages-blacklist.txt (same syntax).
 #
-# NOTE: bash `dotfiles sync` doesn't run on native Windows (no bash). A
-# PowerShell sibling that consumes this file is future work; for now this
-# is the canonical source of what should be installed and the run_once
-# `windows/run_once_install-scoop.ps1.tmpl` script (TODO) will read it.
+# Consumed by scripts/pre/os=windows/apps-scoop.ps1 on apply and reviewed by
+# `dotfiles sync` (src/.local/bin/sync.ps1) on native Windows.
 
 # Buckets (scoop bucket add)
 # bucket:extras
 # bucket:nerd-fonts
 
 # CLI
+# The gh shim (gh.cmd -> gh.ps1) hard-requires PowerShell 7.
+pwsh
 # neovim
 # ripgrep
 # fd

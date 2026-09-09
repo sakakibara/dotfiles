@@ -11,6 +11,7 @@ fzf
 gawk
 gh
 git
+git-lfs
 gnupg2
 ImageMagick
 jq

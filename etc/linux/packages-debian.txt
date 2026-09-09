@@ -1,11 +1,12 @@
-# Native packages for Debian/Ubuntu. Best-effort starting point — CI validates
-# against debian:stable. Some tools (gh, lazygit, etc.) need to be installed
-# via extras.bash on Debian since they're not in default repos.
+# Native packages for Debian/Ubuntu. CI validates against debian:stable.
+# Tools outside the default repos (gh, lazygit, lazydocker, starship) come
+# from etc/bash/lib/tools.bash.
 #
 # Notes:
 #   - bat may install as `batcat` on older Ubuntu/Debian (renamed due to
-#     conflict with bacula-cli). User's zshrc/fish handles fdfind→fd alias.
-#   - gh is NOT in default Debian repos; handled by extras::gh.
+#     conflict with bacula-cli). The fd -> fdfind alias lives in .zshrc
+#     and the prompt abbreviation in data/abbreviations.toml.
+#   - gh is NOT in default Debian repos; handled by tools::gh.
 #
 # CLI tools and shells
 bash
@@ -16,6 +17,7 @@ fish
 fzf
 gawk
 git
+git-lfs
 gnupg
 imagemagick
 jq
