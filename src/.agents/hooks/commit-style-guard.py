@@ -120,8 +120,57 @@ NEWLINE = "\x01nl\x01"
 STOP = {"git", ";", "&&", "||", "|", "&", "(", ")", "{", "}", NEWLINE}
 
 
+VALUED = set("mFCct")
+VALUED_GLUED = set("Su")
+
+
+VALUED_LONG = ("--message", "--file", "--reuse-message", "--reedit-message",
+               "--template", "--trailer", "--author", "--date", "--cleanup",
+               "--fixup", "--squash", "--pathspec-from-file")
+
+
+def expand_clusters(argv):
+    """`-nm msg` is `-n -m msg`, `-am` is `-a -m`, `-mfoo` is `-m foo`: bundled
+    short flags are split so each is seen on its own. The first value-taking
+    letter ends the split: what follows it is that option's value, not more
+    flags. A stop word is left whole, and `scan_args` ends the scan there.
+    The word a flag consumes is a value, never a cluster: a message may
+    itself start with a dash."""
+    out = []
+    take_value = False
+    for w in argv:
+        if take_value:
+            take_value = False
+            out.append(w)
+            continue
+        if w in ("-m", "-F", "-C", "-c", "-t") or (w.startswith("--") and w in VALUED_LONG):
+            take_value = True
+            out.append(w)
+            continue
+        if w in STOP or not re.fullmatch(r"-[a-zA-Z]{2,}.*", w):
+            out.append(w)
+            continue
+        i = 1
+        while i < len(w):
+            ch = w[i]
+            if ch in VALUED_GLUED:
+                out.append("-" + w[i:])
+                break
+            if ch in VALUED:
+                out.append("-" + ch)
+                if i + 1 < len(w):
+                    out.append(w[i + 1:])
+                else:
+                    take_value = True
+                break
+            out.append("-" + ch)
+            i += 1
+    return out
+
+
 def scan_args(argv, heredocs, cdir):
     """Message and bypass flag from the arguments following `commit`."""
+    argv = expand_clusters(argv)
     messages, k, amend, reuse, no_verify = [], 0, False, None, False
     while k < len(argv):
         w = argv[k]

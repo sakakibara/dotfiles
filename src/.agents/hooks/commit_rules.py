@@ -35,10 +35,29 @@ NON_ASCII_PUNCT = {
     "\u2014": "em-dash",  "\u2013": "en-dash",   "\u2026": "ellipsis",
     "\u2018": "smart quote", "\u2019": "smart quote",
     "\u201c": "smart quote", "\u201d": "smart quote",
-    "\u2192": "arrow", "\u2190": "arrow",
+    "\u2192": "arrow", "\u2190": "arrow", "\u2191": "arrow", "\u2193": "arrow",
+    "\u2194": "arrow", "\u21aa": "arrow", "\u21d2": "arrow", "\u279c": "arrow",
+    "\u27f6": "arrow",
+    "\u2015": "horizontal bar", "\u2212": "minus sign", "\uff0d": "fullwidth hyphen",
+    "\u2025": "two-dot leader", "\u2022": "bullet", "\u00d7": "multiplication sign",
+    "\u00a0": "non-breaking space", "\ufeff": "byte-order mark",
+    "\ufffd": "replacement character", "\u00ad": "soft hyphen",
+    "\u200b": "zero-width space", "\u200c": "zero-width space", "\u200d": "zero-width space",
+    "\u2028": "line separator", "\u2029": "line separator",
+    "\u2007": "non-breaking space", "\u2009": "thin space", "\u202f": "non-breaking space",
+    "\u2010": "hyphen", "\u2011": "hyphen", "\u2012": "dash",
+    "\u201a": "smart quote", "\u201e": "smart quote", "\u2032": "prime",
+    "\u00ab": "guillemet", "\u00bb": "guillemet",
 }
 ASCII_FOR = {"em-dash": "--", "en-dash": "-", "ellipsis": "...",
-             "smart quote": "\" or '", "arrow": "->"}
+             "smart quote": "\" or '", "arrow": "->",
+             "horizontal bar": "--", "minus sign": "-", "fullwidth hyphen": "-",
+             "two-dot leader": "..", "bullet": "-", "multiplication sign": "x",
+             "non-breaking space": "a space", "byte-order mark": "nothing",
+             "replacement character": "the intended character", "soft hyphen": "nothing",
+             "zero-width space": "nothing", "line separator": "a newline", "thin space": " ",
+             "hyphen": "-", "dash": "-", "prime": "'", "guillemet": "\"",
+}
 # Superlatives that are never a statement of behaviour. Words that are often
 # literal - robust, secure, powerful - are deliberately left out: blocking them
 # would reject honest subjects more often than promotional ones.
@@ -47,10 +66,11 @@ OVERCLAIM = re.compile(
     r"|seamless|performant)\b", re.I)
 
 SCISSORS = re.compile(r"^#\s*-+\s*>8\s*-+", re.M)
-# Messages git composes itself from existing history. Judging them would reject
-# ordinary merges, reverts and autosquash commits, so they are left alone.
+# Messages git composes from history (merges, reverts, autosquash) are another
+# author's text: only the trailer rule applies; the derived rules stand down.
 GENERATED = re.compile(
-    r"^(?:Merge |Revert \"|fixup! |squash! |amend! |Applying: |Rebasing )")
+    r"^(?:Merge (?:branch|branches|remote-tracking branch|remote-tracking branches|tag|tags|commit|pull request) "
+    r"|Revert \"|Reapply \"|fixup! |squash! |amend! |Applying: |Rebasing )")
 
 
 def strip_git_comments(text):
@@ -103,20 +123,25 @@ def repo_root(cdir=None):
 def agent_attribution_allowed(cdir=None):
     """Whether the target repository opts back into agent attribution - the
     session link, or attribution text of its own. Read from that repository's
-    own .claude settings, which stay outside the dotfiles."""
+    own untracked .claude/settings.local.json, the one file the instructions
+    name for the opt-in, so a committed file cannot switch it on."""
     root = repo_root(cdir)
     if not root:
         return False
-    for name in ("settings.local.json", "settings.json"):
-        try:
-            with open(os.path.join(root, ".claude", name)) as fh:
-                attribution = json.load(fh).get("attribution", {})
-        except Exception:
-            continue
-        if attribution.get("sessionUrl") is True:
-            return True
-        if isinstance(attribution.get("commit"), str) and attribution["commit"].strip():
-            return True
+    tracked = subprocess.run(
+        ["git", "-C", root, "ls-files", "--error-unmatch", "--", ".claude/settings.local.json"],
+        capture_output=True, timeout=10)
+    if tracked.returncode == 0:
+        return False
+    try:
+        with open(os.path.join(root, ".claude", "settings.local.json")) as fh:
+            attribution = json.load(fh).get("attribution", {})
+    except Exception:
+        return False
+    if attribution.get("sessionUrl") is True:
+        return True
+    if isinstance(attribution.get("commit"), str) and attribution["commit"].strip():
+        return True
     return False
 
 
@@ -160,8 +185,10 @@ def derived(subject, body, entries):
 def check(text, cdir=None):
     """Every rule, against one complete commit message. Empty list means clean."""
     subject, body = split_message(text)
-    if not subject or GENERATED.match(subject):
+    if not subject:
         return []
+    generated = bool(GENERATED.match(subject))
+    judged = "" if generated else text
     found = []
 
     if "\n" in subject:
@@ -172,19 +199,19 @@ def check(text, cdir=None):
             "message")
 
     for ch, name in NON_ASCII_PUNCT.items():
-        if ch in text:
+        if ch in judged:
             found.append(
                 f"the message uses a {name} ({ch!r}); write ASCII punctuation "
                 f"instead ({ASCII_FOR[name]})")
             break
 
-    over = OVERCLAIM.search(text)
+    over = OVERCLAIM.search(judged)
     if over:
         found.append(
             f"the message claims \"{over.group(0)}\" - state the concrete "
             f"behaviour that changed instead")
 
-    hit = SESSION_LABEL.search(text)
+    hit = SESSION_LABEL.search(judged)
     if hit:
         found.append(
             f"the message carries the session-private label \"{hit.group(0)}\" "
@@ -207,6 +234,6 @@ def check(text, cdir=None):
                 for part in body) if p]
 
     entries = history(cdir)
-    if len(entries) >= MIN_SAMPLE:
+    if len(entries) >= MIN_SAMPLE and not generated:
         found += derived(subject, body, entries)
     return found
