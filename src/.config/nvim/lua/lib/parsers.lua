@@ -5,9 +5,9 @@
 
 local M = {}
 
-local by_ft = {} -- ft → list of parser names
-local seen  = {} -- (ft .. ":" .. name) → true
-local eager = {} -- name → true (parsers to install at startup, ft-independent)
+local by_ft = {} -- ft -> list of parser names
+local seen  = {} -- (ft .. ":" .. name) -> true
+local eager = {} -- name -> true (parsers to install at startup, ft-independent)
 
 local function add_for_ft(name, ft)
   by_ft[ft] = by_ft[ft] or {}
@@ -20,7 +20,7 @@ end
 -- Lib.parsers.add(name1, name2, ..., { ft = "ts" })
 -- Lib.parsers.add(name, { ft = { "tsx", "typescript" } })
 -- Lib.parsers.add(name, { ft = "regex", eager = true })
--- `eager = true` also installs the parser at startup regardless of ft —
+-- `eager = true` also installs the parser at startup regardless of ft --
 -- needed for parsers that serve cross-cutting consumers (noice cmdline
 -- regex highlighting, snacks.picker) rather than a buffer of that ft.
 function M.add(...)
@@ -53,6 +53,32 @@ function M.list_for_ft(ft)
   for _, t in ipairs(by_ft[ft] or {}) do out[#out + 1] = t end
   table.sort(out)
   return out
+end
+
+function M.lang_for_ft(ft)
+  local lang = vim.treesitter.language.get_lang(ft)
+  if not lang then return nil end
+  for _, name in ipairs(M.list_for_ft(ft)) do
+    if name == lang then return lang end
+  end
+  return nil
+end
+
+function M.start_for_buf(bufnr)
+  if not vim.api.nvim_buf_is_valid(bufnr) then return false end
+  local ft = vim.bo[bufnr].filetype
+  if ft == "bigfile" then return false end
+  local lang = M.lang_for_ft(ft)
+  if not lang then return false end
+  if not pcall(vim.treesitter.start, bufnr, lang) then return false end
+  pcall(function()
+    vim.wo[0][0].foldexpr   = "v:lua.vim.treesitter.foldexpr()"
+    vim.wo[0][0].foldmethod = "expr"
+  end)
+  pcall(function()
+    vim.bo[bufnr].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+  end)
+  return true
 end
 
 -- All registered fts. Used by treesitter's FileType autocmd to know

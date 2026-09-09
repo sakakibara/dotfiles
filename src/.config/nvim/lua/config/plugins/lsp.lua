@@ -118,7 +118,7 @@ return {
         if ft == "" or seen_ft[ft] then return end
         seen_ft[ft] = true
         local tools = Lib.mason.list_for_ft(ft)
-        if #tools > 0 then install_missing(tools, ft) end
+        if #tools > 0 then install_missing(tools) end
       end
 
       vim.api.nvim_create_autocmd("FileType", {
@@ -127,7 +127,7 @@ return {
       })
 
       -- Catch buffers whose FileType fired BEFORE our autocmd was
-      -- registered — happens on `nvim foo.lua` cold start, where the
+      -- registered -- happens on `nvim foo.lua` cold start, where the
       -- arg-file's FileType is dispatched before pack.setup wires up
       -- mason. Without this scan, that buffer's LSP/mason install
       -- never triggers until the user does something that re-fires

@@ -1,15 +1,13 @@
---
--- nvim-treesitter main branch (active, Nvim 0.12+). master is the locked
--- legacy branch for Nvim 0.11 — it has the iter_matches API mismatch.
--- main dropped the configs module; highlighting/folds/indent are wired
--- per-filetype via native vim.treesitter APIs.
+-- nvim-treesitter main branch (Nvim 0.12+): no configs module, so
+-- highlighting, folds and indent are wired per-filetype via the native
+-- vim.treesitter APIs.
 --
 -- Parsers themselves are registered via Lib.parsers.add(...) by lang
 -- spec files and the call below for editor-baseline parsers. The
 -- FileType autocmd in config() reads the registry and installs the
 -- right parser(s) the first time a buffer of that ft opens.
 
--- Editor-baseline parsers — these aren't tied to a single lang/*.lua
+-- Editor-baseline parsers -- these aren't tied to a single lang/*.lua
 -- but are useful across the editor (own config files, embedded snippets,
 -- chrome-side rendering). Tagged with their natural fts.
 Lib.parsers.add("lua",     { ft = "lua" })
@@ -18,6 +16,7 @@ Lib.parsers.add("vim",     { ft = "vim" })
 Lib.parsers.add("vimdoc",  { ft = "help" })
 Lib.parsers.add("query",   { ft = "query" })
 Lib.parsers.add("regex",   { ft = "regex", eager = true })
+vim.treesitter.language.register("bash", { "sh", "zsh" })
 Lib.parsers.add("bash",    { ft = { "bash", "sh", "zsh" }, eager = true })
 
 return {
@@ -48,8 +47,8 @@ return {
       -- (which bursts to the cmdline and triggers press-enter when
       -- the install queues many parsers in succession) to whatever
       -- surface is most appropriate:
-      --   - Splash open  → splash status line (cold-install context)
-      --   - Splash closed → vim.notify (toast) so on-demand parser
+      --   - Splash open  -> splash status line (cold-install context)
+      --   - Splash closed -> vim.notify (toast) so on-demand parser
       --     installs (e.g., first time opening a Python buffer)
       --     give visible feedback
       -- warn/error are untouched so real failures still surface via
@@ -71,7 +70,7 @@ return {
 
       -- Track which fts have already had their parser-install attempted
       -- so we don't re-fire on every buffer of the same filetype.
-      local install_state = {} -- ft → "installing" | "installed"
+      local install_state = {} -- ft -> "installing" | "installed"
       local installed_set = {}
       do
         local ts_config = require("nvim-treesitter.config")
@@ -85,7 +84,7 @@ return {
         end
       end
 
-      -- Eager parsers (regex, bash) — install at startup regardless of ft
+      -- Eager parsers (regex, bash) -- install at startup regardless of ft
       -- because cross-cutting consumers (noice cmdline regex highlighting,
       -- snacks.picker) need them present without a corresponding buffer.
       do
@@ -100,19 +99,7 @@ return {
         end
       end
 
-      -- Start treesitter on the buffer. Safe to call multiple times.
-      local function start_for_buf(bufnr)
-        if not vim.api.nvim_buf_is_valid(bufnr) then return end
-        if vim.bo[bufnr].filetype == "bigfile" then return end
-        pcall(vim.treesitter.start, bufnr)
-        pcall(function()
-          vim.wo[0][0].foldexpr   = "v:lua.vim.treesitter.foldexpr()"
-          vim.wo[0][0].foldmethod = "expr"
-        end)
-        pcall(function()
-          vim.bo[bufnr].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
-        end)
-      end
+      local start_for_buf = Lib.parsers.start_for_buf
 
       -- On every FileType, look up parsers registered for that ft via
       -- Lib.parsers. If any aren't installed, kick off install async
@@ -162,10 +149,10 @@ return {
       -- Languages used only inside org #+begin_src blocks are injected, not
       -- buffer filetypes, so the FileType installer above never sees them.
       -- Ask organ which parsers a buffer's src blocks want and install any
-      -- that are missing. Tracked by parser name, not ft — the set varies
+      -- that are missing. Tracked by parser name, not ft -- the set varies
       -- per buffer. After an install lands, re-highlight open org buffers so
       -- the new injection appears without reopening the file.
-      local src_block_state = {} -- parser name → "installing" | "installed"
+      local src_block_state = {} -- parser name -> "installing" | "installed"
 
       local function rehighlight_org_buffers()
         for _, b in ipairs(vim.api.nvim_list_bufs()) do
@@ -218,7 +205,7 @@ return {
     end,
   },
 
-  -- Textobjects — has a main branch that pairs with nvim-treesitter main
+  -- Textobjects -- has a main branch that pairs with nvim-treesitter main
   {
     "nvim-treesitter/nvim-treesitter-textobjects",
     branch = "main",
@@ -246,7 +233,7 @@ return {
 
   {
     "windwp/nvim-ts-autotag",
-    ft = { "html", "xml", "jsx", "tsx", "vue", "svelte", "astro", "markdown" },
+    ft = { "html", "xml", "javascriptreact", "typescriptreact", "vue", "svelte", "astro", "markdown" },
     opts = {},
   },
 }
