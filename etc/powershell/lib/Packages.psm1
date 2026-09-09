@@ -1,4 +1,4 @@
-# packages — shared parser for the per-OS package list files (analog of
+# packages -- shared parser for the per-OS package list files (analog of
 # etc/bash/lib/packages.bash). Used by sync.ps1 and the install libraries.
 
 Import-Module (Join-Path $PSScriptRoot 'Msg.psm1') -Force
@@ -8,7 +8,7 @@ Import-Module (Join-Path $PSScriptRoot 'Msg.psm1') -Force
 #
 # Neither DOTFILES_PROFILE nor a `mox facts` value resolving is a hard
 # error: callers run outside `mox apply`, where there is no unbound-fact
-# guard, so this must not guess. Throws a terminating error instead —
+# guard, so this must not guess. Throws a terminating error instead --
 # callers run with $ErrorActionPreference = 'Stop', so this halts the
 # calling command rather than proceeding with a guessed profile.
 function Get-DotfilesProfile {
@@ -33,7 +33,7 @@ function ConvertFrom-PackagesLine([string]$line) {
     $profiles = @()
     # Profile suffix splits on the LAST literal " @". Versioned scoop
     # entries (e.g. `openssl@3`) keep their `@` because there's no
-    # leading space — the same disambiguation rule as bash.
+    # leading space -- the same disambiguation rule as bash.
     $lastSpaceAt = $line.LastIndexOf(' @')
     if ($lastSpaceAt -ge 0) {
         $profilePart = $line.Substring($lastSpaceAt + 2)
@@ -70,4 +70,18 @@ function Read-PackagesFile([string]$file, [string]$default_kind, [string]$curren
     return ,$out
 }
 
-Export-ModuleMember -Function Get-DotfilesProfile, ConvertFrom-PackagesLine, Test-PackageApplies, Read-PackagesFile
+# Yield every line in $file as @{ Kind; Name } regardless of profile, the
+# way a blacklist is read: an opted-out entry stays out on every profile.
+function Read-PackagesFileAll([string]$file, [string]$default_kind) {
+    if (-not (Test-Path -LiteralPath $file)) { return @() }
+    $out = @()
+    foreach ($line in Get-Content -LiteralPath $file) {
+        $p = ConvertFrom-PackagesLine $line
+        if (-not $p) { continue }
+        $k = if ($p.Kind) { $p.Kind } else { $default_kind }
+        $out += @{ Kind = $k; Name = $p.Name }
+    }
+    return ,$out
+}
+
+Export-ModuleMember -Function Get-DotfilesProfile, ConvertFrom-PackagesLine, Test-PackageApplies, Read-PackagesFile, Read-PackagesFileAll

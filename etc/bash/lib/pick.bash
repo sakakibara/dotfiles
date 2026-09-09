@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# pick — interactive multi-select runner. Replaces sequential `ask_to_run`
-# prompts with a single TUI menu where each named function is a togglable
-# row. Selected entries run in order with per-step output captured to log
+# pick -- interactive multi-select runner: a single TUI menu where each named
+# function is a togglable row. Selected entries run in order with per-step output captured to log
 # files and a final summary.
 #
 # Item syntax
@@ -45,8 +44,8 @@ import msg store
 # Three small containers back the selection state. We use store (which
 # code-generates per-instance helpers at module load) instead of a generic
 # polyfill because the inner-loop scans during pick render need to be
-# eval-free — at ~30 items × ~30 has-checks per render, an eval-based
-# polyfill is ~300× slower than direct array iteration.
+# eval-free -- at ~30 items x ~30 has-checks per render, an eval-based
+# polyfill runs an eval per element, far slower than direct array iteration.
 #
 #   pick_selected   set: members of the current selection
 #   pick_changed    set: items whose hash differs from the recorded one
@@ -95,7 +94,7 @@ pick::_parse_item() {
   _pick_reason=""
   _pick_hash=""
 
-  # Header row — `==Section title`. No name, no toggling.
+  # Header row -- `==Section title`. No name, no toggling.
   if [[ "$spec" == ==* ]]; then
     _pick_state="header"
     _pick_label="${spec#==}"
@@ -108,7 +107,7 @@ pick::_parse_item() {
     \~*) _pick_state="disabled"; spec="${spec#\~}" ;;
   esac
 
-  # Hash trailer first (`|hash`, last segment) — it's defined last in the
+  # Hash trailer first (`|hash`, last segment) -- it's defined last in the
   # syntax so we strip it before the inner separators.
   if [[ "$spec" == *"|"* ]]; then
     _pick_hash="${spec##*|}"
@@ -154,19 +153,10 @@ pick::_rows() {
   printf '%d' "$r"
 }
 
-# Print decimal Unicode codepoint of the first character of $1. Decodes
-# UTF-8 byte-by-byte so it works on bash 3.2 (where `printf '%d' "'X"`
-# returns the byte value, not the codepoint, even with a UTF-8 locale).
-pick::_codepoint() {
-  [[ -z "$1" ]] && return
-  local _pick_cp
-  pick::_codepoint_v "$1"
-  printf '%d' "$_pick_cp"
-}
-
-# Subshell-free variant — writes to the dynamic-scoped `_pick_cp` instead
-# of stdout so callers can read it without forking. Hot path used by the
-# render loops.
+# Decimal Unicode codepoint of the first character of $1, written to the
+# dynamic-scoped `_pick_cp` so the render loops read it without forking.
+# Decodes UTF-8 byte-by-byte so it works on bash 3.2 (where `printf '%d'
+# "'X"` returns the byte value, not the codepoint, even with a UTF-8 locale).
 pick::_codepoint_v() {
   if [[ -z "$1" ]]; then _pick_cp=0; return; fi
   local LC_ALL=C
@@ -192,18 +182,10 @@ pick::_codepoint_v() {
   _pick_cp=$(( (b1 & 0x07) << 18 | (b2 & 0x3F) << 12 | (b3 & 0x3F) << 6 | (b4 & 0x3F) ))
 }
 
-# Visible column width (0, 1, or 2) of a single character. CJK Wide /
-# Fullwidth ranges per Unicode East Asian Width = W or F (subset that
-# matters for terminal rendering — Hangul, CJK ideographs, fullwidth
-# punctuation/letters, and a couple of higher-plane CJK extensions).
-pick::_char_width() {
-  local _pick_cp
-  pick::_codepoint_v "$1"
-  pick::_cp_width_v "$_pick_cp"
-  printf '%d' "$_pick_w"
-}
-
-# Subshell-free: given a codepoint in $1, set _pick_w to its visible width.
+# Visible column width (0, 1, or 2) of the codepoint in $1, written to
+# `_pick_w`. CJK Wide / Fullwidth ranges per Unicode East Asian Width = W or
+# F (subset that matters for terminal rendering - Hangul, CJK ideographs,
+# fullwidth punctuation/letters, and a couple of higher-plane CJK extensions).
 pick::_cp_width_v() {
   local cp="$1"
   if (( cp < 32 || cp == 127 )); then _pick_w=0; return; fi
@@ -223,14 +205,8 @@ pick::_cp_width_v() {
   fi
 }
 
-# Visible column width of an entire string, summing per-character widths.
-pick::_str_width() {
-  local _pick_width
-  pick::_str_width_v "$1"
-  printf '%d' "$_pick_width"
-}
-
-# Subshell-free: writes to the dynamic-scoped `_pick_width`.
+# Visible column width of an entire string, summing per-character widths,
+# written to the dynamic-scoped `_pick_width`.
 pick::_str_width_v() {
   local LC_ALL=C.UTF-8
   local s="$1" total=0 i len ch _pick_cp _pick_w
@@ -245,15 +221,8 @@ pick::_str_width_v() {
 }
 
 # Width-aware truncation: shortens $1 so its visible column count is at
-# most $2, appending … if shortened. If the string already fits, returns
-# it unchanged (no ellipsis).
-pick::_trunc() {
-  local _pick_trunc
-  pick::_trunc_v "$1" "$2"
-  printf '%s' "$_pick_trunc"
-}
-
-# Subshell-free: writes to the dynamic-scoped `_pick_trunc`.
+# most $2, appending an ellipsis if shortened, and writes the result to the
+# dynamic-scoped `_pick_trunc`. A string that already fits is unchanged.
 pick::_trunc_v() {
   local LC_ALL=C.UTF-8
   local s="$1" max="$2"
@@ -337,7 +306,7 @@ pick::_read_key() {
   IFS= read -rsn 1 k || { printf 'esc'; return; }
   case "$k" in
     $'\x1b')
-      # ESC — could be alone, or the start of a CSI sequence (arrow keys
+      # ESC -- could be alone, or the start of a CSI sequence (arrow keys
       # send \e[A etc). 50ms wait is well under perceptible latency but
       # plenty of time for the rest of the sequence to arrive.
       if IFS= read -rsn 1 -t 0.05 k2; then
@@ -382,7 +351,7 @@ pick::_read_key() {
 #   pick_selected     dict name holding the current selection set
 
 # Recompute _pick_visible[] (indices into _pick_names) based on the current
-# _pick_filter string. Empty filter → all items visible. Substring match is
+# _pick_filter string. Empty filter -> all items visible. Substring match is
 # case-insensitive against the label.
 pick::_matches_filter() {
   local label="$1" filter="$2"
@@ -395,7 +364,7 @@ pick::_matches_filter() {
 
 # Lowercase $1 into the dynamic-scoped `_pick_lc`. Locale-aware on bash 4+
 # via the built-in `${var,,}` (handles Greek / Cyrillic / etc.). On bash
-# 3.2 (macOS first-install only — Linux ships bash 4+) we fall back to
+# 3.2 (macOS first-install only -- Linux ships bash 4+) we fall back to
 # `tr`, which on BSD tr handles multibyte; GNU tr is single-byte but that
 # combination (bash 3.2 + GNU tr) is essentially impossible in practice.
 pick::_to_lower_v() {
@@ -490,8 +459,8 @@ pick::_seek_selectable() {
 }
 
 # Render one visible item into globals:
-#   _render_styled — line with ANSI styling
-#   _render_plain  — line without ANSI (used for width math when laying out
+#   _render_styled -- line with ANSI styling
+#   _render_plain  -- line without ANSI (used for width math when laying out
 #                    multiple columns)
 # Args: vi (index into _pick_visible), cursor, budget (max visible columns)
 pick::_render_item() {
@@ -569,12 +538,12 @@ pick::_render() {
   cols=$(pick::_cols)
   rows=$(pick::_rows)
 
-  # DEC sync mode 2026 — commit the redraw atomically (no flash between
+  # DEC sync mode 2026 -- commit the redraw atomically (no flash between
   # clear and re-draw). Ignored by terminals that don't support it.
   printf '\033[?2026h'
   printf '\033[H\033[2J'  # cursor home + clear screen
   printf '\033[1mSelect steps to run\033[0m\n'
-  printf '\033[2m↑/↓ move · ←/→ column · space toggle · a all · n none · / filter · enter run · q quit · ? help\033[0m\n\n'
+  printf '\033[2mup/down move · left/right column · space toggle · a all · n none · / filter · enter run · q quit · ? help\033[0m\n\n'
 
   local nv=${#_pick_visible[@]}
   if (( nv == 0 )); then
@@ -658,8 +627,8 @@ pick::_render_help() {
   printf '\033[H\033[2J'
   printf '\033[1mKeybindings\033[0m\n\n'
   cat <<'EOF'
-  ↑ / k          move up
-  ↓ / j          move down
+  up / k         move up
+  down / j       move down
   space          toggle the highlighted item
   a              select all visible non-disabled items
   n              clear all visible non-required items
@@ -680,7 +649,7 @@ EOF
 pick::_resolve_noninteractive() {
   local mode="${DOTFILES_PICK:-}"
 
-  # No env, no tty → loud failure.
+  # No env, no tty -> loud failure.
   if [[ -z "$mode" ]] && ! { [[ -t 0 ]] && [[ -t 1 ]]; }; then
     msg::error "pick: non-interactive shell requires DOTFILES_PICK env var (set to 'all', 'none', or a comma-separated list of item names)"
     return 2
@@ -748,23 +717,16 @@ pick::_resolve_noninteractive() {
 
 pick::_load_last_selection() {
   # Reads the last-selection file (if any) into a fresh dict
-  # `pick_last_selection`. Each line is `name<TAB>hash` (hash may be empty).
-  # Legacy plain-name lines (no TAB) are read as name with empty hash.
+  # `pick_last_selection`. Each line is `name<TAB>hash`; the hash may be
+  # empty, and a line without a TAB is not one of ours.
   pick_last::clear
   local file
   file="$(pick::_state_file)"
   [[ -r "$file" ]] || return 0
-  local line name hash
+  local line
   while IFS= read -r line; do
-    [[ -z "$line" ]] && continue
-    if [[ "$line" == *$'\t'* ]]; then
-      name="${line%%$'\t'*}"
-      hash="${line#*$'\t'}"
-    else
-      name="$line"
-      hash=""
-    fi
-    pick_last::put "$name" "$hash"
+    [[ "$line" == *$'\t'* ]] || continue
+    pick_last::put "${line%%$'\t'*}" "${line#*$'\t'}"
   done < "$file"
   return 0
 }
@@ -809,7 +771,7 @@ pick::_run_step() {
   safe="$(pick::_safe_name "$name")"
   log_file="$log_dir/$safe.log"
 
-  msg::heading "→ $label"
+  msg::heading "-> $label"
 
   local start end dur_ms exit_code
 
@@ -846,7 +808,7 @@ pick::_run_step() {
 
 # When a step fails interactively, prompt for action: retry / skip / abort.
 # Returns: "retry" "skip" or "abort" on stdout. Single-key, no Enter needed.
-# Non-interactive shells (no stdin TTY) auto-skip — they'd just hang here.
+# Non-interactive shells (no stdin TTY) auto-skip -- they'd just hang here.
 pick::_failure_prompt() {
   if ! [[ -t 0 ]]; then
     printf 'skip'
@@ -915,7 +877,7 @@ pick::_run_selected() {
   done
 
   msg::heading "Summary"
-  printf '  ✔ %d ran   ✖ %d failed   ↪ %d skipped' "$ran" "$failed" "$skipped"
+  printf '  ✔ %d ran   ✖ %d failed   -> %d skipped' "$ran" "$failed" "$skipped"
   (( aborted )) && printf '   \033[1;31m(aborted)\033[0m'
   printf '\n'
   if (( failed > 0 )); then
@@ -977,7 +939,7 @@ pick() {
         pick_selected::add "$nm"
       fi
     elif [[ -n "$cur_hash" ]]; then
-      # New hashed item — never seen before. Pre-check + mark.
+      # New hashed item -- never seen before. Pre-check + mark.
       pick_selected::add "$nm"
       pick_changed::add   "$nm"
     fi

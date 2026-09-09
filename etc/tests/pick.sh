@@ -3,7 +3,7 @@
 #
 # Tests pick's non-interactive paths (item parsing, env-driven resolution,
 # state load/save, step execution, run-log emission). The TUI itself isn't
-# exercised — that needs an expect-style harness which would be a new dep.
+# exercised -- that needs an expect-style harness which would be a new dep.
 
 set -uo pipefail
 
@@ -40,29 +40,29 @@ export XDG_STATE_HOME="$TMP/state"
 _section "item parsing"
 
 pick::_parse_item "brew::setup"
-_eq "bare name → name"   "brew::setup" "$_pick_name"
-_eq "bare name → label"  "brew::setup" "$_pick_label"
-_eq "bare name → state"  "normal"      "$_pick_state"
-_eq "bare name → reason" ""            "$_pick_reason"
+_eq "bare name -> name"   "brew::setup" "$_pick_name"
+_eq "bare name -> label"  "brew::setup" "$_pick_label"
+_eq "bare name -> state"  "normal"      "$_pick_state"
+_eq "bare name -> reason" ""            "$_pick_reason"
 
 pick::_parse_item "brew::setup=Homebrew packages"
-_eq "name=label → name"  "brew::setup"        "$_pick_name"
-_eq "name=label → label" "Homebrew packages"  "$_pick_label"
+_eq "name=label -> name"  "brew::setup"        "$_pick_name"
+_eq "name=label -> label" "Homebrew packages"  "$_pick_label"
 
 pick::_parse_item "+dependency::setup=Install CLT"
-_eq "+ → required state" "required"           "$_pick_state"
-_eq "+ → name"           "dependency::setup"  "$_pick_name"
-_eq "+ → label"          "Install CLT"        "$_pick_label"
+_eq "+ -> required state" "required"           "$_pick_state"
+_eq "+ -> name"           "dependency::setup"  "$_pick_name"
+_eq "+ -> label"          "Install CLT"        "$_pick_label"
 
 pick::_parse_item "~holt::setup=Workspace links~Requires holt command"
-_eq "~ → disabled state" "disabled"               "$_pick_state"
-_eq "~ → name"           "holt::setup"            "$_pick_name"
-_eq "~ → label"          "Workspace links"        "$_pick_label"
-_eq "~ → reason"         "Requires holt command"  "$_pick_reason"
+_eq "~ -> disabled state" "disabled"               "$_pick_state"
+_eq "~ -> name"           "holt::setup"            "$_pick_name"
+_eq "~ -> label"          "Workspace links"        "$_pick_label"
+_eq "~ -> reason"         "Requires holt command"  "$_pick_reason"
 
 pick::_parse_item "name=label-with-=-equals"
-_eq "= splits on first only — name"  "name"               "$_pick_name"
-_eq "= splits on first only — label" "label-with-=-equals" "$_pick_label"
+_eq "= splits on first only -- name"  "name"               "$_pick_name"
+_eq "= splits on first only -- label" "label-with-=-equals" "$_pick_label"
 
 pick::_parse_item "brew::setup=Brew|abc123"
 _eq "hash extracted"          "abc123"      "$_pick_hash"
@@ -70,14 +70,14 @@ _eq "label without hash tail" "Brew"        "$_pick_label"
 _eq "name with hash"          "brew::setup" "$_pick_name"
 
 pick::_parse_item "~name=label~missing dep|deadbeef"
-_eq "hash with reason — state"  "disabled"     "$_pick_state"
-_eq "hash with reason — name"   "name"         "$_pick_name"
-_eq "hash with reason — label"  "label"        "$_pick_label"
-_eq "hash with reason — reason" "missing dep"  "$_pick_reason"
-_eq "hash with reason — hash"   "deadbeef"     "$_pick_hash"
+_eq "hash with reason -- state"  "disabled"     "$_pick_state"
+_eq "hash with reason -- name"   "name"         "$_pick_name"
+_eq "hash with reason -- label"  "label"        "$_pick_label"
+_eq "hash with reason -- reason" "missing dep"  "$_pick_reason"
+_eq "hash with reason -- hash"   "deadbeef"     "$_pick_hash"
 
 pick::_parse_item "noHash=label"
-_eq "absent hash → empty" "" "$_pick_hash"
+_eq "absent hash -> empty" "" "$_pick_hash"
 
 # Non-interactive resolution
 _section "DOTFILES_PICK=all selects every non-disabled item"
@@ -105,7 +105,7 @@ keys=$(
   DOTFILES_PICK=all pick::_resolve_noninteractive >/dev/null 2>&1
   printf "%s\n" "${pick_selected[@]:-}" | tr '\n' ',' | sort -t, -k1
 )
-_eq "all selects normals only (a,c — b disabled)" "a,c," "$keys"
+_eq "all selects normals only (a,c -- b disabled)" "a,c," "$keys"
 
 _section "DOTFILES_PICK=none retains required"
 keys=$(
@@ -118,7 +118,7 @@ keys=$(
   DOTFILES_PICK=none pick::_resolve_noninteractive >/dev/null 2>&1
   printf "%s\n" "${pick_selected[@]:-}" | tr '\n' ','
 )
-_eq "none → required only" "req," "$keys"
+_eq "none -> required only" "req," "$keys"
 
 _section "DOTFILES_PICK=list selects only listed"
 keys=$(
@@ -176,7 +176,7 @@ case "$out" in
   *) _eq "disabled item flagged" "stderr should mention 'b' disabled" "$out" ;;
 esac
 
-_section "no DOTFILES_PICK + no tty → loud error (exit 2)"
+_section "no DOTFILES_PICK + no tty -> loud error (exit 2)"
 (
   _pick_n=1
   _pick_names=(only)
@@ -287,7 +287,7 @@ step::counter() { _attempt_count=$((${_attempt_count:-0}+1)); return 9; }
   exit "$(( rc * 100 + _attempt_count ))"
 )
 # Expected: rc=1 (1 failure) * 100 + 1 attempt = 101
-_eq "non-interactive: 1 failure × 1 attempt" "101" "$?"
+_eq "non-interactive: 1 failure x 1 attempt" "101" "$?"
 
 _section "abort skips remaining steps and counts them"
 step::ok2() { return 0; }
@@ -305,13 +305,13 @@ out=$(
   pick_selected::add "step::after"
   # Pipe 'a' as stdin; pick::_failure_prompt reads from /dev/tty so we need
   # to exercise the non-tty branch (auto-skip) instead. So this asserts
-  # that without a tty, we *don't* abort but skip — which is the safe
+  # that without a tty, we *don't* abort but skip -- which is the safe
   # default. A tty-driven abort would need expect.
   pick::_run_selected </dev/null 2>&1
   echo "rc=$?"
 )
 case "$out" in
-  *"rc=1"*) _true "non-tty auto-skip → 1 failure, others ran" 0 ;;
+  *"rc=1"*) _true "non-tty auto-skip -> 1 failure, others ran" 0 ;;
   *) _eq "rc=1 expected" "rc=1 in output" "$out" ;;
 esac
 
@@ -328,43 +328,48 @@ _section "empty selection is a clean no-op"
 )
 _eq "empty selection exits 0" "0" "$?"
 
-# Multibyte / Unicode handling
+# Multibyte / Unicode handling, through the variable-returning helpers the
+# render loops use.
+_cw() { local _pick_cp _pick_w; pick::_codepoint_v "$1"; pick::_cp_width_v "$_pick_cp"; printf '%d' "$_pick_w"; }
+_sw() { local _pick_width; pick::_str_width_v "$1"; printf '%d' "$_pick_width"; }
+_tr() { local _pick_trunc; pick::_trunc_v "$1" "$2"; printf '%s' "$_pick_trunc"; }
+
 _section "char width: ASCII = 1, CJK = 2, control = 0"
-_eq "ASCII 'a'"   "1" "$(pick::_char_width 'a')"
-_eq "ASCII space" "1" "$(pick::_char_width ' ')"
-_eq "Greek α"     "1" "$(pick::_char_width 'α')"
-_eq "Cyrillic П"  "1" "$(pick::_char_width 'П')"
-_eq "Hiragana あ" "2" "$(pick::_char_width 'あ')"
-_eq "Kanji 日"    "2" "$(pick::_char_width '日')"
-_eq "Hangul 한"   "2" "$(pick::_char_width '한')"
-_eq "Fullwidth Ａ" "2" "$(pick::_char_width 'Ａ')"
+_eq "ASCII 'a'"   "1" "$(_cw 'a')"
+_eq "ASCII space" "1" "$(_cw ' ')"
+_eq "control"     "0" "$(_cw $'\t')"
+_eq "Greek α"     "1" "$(_cw 'α')"
+_eq "Cyrillic П"  "1" "$(_cw 'П')"
+_eq "Hiragana あ" "2" "$(_cw 'あ')"
+_eq "Kanji 日"    "2" "$(_cw '日')"
+_eq "Hangul 한"   "2" "$(_cw '한')"
+_eq "Fullwidth Ａ" "2" "$(_cw 'Ａ')"
 
 _section "string width: mixed ASCII + CJK"
-_eq "'hello'"        "5" "$(pick::_str_width 'hello')"
-_eq "'あいう'"       "6" "$(pick::_str_width 'あいう')"
-_eq "'a日b'"         "4" "$(pick::_str_width 'a日b')"
-_eq "'Привет' (6 single-width)" "6" "$(pick::_str_width 'Привет')"
+_eq "'hello'"        "5" "$(_sw 'hello')"
+_eq "'あいう'"       "6" "$(_sw 'あいう')"
+_eq "'a日b'"         "4" "$(_sw 'a日b')"
+_eq "'Привет' (6 single-width)" "6" "$(_sw 'Привет')"
 
 _section "trunc: ASCII"
-_eq "fits"           "hello"     "$(pick::_trunc 'hello' 10)"
-_eq "exact fit"      "hello"     "$(pick::_trunc 'hello' 5)"
-_eq "trunc to 4"     "hel…"      "$(pick::_trunc 'hello world' 4)"
+_eq "fits"           "hello"     "$(_tr 'hello' 10)"
+_eq "exact fit"      "hello"     "$(_tr 'hello' 5)"
+_eq "trunc to 4"     "hel…"      "$(_tr 'hello world' 4)"
 
 _section "trunc: CJK widths"
-# 'あいうえお' = 5 chars × 2 cols = 10 cols
-_eq "fits at 10"   "あいうえお" "$(pick::_trunc 'あいうえお' 10)"
-# Budget 7: room for 3 CJK chars (6 cols) + … (1 col) = 7
-_eq "trunc to 7"   "あいう…"    "$(pick::_trunc 'あいうえお' 7)"
-# Budget 6: room for 2 CJK chars (4 cols) + … = 5; next char would push to 7. Hmm
-# Actually with budget 6 and reserve 1 for …: budget-1 = 5. We can fit chars
-# while cur+w <= 5. After 2 chars cur=4, +2 = 6 > 5, truncate. Output: 2 chars + …
-_eq "trunc to 6"   "あい…"      "$(pick::_trunc 'あいうえお' 6)"
+# 'あいうえお' = 5 chars x 2 cols = 10 cols
+_eq "fits at 10"   "あいうえお" "$(_tr 'あいうえお' 10)"
+# Budget 7: 3 CJK chars (6 cols) + the ellipsis (1 col)
+_eq "trunc to 7"   "あいう…"    "$(_tr 'あいうえお' 7)"
+# Budget 6: 2 CJK chars (4 cols) fit under the 5-col content budget; a third
+# would need 6
+_eq "trunc to 6"   "あい…"      "$(_tr 'あいうえお' 6)"
 
 _section "trunc: mixed"
-_eq "'a日b' fits" "a日b" "$(pick::_trunc 'a日b' 4)"
-# 'foo日bar' = 1+1+1+2+1+1+1 = 8 cols; budget 5 → reserve … (1), budget for content = 4
-# After 'foo' cur=3, next is '日' (w=2), 3+2=5 > 4, truncate → 'foo…'
-_eq "'foo日bar' to 5" "foo…" "$(pick::_trunc 'foo日bar' 5)"
+_eq "'a日b' fits" "a日b" "$(_tr 'a日b' 4)"
+# 'foo日bar' = 8 cols; budget 5 leaves 4 for content, so the 2-col kanji
+# after 'foo' does not fit
+_eq "'foo日bar' to 5" "foo…" "$(_tr 'foo日bar' 5)"
 
 _section "case folding (already works in tr): mixed Greek/Cyrillic via _matches_filter"
 pick::_matches_filter "Πρόγραμμα" "πρόγρα"; _true "Greek case-insensitive substring" "$?"
@@ -373,8 +378,8 @@ pick::_matches_filter "Кошка" "ZIG";        _false "non-matching Cyrillic" 
 
 # Safe filename helper
 _section "safe filename"
-_eq "double-colon → dash" "step--ok" "$(pick::_safe_name 'step::ok')"
-_eq "slash → dash"        "a-b-c"    "$(pick::_safe_name 'a/b/c')"
+_eq "double-colon -> dash" "step--ok" "$(pick::_safe_name 'step::ok')"
+_eq "slash -> dash"        "a-b-c"    "$(pick::_safe_name 'a/b/c')"
 
 # Hash diff
 _section "hash diff: state file persists name<TAB>hash"
@@ -395,7 +400,7 @@ file="$XDG_STATE_HOME/dotfiles/pick/hash-test.tsv"
 contents=$(cat "$file" | tr '\n' ',')
 _eq "state file has name<TAB>hash lines" "brew	hash-brew-1,mise	hash-mise-1," "$contents"
 
-_section "hash diff: previously-selected unchanged → preserved selection"
+_section "hash diff: previously-selected unchanged -> preserved selection"
 (
   export DOTFILES_PICK_SCOPE="hash-test"
   pick_last::clear
@@ -408,7 +413,7 @@ _section "hash diff: previously-selected unchanged → preserved selection"
 )
 _true "loaded both keys with hashes" "$?"
 
-_section "hash diff: changed hash → marked changed and pre-selected"
+_section "hash diff: changed hash -> marked changed and pre-selected"
 (
   export DOTFILES_PICK_SCOPE="hash-test"
   pick \
@@ -418,7 +423,7 @@ _section "hash diff: changed hash → marked changed and pre-selected"
     "fresh=Fresh|new-hash" \
     "noHash=NoHash" </dev/null >/dev/null 2>&1 <<<"" || true
 )
-# Re-load state — examine pick_changed dict by re-running the initial-pick
+# Re-load state -- examine pick_changed dict by re-running the initial-pick
 # logic in a sub-shell that doesn't actually run anything (DOTFILES_PICK=none
 # would force-clear non-required, so we exercise via a custom path).
 out=$(
@@ -469,9 +474,9 @@ esac
 
 _section "header parsing"
 pick::_parse_item "==System tools"
-_eq "header → state"  "header"        "$_pick_state"
-_eq "header → label"  "System tools"  "$_pick_label"
-_eq "header → name"   ""              "$_pick_name"
+_eq "header -> state"  "header"        "$_pick_state"
+_eq "header -> label"  "System tools"  "$_pick_label"
+_eq "header -> name"   ""              "$_pick_name"
 
 _section "_recompute_visible: headers visible without filter, hidden with filter"
 out=$(
@@ -492,12 +497,12 @@ out=$(
   printf 'filtered: %s\n' "$(printf '%s,' "${_pick_visible[@]}")"
 )
 case "$out" in
-  *"no-filter: 0,1,2,3,"*) _true "no filter → all 4 visible" 0 ;;
+  *"no-filter: 0,1,2,3,"*) _true "no filter -> all 4 visible" 0 ;;
   *) _eq "all 4 visible" "0,1,2,3," "$out" ;;
 esac
 case "$out" in
-  *"filtered: 1,"*) _true "filter='brew' → only brew visible (header dropped)" 0 ;;
-  *) _eq "filter→1," "match" "$out" ;;
+  *"filtered: 1,"*) _true "filter='brew' -> only brew visible (header dropped)" 0 ;;
+  *) _eq "filter->1," "match" "$out" ;;
 esac
 
 _section "cursor skips headers via _seek_selectable"
@@ -509,11 +514,11 @@ out=$(
   _pick_reasons=("" "" "" "" "")
   _pick_visible=(0 1 2 3 4)
 
-  # forward from 1 → should land on 3 (skip header at 2)
+  # forward from 1 -> should land on 3 (skip header at 2)
   printf 'fwd-from-1: %s\n' "$(pick::_seek_selectable 1 1)"
-  # backward from 3 → should land on 1 (skip header at 2)
+  # backward from 3 -> should land on 1 (skip header at 2)
   printf 'back-from-3: %s\n' "$(pick::_seek_selectable 3 -1)"
-  # forward from 4 → none
+  # forward from 4 -> none
   printf 'fwd-from-4: %s\n' "$(pick::_seek_selectable 4 1 || echo none)"
 )
 case "$out" in
@@ -521,7 +526,7 @@ case "$out" in
   *) _eq "expected 3 / 1 / none" "match" "$out" ;;
 esac
 
-_section "_recompute_visible: cursor stuck on header → jumps to next selectable"
+_section "_recompute_visible: cursor stuck on header -> jumps to next selectable"
 out=$(
   _pick_n=3
   _pick_names=("" a b)
@@ -564,9 +569,9 @@ out=$(
   _pick_visible=(0 1 2 3 4 5 6 7 8 9)
   # Force two-column by reporting a tiny terminal.
   _PICK_FORCE_ROWS=8
-  # 10 items, col_size = ceil(10/2) = 5. Jump from cursor=2 right → 7.
+  # 10 items, col_size = ceil(10/2) = 5. Jump from cursor=2 right -> 7.
   printf 'right=%s\n' "$(pick::_jump_column 2 1)"
-  # Jump from 7 left → 2.
+  # Jump from 7 left -> 2.
   printf 'left=%s\n' "$(pick::_jump_column 7 -1)"
   # From 0, can go right to 5.
   printf 'edge-right=%s\n' "$(pick::_jump_column 0 1)"
@@ -611,19 +616,19 @@ out=$(
   printf 'nope: count=%d cursor=%d\n' "${#_pick_visible[@]}" "$cursor"
 )
 case "$out" in
-  *"no-filter: 4"*) _true "no filter → 4 visible" 0 ;;
+  *"no-filter: 4"*) _true "no filter -> 4 visible" 0 ;;
   *) _eq "no filter expected 4" "got" "$out" ;;
 esac
 case "$out" in
-  *"m: 1,2,"*) _true "filter 'm' → mise(1) + gleam(2)" 0 ;;
+  *"m: 1,2,"*) _true "filter 'm' -> mise(1) + gleam(2)" 0 ;;
   *) _eq "filter m" "1,2," "$out" ;;
 esac
 case "$out" in
-  *"zig: 3,"*) _true "filter 'zig' → just zig(3)" 0 ;;
+  *"zig: 3,"*) _true "filter 'zig' -> just zig(3)" 0 ;;
   *) _eq "filter zig" "3," "$out" ;;
 esac
 case "$out" in
-  *"nope: count=0 cursor=0"*) _true "no matches → cursor clamped to 0" 0 ;;
+  *"nope: count=0 cursor=0"*) _true "no matches -> cursor clamped to 0" 0 ;;
   *) _eq "nope count=0 cursor=0" "match" "$out" ;;
 esac
 
@@ -650,18 +655,16 @@ case "$out" in
   *) _eq "expected clamped cursor" "before: cursor=2 nv=3, after: cursor=0 nv=1" "$out" ;;
 esac
 
-_section "hash diff: legacy hashless state file still loads"
+_section "hash diff: a line without a hash column is not ours"
 out=$(
-  export DOTFILES_PICK_SCOPE="legacy-hash-test"
+  export DOTFILES_PICK_SCOPE="hashless-test"
   mkdir -p "$XDG_STATE_HOME/dotfiles/pick"
-  printf 'brew\nmise\n' > "$XDG_STATE_HOME/dotfiles/pick/legacy-hash-test.tsv"
+  printf 'brew\nmise\t\n' > "$XDG_STATE_HOME/dotfiles/pick/hashless-test.tsv"
   pick_last::clear
   pick::_load_last_selection
-  brew_h=$(pick_last::get brew)
-  mise_h=$(pick_last::get mise)
-  printf 'brew=%q,mise=%q' "$brew_h" "$mise_h"
+  printf 'brew=%s,mise=%q' "$(pick_last::has brew && echo yes || echo no)" "$(pick_last::get mise)"
 )
-_eq "legacy file → empty hashes" "brew='',mise=''" "$out"
+_eq "only the tab-separated line loads" "brew=no,mise=''" "$out"
 
 printf '\n%d passed, %d failed\n' "$passes" "$fails"
 exit "$((fails > 0 ? 1 : 0))"
