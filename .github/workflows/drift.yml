@@ -1,6 +1,6 @@
 name: Drift
 
-# Every pinned upstream is checked against its current release here. A pin keeps
+# The agent packages and mox are checked against their current releases here. A pin keeps
 # an unrelated push from failing because someone else shipped an hour ago; this
 # workflow is what stops that same pin from hiding a breaking release until the
 # day it is bumped. It never runs on push, so it cannot fail unrelated work.
@@ -15,9 +15,17 @@ jobs:
     name: Drift - sandbox image against current agents
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Build with the newest published agents
-        run: docker build -t agent-sandbox:latest etc/sandbox
+        # The Dockerfile pins exact agent versions; this canary overrides them
+        # back to `latest` on purpose, so the weekly run is what tells you a
+        # newer agent is out and whether it still builds and passes the gate.
+        run: |
+          docker build -t agent-sandbox:latest \
+            --build-arg CLAUDE_CODE_VERSION=latest \
+            --build-arg CODEX_VERSION=latest \
+            --build-arg OPENCODE_VERSION=latest \
+            etc/sandbox
       - name: Report what landed
         run: |
           docker run --rm agent-sandbox:latest sh -c \
@@ -26,25 +34,52 @@ jobs:
         run: bash etc/tests/agent_sandbox_isolation.sh
 
   drift-mox:
-    name: Drift - dotfiles against the current mox release
-    runs-on: ubuntu-latest
+    name: Drift - dotfiles against the current mox release (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Install zsh + fish + luajit + lua5.4
+        if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y zsh fish luajit lua5.4
+      - name: Install fish + luajit + lua (macOS)
+        if: runner.os == 'macOS'
+        run: brew install fish luajit lua
       - name: Install the newest mox release
+        shell: bash
         run: |
+          case "$(uname -s)-$(uname -m)" in
+            Linux-x86_64)  asset=mox-x86_64-linux.tar.gz ;;
+            Linux-aarch64) asset=mox-aarch64-linux.tar.gz ;;
+            Darwin-arm64)  asset=mox-aarch64-macos.tar.gz ;;
+            Darwin-x86_64) asset=mox-x86_64-macos.tar.gz ;;
+            *) echo "unsupported: $(uname -s)-$(uname -m)" >&2; exit 1 ;;
+          esac
           mkdir -p "$HOME/.local/bin"
           url=$(curl -fsSL https://api.github.com/repos/sakakibara/mox/releases/latest \
-            | grep -o '"browser_download_url": *"[^"]*mox-x86_64-linux\.tar\.gz"' \
+            | grep -o "\"browser_download_url\": *\"[^\"]*${asset//./\\.}\"" \
             | cut -d'"' -f4)
-          [ -n "$url" ] || { echo "no linux asset on the latest release" >&2; exit 1; }
-          curl -fsSL "$url" -o /tmp/mox.tar.gz
-          tar xzf /tmp/mox.tar.gz -C "$HOME/.local/bin"
+          [ -n "$url" ] || { echo "no $asset on the latest release" >&2; exit 1; }
+          curl -fsSL "$url" -o "$RUNNER_TEMP/$asset"
+          curl -fsSL "${url%/*}/SHA256SUMS" -o "$RUNNER_TEMP/SHA256SUMS"
+          (cd "$RUNNER_TEMP" && grep " $asset$" SHA256SUMS | shasum -a 256 -c -)
+          tar xzf "$RUNNER_TEMP/$asset" -C "$HOME/.local/bin"
           echo "$HOME/.local/bin" >> $GITHUB_PATH
       - name: Report what landed
         run: mox version
+      - name: installer digests against the pinned scripts
+        run: bash etc/ci/installer-digests.sh
       - name: Compose check
         run: bash etc/ci/render.sh
+      # Real mox, both halves: composing and writing. The wrapper test below
+      # builds a stub mox on PATH by design, so it proves nothing about the
+      # released binary and cannot stand alone as this canary's coverage.
+      - name: Apply check
+        run: bash etc/ci/apply.sh
+      - name: Account routing (real mox export)
+        run: bash etc/tests/git_account.sh
       - name: Wrapper behaviour
         run: bash etc/tests/dotfiles_wrapper.sh

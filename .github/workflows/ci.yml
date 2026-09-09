@@ -6,22 +6,13 @@ on:
   pull_request:
   workflow_dispatch:
 
-# The mox release these tests run against. Pinned rather than tracking
-# `latest`: unpinned, the same commit passes or fails depending on what mox
-# shipped most recently, and a breaking CLI change lands here as a mystery
-# failure in an unrelated push. Bump it deliberately when adopting a release.
+# The mox and Neovim releases these tests run against. Pinned rather than
+# tracking `latest`: unpinned, the same commit passes or fails depending on
+# what shipped most recently, and a breaking change lands here as a mystery
+# failure in an unrelated push. Bump them deliberately when adopting a release.
 env:
   MOX_VERSION: v0.10.0
-
-# The agents baked into the sandbox image. Pinned here and nowhere else: the
-# Dockerfile still defaults to `latest`, so a machine running `agent-sandbox`
-# gets current agents, while a push is judged against a fixed image rather than
-# whatever npm published in the last hour. The drift workflow builds unpinned on
-# a schedule, so upstream breakage still surfaces - just not as a mystery
-# failure on unrelated work. Bump these deliberately.
-  CLAUDE_CODE_VERSION: 2.1.239
-  CODEX_VERSION: 0.149.0
-  OPENCODE_VERSION: 1.18.21
+  NVIM_VERSION: v0.12.5
 
 jobs:
   syntax:
@@ -32,7 +23,7 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Install zsh + fish + luajit + lua5.4 (Linux)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y zsh fish luajit lua5.4
@@ -44,6 +35,8 @@ jobs:
         if: runner.os == 'Linux'
         run: bash etc/ci/shellcheck.sh
       - run: bash etc/ci/comment-markers.sh
+      - run: bash etc/ci/ascii.sh
+      - run: bash etc/ci/pins.sh
       - run: bash etc/tests/agent-instructions.sh
       - name: Install mox
         shell: bash
@@ -68,12 +61,12 @@ jobs:
     name: PowerShell syntax
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Parse PowerShell scripts
         shell: pwsh
         run: |
           $failed = 0
-          Get-ChildItem -Recurse -Include *.ps1 |
+          Get-ChildItem -Recurse -Include *.ps1,*.psm1 |
             Where-Object { $_.FullName -notmatch '\\\.git\\' } |
             ForEach-Object {
               $errors = $null
@@ -88,30 +81,68 @@ jobs:
           Write-Host "all PowerShell scripts parse cleanly"
 
   render:
-    name: Compose check (mox export)
-    runs-on: ubuntu-latest
+    name: Compose and apply check
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
     steps:
-      - uses: actions/checkout@v5
-      - name: Install zsh + fish + luajit + lua5.4
-        run: sudo apt-get update && sudo apt-get install -y zsh fish luajit lua5.4
+      - uses: actions/checkout@v6
+      - name: Install zsh + fish + luajit + lua5.4 + tmux (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y zsh fish luajit lua5.4 tmux
+      - name: Install fish + luajit + lua + tmux (macOS)
+        if: runner.os == 'macOS'
+        run: brew install fish luajit lua tmux
+      - name: Prepare a home with tpm at its pin for the tmux probe
+        run: |
+          tag=$(sed -n "s/^set-option -g @plugin 'tmux-plugins\/tpm#\(v[0-9.]*\)'$/\1/p" src/.tmux.conf)
+          mkdir -p "$RUNNER_TEMP/tmux-home/.tmux/plugins"
+          git clone -q --depth 1 --branch "$tag" https://github.com/tmux-plugins/tpm "$RUNNER_TEMP/tmux-home/.tmux/plugins/tpm"
+          echo "RENDER_TMUX_HOME=$RUNNER_TEMP/tmux-home" >> "$GITHUB_ENV"
       - name: Install mox
         run: |
           mkdir -p "$HOME/.local/bin"
-          curl -fsSL "https://github.com/sakakibara/mox/releases/download/$MOX_VERSION/mox-x86_64-linux.tar.gz" -o /tmp/mox.tar.gz
-          tar xzf /tmp/mox.tar.gz -C "$HOME/.local/bin"
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          base="https://github.com/sakakibara/mox/releases/download/$MOX_VERSION"
+          case "$(uname -s)-$(uname -m)" in
+            Linux-x86_64)  asset=mox-x86_64-linux.tar.gz ;;
+            Linux-aarch64) asset=mox-aarch64-linux.tar.gz ;;
+            Darwin-arm64)  asset=mox-aarch64-macos.tar.gz ;;
+            Darwin-x86_64) asset=mox-x86_64-macos.tar.gz ;;
+            *) echo "unsupported: $(uname -s)-$(uname -m)" >&2; exit 1 ;;
+          esac
+          curl -fsSL "$base/$asset" -o "$RUNNER_TEMP/$asset"
+          curl -fsSL "$base/SHA256SUMS" -o "$RUNNER_TEMP/SHA256SUMS"
+          (cd "$RUNNER_TEMP" && grep " $asset$" SHA256SUMS | shasum -a 256 -c -)
+          tar xzf "$RUNNER_TEMP/$asset" -C "$HOME/.local/bin"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - run: bash etc/ci/render.sh
+      # Composing is not writing: the apply path, the attributes contract and
+      # a freshly applied tree reporting clean are only exercised here.
+      - run: bash etc/ci/apply.sh
 
   nvim-tests:
-    name: Nvim tests
-    runs-on: ubuntu-latest
+    name: Nvim tests (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            asset: nvim-linux-x86_64
+            sha256: bce0f56eda1f1b1db6eee8f4133d7a38813ea07933837dd1777411ca384c6875
+          - os: macos-latest
+            asset: nvim-macos-arm64
+            sha256: 65fb000099e47ca1b762584c484cc833f40e30851a0ec450d4174e16317c1f9b
+    runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Install Neovim
         run: |
-          curl -fsSL https://github.com/neovim/neovim/releases/download/stable/nvim-linux-x86_64.tar.gz -o nvim.tar.gz
+          curl -fsSL "https://github.com/neovim/neovim/releases/download/$NVIM_VERSION/${{ matrix.asset }}.tar.gz" -o nvim.tar.gz
+          echo "${{ matrix.sha256 }}  nvim.tar.gz" | shasum -a 256 -c -
           tar xzf nvim.tar.gz
-          echo "$PWD/nvim-linux-x86_64/bin" >> $GITHUB_PATH
+          echo "$PWD/${{ matrix.asset }}/bin" >> "$GITHUB_PATH"
       - name: Build CSS treesitter parser
         # detect_spec's "uses TS for CSS buffers" test exercises the TS code
         # path; without a css parser installed nvim falls back to regex and
@@ -153,7 +184,7 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - run: bash etc/tests/theme.sh
 
   bash-lib-tests:
@@ -164,7 +195,7 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Install mox (used by dotfiles wrapper tests)
         shell: bash
         run: |
@@ -176,8 +207,11 @@ jobs:
             *) echo "unsupported: $(uname -s)-$(uname -m)" >&2; exit 1 ;;
           esac
           mkdir -p "$HOME/.local/bin"
-          curl -fsSL "https://github.com/sakakibara/mox/releases/download/$MOX_VERSION/$asset" -o "$RUNNER_TEMP/mox.tar.gz"
-          tar xzf "$RUNNER_TEMP/mox.tar.gz" -C "$HOME/.local/bin"
+          base="https://github.com/sakakibara/mox/releases/download/$MOX_VERSION"
+          curl -fsSL "$base/$asset" -o "$RUNNER_TEMP/$asset"
+          curl -fsSL "$base/SHA256SUMS" -o "$RUNNER_TEMP/SHA256SUMS"
+          (cd "$RUNNER_TEMP" && grep " $asset$" SHA256SUMS | shasum -a 256 -c -)
+          tar xzf "$RUNNER_TEMP/$asset" -C "$HOME/.local/bin"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: every suite under etc/tests, except the ones another job runs
         run: |
@@ -191,16 +225,21 @@ jobs:
     name: PowerShell tests (Windows)
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Install mox (used by dotfiles_wrapper smoke tests)
         shell: pwsh
-        # Pull the pinned release binary directly. scoop/winget add ~30s of
-        # cold-start vs ~3s for a single archive download.
+        # Pull the pinned release binary directly: a single archive download
+        # avoids scoop's and winget's cold start.
         run: |
-          $url = "https://github.com/sakakibara/mox/releases/download/$env:MOX_VERSION/mox-x86_64-windows.zip"
-          $zip = "$env:RUNNER_TEMP/mox.zip"
+          $base = "https://github.com/sakakibara/mox/releases/download/$env:MOX_VERSION"
+          $zip = "$env:RUNNER_TEMP/mox-x86_64-windows.zip"
+          $sums = "$env:RUNNER_TEMP/SHA256SUMS"
           $dest = "$env:RUNNER_TEMP/mox"
-          Invoke-WebRequest $url -OutFile $zip
+          Invoke-WebRequest "$base/mox-x86_64-windows.zip" -OutFile $zip
+          Invoke-WebRequest "$base/SHA256SUMS" -OutFile $sums
+          $want = (Get-Content $sums | Where-Object { $_ -match ' mox-x86_64-windows\.zip$' }) -replace ' .*$', ''
+          $got = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLower()
+          if (-not $want -or $got -ne $want) { throw "mox-x86_64-windows.zip: sha256 $got, SHA256SUMS says '$want'" }
           Expand-Archive $zip -DestinationPath $dest
           Add-Content $env:GITHUB_PATH $dest
       - name: every suite under etc/tests
@@ -212,12 +251,20 @@ jobs:
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
 
+  validate-packages-darwin:
+    name: Validate packages (Homebrew)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v6
+      - run: brew update
+      - run: bash etc/ci/validate-packages.sh darwin
+
   validate-packages-fedora:
     name: Validate packages (Fedora)
     runs-on: ubuntu-latest
     container: fedora:latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - run: dnf -y check-update || true
       - run: bash etc/ci/validate-packages.sh fedora
 
@@ -226,7 +273,7 @@ jobs:
     runs-on: ubuntu-latest
     container: debian:stable
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - run: apt-get update
       - run: bash etc/ci/validate-packages.sh debian
 
@@ -235,7 +282,7 @@ jobs:
     runs-on: ubuntu-latest
     container: archlinux:latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - run: pacman -Syu --noconfirm
       - run: bash etc/ci/validate-packages.sh arch
 
@@ -245,7 +292,7 @@ jobs:
     container: opensuse/tumbleweed:latest
     steps:
       - run: zypper --non-interactive install -y bash git tar
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - run: zypper --non-interactive refresh
       - run: bash etc/ci/validate-packages.sh suse
 
@@ -253,13 +300,11 @@ jobs:
     name: Sandbox host-tamper gate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
+      # The agent versions live in the Dockerfile's ARGs and nowhere else, so
+      # this gate judges exactly the image a machine builds. The drift
+      # workflow is the one that overrides them to `latest`.
       - name: Build the sandbox image
-        run: |
-          docker build -t agent-sandbox:latest \
-            --build-arg "CLAUDE_CODE_VERSION=$CLAUDE_CODE_VERSION" \
-            --build-arg "CODEX_VERSION=$CODEX_VERSION" \
-            --build-arg "OPENCODE_VERSION=$OPENCODE_VERSION" \
-            etc/sandbox
+        run: docker build -t agent-sandbox:latest etc/sandbox
       - name: Host-tamper gate
         run: bash etc/tests/agent_sandbox_isolation.sh
