@@ -1,7 +1,7 @@
 -- Leader must be set before any `<leader>x` keymap is created (incl. eager
 -- plugin config()s during pack.setup). This file is required synchronously in
--- config/init.lua's stage 1 — costs ~1 ms warm but guarantees keymaps are
--- bound from t=0 instead of after the 30–100 ms UIEnter→VeryLazy window.
+-- config/init.lua's stage 1 -- costs ~1 ms warm but guarantees keymaps are
+-- bound from t=0 instead of after the 30-100 ms UIEnter->VeryLazy window.
 vim.g.mapleader      = " "
 vim.g.maplocalleader = "\\"
 
@@ -110,7 +110,7 @@ map("n", "<Leader><Tab>o",     "<Cmd>tabonly<CR>",     { desc = "Close other tab
 map("n", "<Leader>-", "<C-w>s", { desc = "Split window below", remap = true })
 map("n", "<Leader>|", "<C-w>v", { desc = "Split window right", remap = true })
 
--- drop unused nvim default tag-stack maps — :tag/:tnext/:tlast cmdline forms
+-- drop unused nvim default tag-stack maps -- :tag/:tnext/:tlast cmdline forms
 -- still work if ever needed; ]t/[t go to other uses via core.pack override.
 pcall(vim.keymap.del, "n", "]T")
 pcall(vim.keymap.del, "n", "[T")
@@ -120,7 +120,7 @@ pcall(vim.keymap.del, "n", "[T")
 map("n", "[F", function() Lib.keymaps.cycle_sibling(-1) end, { desc = "Prev file in directory" })
 map("n", "]F", function() Lib.keymaps.cycle_sibling( 1) end, { desc = "Next file in directory" })
 
--- winbar / statusline pickers — same menus the segments open on click
+-- winbar / statusline pickers -- same menus the segments open on click
 map("n", "<Leader>;",  function() Lib.winbar.pick_scope()       end, { desc = "Scope picker (sibling symbols)" })
 map("n", "<Leader>.",  function() Lib.winbar.pick_path()        end, { desc = "Path picker (sibling files)" })
 map("n", "<Leader>ut", function() Lib.keymaps.pick_filetype() end, { desc = "Set filetype" })
@@ -179,11 +179,9 @@ Lib.plugin.on_load("snacks.nvim", function()
   Snacks.toggle.scroll():map("<Leader>uS")
   Snacks.toggle.zen():map("<Leader>uz")
   Snacks.toggle.zoom():map("<Leader>uZ")
-  Snacks.toggle.profiler():map("<Leader>up")
+  Snacks.toggle.profiler():map("<Leader>uy")
   Snacks.toggle.profiler_highlights():map("<Leader>uP")
-  if vim.lsp.inlay_hint then
-    Snacks.toggle.inlay_hints():map("<Leader>uh")
-  end
+  Snacks.toggle.inlay_hints():map("<Leader>uh")
 end)
 
 map("n", "<Leader>ui", function() Lib.format.info() end, { desc = "Autoformat info" })
@@ -231,7 +229,7 @@ map("n", "<Leader>/",       function() Snacks.picker.grep({ cwd = Lib.root() }) 
 map("n", "<Leader>?",       function() Snacks.picker.grep()                     end, { desc = "Grep (cwd)" })
 map("n", "<Leader>:",       function() Snacks.picker.command_history()          end, { desc = "Command history" })
 
--- windows (<C-w>… natives still work; these are leader aliases for which-key)
+-- windows (<C-w>... natives still work; these are leader aliases for which-key)
 map("n", "<Leader>ws", "<C-w>s",           { desc = "Split window below" })
 map("n", "<Leader>wv", "<C-w>v",           { desc = "Split window right" })
 map("n", "<Leader>wc", "<Cmd>close<CR>",   { desc = "Close window" })

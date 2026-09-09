@@ -13,18 +13,14 @@ else
   opt.clipboard = "unnamedplus"
 end
 
--- folds
-opt.foldenable = true
+-- folds. foldcolumn stays at its default 0: Lib.statuscolumn draws the
+-- open/close indicators itself, and a foldcolumn above 0 leaks nested-level
+-- digits into the gutter wherever statuscolumn is transiently cleared.
 opt.foldlevel = 99
 opt.foldlevelstart = 99
 opt.foldmethod = "expr"
 opt.foldexpr = "v:lua.vim.treesitter.foldexpr()"
 opt.foldtext = "v:lua.Lib.fold.foldtext()"
--- Custom statuscolumn (Lib.statuscolumn) renders fold open/close indicators
--- itself, so we don't need a separate foldcolumn. Keeping foldcolumn > 0 used
--- to leak nested-level digits ("234"/"345") into the gutter on windows where
--- statuscolumn was transiently cleared (e.g. after :split + opening a file).
-opt.foldcolumn = "0"
 -- Nerd-font PUA glyphs need explicit cell width for fillchars (Neovim 0.12
 -- rejects ambiguous-width chars with E1511). Tell it our fold chevrons + a
 -- few common icon ranges render as 1-cell.
@@ -52,12 +48,10 @@ opt.smoothscroll = true
 -- (cmdline pops up via noice when needed), tabline only when >1 tab.
 opt.laststatus  = 3
 opt.cmdheight   = 0
-opt.showtabline = 1
 
 -- Chrome format strings are set here (early) so the first painted frame
 -- already has the bars. Lib.<bar>.setup() runs after plugins load and
--- only registers highlights + autocmds — it no longer owns the option
--- string.
+-- registers the highlights and autocmds.
 vim.o.statusline    = "%!v:lua.Lib.statusline.render()"
 vim.o.winbar        = "%!v:lua.Lib.winbar.render()"
 vim.o.tabline       = "%!v:lua.Lib.tabline.render()"
@@ -72,7 +66,6 @@ vim.g.root_lsp_ignore = { "copilot" }
 -- sensible defaults not already set by Neovim 0.12
 opt.number = true
 opt.relativenumber = true
-opt.signcolumn = "auto"
 opt.termguicolors = true
 opt.updatetime = 200
 opt.timeoutlen = 300

@@ -3,7 +3,7 @@ local grp = vim.api.nvim_create_augroup("Lib", { clear = true })
 
 -- Swap handling: rely on Neovim 0.12's default nvim.swapfile augroup
 -- (runtime/lua/vim/_core/defaults.lua). It picks "e" when a live nvim
--- owns the swap and prompts otherwise — same as LazyVim's behavior.
+-- owns the swap and prompts otherwise -- same as LazyVim's behavior.
 
 -- auto-create parent directories on save
 au("BufWritePre", {
@@ -20,7 +20,7 @@ au("ModeChanged", {
   group = grp,
   pattern = { "*:[vV\x16]*", "[vV\x16]*:*" },
   callback = function()
-    -- Skip floats (menus, pickers, etc.) — they manage their own UI and
+    -- Skip floats (menus, pickers, etc.) -- they manage their own UI and
     -- have no business showing line numbers regardless of mode.
     if vim.api.nvim_win_get_config(0).relative ~= "" then return end
     local is_visual = vim.fn.mode():match("[vV\x16]")
@@ -46,7 +46,7 @@ au("FileType", {
 -- to the buffer so it can't leak into quickfix/list buffers where <CR> is
 -- "follow item". Normal mode toggles the current line; visual mode toggles
 -- every line in the selection. The selection is re-entered after toggling
--- so repeated hits stay ergonomic — `<Cmd>` keymaps don't leave visual but
+-- so repeated hits stay ergonomic -- `<Cmd>` keymaps don't leave visual but
 -- we need `'<`/`'>` marks (which only update on leaving visual) to know
 -- the range, so we `<Esc>` out, toggle, then `gv` back in.
 au("FileType", {
@@ -78,19 +78,19 @@ au({ "BufReadPre", "BufNewFile" }, {
 -- Bigfile guardrails. snacks.bigfile registers a vim.filetype.add `[".*"]`
 -- pattern at BufReadPre time, but in this loader's startup order it doesn't
 -- always run before filetype detection on the first file (saw ft="" on a
--- 4MB *.panic dump with a 1.8MB single line — nvim froze rendering wrap
+-- 4MB *.panic dump with a 1.8MB single line -- nvim froze rendering wrap
 -- points across the line). We pre-empt at BufReadPre by stat'ing the file
 -- on disk: if it's over the snacks default threshold we set ft=bigfile
 -- ourselves and apply the same disables the plugin would have. The
--- treesitter FileType handler (lua/config/plugins/treesitter.lua:43)
--- already gates on this filetype, so no double-arming there.
+-- treesitter FileType handler already gates on this filetype, so there is
+-- no double-arming there.
 local BIGFILE_BYTES = 1.5 * 1024 * 1024
 au("BufReadPre", {
   group = grp,
   callback = function(args)
     if not args.file or args.file == "" then return end
     local size = vim.fn.getfsize(args.file)
-    -- -2 means "too large for vim's number" — definitely bigfile.
+    -- -2 means "too large for vim's number" -- definitely bigfile.
     if not (size == -2 or size > BIGFILE_BYTES) then return end
     local buf = args.buf
     vim.bo[buf].syntax     = ""
@@ -113,17 +113,16 @@ au("BufReadPre", {
 -- highlight yank
 au("TextYankPost", {
   group = grp,
-  callback = function() vim.highlight.on_yank() end,
+  callback = function() vim.hl.on_yank() end,
 })
 
--- `q` closes transient/read-only popup buffers. Excludes `qf` so quickfix
--- can record macros. Plugins that manage their own dismiss UI (snacks_win,
--- noice notify, neotest, spectre, grug-far, gitsigns-blame, dbout) are
--- intentionally omitted — overriding q on their buffers can interfere with
--- their internal lifecycle.
+-- `q` closes exactly these read-only popup buffers. It is an allowlist on
+-- purpose: quickfix keeps `q` for macro recording, and plugins that manage
+-- their own dismiss UI (snacks, noice, neotest, oil, gitsigns, spectre, grug-far) would break
+-- if their buffers lost it.
 au("FileType", {
   group = grp,
-  pattern = { "PlenaryTestPopup", "checkhealth", "help", "lspinfo", "startuptime", "tsplayground" },
+  pattern = { "PlenaryTestPopup", "checkhealth", "help" },
   callback = function(ev)
     vim.schedule(function()
       vim.keymap.set("n", "q", function()
