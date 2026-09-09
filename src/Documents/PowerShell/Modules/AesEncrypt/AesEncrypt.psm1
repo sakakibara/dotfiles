@@ -1,141 +1,131 @@
 # mox: when os=windows
 function New-AesManagedObject
 {
-  param
-  (
-    $Key,
-    $IV,
-    [string]$Mode = "CBC"
-  )
+    param
+    (
+        $Key,
+        $IV,
+        [ValidateSet("CBC", "CFB", "ECB")]
+        [string]$Mode = "CBC"
+    )
 
-  $aesManaged = New-Object -TypeName System.Security.Cryptography.AesManaged
+    $aesManaged = New-Object -TypeName System.Security.Cryptography.AesManaged
+    $aesManaged.Mode = [System.Security.Cryptography.CipherMode]::$Mode
 
-  if ($Mode="CBC")
-  { $aesManaged.Mode = [System.Security.Cryptography.CipherMode]::CBC
-  } elseif ($Mode="CFB")
-  {$aesManaged.Mode = [System.Security.Cryptography.CipherMode]::CFB
-  } elseif ($Mode="CTS")
-  {$aesManaged.Mode = [System.Security.Cryptography.CipherMode]::CTS
-  } elseif ($Mode="ECB")
-  {$aesManaged.Mode = [System.Security.Cryptography.CipherMode]::ECB
-  } elseif ($Mode="OFB")
-  {$aesManaged.Mode = [System.Security.Cryptography.CipherMode]::OFB
-  }
+    $aesManaged.Padding = [System.Security.Cryptography.PaddingMode]::PKCS7
+    $aesManaged.BlockSize = 128
+    $aesManaged.KeySize = 256
 
-  $aesManaged.Padding = [System.Security.Cryptography.PaddingMode]::PKCS7
-  $aesManaged.BlockSize = 128
-  $aesManaged.KeySize = 256
-
-  if ($IV)
-  {
-    if ($IV.getType().Name -eq "String")
+    if ($IV)
     {
-      $aesManaged.IV = [System.Convert]::FromBase64String($IV)
-    } else
-    {
-      $aesManaged.IV = $IV
+        if ($IV.getType().Name -eq "String")
+        {
+            $aesManaged.IV = [System.Convert]::FromBase64String($IV)
+        } else
+        {
+            $aesManaged.IV = $IV
+        }
     }
-  }
-  if ($Key)
-  {
-    if ($Key.getType().Name -eq "String")
+    if ($Key)
     {
-      $aesManaged.Key = [System.Convert]::FromBase64String($Key)
-    } else
-    {
-      $aesManaged.Key = $Key
+        if ($Key.getType().Name -eq "String")
+        {
+            $aesManaged.Key = [System.Convert]::FromBase64String($Key)
+        } else
+        {
+            $aesManaged.Key = $Key
+        }
     }
-  }
-  $aesManaged
+    $aesManaged
 }
 
 function New-AesKey
 {
-  $aesManaged = New-AesManagedObject
-  $aesManaged.GenerateKey()
-  [System.Convert]::ToBase64String($aesManaged.Key)
+    $aesManaged = New-AesManagedObject
+    $aesManaged.GenerateKey()
+    [System.Convert]::ToBase64String($aesManaged.Key)
 }
 
 function Get-EncryptString
 {
-  param
-  (
-    $Key,
-    $PlainText
-  )
+    param
+    (
+        $Key,
+        $PlainText
+    )
 
-  $bytes = [System.Text.Encoding]::UTF8.GetBytes($PlainText)
-  $aesManaged = New-AesManagedObject $Key
-  $encryptor = $aesManaged.CreateEncryptor()
-  $encryptedData = $encryptor.TransformFinalBlock($bytes, 0, $bytes.Length);
-  [byte[]] $fullData = $aesManaged.IV + $encryptedData
-  [System.Convert]::ToBase64String($fullData)
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($PlainText)
+    $aesManaged = New-AesManagedObject $Key
+    $encryptor = $aesManaged.CreateEncryptor()
+    $encryptedData = $encryptor.TransformFinalBlock($bytes, 0, $bytes.Length);
+    [byte[]] $fullData = $aesManaged.IV + $encryptedData
+    [System.Convert]::ToBase64String($fullData)
 }
 
 function Get-DecryptString
 {
-  param
-  (
-    $Key,
-    $EncryptedStringWithIV
-  )
+    param
+    (
+        $Key,
+        $EncryptedStringWithIV
+    )
 
-  $bytes = [System.Convert]::FromBase64String($EncryptedStringWithIV)
-  $IV = $bytes[0..15]
-  $aesManaged = New-AesManagedObject $Key $IV
-  $decryptor = $aesManaged.CreateDecryptor();
-  $unencryptedData = $decryptor.TransformFinalBlock($bytes, 16, $bytes.Length - 16);
-  $aesManaged.Dispose()
-  [System.Text.Encoding]::UTF8.GetString($unencryptedData).Trim([char]0)
+    $bytes = [System.Convert]::FromBase64String($EncryptedStringWithIV)
+    $IV = $bytes[0..15]
+    $aesManaged = New-AesManagedObject $Key $IV
+    $decryptor = $aesManaged.CreateDecryptor();
+    $unencryptedData = $decryptor.TransformFinalBlock($bytes, 16, $bytes.Length - 16);
+    $aesManaged.Dispose()
+    [System.Text.Encoding]::UTF8.GetString($unencryptedData).Trim([char]0)
 }
 
 function Write-HostEncryptString
 {
-  param
-  (
-    $PlainText
-  )
+    param
+    (
+        $PlainText
+    )
 
-  $key = New-AesKey
+    $key = New-AesKey
 
-  "== Powershell AES CBC Encyption=="
-  "`nKey: "+$key
+    "== Powershell AES CBC Encryption=="
+    "`nKey: "+$key
 
-  $encryptedString = Get-EncryptString $key $PlainText
+    $encryptedString = Get-EncryptString $key $PlainText
 
-  $plain = Get-DecryptString $key $encryptedString
+    $plain = Get-DecryptString $key $encryptedString
 
-  $bytes = [System.Convert]::FromBase64String($encryptedString)
+    $bytes = [System.Convert]::FromBase64String($encryptedString)
 
-  $IV = $bytes[0..15]
-  "Salt: " +  [System.Convert]::ToHexString($IV)
-  "Salt: " +  [System.Convert]::ToBase64String($IV)
+    $IV = $bytes[0..15]
+    "Salt: " +  [System.Convert]::ToHexString($IV)
+    "Salt: " +  [System.Convert]::ToBase64String($IV)
 
-  "`nEncrypted: "+$encryptedString
+    "`nEncrypted: "+$encryptedString
 
-  "Decrypted: "+$plain
+    "Decrypted: "+$plain
 }
 
 function Write-HostDecryptString
 {
-  param
-  (
-    $Key,
-    $EncryptedString
-  )
+    param
+    (
+        $Key,
+        $EncryptedString
+    )
 
-  "== Powershell AES CBC Encyption=="
-  "`nKey: "+$Key
+    "== Powershell AES CBC Encryption=="
+    "`nKey: "+$Key
 
-  $plain = Get-DecryptString $key $EncryptedString
+    $plain = Get-DecryptString $key $EncryptedString
 
-  $bytes = [System.Convert]::FromBase64String($EncryptedString)
+    $bytes = [System.Convert]::FromBase64String($EncryptedString)
 
-  $IV = $bytes[0..15]
-  "Salt: " +  [System.Convert]::ToHexString($IV)
-  "Salt: " +  [System.Convert]::ToBase64String($IV)
+    $IV = $bytes[0..15]
+    "Salt: " +  [System.Convert]::ToHexString($IV)
+    "Salt: " +  [System.Convert]::ToBase64String($IV)
 
-  "`nEncrypted: "+$EncryptedString
+    "`nEncrypted: "+$EncryptedString
 
-  "Decrypted: "+$plain
+    "Decrypted: "+$plain
 }
