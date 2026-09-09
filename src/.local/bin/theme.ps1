@@ -1,5 +1,5 @@
 #!/usr/bin/env pwsh
-# theme — switch theme across consumers and manage cached assets (PowerShell port).
+# theme -- switch theme across consumers and manage cached assets (PowerShell port).
 #
 # Same state file, same manifest format, same naming conventions, same
 # lockfile shape as the bash theme script. Used on Windows native; WSL
@@ -219,7 +219,7 @@ function _Sha256([string]$path) {
     return (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLower()
 }
 
-function _Download([string]$url, [string]$target) {
+function _Download([string]$url, [string]$target, [string]$expected = '') {
     $tmp = "$target.tmp.$PID"
     $dir = Split-Path -Parent $target
     if (-not (Test-Path -LiteralPath $dir)) {
@@ -227,12 +227,19 @@ function _Download([string]$url, [string]$target) {
     }
     try {
         Invoke-WebRequest -Uri $url -OutFile $tmp -TimeoutSec 30 -MaximumRetryCount 2 -RetryIntervalSec 2 -UseBasicParsing -ErrorAction Stop | Out-Null
-        Move-Item -LiteralPath $tmp -Destination $target -Force
-        return $true
     } catch {
         if (Test-Path -LiteralPath $tmp) { Remove-Item -LiteralPath $tmp -Force }
-        return $false
+        return 'failed'
     }
+    if ($expected) {
+        $Script:DownloadSha = _Sha256 $tmp
+        if ($Script:DownloadSha -ne $expected) {
+            Remove-Item -LiteralPath $tmp -Force
+            return 'mismatch'
+        }
+    }
+    Move-Item -LiteralPath $tmp -Destination $target -Force
+    return 'ok'
 }
 
 # Lockfile
@@ -347,6 +354,29 @@ function _Iter([scriptblock]$callback) {
 }
 
 $Script:VerifyOk = $true
+$Script:InstallOk = $true
+
+function _FetchLocked([string]$url, [string]$target, [string]$key, [string]$label) {
+    $expected = _LockGet $key
+    switch (_Download $url $target $expected) {
+        'ok' {
+            if (-not $expected) {
+                _LockSet $key (_Sha256 $target)
+                Write-Output "+ $key ($label, recorded sha)"
+            } else {
+                Write-Output "+ $key ($label, sha matches)"
+            }
+        }
+        'mismatch' {
+            _Warn "$key`: $label sha $Script:DownloadSha != lockfile $expected"
+            $Script:InstallOk = $false
+        }
+        default {
+            _Warn "$key`: $label failed from $url"
+            $Script:InstallOk = $false
+        }
+    }
+}
 
 function _CbInstall {
     param($family, $variant, $asset, $url, $target, $key)
@@ -355,17 +385,8 @@ function _CbInstall {
         if ($expected) {
             $sha = _Sha256 $target
             if ($sha -ne $expected) {
-                _Warn "$key`: sha mismatch — re-downloading"
-                if (_Download $url $target) {
-                    $sha = _Sha256 $target
-                    if ($sha -eq $expected) {
-                        Write-Output "✓ $key (re-downloaded)"
-                    } else {
-                        _Warn "$key`: re-download sha $sha != lockfile $expected"
-                    }
-                } else {
-                    _Warn "$key`: re-download failed"
-                }
+                _Warn "$key`: sha mismatch, re-downloading"
+                _FetchLocked $url $target $key 're-download'
             } else {
                 Write-Output "✓ $key"
             }
@@ -375,31 +396,19 @@ function _CbInstall {
             Write-Output "✓ $key (recorded sha)"
         }
     } else {
-        if (_Download $url $target) {
-            $sha = _Sha256 $target
-            $expected = _LockGet $key
-            if (-not $expected) {
-                _LockSet $key $sha
-                Write-Output "↓ $key (downloaded, recorded sha)"
-            } elseif ($sha -eq $expected) {
-                Write-Output "↓ $key (downloaded, sha matches)"
-            } else {
-                _Warn "$key`: downloaded sha $sha != lockfile $expected"
-            }
-        } else {
-            _Warn "$key`: download failed from $url"
-        }
+        _FetchLocked $url $target $key 'download'
     }
 }
 
 function _CbRefresh {
     param($family, $variant, $asset, $url, $target, $key)
-    if (_Download $url $target) {
+    if ((_Download $url $target) -eq 'ok') {
         $sha = _Sha256 $target
         _LockSet $key $sha
-        Write-Output "↓ $key sha=$sha"
+        Write-Output "+ $key sha=$sha"
     } else {
         _Warn "$key`: download failed from $url"
+        $Script:InstallOk = $false
     }
 }
 
@@ -468,14 +477,14 @@ function _Cmd-Set([string[]]$arr) {
     _Write-State $state
     _Reload $family $variant
     _Warn-MissingAssets $family $variant
-    Write-Output "→ $state"
+    Write-Output "-> $state"
 }
 
 function _Cmd-Reload {
     $cur = _Current
     $split = _SplitState $cur
     _Reload $split.family $split.variant
-    Write-Output "→ reloaded $cur"
+    Write-Output "-> reloaded $cur"
 }
 
 function _Cmd-Resolve([string[]]$arr) {
@@ -500,12 +509,16 @@ function _Cmd-Resolve([string[]]$arr) {
 
 function _Cmd-Install([string[]]$arr) {
     _ParseFilter $(if ($arr.Count -ge 1) { $arr[0] } else { '' })
+    $Script:InstallOk = $true
     _Iter ${function:_CbInstall}
+    if (-not $Script:InstallOk) { exit 1 }
 }
 
 function _Cmd-Refresh([string[]]$arr) {
     _ParseFilter $(if ($arr.Count -ge 1) { $arr[0] } else { '' })
+    $Script:InstallOk = $true
     _Iter ${function:_CbRefresh}
+    if (-not $Script:InstallOk) { exit 1 }
 }
 
 function _Cmd-Verify([string[]]$arr) {
@@ -517,7 +530,7 @@ function _Cmd-Verify([string[]]$arr) {
 
 function _Cmd-Help {
 @"
-theme — switch theme across consumers and manage cached assets
+theme -- switch theme across consumers and manage cached assets
 
 Usage:
   theme                          Print current theme

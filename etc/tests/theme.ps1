@@ -1,7 +1,7 @@
 #!/usr/bin/env pwsh
-# Run with: pwsh -NoProfile -File etc/tests/theme_ps1.ps1   (from the repo root)
+# Run with: pwsh -NoProfile -File etc/tests/theme.ps1   (from the repo root)
 #
-# Port of etc/tests/theme.sh — exercises theme.ps1 against a temporary
+# Port of etc/tests/theme.sh -- exercises theme.ps1 against a temporary
 # XDG tree and a local HttpListener serving fake theme assets. Same
 # coverage shape: list, set/get/shortcuts, errors, resolve (both family
 # kinds), install / verify / refresh, filtered install.
@@ -196,6 +196,22 @@ asset.kitty.url = http://localhost:$port/dracula.conf
         $files = @(Get-ChildItem -LiteralPath $kittyDir -File | ForEach-Object { $_.Name })
     }
     Check 'install <no-variant family> fetches its single asset' 'dracula.conf' ($files -join '')
+
+    Section 'install refuses an asset that does not match the lockfile'
+    Remove-Item -LiteralPath (Join-Path $kittyDir 'dracula.conf') -Force
+    $lock = Join-Path $assetRoot '.lock'
+    @((Get-Content -LiteralPath $lock) -replace '^dracula/kitty=.*', 'dracula/kitty=deadbeef') | Set-Content -LiteralPath $lock
+    FailCheck 'install exits non-zero on a sha mismatch' { Run-ThemeSilent install dracula }
+    Check 'the mismatched download is not kept' $false (Test-Path -LiteralPath (Join-Path $kittyDir 'dracula.conf'))
+    Check 'the lockfile entry is untouched' 'dracula/kitty=deadbeef' ((@(Get-Content -LiteralPath $lock) -match '^dracula/kitty=') -join '')
+    [void](Run-ThemeSilent refresh dracula)
+    Check 'refresh re-records the sha and heals' 0 (Run-ThemeSilent verify dracula)
+
+    Section 'refresh fails when an asset cannot be fetched'
+    $ghost = Join-Path $env:XDG_CONFIG_HOME 'dotfiles/themes/ghost'
+    Set-Content -LiteralPath $ghost -Value "asset.kitty.url = http://localhost:$port/missing.conf"
+    FailCheck 'refresh exits non-zero on a missing asset' { Run-ThemeSilent refresh ghost }
+    Remove-Item -LiteralPath $ghost -Force
 
     Write-Host ''
     Write-Host "$passes passed, $fails failed"

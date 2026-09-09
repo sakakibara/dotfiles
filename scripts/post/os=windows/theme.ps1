@@ -1,7 +1,7 @@
 mox trigger seen-version theme-windows
 if ($LASTEXITCODE -ne 0) { exit 0 }
 # One-time theme bootstrap: download cached assets and seed default state so
-# kitty / fish-colors have something to read. Idempotent — re-running is a
+# kitty / fish-colors have something to read. Idempotent -- re-running is a
 # no-op once cache and state exist.
 
 $ErrorActionPreference = 'Stop'

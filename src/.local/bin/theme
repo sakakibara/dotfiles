@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# theme — switch theme across consumers and manage cached assets.
+# theme -- switch theme across consumers and manage cached assets.
 #
 # Reads a flat key=value manifest per family at $XDG_CONFIG_HOME/dotfiles/
 # themes/<family>, writes a state file ($XDG_STATE_HOME/dotfiles/theme) that
@@ -15,7 +15,7 @@
 #                 state stored as just "family"
 #                 cache as <family>.<ext>
 #
-# No external dependencies — bash + curl + sha256sum/shasum + standard unix
+# No external dependencies -- bash + curl + sha256sum/shasum + standard unix
 # utilities only.
 #
 # Manifest format (flat key=value, dot-paths for nesting, comma arrays):
@@ -39,6 +39,8 @@ readonly _STATE_FILE="$_XDG_STATE/dotfiles/theme"
 readonly _MANIFESTS="$_XDG_CONFIG/dotfiles/themes"
 readonly _ASSETS="$_XDG_DATA/dotfiles/themes"
 readonly _LOCK="$_ASSETS/.lock"
+readonly _CHECK='✓'
+readonly _FETCHED='+'
 
 die()  { printf 'theme: %s\n' "$*" >&2; exit 1; }
 warn() { printf 'theme: %s\n' "$*" >&2; }
@@ -249,15 +251,21 @@ _sha256() {
 }
 
 _download() {
-  local url="$1" target="$2" tmp
+  local url="$1" target="$2" expected="${3:-}" tmp
   tmp="$target.tmp.$$"
   mkdir -p "$(dirname "$target")"
-  if curl --fail --location --silent --show-error --max-time 30 --retry 2 -o "$tmp" "$url"; then
-    mv "$tmp" "$target"
-    return 0
+  if ! curl --fail --location --silent --show-error --max-time 30 --retry 2 -o "$tmp" "$url"; then
+    rm -f "$tmp"
+    return 1
   fi
-  rm -f "$tmp"
-  return 1
+  if [[ -n "$expected" ]]; then
+    __download_sha=$(_sha256 "$tmp")
+    if [[ "$__download_sha" != "$expected" ]]; then
+      rm -f "$tmp"
+      return 2
+    fi
+  fi
+  mv "$tmp" "$target"
 }
 
 _lock_get() {
@@ -315,7 +323,7 @@ _reload() {
   if command -v nvim >/dev/null 2>&1; then
     local nvim_cs sock
     nvim_cs=$(_name "$family" "$variant" nvim)
-    for sock in "${XDG_RUNTIME_DIR:-/tmp}"/nvim.*.0 "${TMPDIR:-/tmp}"/nvim.*/0; do
+    for sock in "${XDG_RUNTIME_DIR:-/tmp}"/nvim.*.0 "${TMPDIR:-/tmp}"/nvim.*/0 "${TMPDIR:-/tmp}"/nvim.*/*/nvim.*.0; do
       [[ -S "$sock" ]] || continue
       nvim --server "$sock" --remote-expr "execute('silent! colorscheme $nvim_cs')" >/dev/null 2>&1 || true
     done
@@ -399,6 +407,31 @@ _iter() {
   done
 }
 
+__fetch_locked() {
+  local url="$1" target="$2" key="$3" label="$4" expected sha rc=0
+  expected=$(_lock_get "$key" 2>/dev/null || true)
+  _download "$url" "$target" "$expected" || rc=$?
+  case $rc in
+    0)
+      if [[ -z "$expected" ]]; then
+        sha=$(_sha256 "$target")
+        _lock_set "$key" "$sha"
+        printf '%s %s (%s, recorded sha)\n' "$_FETCHED" "$key" "$label"
+      else
+        printf '%s %s (%s, sha matches)\n' "$_FETCHED" "$key" "$label"
+      fi
+      ;;
+    2)
+      warn "$key: $label sha $__download_sha != lockfile $expected"
+      __install_ok=false
+      ;;
+    *)
+      warn "$key: $label failed from $url"
+      __install_ok=false
+      ;;
+  esac
+}
+
 __cb_install() {
   local family="$1" variant="$2" asset="$3" url="$4" target="$5" key="$6" sha expected
   if [[ -f "$target" ]]; then
@@ -406,40 +439,18 @@ __cb_install() {
     if [[ -n "$expected" ]]; then
       sha=$(_sha256 "$target")
       if [[ "$sha" != "$expected" ]]; then
-        warn "$key: sha mismatch — re-downloading"
-        if _download "$url" "$target"; then
-          sha=$(_sha256 "$target")
-          if [[ "$sha" == "$expected" ]]; then
-            printf '✓ %s (re-downloaded)\n' "$key"
-          else
-            warn "$key: re-download sha $sha != lockfile $expected"
-          fi
-        else
-          warn "$key: re-download failed"
-        fi
+        warn "$key: sha mismatch, re-downloading"
+        __fetch_locked "$url" "$target" "$key" "re-download"
       else
-        printf '✓ %s\n' "$key"
+        printf '%s %s\n' "$_CHECK" "$key"
       fi
     else
       sha=$(_sha256 "$target")
       _lock_set "$key" "$sha"
-      printf '✓ %s (recorded sha)\n' "$key"
+      printf '%s %s (recorded sha)\n' "$_CHECK" "$key"
     fi
   else
-    if _download "$url" "$target"; then
-      sha=$(_sha256 "$target")
-      expected=$(_lock_get "$key" 2>/dev/null || true)
-      if [[ -z "$expected" ]]; then
-        _lock_set "$key" "$sha"
-        printf '↓ %s (downloaded, recorded sha)\n' "$key"
-      elif [[ "$sha" == "$expected" ]]; then
-        printf '↓ %s (downloaded, sha matches)\n' "$key"
-      else
-        warn "$key: downloaded sha $sha != lockfile $expected"
-      fi
-    else
-      warn "$key: download failed from $url"
-    fi
+    __fetch_locked "$url" "$target" "$key" "download"
   fi
 }
 
@@ -448,9 +459,10 @@ __cb_refresh() {
   if _download "$url" "$target"; then
     sha=$(_sha256 "$target")
     _lock_set "$key" "$sha"
-    printf '↓ %s sha=%s\n' "$key" "$sha"
+    printf '%s %s sha=%s\n' "$_FETCHED" "$key" "$sha"
   else
     warn "$key: download failed from $url"
+    __install_ok=false
   fi
 }
 
@@ -472,7 +484,7 @@ __cb_verify() {
     warn "$key: sha mismatch ($sha != $expected)"
     __verify_ok=false
   else
-    printf '✓ %s\n' "$key"
+    printf '%s %s\n' "$_CHECK" "$key"
   fi
 }
 
@@ -515,13 +527,13 @@ cmd_set() {
   _write_state "$(_state_str "$family" "$variant")"
   _reload "$family" "$variant"
   _warn_missing_assets "$family" "$variant"
-  printf '→ %s\n' "$(_state_str "$family" "$variant")"
+  printf '-> %s\n' "$(_state_str "$family" "$variant")"
 }
 
 cmd_reload() {
   local cur; cur=$(_current); _split_current "$cur"
   _reload "$__cur_fam" "$__cur_var"
-  printf '→ reloaded %s\n' "$cur"
+  printf '-> reloaded %s\n' "$cur"
 }
 
 cmd_resolve() {
@@ -548,12 +560,16 @@ cmd_resolve() {
 
 cmd_install() {
   _parse_filter "${1:-}"
+  __install_ok=true
   _iter __cb_install
+  $__install_ok || exit 1
 }
 
 cmd_refresh() {
   _parse_filter "${1:-}"
+  __install_ok=true
   _iter __cb_refresh
+  $__install_ok || exit 1
 }
 
 cmd_verify() {
@@ -565,7 +581,7 @@ cmd_verify() {
 
 cmd_help() {
   cat <<EOF
-theme — switch theme across consumers and manage cached assets
+theme -- switch theme across consumers and manage cached assets
 
 Usage:
   theme                          Print current theme
