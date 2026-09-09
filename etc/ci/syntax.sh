@@ -12,12 +12,6 @@ if ! python3 src/.agents/hooks/instruction-audit.py --root . --policy src/.agent
   fails=$((fails + 1))
 fi
 
-# A source file with mox captures (`<machine.>`, `<secret:>`, ...) or a `mox:`
-# directive is not valid in its raw form; leave it to the compose check.
-_is_templated() {
-  grep -qE '<(machine|env|entry|data)\.|<secret:|(#|--|//|;)[[:space:]]*mox:' "$1" 2>/dev/null
-}
-
 # Wraps the checklib primitives with the templated-source skip: raw checks
 # only apply to files mox does not compose.
 _check_raw() {

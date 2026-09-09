@@ -41,8 +41,8 @@ _agent_sandbox() {
     '--strict[isolate via docker volumes]' \
     '*--workspace[mount one or more repos (default iso only)]:repo:_files -/' \
     '--name[named slot (overrides auto-bumped suffix)]:name:' \
-    '--model[model the local server serves]:model:__agent_sandbox_models'
-    '--model-port[port the local model server listens on]:port:'
+    '--model[model the local server serves]:model:__agent_sandbox_models' \
+    '--model-port[port the local model server listens on]:port:' \
     '(-c --continue)'{-c,--continue}'[continue the most recent agent session]' \
     '(-r --resume)'{-r,--resume}'[resume an agent session (or picker)]:session:' \
     '1: :->cmd' \
@@ -59,8 +59,10 @@ _agent_sandbox() {
           local -a agent_subcommands
           agent_subcommands=(
             'new:start a fresh attached sandbox'
+            'run-untrusted:run repository code without host or network access'
             'start:start detached'
             'stop:stop and remove'
+            'export:export strict-mode volume to host repo'
             'list:all sandboxes'
             'info:image + sandbox status'
             'rebuild:docker build --no-cache'

@@ -9,3 +9,5 @@ function __tmux-list-sessions() {
   sessions=( ${${(f)"$(command tmux 2> /dev/null list-sessions)"}/:[ $'\t']##/:} )
   _describe -t sessions 'sessions' sessions "$@"
 }
+
+_tm "$@"

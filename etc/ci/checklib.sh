@@ -13,6 +13,11 @@ skips=()  # tools expected but missing - promoted to failures under CI=true
 _bash_interp=/bin/bash
 [[ -x "$_bash_interp" ]] || _bash_interp=bash
 
+# A source mox composes (captures, directives) is checked in its composed
+# form by render.sh, not raw.
+_is_templated() {
+  grep -qE '<(machine|env|entry|data)\.|<secret:|(#|--|//|;)[[:space:]]*mox:' "$1" 2>/dev/null
+}
 
 # Loads a composed tmux config into a throwaway server under the HOME that
 # RENDER_TMUX_HOME names, which holds tpm at the pinned tag. `-f file

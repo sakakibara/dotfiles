@@ -45,6 +45,7 @@ jobs:
         run: bash etc/ci/shellcheck.sh
       - run: bash etc/ci/comment-markers.sh
       - run: bash etc/tests/agent-instructions.sh
+      - run: bash etc/tests/shell_completions.sh
 
   syntax-powershell:
     name: PowerShell syntax
@@ -164,7 +165,7 @@ jobs:
       - name: every suite under etc/tests, except the ones another job runs
         run: |
           for t in etc/tests/*.sh; do
-            case "${t##*/}" in agent-instructions.sh|theme.sh|agent_sandbox_isolation.sh) continue ;; esac
+            case "${t##*/}" in agent-instructions.sh|theme.sh|shell_completions.sh|agent_sandbox_isolation.sh) continue ;; esac
             echo "== $t"
             bash "$t" || exit 1
           done

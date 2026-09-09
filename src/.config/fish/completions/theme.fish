@@ -27,13 +27,13 @@ complete -c theme -f -n '__fish_use_subcommand' -a help    -d 'Show help'
 # Top-level shortcut: `theme catppuccin/mocha` switches directly
 complete -c theme -f -n '__fish_use_subcommand' -a '(__theme_pairs)'
 
-# `theme list <family>` — complete families
+# `theme list <family>` -- complete families
 complete -c theme -f -n '__fish_seen_subcommand_from list' -a '(__theme_families)'
 
-# `theme set/install/refresh/verify <family[/variant]>` — complete pairs
+# `theme set/install/refresh/verify <family[/variant]>` -- complete pairs
 complete -c theme -f -n '__fish_seen_subcommand_from set install refresh verify' -a '(__theme_pairs)'
 
-# `theme resolve <tool>` — complete tools, then pair
+# `theme resolve <tool>` -- complete tools, then pair
 complete -c theme -f -n '__fish_seen_subcommand_from resolve; and not __fish_seen_subcommand_from nvim tmux wezterm vivid herdr family variant' \
     -a 'nvim tmux wezterm vivid herdr family variant'
 complete -c theme -f -n '__fish_seen_subcommand_from resolve; and __fish_seen_subcommand_from nvim tmux wezterm vivid herdr family variant' \

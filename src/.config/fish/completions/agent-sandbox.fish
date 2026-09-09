@@ -13,7 +13,7 @@ complete -c agent-sandbox -f -n '__fish_use_subcommand' -a rebuild           -d 
 complete -c agent-sandbox -f -n '__fish_use_subcommand' -a enable-autostart  -d 'LaunchAgent: start at login'
 complete -c agent-sandbox -f -n '__fish_use_subcommand' -a disable-autostart -d 'remove LaunchAgent'
 complete -c agent-sandbox -f -n '__fish_use_subcommand' -a help              -d 'usage'
-complete -c agent-sandbox -f -n '__fish_seen_subcommand_from claude codex opencode' -a 'new start stop list info rebuild enable-autostart disable-autostart help'
+complete -c agent-sandbox -f -n '__fish_seen_subcommand_from claude codex opencode' -a 'new run-untrusted start stop export list info rebuild enable-autostart disable-autostart help'
 
 # Permission + isolation flags - valid both at top level (the implicit
 # default subcommand) and on `start`.
