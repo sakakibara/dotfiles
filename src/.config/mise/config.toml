@@ -4,6 +4,10 @@ python = "latest"
 ruby = "latest"
 php = "latest"
 zig = "latest"
+usage = "latest"
+# mox: when os=linux
+rust = "latest"
+# mox: end
 
 [settings]
 experimental = true
