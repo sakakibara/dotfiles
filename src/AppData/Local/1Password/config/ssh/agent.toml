@@ -1,4 +1,4 @@
-# mox: when use_1password_ssh_agent=true and not os=windows
+# mox: when use_1password_ssh_agent=true and os=windows
 # Personal-account signing key (Private/default vault) - on every machine.
 [[ssh-keys]]
 item = "GitHub Signing Key (sakakibara)"

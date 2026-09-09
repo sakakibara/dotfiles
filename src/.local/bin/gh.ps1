@@ -9,19 +9,25 @@
 # point into this script.
 $ErrorActionPreference = 'Stop'
 
+$shimMarker = 'mox-gh-shim'
 $real = Get-Command -Name gh -CommandType Application -All -ErrorAction SilentlyContinue |
-  Where-Object { (Split-Path -Parent $_.Source) -ne $PSScriptRoot } |
-  Select-Object -First 1
+    Where-Object {
+        $dir = Split-Path -Parent $_.Source
+        $twin = Join-Path $dir 'gh.ps1'
+        -not ((Test-Path -LiteralPath $twin) -and (Select-String -LiteralPath $twin -SimpleMatch "shimMarker = '$shimMarker'" -Quiet))
+    } |
+    Select-Object -First 1
 if (-not $real) {
-  [Console]::Error.WriteLine('gh shim: no gh binary found on PATH')
-  exit 127
+    [Console]::Error.WriteLine('gh shim: no gh binary found on PATH')
+    exit 127
 }
 
-if (-not $env:GH_TOKEN -and -not $env:GITHUB_TOKEN) {
-  $env:GH_BIN = $real.Source
-  $token = & (Join-Path $HOME '.config/git/account-token.ps1')
-  Remove-Item Env:GH_BIN -ErrorAction SilentlyContinue
-  if ($token) { $env:GH_TOKEN = $token }
+$tokenScript = Join-Path $HOME '.config/git/account-token.ps1'
+if (-not $env:GH_TOKEN -and -not $env:GITHUB_TOKEN -and (Test-Path -LiteralPath $tokenScript -PathType Leaf)) {
+    $env:GH_BIN = $real.Source
+    $token = & $tokenScript
+    Remove-Item Env:GH_BIN -ErrorAction SilentlyContinue
+    if ($token) { $env:GH_TOKEN = $token }
 }
 
 & $real.Source @args

@@ -2,3 +2,8 @@ sho@sakakibara.dev namespaces="git" <data.signing.personal_key>
 # mox: when profile=work and email and signing_work_key
 <machine.email> namespaces="git" <machine.signing_work_key>
 # mox: end
+# mox: for id in "data/git_identities.toml"
+# mox: when id.signing_key
+<id.email> namespaces="git" <id.signing_key>
+# mox: end
+# mox: end

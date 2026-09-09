@@ -12,14 +12,14 @@
 # cannot re-enter this shim.
 set -euo pipefail
 
-shim=${BASH_SOURCE[0]}
+shim_marker="mox-gh-shim"
 
 real=""
 IFS=: read -ra path_dirs <<<"$PATH"
-for dir in "${path_dirs[@]}"; do
+for dir in ${path_dirs[@]+"${path_dirs[@]}"}; do
   cand="$dir/gh"
   [ -f "$cand" ] && [ -x "$cand" ] || continue
-  [ "$cand" -ef "$shim" ] && continue
+  head -c 4096 "$cand" 2>/dev/null | grep -q "shim_marker=\"$shim_marker\"" && continue
   real="$cand"
   break
 done
@@ -30,7 +30,8 @@ if [ -z "$real" ]; then
 fi
 
 if [ -z "${GH_TOKEN:-}" ] && [ -z "${GITHUB_TOKEN:-}" ]; then
-  token=$(GH_BIN="$real" "$HOME/.config/git/account-token" 2>/dev/null || true)
+  token=""
+  [ -x "$HOME/.config/git/account-token" ] && token=$(GH_BIN="$real" "$HOME/.config/git/account-token" || true)
   [ -n "$token" ] && export GH_TOKEN="$token"
 fi
 

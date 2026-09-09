@@ -8,7 +8,7 @@
 [core]
 	hooksPath = ~/.config/git/hooks
 	autocrlf = input
-	whitespace = fix,space-before-tab,tab-in-indent,trailing-space
+	whitespace = space-before-tab,tab-in-indent,trailing-space
 [apply]
 	whitespace = fix
 [push]
@@ -22,8 +22,6 @@
 	df = diff
 	g = grep -I
 	lg = log -p
-	rb = rbranch
-	rv = review
 	st = status
 [color]
 	ui = auto
@@ -52,29 +50,31 @@
 # mox: when email
 	email = <machine.email>
 # mox: end
+# mox: when use_1password_ssh_agent=true
 # mox: when not profile=work
 	signingkey = <data.signing.personal_key>
 # mox: end
 # mox: when profile=work and signing_work_key
 	signingkey = <machine.signing_work_key>
 # mox: end
-# The helper resolves the per-repo account token itself (account-token reads
-# `github.account`, set by the [includeIf] routing below), at auth time and
-# in git's own cwd -- so HTTPS picks the right account in any context,
-# including processes that never ran a shell hook (editors, agents,
-# scripts). Empty resolution (unmapped repo, missing script) leaves GH_TOKEN
-# empty and gh falls back to its active account. Windows included: git runs
-# `!` helpers under its bundled sh, which executes the same bash script.
+# mox: end
+# The helper goes through the gh shim, which resolves the per-repo account
+# token (account-token reads `github.account`, set by the [includeIf] routing
+# below) at auth time and in git's own cwd -- so HTTPS picks the right
+# account in any context, including processes that never ran a shell hook
+# (editors, agents, scripts). An ambient GH_TOKEN wins; otherwise the token
+# is resolved once, and when it cannot be (the shim says why) gh falls back
+# to its active account. Windows too: git's bundled sh runs the same shim.
 [credential "https://github.com"]
 	helper =
-	helper = !GH_TOKEN=$(~/.config/git/account-token 2>/dev/null || true) gh auth git-credential
+	helper = !~/.local/bin/gh auth git-credential
 [credential "https://gist.github.com"]
 	helper =
-	helper = !GH_TOKEN=$(~/.config/git/account-token 2>/dev/null || true) gh auth git-credential
+	helper = !~/.local/bin/gh auth git-credential
 # Route every GitHub remote over HTTPS at transport time, whatever protocol it
 # is written in, so per-account auth always flows through the credential
 # helper's per-repo token. This rewrites the URL used to connect
-# only — the stored remote is untouched, so the [includeIf] rules below still
+# only -- the stored remote is untouched, so the [includeIf] rules below still
 # match the original git@/ssh:// form. Without it, an SSH remote would pick the
 # account by whichever key 1Password offers first, not by repo. Need real SSH
 # transport for a specific repo? Override that remote's URL locally.
@@ -84,23 +84,31 @@
 [gpg]
 	format = ssh
 [gpg "ssh"]
-# mox: when os=darwin
+# mox: when use_1password_ssh_agent=true and os=darwin
 	program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
 # mox: end
-# mox: when os=linux
+# mox: when use_1password_ssh_agent=true and os=linux
 	program = /opt/1Password/op-ssh-sign
 # mox: end
-# mox: when os=windows
+# mox: when use_1password_ssh_agent=true and os=windows
 	program = "C:/Users/<machine.username>/AppData/Local/1Password/app/8/op-ssh-sign.exe"
 # mox: end
 	allowedSignersFile = ~/.config/git/allowed_signers
+# mox: when use_1password_ssh_agent=true and not profile=work
 [commit]
 	gpgsign = true
 [tag]
 	gpgsign = true
+# mox: end
+# mox: when use_1password_ssh_agent=true and profile=work and signing_work_key
+[commit]
+	gpgsign = true
+[tag]
+	gpgsign = true
+# mox: end
 
 # Personal-account repos, detected by their GitHub remote URL, override the
-# machine-default identity and signing key above with the personal ones — so
+# machine-default identity and signing key above with the personal ones -- so
 # personal repos never need a per-repo .git/config. Work stays the unnamed
 # default, keeping the employer org out of this committed file. (Matching is
 # by remote, so add the remote before your first commit in a fresh repo.)

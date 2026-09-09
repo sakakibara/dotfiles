@@ -1,19 +1,37 @@
 #!/usr/bin/env bash
-# account-token — print the GitHub OAuth token for the account mapped to the
+# account-token -- print the GitHub OAuth token for the account mapped to the
 # repository at $1 (default: $PWD), or print nothing when the repo maps to no
 # account.
 #
 # The mapping is `git config github.account`, set per-repo by the [includeIf]
-# routing in ~/.config/git/config — the same remote-URL match that already
+# routing in ~/.config/git/config -- the same remote-URL match that already
 # picks the commit identity and signing key. Consumed at invocation time by
 # the gh shim (~/.local/bin/gh) and by the git credential helper in
 # ~/.config/git/config, so `gh` subcommands and HTTPS `git` both target the
-# right account with no manual `gh auth switch`. Empty output (no mapping, or
-# no such account on this machine) makes gh fall back to its active account.
-# GH_BIN, when set, names the real gh binary -- the shim passes it so this
-# script's own gh call does not re-enter the shim.
+# right account with no manual `gh auth switch`. Empty output (no mapping)
+# makes gh fall back to its active account; a mapped account with no stored
+# login is refused (exit 1) with a message, and the callers then fall back too.
+# GH_BIN, when set, names the real gh; otherwise the first non-shim gh on PATH.
 set -euo pipefail
 
 acct=$(git -C "${1:-$PWD}" config --get github.account 2>/dev/null) || exit 0
 [ -n "$acct" ] || exit 0
-"${GH_BIN:-gh}" auth token --user "$acct" 2>/dev/null || true
+
+gh_bin=${GH_BIN:-}
+if [ -z "$gh_bin" ]; then
+  IFS=: read -ra path_dirs <<<"$PATH"
+  for dir in ${path_dirs[@]+"${path_dirs[@]}"}; do
+    cand="$dir/gh"
+    [ -f "$cand" ] && [ -x "$cand" ] || continue
+    head -c 4096 "$cand" 2>/dev/null | grep -q 'shim_marker="mox-gh-shim"' && continue
+    gh_bin="$cand"
+    break
+  done
+fi
+[ -n "$gh_bin" ] || { echo "account-token: no gh binary on PATH" >&2; exit 1; }
+
+if ! token=$("$gh_bin" auth token --user "$acct" 2>/dev/null) || [ -z "$token" ]; then
+  echo "account-token: no gh login for '$acct'; run: gh auth login" >&2
+  exit 1
+fi
+printf '%s\n' "$token"

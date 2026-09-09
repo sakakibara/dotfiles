@@ -7,7 +7,13 @@
 # mox: when id.signing_key
 	signingkey = <id.signing_key>
 # mox: end
-# mox: when not id.signing_key
+# mox: when use_1password_ssh_agent=true and id.signing_key and id.onepassword_item
+[commit]
+	gpgsign = true
+[tag]
+	gpgsign = true
+# mox: end
+# mox: when not id.signing_key or not id.onepassword_item
 [commit]
 	gpgsign = false
 [tag]
