@@ -100,6 +100,18 @@ function M.buffer_gaps(deps)
   return gaps
 end
 
+function M.orphan_gaps(deps)
+  local gaps = {}
+  for _, ft in ipairs(deps.fts()) do
+    local lang = deps.lang_for_ft(ft)
+    local registered = deps.parsers_for(ft)
+    if lang and #registered > 0 and not vim.tbl_contains(registered, lang) then
+      gaps[#gaps + 1] = { ft = ft, lang = lang }
+    end
+  end
+  return gaps
+end
+
 local function default_deps()
   local ts_parsers = require("nvim-treesitter.parsers")
   local install = require("nvim-treesitter.install")
@@ -137,6 +149,11 @@ local function describe_buffer(gap)
     :format(gap.ft, gap.lang)
 end
 
+local function describe_orphan(gap)
+  return ("%s: registered without the %s parser that serves it - treesitter never starts on these buffers")
+    :format(gap.ft, gap.lang)
+end
+
 local function gather(deps)
   local items = {}
   local function add(kind, text) items[#items + 1] = { kind = kind, text = text } end
@@ -155,6 +172,8 @@ local function gather(deps)
       ok = "every registered parser provides the languages its queries inherit" },
     { gaps = M.buffer_gaps(deps), describe = describe_buffer,
       ok = "every open buffer has a parser registered for its filetype" },
+    { gaps = M.orphan_gaps(deps), describe = describe_orphan,
+      ok = "every registered filetype has the parser that serves it" },
   }
   for _, check in ipairs(checks) do
     if #check.gaps == 0 then

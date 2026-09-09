@@ -191,6 +191,46 @@ T.describe("lib.parsers.health report", function()
   end)
 end)
 
+T.describe("lib.parsers.health orphan_gaps", function()
+  T.it("reports a filetype registered with sibling parsers only, installed or not", function()
+    local H = fresh()
+    T.eq(
+      H.orphan_gaps(deps({ registry = { cs = { "c_sharp", "razor" } } })),
+      { { ft = "cs", lang = "cs" } }
+    )
+    T.eq(
+      H.orphan_gaps(deps({ registry = { cs = { "c_sharp", "razor" } }, available = { c_sharp = true } })),
+      { { ft = "cs", lang = "cs" } }
+    )
+  end)
+
+  T.it("leaves a filetype alone when no parser is registered for it", function()
+    local H = fresh()
+    T.eq(H.orphan_gaps(deps({ registry = { vb = {}, ocaml = { "ocaml" } } })), {})
+  end)
+
+  T.it("reports nothing when the filetype's own language is registered", function()
+    local H = fresh()
+    T.eq(H.orphan_gaps(deps({ registry = { cs = { "c_sharp", "razor" } }, langs = { cs = "c_sharp" } })), {})
+  end)
+
+  T.it("accepts a filetype served through a registered alias", function()
+    local H = fresh()
+    T.eq(H.orphan_gaps(deps({ registry = { mysql = { "sql" } }, langs = { mysql = "sql" } })), {})
+  end)
+
+  T.it("is reported by the health check", function()
+    local H = fresh()
+    local warns = texts(H.report(deps({
+      registry = { vb = { "c_sharp" } },
+      available = { vb = true },
+      query_dir = queries({ c_sharp = { highlights = "(x) @y" } }),
+    })), "warn")
+    T.eq(#warns, 1)
+    T.truthy(warns[1]:match("vb"))
+  end)
+end)
+
 T.describe("lib.parsers.health buffer_gaps", function()
   T.it("reports a filetype that has a parser available but none registered", function()
     local H = fresh()
