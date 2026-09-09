@@ -42,6 +42,11 @@ dir = "$HOME/.local/bin"
 prepend = true
 
 [[paths]]
+# Tools installed from release archives, behind ~/.local/bin.
+dir = "$HOME/.local/opt/tools/bin"
+prepend = true
+
+[[paths]]
 dir = "<machine.cargo_home>/bin"
 prepend = true
 when = "cargo_home"

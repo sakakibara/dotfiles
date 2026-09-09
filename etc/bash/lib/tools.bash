@@ -2,76 +2,155 @@
 # Binary tools fetched outside the system package manager: either not in
 # default repos for at least one supported distro, or the upstream-published
 # binary is preferred over what the distro packages. Each function is
-# idempotent — skips if the tool is already on PATH.
+# idempotent (skips at the recorded version), every release download is
+# pinned and verified against the checksum file its project publishes (the
+# cargo tools are built by cargo at their current version), and a failed
+# install returns non-zero.
 
-import msg
+import msg unix
 
-# Map uname -m → release-archive arch suffix used by most upstream releases.
-tools::_arch() {
-  case "$(uname -m)" in
-    x86_64|amd64)   echo x86_64 ;;
-    aarch64|arm64)  echo arm64 ;;
-    *) msg::error "unsupported arch: $(uname -m)"; return 1 ;;
-  esac
+TOOLS_STARSHIP_VERSION=1.26.0
+TOOLS_LAZYGIT_VERSION=0.64.1
+TOOLS_LAZYDOCKER_VERSION=0.25.2
+TOOLS_GH_VERSION=2.99.0
+
+# Download URL to FILE and check it against the sha256 EXPECTED; a mismatch
+# removes the file.
+tools::_fetch() {
+  local url="$1" file="$2" expected="$3" got
+  if ! curl -fsSL "$url" -o "$file"; then
+    msg::error "download failed: $url"
+    return 1
+  fi
+  got=$(unix::sha256 "$file")
+  if [[ "$got" != "$expected" ]]; then
+    msg::error "checksum mismatch for $url: $got != $expected"
+    rm -f "$file"
+    return 1
+  fi
 }
 
-# GitHub release tag fetcher. Returns the latest tag for owner/repo without
-# the leading 'v'. Uses unauthenticated GitHub API; fine for run_once context.
-tools::_latest_tag() {
-  curl -fsSL "https://api.github.com/repos/$1/releases/latest" \
-    | grep -oE '"tag_name":[[:space:]]*"v?[0-9][0-9.]*"' \
-    | grep -oE '[0-9][0-9.]*' \
-    | head -n1
+# The sha256 recorded for ARCHIVE in the checksum file at URL. Two shapes are
+# published: a GNU sha256sum listing, one `<hex>  <name>` line per asset, and
+# a bare digest for a single asset (starship publishes one file per target).
+tools::_published_sha() {
+  local url="$1" archive="$2" tmp sha
+  tmp=$(mktemp)
+  if ! curl -fsSL "$url" -o "$tmp"; then
+    rm -f "$tmp"
+    msg::error "checksum file download failed: $url"
+    return 1
+  fi
+  sha=$(awk -v n="$archive" 'FNR == 1 && NF == 1 { print $1; exit } { gsub(/^[*.\/]+/, "", $2); if ($2 == n) print $1 }' "$tmp" | head -n1)
+  rm -f "$tmp"
+  if [[ -z "$sha" ]]; then
+    msg::error "no checksum for $archive in $url"
+    return 1
+  fi
+  printf '%s' "$sha"
+}
+
+# Install BIN from the release archive at URL, verified against the sha256
+# in CHECKSUM_URL, taking PATH_IN_ARCHIVE out of it into ~/.local/opt/tools/bin.
+# Args: BIN VERSION URL CHECKSUM_URL PATH_IN_ARCHIVE
+tools::_install_release() {
+  local bin="$1" version="$2" url="$3" checksum_url="$4" path="$5"
+  # Not ~/.local/bin: that holds the managed gh shim, which must shadow the
+  # real gh, and apply would overwrite a real gh installed there with the
+  # shim. This dir is a paths.toml row after ~/.local/bin. The shim also
+  # satisfies `command -v gh`, so presence is judged by the installed file
+  # and its recorded version, never by PATH.
+  local dest="$HOME/.local/opt/tools/bin" stamp="$HOME/.local/opt/tools/.versions/$bin"
+  if [[ -x "$dest/$bin" && -f "$stamp" && "$(<"$stamp")" == "$version" ]]; then
+    unix::publish_bin "$dest"
+    msg::success "$bin $version already installed"
+    return 0
+  fi
+  local archive="${url##*/}" expected tmp
+  expected=$(tools::_published_sha "$checksum_url" "$archive") || return 1
+  tmp=$(mktemp -d)
+  if ! tools::_fetch "$url" "$tmp/$archive" "$expected"; then
+    rm -rf "$tmp"
+    return 1
+  fi
+  if ! tar -xz -C "$tmp" -f "$tmp/$archive"; then
+    msg::error "$bin: extract failed"
+    rm -rf "$tmp"
+    return 1
+  fi
+  mkdir -p "$dest" "${stamp%/*}"
+  if ! install -m 755 "$tmp/$path" "$dest/$bin"; then
+    msg::error "$bin: install failed"
+    rm -rf "$tmp"
+    return 1
+  fi
+  rm -rf "$tmp"
+  printf '%s\n' "$version" > "$stamp"
+  unix::publish_bin "$dest"
+  msg::success "$bin $version installed"
 }
 
 tools::starship() {
   msg::heading "Installing starship"
-  if command -v starship >/dev/null 2>&1; then
-    msg::success "starship already installed"
-    return 0
-  fi
-  mkdir -p "$HOME/.local/bin"
-  curl -fsSL https://starship.rs/install.sh | sh -s -- --yes --bin-dir "$HOME/.local/bin"
+  local target
+  case "$(uname -m)" in
+    x86_64|amd64)  target=x86_64-unknown-linux-gnu ;;
+    aarch64|arm64) target=aarch64-unknown-linux-musl ;;
+    *) msg::error "unsupported arch: $(uname -m)"; return 1 ;;
+  esac
+  local base="https://github.com/starship/starship/releases/download/v${TOOLS_STARSHIP_VERSION}"
+  tools::_install_release starship "$TOOLS_STARSHIP_VERSION" \
+    "$base/starship-${target}.tar.gz" "$base/starship-${target}.tar.gz.sha256" starship
 }
 
-# Install a tool from a GitHub release tarball.
-# Args: $1=binary name, $2=owner/repo, $3=archive_template (uses {tag}/{arch}),
-# $4=path inside archive to the binary.
-tools::_install_github_release() {
-  local bin="$1" repo="$2" tmpl="$3" path="$4"
-  if command -v "$bin" >/dev/null 2>&1; then
-    msg::success "$bin already installed"
-    return 0
-  fi
-  local tag arch tmp url filename
-  tag=$(tools::_latest_tag "$repo") || { msg::error "$bin: failed to fetch latest tag"; return 1; }
-  arch=$(tools::_arch) || return 1
-  filename=$(printf '%s' "$tmpl" | sed -e "s/{tag}/$tag/g" -e "s/{arch}/$arch/g")
-  url="https://github.com/$repo/releases/download/v${tag}/${filename}"
-  tmp=$(mktemp -d)
-  if ! curl -fsSL "$url" -o "$tmp/archive"; then
-    msg::error "$bin: download failed: $url"
-    rm -rf "$tmp"
-    return 1
-  fi
-  tar -xz -C "$tmp" -f "$tmp/archive" || { msg::error "$bin: extract failed"; rm -rf "$tmp"; return 1; }
-  mkdir -p "$HOME/.local/bin"
-  install -m 755 "$tmp/$path" "$HOME/.local/bin/$bin" || { msg::error "$bin: install failed"; rm -rf "$tmp"; return 1; }
-  rm -rf "$tmp"
-  msg::success "$bin $tag installed"
+tools::lazygit() {
+  msg::heading "Installing lazygit"
+  local arch
+  case "$(uname -m)" in
+    x86_64|amd64)  arch=x86_64 ;;
+    aarch64|arm64) arch=arm64 ;;
+    *) msg::error "unsupported arch: $(uname -m)"; return 1 ;;
+  esac
+  local base="https://github.com/jesseduffield/lazygit/releases/download/v${TOOLS_LAZYGIT_VERSION}"
+  tools::_install_release lazygit "$TOOLS_LAZYGIT_VERSION" \
+    "$base/lazygit_${TOOLS_LAZYGIT_VERSION}_linux_${arch}.tar.gz" "$base/checksums.txt" lazygit
 }
 
-tools::lazygit()    { msg::heading "Installing lazygit";    tools::_install_github_release lazygit    jesseduffield/lazygit    'lazygit_{tag}_Linux_{arch}.tar.gz'    lazygit; }
-tools::lazydocker() { msg::heading "Installing lazydocker"; tools::_install_github_release lazydocker jesseduffield/lazydocker 'lazydocker_{tag}_Linux_{arch}.tar.gz' lazydocker; }
-tools::gh()         { msg::heading "Installing gh";         tools::_install_github_release gh         cli/cli                  'gh_{tag}_linux_{arch}.tar.gz'         "gh_{tag}_linux_{arch}/bin/gh"; }
+tools::lazydocker() {
+  msg::heading "Installing lazydocker"
+  local arch
+  case "$(uname -m)" in
+    x86_64|amd64)  arch=x86_64 ;;
+    aarch64|arm64) arch=arm64 ;;
+    *) msg::error "unsupported arch: $(uname -m)"; return 1 ;;
+  esac
+  local base="https://github.com/jesseduffield/lazydocker/releases/download/v${TOOLS_LAZYDOCKER_VERSION}"
+  tools::_install_release lazydocker "$TOOLS_LAZYDOCKER_VERSION" \
+    "$base/lazydocker_${TOOLS_LAZYDOCKER_VERSION}_Linux_${arch}.tar.gz" "$base/checksums.txt" lazydocker
+}
 
+tools::gh() {
+  msg::heading "Installing gh"
+  local arch
+  case "$(uname -m)" in
+    x86_64|amd64)  arch=amd64 ;;
+    aarch64|arm64) arch=arm64 ;;
+    *) msg::error "unsupported arch: $(uname -m)"; return 1 ;;
+  esac
+  local base="https://github.com/cli/cli/releases/download/v${TOOLS_GH_VERSION}"
+  local dir="gh_${TOOLS_GH_VERSION}_linux_${arch}"
+  tools::_install_release gh "$TOOLS_GH_VERSION" \
+    "$base/${dir}.tar.gz" "$base/gh_${TOOLS_GH_VERSION}_checksums.txt" "$dir/bin/gh"
+}
+
+# Rust-based tools through the rust toolchain mise provides on Linux.
 tools::cargo_tools() {
   msg::heading "Installing Rust-based tools via cargo"
   if ! command -v mise >/dev/null 2>&1; then
-    msg::error "mise not on PATH; cargo_tools needs mise+rust. Skipping."
+    msg::error "mise not on PATH; cargo_tools needs mise+rust"
     return 1
   fi
-  local tools=(difftastic tealdeer typos-cli vivid zk)
+  local tools=(difftastic tealdeer typos-cli vivid zk) fails=0
   local installed
   installed=$(mise exec -- cargo install --list 2>/dev/null | awk '/^[^ ]/ {sub(/:.*/,"",$1); print $1}')
   for t in "${tools[@]}"; do
@@ -79,15 +158,23 @@ tools::cargo_tools() {
       msg::success "$t already installed"
     else
       msg::arrow "mise exec -- cargo install --locked $t"
-      mise exec -- cargo install --locked "$t" || msg::error "failed to install $t"
+      mise exec -- cargo install --locked "$t" || { msg::error "failed to install $t"; fails=$((fails + 1)); }
     fi
   done
+  (( fails == 0 ))
 }
 
 tools::setup() {
-  tools::starship
-  tools::lazygit
-  tools::lazydocker
-  tools::gh
-  tools::cargo_tools
+  local fails=0
+  # starship comes from the distro package where one exists; the release
+  # archive covers any distro whose repos lack it (fedora, for one), and
+  # once it is ours the recorded version, not PATH, decides a reinstall.
+  if ! command -v starship >/dev/null 2>&1 || [[ -e "$HOME/.local/opt/tools/.versions/starship" ]]; then
+    tools::starship || fails=$((fails + 1))
+  fi
+  tools::lazygit    || fails=$((fails + 1))
+  tools::lazydocker || fails=$((fails + 1))
+  tools::gh         || fails=$((fails + 1))
+  tools::cargo_tools || fails=$((fails + 1))
+  (( fails == 0 ))
 }
