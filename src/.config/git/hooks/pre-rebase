@@ -9,9 +9,13 @@ set -uo pipefail
 
 name=${0##*/}
 
-git_dir=$(git rev-parse --git-dir 2>/dev/null) || git_dir=""
-if [ -n "$git_dir" ] && [ -x "$git_dir/hooks/$name" ]; then
-  "$git_dir/hooks/$name" "$@" || exit $?
+if [ -z "${GIT_DIR:-}" ] && [ -d .git ]; then
+  hooks_dir=.git
+else
+  hooks_dir=$(git rev-parse --git-common-dir 2>/dev/null) || hooks_dir=""
+fi
+if [ -n "$hooks_dir" ] && [ -x "$hooks_dir/hooks/$name" ]; then
+  "$hooks_dir/hooks/$name" "$@" || exit $?
 fi
 
 if [ "$name" = commit-msg ] && [ -f "$HOME/.agents/hooks/commit-msg-check.py" ]; then
