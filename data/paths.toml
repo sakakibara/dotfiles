@@ -5,7 +5,9 @@
 #   dir      directory to add; captures allowed (e.g. <machine.brew_prefix>/bin)
 #   when     optional gate: an executable name or a derived-fact name
 #            (data/facts.toml); the row is included when either is present
-#            (fragments below test `tool = entry.when or bound entry.when`)
+#            (fragments below test `tool = entry.when or bound entry.when`).
+#            A fact binds when mox applies, so a tool home created after the
+#            last apply joins PATH at the next one.
 #   shells   optional list, default ["zsh", "fish"]
 #   prepend  optional bool; true prepends ahead of inherited PATH (default:
 #            append). Never written false -- omit the field instead.
@@ -18,21 +20,20 @@
 [[paths]]
 # Before the pnpm home dir: a binary present in both must resolve to the
 # bin copy, which is where current pnpm installs land.
-# pnpm's own installer adds this dir to fish only; zsh has no equivalent.
-dir = "$HOME/.local/share/pnpm/bin"
+dir = "<machine.pnpm_home>/bin"
 prepend = true
-shells = ["fish"]
+when = "pnpm_home"
 
 [[paths]]
-dir = "$HOME/.local/share/pnpm"
+dir = "<machine.pnpm_home>"
 prepend = true
+when = "pnpm_home"
 
 [[paths]]
-# Ghostty's CLI dir, previously injected by its installer into fish's
-# universal fish_user_paths (now cleared; this row is its managed home).
+# Ghostty's CLI dir; the app bundle exists only on macOS, and the shell
+# existence-checks every row.
 dir = "/Applications/Ghostty.app/Contents/MacOS"
 prepend = true
-shells = ["fish"]
 
 [[paths]]
 # Holds the gh shim, which must shadow brew's gh -- kept first among the
@@ -41,24 +42,14 @@ dir = "$HOME/.local/bin"
 prepend = true
 
 [[paths]]
-dir = "$HOME/.cargo/bin"
+dir = "<machine.cargo_home>/bin"
 prepend = true
+when = "cargo_home"
 
 [[paths]]
-dir = "$HOME/.nimble/bin"
+dir = "<machine.gopath>/bin"
 prepend = true
-
-[[paths]]
-dir = "$HOME/.fzf/bin"
-prepend = true
-
-[[paths]]
-dir = "$HOME/.go/bin"
-prepend = true
-
-[[paths]]
-dir = "$HOME/.config/emacs/bin"
-prepend = true
+when = "gopath"
 
 [[paths]]
 dir = "<machine.brew_prefix>/bin"

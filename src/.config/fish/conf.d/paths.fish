@@ -3,8 +3,8 @@
 # Rebuilds the mox-managed PATH segment fresh every time this file is
 # sourced, deduping against whatever PATH already holds -- safe to source
 # any number of times. Runs in conf.d, before config.fish, so it cannot
-# depend on XDG_* vars config.fish sets up later; registry dirs are
-# therefore $HOME-relative literals.
+# rely on XDG_* being set: registry dirs are `$HOME`-relative literals or,
+# for rows derived from a machine fact, the resolved absolute path.
 #
 # __mox_paths_sync (below) re-sources this file whenever its mtime changes,
 # so a `mox apply` that touches the registry takes effect at the next

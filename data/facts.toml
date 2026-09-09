@@ -14,7 +14,7 @@
 [[facts]]
 name = "brew_prefix"
 env = "HOMEBREW_PREFIX"
-candidates = ["/opt/homebrew", "/usr/local", "~/.linuxbrew"]
+candidates = ["/opt/homebrew", "/home/linuxbrew/.linuxbrew", "~/.linuxbrew", "/usr/local"]
 
 [[facts]]
 name = "cargo_home"

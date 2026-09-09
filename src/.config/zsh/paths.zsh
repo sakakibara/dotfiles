@@ -2,8 +2,8 @@
 #
 # Rebuilds the mox-managed PATH segment fresh every time this file is
 # sourced, deduping against whatever PATH already holds -- safe to source
-# any number of times. Registry dirs are $HOME-relative literals so this
-# file has no dependency on XDG_* vars being set at any particular point.
+# any number of times. Registry dirs are `$HOME`-relative literals (or a fact's
+# resolved path), so this file does not depend on when XDG_* vars are set.
 #
 # Sourced once at shell start by .zshrc, then re-sourced by its
 # __mox_paths_sync precmd hook whenever this file's mtime changes -- so a
