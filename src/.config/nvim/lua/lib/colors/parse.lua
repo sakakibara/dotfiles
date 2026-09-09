@@ -1,4 +1,4 @@
--- Pure: string + offset → { range = {col_s, col_e}, color = Color } or nil.
+-- Pure: string + offset -> { range = {col_s, col_e}, color = Color } or nil.
 -- Each format has its own pattern. parse() returns the literal that contains
 -- the given offset (or nil); parse_all() scans an entire string.
 local C = require("lib.colors.color")
@@ -21,7 +21,7 @@ add_detector("#%x+%f[%W%z]", function(match)
   return C.from_hex(match)
 end)
 
--- rgb()/rgba() — legacy comma and modern space syntax, with optional / alpha
+-- rgb()/rgba() -- legacy comma and modern space syntax, with optional / alpha
 add_detector("rgba?%([^)]+%)", function(match)
   local fn_name   = match:match("^(rgba?)%(") or "rgb"   -- "rgb" or "rgba"
   local inner_raw = match:gsub("^rgba?%(", ""):gsub("%)$", "")
@@ -57,7 +57,7 @@ add_detector("rgba?%([^)]+%)", function(match)
   }
 end)
 
--- hsl()/hsla() — h in deg/rad/turn (or unitless = deg), s and l in %
+-- hsl()/hsla() -- h in deg/rad/turn (or unitless = deg), s and l in %
 add_detector("hsla?%([^)]+%)", function(match)
   local fn_name   = match:match("^(hsla?)%(") or "hsl"   -- "hsl" or "hsla"
   local inner_raw = match:gsub("^hsla?%(", ""):gsub("%)$", "")
@@ -127,7 +127,7 @@ add_detector("oklch%([^)]+%)", function(match)
   return C.from_oklch(L, Cval, h, a)
 end)
 
--- oklab() — Cartesian OKLab. L is 0..1 or %, a and b are signed numbers.
+-- oklab() -- Cartesian OKLab. L is 0..1 or %, a and b are signed numbers.
 add_detector("oklab%([^)]+%)", function(match)
   local inner = match:gsub("^oklab%(", ""):gsub("%)$", "")
   inner = inner:gsub("/", " ")
@@ -152,7 +152,7 @@ add_detector("oklab%([^)]+%)", function(match)
   return C.from_oklab(L, a, b, alpha)
 end)
 
--- lab() — CSS CIELAB. L is 0..100 or %, a and b are signed numbers.
+-- lab() -- CSS CIELAB. L is 0..100 or %, a and b are signed numbers.
 add_detector("lab%([^)]+%)", function(match)
   local inner = match:gsub("^lab%(", ""):gsub("%)$", "")
   inner = inner:gsub("/", " ")
@@ -177,7 +177,7 @@ add_detector("lab%([^)]+%)", function(match)
   return C.from_lab(L, a, b, alpha)
 end)
 
--- lch() — CSS CIELCH. L is 0..100 or %, C is 0..150-ish, h is angle.
+-- lch() -- CSS CIELCH. L is 0..100 or %, C is 0..150-ish, h is angle.
 add_detector("lch%([^)]+%)", function(match)
   local inner = match:gsub("^lch%(", ""):gsub("%)$", "")
   inner = inner:gsub("/", " ")
@@ -208,7 +208,7 @@ add_detector("lch%([^)]+%)", function(match)
   return C.from_lch(L, Cval, h, alpha)
 end)
 
--- color(<space> r g b [/ alpha]) — currently only display-p3 is supported.
+-- color(<space> r g b [/ alpha]) -- currently only display-p3 is supported.
 add_detector("color%([^)]+%)", function(match)
   local inner = match:gsub("^color%(", ""):gsub("%)$", "")
   inner = inner:gsub("/", " ")
@@ -239,8 +239,8 @@ add_detector("color%([^)]+%)", function(match)
   return C.from_p3(r, g, b, alpha)
 end)
 
--- color-mix(in SPACE, c1 [PCT], c2 [PCT]) — interpolate two colors in the
--- given color space. Supported: srgb, oklch, oklab. Other spaces → nil.
+-- color-mix(in SPACE, c1 [PCT], c2 [PCT]) -- interpolate two colors in the
+-- given color space. Supported: srgb, oklch, oklab. Other spaces -> nil.
 local function _shortest_hue_lerp(h1, h2, t)
   -- CSS default: shortest path on the hue circle.
   local diff = h2 - h1
@@ -253,7 +253,7 @@ end
 add_detector("color%-mix%([^)]+%)", function(match)
   local inner = match:gsub("^color%-mix%(", ""):gsub("%)$", "")
 
-  -- Split on commas (top-level) — but the colors themselves may contain
+  -- Split on commas (top-level) -- but the colors themselves may contain
   -- commas (rgb(a, b, c)). For simplicity we leverage the fact that within
   -- color-mix the colors are space-separated functional notations like
   -- oklch(...) or hex/named. Parens-aware comma split:

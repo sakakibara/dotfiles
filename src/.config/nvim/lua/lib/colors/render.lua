@@ -39,7 +39,7 @@ local function key_for(detected)
   return string.format("%d:%d:%d:%s", detected.lnum, detected.col_s, detected.col_e, hex:sub(2))
 end
 
--- apply(buf, detected_list) — diff against prior state, patch extmarks.
+-- apply(buf, detected_list) -- diff against prior state, patch extmarks.
 -- Each detected = { lnum, col_s, col_e, color }.
 function M.apply(buf, detected)
   if not vim.api.nvim_buf_is_valid(buf) then return end

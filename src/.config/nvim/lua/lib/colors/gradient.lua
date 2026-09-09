@@ -1,7 +1,7 @@
 -- Render multi-stop swatch strips for `linear-gradient(...)`,
 -- `radial-gradient(...)`, and `conic-gradient(...)` calls. Each detected
 -- gradient gets a row of small `█` cells (one per stop, colored with the
--- stop's hex) appended inline after the closing paren — so the gradient
+-- stop's hex) appended inline after the closing paren -- so the gradient
 -- stays readable as text *and* you can see the actual color sequence at
 -- a glance.
 --

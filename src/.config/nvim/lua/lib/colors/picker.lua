@@ -1,4 +1,4 @@
--- Floating-window color picker. State machine: closed → compact → expanded.
+-- Floating-window color picker. State machine: closed -> compact -> expanded.
 local C = require("lib.colors.color")
 local H = require("lib.colors.harmony")
 local M = {}
@@ -74,7 +74,7 @@ local function compact_lines(state)
 
   local lines = {
     "  " .. hex,                                       -- 0: header
-    "  " .. string.rep("█", 38),                       -- 1: swatch (38 blocks → symmetric 2-cell margin in 42-col window)
+    "  " .. string.rep("█", 38),                       -- 1: swatch (38 blocks -> symmetric 2-cell margin in 42-col window)
     "",                                                -- 2: blank
   }
 
@@ -128,8 +128,8 @@ local function expanded_lines(state)
 
   local tw_name = H.nearest_tailwind(state.color)
   local nm_name = H.nearest_named(state.color)
-  table.insert(lines, "  Tailwind  " .. (tw_name or "—"))
-  table.insert(lines, "  Named     " .. (nm_name or "—"))
+  table.insert(lines, "  Tailwind  " .. (tw_name or "--"))
+  table.insert(lines, "  Named     " .. (nm_name or "--"))
 
   if #M._recents > 0 then
     local r = {}
@@ -159,7 +159,7 @@ local function render(state)
     end_col  = #lines[2],
     hl_group = "LibColorsPickerSwatch_" .. short,
   })
-  -- Active slider row — bold highlight so the active component stands out.
+  -- Active slider row -- bold highlight so the active component stands out.
   if state.mode == "compact" then
     local active_row = 3 + (state.slider - 1)  -- 0-indexed buffer row
     vim.api.nvim_set_hl(0, "LibColorsPickerActive", { bold = true })
@@ -188,7 +188,7 @@ local function render(state)
     hl_key(last, "y")
     hl_key(last, "⏎")
     hl_key(last, "⎋")
-    -- "q close" — match the standalone "q" with surrounding spaces to avoid
+    -- "q close" -- match the standalone "q" with surrounding spaces to avoid
     -- matching "q" inside "cancel" or other words.
     do
       local line = lines[last + 1] or ""
@@ -224,7 +224,7 @@ local function render(state)
   vim.bo[state.buf].modifiable = false
 
   if state.win and vim.api.nvim_win_is_valid(state.win) then
-    -- Resize only — DO NOT re-pass `relative`/`row`/`col`. The picker IS the
+    -- Resize only -- DO NOT re-pass `relative`/`row`/`col`. The picker IS the
     -- current window, so `relative = "cursor"` would re-anchor to the
     -- picker's own cursor and drift on every keypress.
     local cur = vim.api.nvim_win_get_config(state.win)

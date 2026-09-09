@@ -223,10 +223,10 @@ function M.scan_project(root)
           end
           scan_files(files)
         elseif result.code == 1 then
-          -- No matches — overlay stays empty, we're done.
+          -- No matches -- overlay stays empty, we're done.
           return
         else
-          -- Real error — fall back to the native async walk.
+          -- Real error -- fall back to the native async walk.
           walk_css_async(root, scan_files)
         end
       end)

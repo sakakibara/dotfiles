@@ -8,7 +8,7 @@ M.MAX_LINE_LEN    = 1000
 M.MAX_VIEWPORT_KB = 256
 
 -- Filetypes that may use the regex fallback when no TS query is available.
--- Keyed by filetype name (string → true). Default: empty (opt-in only).
+-- Keyed by filetype name (string -> true). Default: empty (opt-in only).
 M._regex_filetypes = {}
 
 -- TS queries keyed by *parser language name* (not filetype). Each query
@@ -74,7 +74,7 @@ M._ts_disabled = {}
 local function ts_detect(buf, top, bot)
   local ft = vim.bo[buf].filetype
   if M._ts_disabled[ft] then return nil end
-  -- Resolve filetype → parser language (e.g. "javascriptreact" → "javascript").
+  -- Resolve filetype -> parser language (e.g. "javascriptreact" -> "javascript").
   local lang = M._ft_to_lang[ft] or vim.treesitter.language.get_lang(ft) or ft
   local query_str = M._queries[lang]
   if not query_str then return nil end
@@ -153,7 +153,7 @@ function M.detect(buf, top, bot)
   --   (a) this ft has an authored TS query (parser unavailable in this env), OR
   --   (b) the ft is explicitly whitelisted in _regex_filetypes
   -- Without this gate the regex would scan arbitrary code files (C, Rust, Go,
-  -- Lua…) and produce false positives on identifier substrings, URL fragments,
+  -- Lua...) and produce false positives on identifier substrings, URL fragments,
   -- hex-shaped tokens, etc.
   local ft = vim.bo[buf].filetype
   local lang = M._ft_to_lang[ft] or ft

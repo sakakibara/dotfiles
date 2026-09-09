@@ -31,7 +31,7 @@ local function find_color(line, cursor)
   local hit  = parse.parse(line, col0)
   if not hit then return nil end
   -- Some literals (e.g. CSS named colors with no spelled fmt) might lack
-  -- a usable source — only operate on those format.format can serialize.
+  -- a usable source -- only operate on those format.format can serialize.
   local fmt = (hit.color.source and hit.color.source.fmt) or "hex"
   if not F.is_format(fmt) then return nil end
   return {

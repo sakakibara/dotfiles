@@ -20,7 +20,7 @@ T.describe("lib.colors.picker state", function()
     T.eq(s.mode, "closed")
   end)
 
-  T.it("toggle_expand cycles compact ↔ expanded", function()
+  T.it("toggle_expand cycles compact <-> expanded", function()
     local s = P.open({ initial = C.from_hex("#0000ff") })
     P.toggle_expand(s)
     T.eq(s.mode, "expanded")
@@ -78,7 +78,7 @@ T.describe("lib.colors.picker adjustment", function()
     P.close(s)
   end)
 
-  T.it("cycle_space cycles rgb → hsl → oklch → rgb and resets slider", function()
+  T.it("cycle_space cycles rgb -> hsl -> oklch -> rgb and resets slider", function()
     local s = P.open({ initial = C.from_hex("#ff0000") })
     T.eq(s.space, "rgb")
     P.cycle_slider(s)  -- slider = 2
@@ -128,7 +128,7 @@ T.describe("lib.colors.picker commit", function()
       initial = hit.color,
       anchor  = { buf = src, lnum = 0, col_s = hit.range.col_s, col_e = hit.range.col_e },
     })
-    P.cycle_space(s)  -- → hsl
+    P.cycle_space(s)  -- -> hsl
     P.adjust(s, 60)   -- hue +60
     P.commit(s)
     local line = vim.api.nvim_buf_get_lines(src, 0, 1, false)[1]
@@ -147,6 +147,23 @@ T.describe("lib.colors.picker expanded mode", function()
     T.truthy(joined:find("Tailwind"), "expected Tailwind label in expanded view")
     T.truthy(joined:find("Named"),    "expected Named label")
     P.close(s)
+  end)
+
+  T.it("a suggestion row with nothing near shows a bare placeholder", function()
+    local H = require("lib.colors.harmony")
+    local real_tw, real_named = H.nearest_tailwind, H.nearest_named
+    H.nearest_tailwind = function() return nil end
+    H.nearest_named = function() return nil end
+    local ok, err = pcall(function()
+      local s = P.open({ initial = C.from_hex("#ef4444") })
+      P.toggle_expand(s)
+      local joined = table.concat(vim.api.nvim_buf_get_lines(s.buf, 0, -1, false), "\n")
+      T.truthy(joined:find("  Tailwind  --", 1, true), "expected the Tailwind placeholder")
+      T.truthy(joined:find("  Named     --", 1, true), "expected the Named placeholder")
+      P.close(s)
+    end)
+    H.nearest_tailwind, H.nearest_named = real_tw, real_named
+    if not ok then error(err, 0) end
   end)
 
   T.it("expanded mode shows recents list when present", function()

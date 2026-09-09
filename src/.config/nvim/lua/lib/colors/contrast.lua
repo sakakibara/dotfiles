@@ -5,7 +5,7 @@
 -- Pairing scope is per-line: this is the simplest signal that catches
 -- the common CSS shape (`background: X; color: Y;` on one line, or two
 -- adjacent declarations). For multi-line rule pairing, we'd need
--- selector-aware analysis — out of scope here.
+-- selector-aware analysis -- out of scope here.
 
 local C = require("lib.colors.color")
 local D = require("lib.colors.detect")
@@ -28,7 +28,7 @@ end
 -- Public: render contrast marks for the lines [top, bot] of `buf`. Skips
 -- lines that don't have exactly two distinct color literals.
 --
--- `hits` is optional — when supplied (e.g. from the main render path that
+-- `hits` is optional -- when supplied (e.g. from the main render path that
 -- already ran D.detect), we re-bucket them instead of re-detecting. Saves
 -- a second TS query pass per redraw when contrast hints are on.
 function M.render(buf, top, bot, hits)

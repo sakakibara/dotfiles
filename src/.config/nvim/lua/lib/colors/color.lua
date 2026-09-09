@@ -137,7 +137,7 @@ end
 -- D50 white point (CSS uses D50 for lab/lch)
 local D50 = { 0.96422, 1.0, 0.82521 }
 
--- Bradford chromatic adaptation matrix: D50 → D65
+-- Bradford chromatic adaptation matrix: D50 -> D65
 local D50_to_D65 = {
   {  0.9554734527042182, -0.0230985368742614,  0.0632593086610217 },
   { -0.0283697069632081,  1.0099954580058226,  0.0210413531719399 },
@@ -158,7 +158,7 @@ local function mat3_mul(M, v)
     M[3][1]*v[1] + M[3][2]*v[2] + M[3][3]*v[3]
 end
 
--- Lab (D50) → CIE XYZ (D50)
+-- Lab (D50) -> CIE XYZ (D50)
 local function lab_to_xyz_d50(L, a, b)
   local fy = (L + 16) / 116
   local fx = a / 500 + fy
@@ -194,7 +194,7 @@ function M.from_lch(L, C, h, alpha)
   return c
 end
 
--- Display-P3 → CIE XYZ (D65). Reference: CSS Color Module Level 4.
+-- Display-P3 -> CIE XYZ (D65). Reference: CSS Color Module Level 4.
 local P3_to_XYZ_D65 = {
   { 0.4865709486482162,   0.26566769316909306, 0.1982172852343625 },
   { 0.2289745640697488,   0.6917385218365064,  0.079286914093745  },
@@ -206,7 +206,7 @@ function M.from_p3(r, g, b, alpha)
   local lr = srgb_to_linear(r)
   local lg = srgb_to_linear(g)
   local lb = srgb_to_linear(b)
-  -- P3 linear → CIE XYZ (D65) → linear sRGB
+  -- P3 linear -> CIE XYZ (D65) -> linear sRGB
   local x, y, z = mat3_mul(P3_to_XYZ_D65, { lr, lg, lb })
   local r2, g2, b2 = mat3_mul(XYZ_D65_to_linear_sRGB, { x, y, z })
   return {
@@ -278,7 +278,7 @@ end
 
 -- Returns the highest WCAG level the ratio satisfies for normal text:
 -- "AAA" (>= 7), "AA" (>= 4.5), or "fail" (< 4.5). Large-text thresholds
--- (3 / 4.5) are not a separate level here — callers can compute as needed.
+-- (3 / 4.5) are not a separate level here -- callers can compute as needed.
 function M.contrast_level(ratio)
   if ratio >= 7   then return "AAA"  end
   if ratio >= 4.5 then return "AA"   end

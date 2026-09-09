@@ -1,17 +1,17 @@
--- Color → text serialization in any of the supported color formats.
+-- Color -> text serialization in any of the supported color formats.
 -- Extracted from picker.lua's commit path so :ColorConvert / :ColorYank
 -- can reuse the same logic, and so adding a new format only touches one
 -- place.
 --
 -- API:
 --   format.format(color, fmt, source_opts) -> string
---     color  — { r, g, b, a, ... } as produced by parse / from_*
---     fmt    — "hex" | "rgb" | "hsl" | "oklch" | "oklab"
---     source_opts — optional table; preserves the original literal's
+--     color  -- { r, g, b, a, ... } as produced by parse / from_*
+--     fmt    -- "hex" | "rgb" | "hsl" | "oklch" | "oklab"
+--     source_opts -- optional table; preserves the original literal's
 --                   surface syntax when round-tripping rgb/hsl:
---       fn_name    — "rgb" / "rgba" / "hsl" / "hsla" (defaults from with_alpha)
---       commas     — true to use "r, g, b" instead of "r g b"
---       with_alpha — true to emit the alpha channel (rgba / hsla shape)
+--       fn_name    -- "rgb" / "rgba" / "hsl" / "hsla" (defaults from with_alpha)
+--       commas     -- true to use "r, g, b" instead of "r g b"
+--       with_alpha -- true to emit the alpha channel (rgba / hsla shape)
 --
 -- Modern slash-alpha shape (`rgb(r g b / a)`) is used when commas=false
 -- and with_alpha=true, matching the picker's prior behavior.

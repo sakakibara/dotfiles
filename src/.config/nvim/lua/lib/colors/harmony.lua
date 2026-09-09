@@ -23,7 +23,7 @@ end
 local TW_PALETTE = require("lib.colors._tailwind_palette")
 local NAMED      = require("lib.colors._named")
 
--- Perceptual ΔE in OKLab: √((L1−L2)² + (a1−a2)² + (b1−b2)²)
+-- Perceptual ΔE in OKLab: √((L1-L2)² + (a1-a2)² + (b1-b2)²)
 local function oklab_dist(c1, c2)
   local L1, Cval1, h1 = C.to_oklch(c1)
   local a1, b1 = Cval1 * math.cos(math.rad(h1)), Cval1 * math.sin(math.rad(h1))
