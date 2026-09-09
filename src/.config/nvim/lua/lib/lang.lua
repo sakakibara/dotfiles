@@ -10,38 +10,36 @@ local M = {}
 
 -- spec fields; ft is required when the spec declares mason tools or
 -- parsers, the rest are optional:
---   ft         string|{string,...}       — filetypes this spec registers for
---   cmd        string                    — executable name; if missing, return early
---   mason      {string,...}              — mason-tool-installer ensure_installed entries
---   parsers    {string,...}              — nvim-treesitter parsers to install
---   parsers_setup function()             — extra ts work (e.g. registering a custom
---                                          parser, disabling a highlight) ran inside
---                                          the nvim-treesitter on_load BEFORE install
---   servers    { [name] = config }       — vim.lsp.config + Lib.lsp.enable per server.
+--   ft         string|{string,...}       -- filetypes this spec registers for
+--   cmd        string                    -- executable name; if missing, return early
+--   mason      {string,...}              -- mason packages installed on the first buffer of ft
+--   parsers    {string,...}              -- nvim-treesitter parsers to install
+--   no_parser  {string,...}              -- fts of the spec none of those parsers serves
+--   parsers_setup function()             -- extra ts work ran in nvim-treesitter's on_load
+--   servers    { [name] = config }       -- vim.lsp.config + Lib.lsp.enable per server.
 --                                          Capabilities are deep-merged with
 --                                          Lib.lsp.capabilities(). config may also be
---                                          a function() that returns the table — used
---                                          when the config needs to look at modules
---                                          loaded by nvim-lspconfig itself
---                                          (lspconfig.configs.*, schemastore, ...).
---                                          Two helper-only fields, stripped before
+--                                          a function() that returns the table, for a
+--                                          config that reads modules nvim-lspconfig
+--                                          loads (lspconfig.configs.*, schemastore).
+--                                          Three helper-only fields, stripped before
 --                                          vim.lsp.config:
---                                            binary     "ruby-lsp" — explicit binary
---                                                       name passed to Lib.lsp.enable
---                                                       as a hint for servers with
---                                                       function `cmd` (jsonls, vtsls,
---                                                       ruby_lsp, yamlls, angularls).
---                                            on_attach  function(args, client) — fired
---                                                       on LspAttach, pre-filtered to
---                                                       this server name; client is
---                                                       resolved from args for you.
---   formatters { [filetype] = {tool,...} } — conform formatters_by_ft entries
---   formatters_setup function(conform)   — extra conform setup (custom formatter
---                                          definitions, etc.) ran inside the
---                                          conform.nvim on_load
---   linters    { [filetype] = {tool,...} } — nvim-lint linters_by_ft entries
---   neotest    { [name] = factory_fn }   — Lib.neotest.add(name, factory) per entry
---   plugins    {plugin_spec,...}         — pack specs returned to caller
+--                                            binary     "ruby-lsp" -- the binary name
+--                                                       Lib.lsp.enable probes for a
+--                                                       server with a function `cmd`
+--                                            available  function() -> bool -- the
+--                                                       readiness check itself, for a
+--                                                       launcher that is always present
+--                                                       (powershell_es)
+--                                            on_attach  function(args, client) -- fired
+--                                                       on LspAttach for this server;
+--                                                       client is resolved from args
+--   formatters { [filetype] = {tool,...} } -- conform formatters_by_ft entries
+--   formatters_setup function(conform)   -- extra conform setup (custom formatters)
+--                                          ran in conform.nvim's on_load
+--   linters    { [filetype] = {tool,...} } -- nvim-lint linters_by_ft entries
+--   neotest    { [name] = factory_fn }   -- Lib.neotest.add(name, factory) per entry
+--   plugins    {plugin_spec,...}         -- pack specs returned to caller
 function M.setup(spec)
   if (spec.mason or (spec.parsers and #spec.parsers > 0)) and not spec.ft then
     error("Lib.lang.setup: ft is required when a spec declares mason tools or parsers")
@@ -54,8 +52,12 @@ function M.setup(spec)
     -- is still fired at nvim-treesitter load time (rare; for parsers
     -- that need extra wiring beyond install).
     if spec.parsers and #spec.parsers > 0 then
+      local fts = type(spec.ft) == "table" and spec.ft or { spec.ft }
+      if spec.no_parser then
+        fts = vim.tbl_filter(function(ft) return not vim.tbl_contains(spec.no_parser, ft) end, fts)
+      end
       for _, parser in ipairs(spec.parsers) do
-        Lib.parsers.add(parser, { ft = spec.ft })
+        Lib.parsers.add(parser, { ft = fts })
       end
     end
     if spec.parsers_setup then
@@ -86,6 +88,7 @@ function M.setup(spec)
         if type(cfg) == "function" then cfg = cfg() end
         cfg = cfg or {}
         local binary = cfg.binary
+        local available = cfg.available
         local on_attach_cb = cfg.on_attach
         local merged = vim.tbl_deep_extend(
           "force",
@@ -93,9 +96,10 @@ function M.setup(spec)
           cfg
         )
         merged.binary = nil
+        merged.available = nil
         merged.on_attach = nil
         vim.lsp.config(name, merged)
-        Lib.lsp.enable(name, binary and { cmd = binary } or nil)
+        Lib.lsp.enable(name, (binary or available) and { cmd = binary, available = available } or nil)
 
         if on_attach_cb then
           Lib.lsp.on_attach(name, on_attach_cb)

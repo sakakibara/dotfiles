@@ -1,7 +1,6 @@
--- Note: old config wired an `@astrojs/ts-plugin` into vtsls for in-TS-file
--- Astro-aware completions. Skipped per M4 simplification — astro-ls alone
--- handles .astro files; TS in Astro projects loses deep Astro intelligence
--- until we revisit vtsls coordination.
+-- astro-ls alone serves .astro files. TypeScript files in an Astro project
+-- get no Astro-aware completions: that needs `@astrojs/ts-plugin` wired
+-- into vtsls, which this config does not do.
 return Lib.lang.setup({
   cmd = "node",
   ft = "astro",

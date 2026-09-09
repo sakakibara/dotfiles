@@ -1,7 +1,7 @@
--- thriftls is not in the mason registry; install manually if needed.
 return Lib.lang.setup({
   cmd = "thrift",
   ft = "thrift",
+  mason = { "thriftls" },
   parsers = { "thrift" },
   servers = { thriftls = {} },
 })

@@ -1,6 +1,7 @@
--- Note: old config registered `telescope-terraform.nvim` and
--- `telescope-terraform-doc.nvim` extensions. Skipped — M2 has no telescope.
--- Revisit if/when telescope lands.
+-- No terraform pickers: the telescope extensions that provide them have no
+-- counterpart for snacks.picker.
+vim.treesitter.language.register("terraform", { "terraform-vars" })
+
 return Lib.lang.setup({
   cmd = "terraform",
   ft = { "terraform", "terraform-vars", "hcl" },

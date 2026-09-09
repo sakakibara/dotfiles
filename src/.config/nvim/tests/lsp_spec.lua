@@ -59,6 +59,21 @@ T.describe("lib.lsp.enable", function()
     T.truthy(lsp._pending_enable["test_enable_missing"])
   end)
 
+  T.it("an explicit availability predicate wins over the binary probe", function()
+    local lsp = reset()
+    local enabled = {}
+    local orig = vim.lsp.enable
+    vim.lsp.enable = function(name) enabled[#enabled + 1] = name end
+    vim.lsp.config("test_enable_pred_no", { cmd = { "/bin/sh" } })
+    lsp.enable("test_enable_pred_no", { available = function() return false end })
+    T.eq(enabled, {})
+    T.truthy(lsp._pending_enable["test_enable_pred_no"])
+    vim.lsp.config("test_enable_pred_yes", { cmd = { "/nonexistent/binary-xyz" } })
+    lsp.enable("test_enable_pred_yes", { available = function() return true end })
+    vim.lsp.enable = orig
+    T.eq(enabled, { "test_enable_pred_yes" })
+  end)
+
   T.it("MasonToolsUpdateCompleted re-enables a pending server once binary exists", function()
     local lsp = reset()
     local enabled = {}

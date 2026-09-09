@@ -15,6 +15,7 @@ local function with_mocks(fn)
   local recorded = {
     mason       = {},   -- list of tool names
     parsers     = {},   -- list of parser names
+    parser_fts  = {},   -- parser name -> the ft list it was registered for
     neotest     = {},   -- {name=, factory=}
     on_load     = {},   -- {plugin=, fn=}
     lsp_cfg     = {},   -- {name=, cfg=}
@@ -36,9 +37,13 @@ local function with_mocks(fn)
   }
   Lib.parsers = {
     add = function(...)
-      for _, t in ipairs({ ... }) do
+      local args = { ... }
+      local opts = type(args[#args]) == "table" and args[#args] or {}
+      local fts = type(opts.ft) == "table" and opts.ft or { opts.ft }
+      for _, t in ipairs(args) do
         if type(t) == "string" then
           recorded.parsers[#recorded.parsers + 1] = t
+          recorded.parser_fts[t] = fts
         end
       end
     end,
@@ -222,7 +227,7 @@ T.describe("lib.lang.setup", function()
         servers = { srv = { capabilities = { user = "value" } } },
       })
       rec:drive("nvim-lspconfig")
-      -- vim.tbl_deep_extend("force", caps_from_lib, user_cfg) — user wins
+      -- vim.tbl_deep_extend("force", caps_from_lib, user_cfg) -- user wins
       T.eq(rec.lsp_cfg[1].cfg.capabilities, { stub = true, user = "value" })
     end)
   end)
@@ -236,6 +241,26 @@ T.describe("lib.lang.setup", function()
       T.eq(rec.lsp_enable, { { name = "srv", opts = { cmd = "real-binary" } } })
       T.eq(rec.lsp_cfg[1].cfg.binary, nil, "binary should be stripped from lsp config")
       T.eq(rec.lsp_cfg[1].cfg.settings, { x = 1 })
+    end)
+  end)
+
+  T.it("available is forwarded to Lib.lsp.enable and stripped from vim.lsp.config", function()
+    with_mocks(function(rec, lang)
+      local ready = function() return true end
+      lang.setup({
+        servers = { srv = { available = ready, settings = { x = 1 } } },
+      })
+      rec:drive("nvim-lspconfig")
+      T.eq(rec.lsp_enable, { { name = "srv", opts = { available = ready } } })
+      T.eq(rec.lsp_cfg[1].cfg.available, nil, "available should be stripped from lsp config")
+      T.eq(rec.lsp_cfg[1].cfg.settings, { x = 1 })
+    end)
+  end)
+
+  T.it("no_parser keeps a filetype out of the parser registry", function()
+    with_mocks(function(rec, lang)
+      lang.setup({ ft = { "cs", "vb" }, parsers = { "c_sharp" }, no_parser = { "vb" } })
+      T.eq(rec.parser_fts["c_sharp"], { "cs" })
     end)
   end)
 
@@ -291,6 +316,17 @@ T.describe("lib.lang.setup", function()
       -- parsers_setup is registered as a nvim-treesitter on_load callback.
       rec:drive("nvim-treesitter")
       T.eq(setup_fired, true)
+    end)
+  end)
+
+  T.it("registers every parser against every filetype the spec declares", function()
+    with_mocks(function(rec, lang)
+      lang.setup({
+        ft      = { "javascript", "javascriptreact" },
+        parsers = { "javascript", "jsdoc" },
+      })
+      T.eq(rec.parser_fts.javascript, { "javascript", "javascriptreact" })
+      T.eq(rec.parser_fts.jsdoc, { "javascript", "javascriptreact" })
     end)
   end)
 

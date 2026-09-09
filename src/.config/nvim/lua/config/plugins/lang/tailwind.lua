@@ -1,7 +1,3 @@
--- Note: old config added `roobert/tailwindcss-colorizer-cmp.nvim` as an
--- nvim-cmp source formatter. Skipped — M2 uses blink.cmp and there is no
--- direct blink-native equivalent yet. Revisit if tailwind color swatches
--- in completion are needed.
 local exclude = { markdown = true }
 
 local default_filetypes = {
@@ -24,11 +20,10 @@ return Lib.lang.setup({
   mason = { "tailwindcss-language-server" },
   servers = {
     tailwindcss = function()
-      local ok, tw = pcall(require, "lspconfig.configs.tailwindcss")
-      local from_lspconfig = ok and tw.default_config and tw.default_config.filetypes
+      local live = vim.lsp.config.tailwindcss
       return {
         binary = "tailwindcss-language-server",
-        filetypes = served(from_lspconfig or default_filetypes),
+        filetypes = served(live and live.filetypes or default_filetypes),
       }
     end,
   },

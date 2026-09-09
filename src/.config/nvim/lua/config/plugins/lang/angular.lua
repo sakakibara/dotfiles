@@ -1,3 +1,5 @@
+vim.treesitter.language.register("angular", { "htmlangular" })
+
 vim.filetype.add({
   pattern = {
     [".*%.component%.html"] = "htmlangular",
@@ -5,9 +7,9 @@ vim.filetype.add({
   },
 })
 
--- Note: old config also wired `@angular/language-server` as a vtsls global
--- plugin so Angular-aware completions would fire inside .ts files. Skipped
--- per M4 simplification — angularls alone handles Angular templates.
+-- angularls serves the templates. TypeScript files get no Angular-aware
+-- completions: that needs `@angular/language-server` wired into vtsls as a
+-- global plugin, which this config does not do.
 return Lib.lang.setup({
   cmd = "node",
   ft = "htmlangular",
@@ -16,7 +18,7 @@ return Lib.lang.setup({
   servers = {
     angularls = {
       binary = "ngserver",  -- function cmd in lspconfig
-      -- Disable angularls rename — it clashes with the TS server's rename capability.
+      -- Disable angularls rename -- it clashes with the TS server's rename capability.
       on_attach = function(_, client)
         client.server_capabilities.renameProvider = false
       end,

@@ -1,7 +1,9 @@
 Lib.parsers.add("fennel", { ft = "fennel" })
 Lib.parsers.add("scheme", { ft = "scheme" })
 Lib.parsers.add("janet_simple", { ft = "janet" })
+vim.treesitter.language.register("janet_simple", { "janet" })
 Lib.parsers.add("commonlisp", { ft = "lisp" })
+vim.treesitter.language.register("commonlisp", { "lisp" })
 Lib.parsers.add("racket", { ft = "racket" })
 
 return Lib.lang.setup({

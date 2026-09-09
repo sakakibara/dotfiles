@@ -1,7 +1,6 @@
--- Note: old config coordinated vue_ls with vtsls via `@vue/typescript-plugin`
--- for hybrid mode. Skipped per M4 simplification — vue_ls alone handles .vue
--- files; TS support in Vue projects loses deep Vue intelligence until we
--- revisit vtsls coordination (tier-5 typescript).
+-- vue_ls alone serves .vue files. TypeScript files in a Vue project get no
+-- Vue-aware intelligence: that needs `@vue/typescript-plugin` coordinated
+-- with vtsls in hybrid mode, which this config does not do.
 return Lib.lang.setup({
   cmd = "node",
   ft = "vue",

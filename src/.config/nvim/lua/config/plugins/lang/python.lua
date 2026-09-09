@@ -11,8 +11,7 @@ return Lib.lang.setup({
           logLevel = "error",
         },
       },
-      -- Disable ruff hover so pyright/basedpyright (if present) wins hover,
-      -- matching old config's setup() hook.
+      -- Disable ruff hover so pyright/basedpyright, when present, wins it.
       on_attach = function(_, client)
         client.server_capabilities.hoverProvider = false
       end,

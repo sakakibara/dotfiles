@@ -1,5 +1,5 @@
--- Note: old config coordinated svelte with vtsls via `typescript-svelte-plugin`
--- for TS intelligence inside .svelte files. Skipped per M4 simplification.
+-- svelte-language-server alone serves .svelte files; TS intelligence inside
+-- them would need `typescript-svelte-plugin` coordinated with vtsls.
 return Lib.lang.setup({
   cmd = "node",
   ft = "svelte",

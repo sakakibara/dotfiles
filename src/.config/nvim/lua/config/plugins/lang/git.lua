@@ -1,5 +1,8 @@
--- Note: old config had `petertriho/cmp-git` (nvim-cmp source). Skipped — M2 uses
--- blink.cmp and there is no direct blink-native equivalent yet. Revisit later.
+vim.treesitter.language.register("git_config", { "gitconfig" })
+vim.treesitter.language.register("git_rebase", { "gitrebase" })
+
+-- No completion source for git refs and issues: blink.cmp has no equivalent
+-- of nvim-cmp's cmp-git.
 return Lib.lang.setup({
   cmd = "git",
   ft = { "gitcommit", "gitrebase", "gitconfig", "gitattributes", "gitignore" },

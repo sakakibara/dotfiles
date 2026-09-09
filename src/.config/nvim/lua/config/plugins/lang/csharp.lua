@@ -1,6 +1,9 @@
+vim.treesitter.language.register("c_sharp", { "cs" })
+
 local plugins = Lib.lang.setup({
   cmd = "dotnet",
   ft = { "cs", "vb", "razor" },
+  no_parser = { "vb" },
   mason = { "omnisharp", "csharpier", "netcoredbg" },
   parsers = { "c_sharp", "razor" },
   servers = {
@@ -22,18 +25,11 @@ local plugins = Lib.lang.setup({
     },
   },
   formatters = { cs = { "csharpier" } },
-  formatters_setup = function(conform)
-    conform.formatters = conform.formatters or {}
-    conform.formatters.csharpier = {
-      command = vim.fn.executable("csharpier") == 1 and "csharpier" or "dotnet-csharpier",
-      args = { "--write-stdout" },
-    }
-  end,
   neotest = { ["neotest-dotnet"] = function() return require("neotest-dotnet") end },
   plugins = {
     {
       "Hoffs/omnisharp-extended-lsp.nvim",
-      ft = { "cs", "csproj", "razor" },
+      ft = { "cs", "razor" },
     },
     {
       "Issafalcon/neotest-dotnet",

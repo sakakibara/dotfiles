@@ -41,8 +41,8 @@ return Lib.lang.setup({
           semanticTokens = true,
         },
       },
-      -- Populate semanticTokensProvider from negotiated capabilities if the
-      -- server didn't advertise one — matches the old setup() hook behavior.
+      -- Populate semanticTokensProvider from the negotiated capabilities
+      -- when the server does not advertise one.
       on_attach = function(_args, client)
         if not client.server_capabilities.semanticTokensProvider then
           local semantic = client.config.capabilities

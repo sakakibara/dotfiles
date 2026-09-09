@@ -1,7 +1,7 @@
 return Lib.lang.setup({
   cmd = "erl",
   ft = "erlang",
-  mason = { "erlang-ls" },
+  mason = { "elp" },
   parsers = { "erlang" },
-  servers = { erlangls = {} },
+  servers = { elp = {} },
 })

@@ -1,3 +1,5 @@
+vim.treesitter.language.register("css", { "less" })
+
 return Lib.lang.setup({
   ft = { "css", "scss", "less" },
   mason = { "css-lsp", "prettier" },

@@ -11,7 +11,6 @@ return Lib.lang.setup({
       "mrcjkb/haskell-tools.nvim",
       version = "^3",
       ft = { "haskell", "lhaskell", "cabal", "cabalproject" },
-      -- NOTE: `telescope_hoogle` extension skipped (telescope not in M2 framework).
       init = function()
         vim.g.haskell_tools = {
           hls = {

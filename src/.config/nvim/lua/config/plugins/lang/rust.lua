@@ -1,9 +1,7 @@
 -- Per user policy, rust-analyzer is NOT auto-installed. Install via:
 --   rustup component add rust-analyzer
 -- codelldb is shared with c.lua; Lib.mason.add is idempotent.
--- NOTE: no vim.lsp.config for rust_analyzer — rustaceanvim owns it entirely.
--- NOTE: bacon_ls fallback (old config gated it on `diagnostics == "bacon-ls"`)
--- dropped — user has no global `diagnostics` variable in the ported config.
+-- NOTE: no vim.lsp.config for rust_analyzer -- rustaceanvim owns it entirely.
 return Lib.lang.setup({
   cmd = "rustc",
   ft = { "rust", "ron" },
@@ -74,7 +72,7 @@ return Lib.lang.setup({
           dap = {
             adapter = codelldb_adapter(),
           },
-          -- NOTE: `<Leader>cR` RustLsp codeAction keymap dropped — framework
+          -- NOTE: `<Leader>cR` RustLsp codeAction keymap dropped -- framework
           -- uses stock LSP keymaps.
         }
       end,

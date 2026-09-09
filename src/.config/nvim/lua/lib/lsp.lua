@@ -3,22 +3,25 @@
 
 local M = {}
 
-local attach_callbacks = {}            -- { fn, fn, ... } — fired for every attach
-local attach_callbacks_by_name = {}    -- { [client_name] = { fn, ... } } — name-filtered
+local attach_callbacks = {}            -- { fn, fn, ... } -- fired for every attach
+local attach_callbacks_by_name = {}    -- { [client_name] = { fn, ... } } -- name-filtered
 
 -- Servers we wanted to enable but whose binary wasn't available at the time.
--- Re-checked when mason-tool-installer signals completion.
--- Shape: { [name] = { cmd? = "bin" } } so we can re-check with the same hint.
+-- Re-checked when the on-demand mason install fires MasonToolsUpdateCompleted.
+-- Shape: { [name] = { cmd? = "bin", available? = fn } }, re-checked with the same hint.
 M._pending_enable = {}
 local _pending_hook_installed = false
 
 -- Returns true/false/nil for an LSP's availability:
 --   true  = binary present, safe to enable
 --   false = binary known-missing, queue for retry
---   nil   = can't determine (no cmd info, no hints) — do nothing safe
+--   nil   = can't determine (no cmd info, no hints), do nothing safe
 local function available(name, opts)
   opts = opts or {}
-  -- Explicit binary hint always wins (for function-cmd servers).
+  if opts.available then
+    return opts.available() and true or false
+  end
+  -- Explicit binary hint next (for function-cmd servers).
   if opts.cmd then
     return vim.fn.executable(opts.cmd) == 1
   end
@@ -28,7 +31,7 @@ local function available(name, opts)
   end
   -- Function cmd or unknown: without an explicit hint we can't verify.
   -- Return nil so the caller defers rather than optimistically spawning
-  -- (which is exactly what produced the "Spawning … failed" spam).
+  -- (which is exactly what produced the "Spawning ... failed" spam).
   return nil
 end
 
@@ -50,16 +53,16 @@ local function install_pending_hook()
 end
 
 -- Guarded enable. Only calls vim.lsp.enable when the server binary is
--- actually on PATH. Anything else is queued and retried when
--- mason-tool-installer fires MasonToolsUpdateCompleted.
+-- actually on PATH. Anything else is queued and retried when the on-demand
+-- mason install fires MasonToolsUpdateCompleted.
 --
 -- opts.cmd (string): explicit binary path/name. Required for servers whose
 --   lspconfig `cmd` is a function (jsonls, ts_ls, vtsls, yamlls, etc.) since
---   we can't introspect a function safely. The binary name is usually
---   visible in the lspconfig source for that server.
+--   we can't introspect a function safely.
+-- opts.available (function): the readiness check itself, for an always-present launcher (powershell_es).
 --
--- Without opts.cmd AND with a function `cmd`, we defer (never spawn) — this
--- is the safe default: missing spam beats spam.
+-- Without either hint AND with a function `cmd`, we defer (never spawn):
+-- missing spam beats spam.
 function M.enable(name, opts)
   local avail = available(name, opts)
   if avail == true then
@@ -74,8 +77,8 @@ end
 
 -- Memoized result. The cache is invalidated when blink's load state flips,
 -- so the first batch of server configs (registered before blink loads, when
--- lspconfig fires on LazyFile) gets caps without blink, and any later call —
--- after blink finishes loading on InsertEnter — recomputes once with blink.
+-- lspconfig fires on LazyFile) gets caps without blink, and any later call --
+-- after blink finishes loading on InsertEnter -- recomputes once with blink.
 local _caps_cache = nil
 local _caps_has_blink = false
 
@@ -124,8 +127,8 @@ function M.get_clients(buf)
 end
 
 -- Two forms:
---   M.on_attach(fn)           — fires on every LspAttach; fn(args)
---   M.on_attach(name, fn)     — fires only when client.name == name; fn(args, client)
+--   M.on_attach(fn)           -- fires on every LspAttach; fn(args)
+--   M.on_attach(name, fn)     -- fires only when client.name == name; fn(args, client)
 -- The name-keyed form is the preferred path: dispatcher does an O(1) lookup
 -- so N server-specific hooks don't each pay a name-filter cost on every
 -- attach. Use the unconditional form only when the hook genuinely applies
@@ -171,7 +174,7 @@ function M.keymaps(bufnr)
   -- experience than nvim's default, we override the default here. Stock
   -- defaults kept: `gra` (code action), `gO` (document symbols), `K` (hover).
   -- `<C-s>` (insert: signature help) is shadowed by our save binding; use
-  -- `<C-k>` below instead. `gd` → Snacks picker is set globally in core.lua
+  -- `<C-k>` below instead. `gd` -> Snacks picker is set globally in core.lua
   -- to fill the gap nvim left (there's no `grd` default, and `gd` is
   -- universal muscle memory).
   bmap("n", "gD", vim.lsp.buf.declaration,                           { desc = "LSP: declaration" })

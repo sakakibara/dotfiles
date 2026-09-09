@@ -1,3 +1,5 @@
+vim.treesitter.language.register("embedded_template", { "eruby" })
+
 return Lib.lang.setup({
   cmd = "ruby",
   ft = { "ruby", "eruby" },

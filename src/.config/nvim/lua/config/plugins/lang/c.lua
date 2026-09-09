@@ -1,3 +1,5 @@
+vim.treesitter.language.register("cpp", { "objcpp" })
+
 -- DAP adapter + per-language configurations. Registered unconditionally;
 -- adapters/configurations only fire when the user starts a debug session.
 Lib.plugin.on_load("nvim-dap", function()
@@ -38,7 +40,7 @@ end)
 -- Header/source switch keymap (C/C++ buffers). The keymap calls clangd's
 -- LSP command; if clangd isn't running, the command fails harmlessly.
 vim.api.nvim_create_autocmd("FileType", {
-  pattern = { "c", "cpp", "h", "hpp" },
+  pattern = { "c", "cpp" },
   callback = function(args)
     vim.keymap.set(
       "n",
@@ -89,7 +91,7 @@ return Lib.lang.setup({
   plugins = {
     {
       "p00f/clangd_extensions.nvim",
-      ft = { "c", "cpp", "h", "hpp" },
+      ft = { "c", "cpp" },
       opts = {
         inlay_hints = {
           inline = false,

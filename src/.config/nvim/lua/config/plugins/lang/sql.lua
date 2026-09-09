@@ -1,3 +1,5 @@
+vim.treesitter.language.register("sql", { "mysql", "plsql" })
+
 local sql_ft = { "sql", "mysql", "plsql" }
 
 local formatters_by_ft = {}
@@ -8,7 +10,7 @@ for _, ft in ipairs(sql_ft) do
 end
 
 return Lib.lang.setup({
-  ft = { "sql", "mysql", "plsql" },
+  ft = sql_ft,
   mason = { "sqlfluff" },
   parsers = { "sql" },
   formatters = formatters_by_ft,

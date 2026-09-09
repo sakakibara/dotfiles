@@ -1,3 +1,5 @@
+vim.treesitter.language.register("json", { "jsonc" })
+
 return Lib.lang.setup({
   ft = { "json", "jsonc", "json5" },
   mason = { "json-lsp" },

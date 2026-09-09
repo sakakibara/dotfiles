@@ -1,3 +1,6 @@
+vim.treesitter.language.register("latex", { "tex", "plaintex" })
+vim.treesitter.language.register("bibtex", { "bib" })
+
 return Lib.lang.setup({
   cmd = "pdflatex",
   ft = { "tex", "plaintex", "bib" },

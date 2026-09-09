@@ -1,8 +1,6 @@
--- NOTE: LSP keymaps (gD goToSourceDefinition, gR file references, <Leader>co
--- organize imports, <Leader>cM add missing, <Leader>cu remove unused,
--- <Leader>cD fix all, <Leader>cV select TS version) and the custom
--- `_typescript.moveToFileRefactoring` command handler dropped — Util.lsp
--- helpers not ported to M2 framework.
+vim.treesitter.language.register("tsx", { "typescriptreact" })
+vim.treesitter.language.register("javascript", { "javascriptreact" })
+
 local ts_settings = {
   updateImportsOnFileMove = { enabled = "always" },
   suggest = {

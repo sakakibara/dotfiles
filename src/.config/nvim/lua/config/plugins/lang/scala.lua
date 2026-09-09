@@ -2,6 +2,8 @@
 -- metals with nvim-lspconfig. metals: install via `coursier install metals`
 -- (not auto-managed; mason has partial scala coverage but coursier is the
 -- standard path for Scala users).
+vim.treesitter.language.register("scala", { "sbt" })
+
 return Lib.lang.setup({
   cmd = "scala",
   ft = { "scala", "sbt" },
