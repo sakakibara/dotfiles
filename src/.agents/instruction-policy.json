@@ -2,7 +2,12 @@
   "canonical_policy": "src/.agents/instructions.md",
   "discovery_links": {
     "src/.claude/CLAUDE.md": "../.agents/instructions.md",
-    "src/.codex/AGENTS.md": "../.agents/instructions.md"
+    "src/.codex/AGENTS.md": "../.agents/instructions.md",
+    "src/.config/opencode/AGENTS.md": "../../.agents/instructions.md"
+  },
+  "symlinks": {
+    "src/.claude/hooks": "../.agents/hooks",
+    "src/.claude/skills": "../.agents/skills"
   },
   "allowed_instruction_files": [
     "src/.agents/instructions.md",
@@ -12,7 +17,11 @@
     "src/.agents/skills/review-pull-request/SKILL.md",
     "src/.agents/skills/session-handoff/SKILL.md",
     "src/.claude/CLAUDE.md",
-    "src/.codex/AGENTS.md"
+    "src/.claude/settings.json",
+    "src/.codex/AGENTS.md",
+    "src/.codex/config.toml",
+    "src/.config/opencode/AGENTS.md",
+    "src/.config/opencode/opencode.jsonc"
   ],
   "audited_files": [
     ".github/workflows/ci.yml",
@@ -25,10 +34,13 @@
     "etc/tests/agent-instructions.sh",
     "etc/tests/agent_sandbox_security.sh",
     "etc/tests/commit_rules.sh",
+    "etc/tests/stage_guard.sh",
     "scripts/check/codex-config",
     "src/.agents/hooks/commit-msg-check.py",
+    "src/.agents/hooks/commit-style-guard.py",
     "src/.agents/hooks/commit_rules.py",
-    "src/.agents/hooks/git-stage-guard.sh",
+    "src/.agents/hooks/git-stage-guard.py",
+    "src/.agents/hooks/herdr-agent-state.sh",
     "src/.agents/hooks/instruction-audit.py",
     "src/.agents/hooks/instruction-trust-guard.sh",
     "src/.agents/instruction-policy.json",
@@ -46,10 +58,13 @@
     "src/.claude/CLAUDE.md",
     "src/.claude/keybindings.json",
     "src/.claude/settings.json",
+    "src/.claude/statusline.sh",
     "src/.codex/AGENTS.md",
+    "src/.codex/config.toml",
     "src/.codex/hooks.json",
     "src/.config/fish/completions/agent-sandbox.fish",
     "src/.config/git/hooks/commit-msg",
+    "src/.config/opencode/opencode.jsonc",
     "src/.local/bin/agent-sandbox",
     "src/.zcomp/_agent-sandbox"
   ]

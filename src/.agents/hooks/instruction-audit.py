@@ -4,6 +4,8 @@ import json
 import os
 import re
 import sys
+
+sys.dont_write_bytecode = True
 import unicodedata
 from pathlib import Path
 
@@ -17,11 +19,18 @@ INSTRUCTION_NAMES = {
     ".cursorrules",
     ".windsurfrules",
 }
-TEXT_SUFFIXES = {".md", ".mdc", ".json", ".toml", ".yaml", ".yml", ".sh", ".py"}
 OPAQUE_RE = re.compile(r"(?<![A-Za-z0-9+/=])[A-Za-z0-9+/]{96,}={0,2}(?![A-Za-z0-9+/=])|(?<![0-9A-Fa-f])[0-9A-Fa-f]{128,}(?![0-9A-Fa-f])")
 HIDDEN_RE = re.compile(r"<!--|<details\b|display\s*:\s*none|visibility\s*:\s*hidden", re.IGNORECASE)
 PRUNED_DIRS = {".git", ".cache", ".next", ".venv", "build", "dist", "node_modules", "target", "vendor"}
 AGENT_CONFIG_DIRS = {".claude", ".codex", ".cursor", ".windsurf"}
+INSTRUCTION_NAMES_UPPER = {n.upper() for n in INSTRUCTION_NAMES}
+
+
+def under_agent_config(rel):
+    """True for a path inside an agent config directory, the directory
+    itself included: a symlink anywhere in there redirects what the agent
+    loads."""
+    return len(rel.parts) > 0 and rel.parts[0] in AGENT_CONFIG_DIRS
 
 
 def inside(path, root):
@@ -38,37 +47,114 @@ def display_path(path):
 
 def instruction_path(rel):
     parts = rel.parts
-    if rel.name in INSTRUCTION_NAMES:
+    if rel.name.upper() in INSTRUCTION_NAMES_UPPER:
         return True
     value = rel.as_posix()
     if value == ".github/copilot-instructions.md":
         return True
     if value.startswith(".github/instructions/") and value.endswith(".instructions.md"):
         return True
-    if value in {".mcp.json", ".claude/settings.json", ".claude/settings.local.json", ".codex/config.toml", ".cursor/mcp.json", ".vscode/mcp.json"}:
+    if value in {".mcp.json", ".claude/settings.json", ".claude/settings.local.json", ".codex/config.toml", ".config/opencode/opencode.json", ".config/opencode/opencode.jsonc", ".cursor/mcp.json", ".vscode/mcp.json"}:
         return True
+    for d in (".claude/agents/", ".claude/commands/"):
+        if value.startswith(d) and rel.suffix.lower() == ".md":
+            return True
     if ".cursor" in parts or ".windsurf" in parts:
         return rel.suffix.lower() in {".md", ".mdc"}
     return False
 
 
+MAX_ENTRIES = 20000
+
+
+LOCAL_SETTINGS = Path(".claude/settings.local.json")
+
+
+def mirrored_agent_config(rel):
+    """True for an agent's own config file kept under a home-mirroring
+    `src/` tree: the same file the audit would discover at its live path."""
+    parts = rel.parts
+    return len(parts) > 1 and parts[0] == "src" and instruction_path(Path(*parts[1:]))
+
+
+class ListingTruncated(Exception):
+    """The working tree holds more entries than the audit will read. Refusing
+    is the only honest outcome: a partial audit that passes certifies nothing."""
+
+
+def tracked_paths(root):
+    """Every path in the working tree under root, or None when root is not
+    inside a repository. git lists the tree with the build directories
+    excluded before a byte of them is read, which is what keeps a large
+    checkout under the entry cap; untracked and ignored files are included
+    on purpose, since a hostile instruction file an agent just wrote is
+    untracked at that moment and one that is gitignored never becomes
+    tracked at all."""
+    import subprocess
+    pathspec = ["."] + [f":(exclude,glob)**/{d}/**" for d in sorted(PRUNED_DIRS)]
+
+    def listing(at):
+        out = subprocess.run(
+            ["git", "-C", os.fspath(at), "ls-files", "-z", "--cached", "--others", "--", *pathspec],
+            capture_output=True, timeout=10, check=True).stdout
+        return [p.decode("utf-8", "surrogateescape") for p in out.split(b"\0") if p]
+
+    try:
+        pending = [(root, "")]
+        found = []
+        while pending:
+            at, prefix = pending.pop()
+            for rel in listing(at):
+                full = prefix + rel
+                path = root / full
+                if rel.endswith("/") or (not path.is_symlink() and path.joinpath(".git").exists()):
+                    pending.append((path, full.rstrip("/") + "/"))
+                    continue
+                found.append(full)
+                if len(found) > MAX_ENTRIES:
+                    raise ListingTruncated(len(found))
+    except ListingTruncated:
+        raise
+    except Exception:
+        return None
+    return [Path(p) for p in found]
+
+
 def discover(root):
     found = []
+    tracked = tracked_paths(root)
+    if tracked is not None:
+        for rel in tracked:
+            path = root / rel
+            if any(part in PRUNED_DIRS for part in rel.parts):
+                continue
+            if not path.exists() and not path.is_symlink():
+                continue
+            if instruction_path(rel) or mirrored_agent_config(rel):
+                found.append(rel)
+            elif path.is_symlink() and under_agent_config(rel):
+                found.append(rel)
+        return sorted(set(found), key=lambda item: item.as_posix())
+
+    entries = 0
     for current, dirs, files in os.walk(root, followlinks=False):
-        dirs[:] = [name for name in dirs if name not in PRUNED_DIRS]
         base = Path(current)
+        dirs[:] = [name for name in dirs if name not in PRUNED_DIRS]
+        entries += len(files) + len(dirs)
+        if entries > MAX_ENTRIES:
+            raise ListingTruncated(entries)
         for name in files:
             path = base / name
             rel = path.relative_to(root)
-            if instruction_path(rel):
+            if instruction_path(rel) or mirrored_agent_config(rel):
                 found.append(rel)
         for name in dirs:
             path = base / name
-            if path.is_symlink() and name in AGENT_CONFIG_DIRS:
+            if path.is_symlink() and under_agent_config(path.relative_to(root)):
                 found.append(path.relative_to(root))
             elif path.is_symlink():
                 rel = path.relative_to(root)
-                if instruction_path(rel):
+                if instruction_path(rel) or mirrored_agent_config(rel):
                     found.append(rel)
     return sorted(set(found), key=lambda item: item.as_posix())
 
@@ -127,11 +213,15 @@ def main():
 
     errors = []
     warnings = []
-    discovered = discover(root)
+    try:
+        discovered = discover(root)
+    except ListingTruncated as exc:
+        print(f"ERROR: working tree has {exc.args[0]} entries, more than the {MAX_ENTRIES} this audit reads; add its build directories to the pruned set or audit a subdirectory", file=sys.stderr)
+        return 1
     files = set(discovered)
     allowed = None
     for rel in discovered:
-        if (root / rel).is_symlink() and rel.name in AGENT_CONFIG_DIRS:
+        if (root / rel).is_symlink() and (root / rel).is_dir() and under_agent_config(rel):
             errors.append(f"{display_path(rel)}: symlinked agent configuration directory")
 
     if args.policy:
@@ -145,6 +235,15 @@ def main():
         canonical = Path(policy["canonical_policy"])
         if canonical not in allowed:
             errors.append(f"{display_path(canonical)}: canonical policy is not allowlisted")
+        attributes = (root / ".mox" / "attributes.toml")
+        attributes_text = attributes.read_text(encoding="utf-8") if attributes.exists() else ""
+        def planted_as_symlink(rel):
+            key = rel[len("src/"):] if rel.startswith("src/") else rel
+            section = re.search(r'^\["' + re.escape(key) + r'"\]\n((?:(?!\[).*\n?)*)', attributes_text, re.M)
+            return bool(section and re.search(r'^symlink\s*=\s*true', section.group(1), re.M))
+        for rel, target in list(policy.get("discovery_links", {}).items()) + list(policy.get("symlinks", {}).items()):
+            if not planted_as_symlink(rel):
+                errors.append(f"{display_path(rel)}: not planted as a symlink in .mox/attributes.toml")
         for rel, target in policy.get("discovery_links", {}).items():
             link = root / rel
             try:
@@ -157,14 +256,25 @@ def main():
             resolved = (link.parent / target).resolve()
             if resolved != (root / canonical).resolve():
                 errors.append(f"{display_path(rel)}: discovery target does not resolve to canonical policy")
-        unexpected = set(discovered) - allowed
+        for rel, target in policy.get("symlinks", {}).items():
+            link = root / rel
+            try:
+                actual = link.read_text(encoding="utf-8").strip()
+            except OSError as exc:
+                errors.append(f"{display_path(rel)}: cannot read link declaration: {exc}")
+                continue
+            if actual != target:
+                errors.append(f"{display_path(rel)}: expected link target {target!r}, found {actual!r}")
+            elif not (link.parent / target).resolve().is_dir():
+                errors.append(f"{display_path(rel)}: link target {target!r} is not a directory")
+        unexpected = set(discovered) - allowed - {LOCAL_SETTINGS}
         missing = {rel for rel in allowed if not (root / rel).exists() and not (root / rel).is_symlink()}
         errors.extend(f"{display_path(rel)}: unexpected instruction-file location" for rel in sorted(unexpected, key=str))
         errors.extend(f"{display_path(rel)}: allowlisted instruction file not found" for rel in sorted(missing, key=str))
     elif args.strict_locations:
         for rel in discovered:
             value = rel.as_posix()
-            if rel.parent != Path(".") and value != ".github/copilot-instructions.md" and not value.startswith((".cursor/", ".windsurf/")):
+            if rel.parent != Path(".") and rel != LOCAL_SETTINGS and value != ".github/copilot-instructions.md" and not value.startswith((".cursor/", ".windsurf/")):
                 errors.append(f"{display_path(rel)}: unexpected nested instruction-file location")
     else:
         for rel in discovered:
@@ -176,9 +286,9 @@ def main():
         if not path.exists() and not path.is_symlink():
             errors.append(f"{display_path(rel)}: audited file not found")
             continue
-        if path.is_dir() or path.suffix.lower() not in TEXT_SUFFIXES and path.name not in INSTRUCTION_NAMES:
+        if path.is_dir():
             continue
-        inspect_file(path, rel, root, rel in set(discovered) or allowed is not None and rel in allowed, errors, warnings)
+        inspect_file(path, rel, root, rel in set(discovered) or allowed is not None and rel in allowed or mirrored_agent_config(rel), errors, warnings)
 
     for message in warnings:
         print(f"WARNING: {message}")

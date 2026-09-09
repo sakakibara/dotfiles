@@ -1,5 +1,6 @@
-Brewfile.lock.json
 flycheck_*
+__pycache__/
+*.pyc
 
 # Belt-and-suspenders: never commit anything under src/.ssh/ except the
 # config template. Even if a gate would prevent application, we don't want

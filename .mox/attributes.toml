@@ -12,3 +12,6 @@ symlink = true
 
 [".codex/config.toml"]
 mode = "0600"
+
+[".config/opencode/AGENTS.md"]
+symlink = true

@@ -19,7 +19,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$HOME/.agents/hooks/git-stage-guard.sh\"",
+            "command": "python3 \"$HOME/.agents/hooks/git-stage-guard.py\"",
             "timeout": 10,
             "statusMessage": "Checking explicit git staging"
           },

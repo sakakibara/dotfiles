@@ -2,9 +2,9 @@
 # Keeps credentials and machine-local state out of the synced repo.
 # Delete a line to track it (e.g. if the repo is private).
 
-# Claude Code: only CLAUDE.md, settings.json, skills/, hooks/ are tracked
-# (added explicitly). Everything else here is credentials, caches, and
-# session data that must never be committed.
+# Claude Code: the configuration files are added explicitly. Everything
+# here is credentials, caches, and session data that must never be
+# committed.
 .claude/.credentials.json
 .claude/*.jsonl
 .claude/*-cache.json
@@ -14,8 +14,8 @@
 .claude/sessions/
 .claude/shell-snapshots/
 
-# Codex: only AGENTS.md and hooks.json are tracked. Shared agent instructions,
-# skills, and hook implementations live under .agents/.
+# Codex: same shape. Shared agent instructions, skills and hook
+# implementations live under .agents/, which is tracked in full.
 .codex/auth.json
 .codex/*.json
 .codex/*.jsonl
@@ -27,6 +27,14 @@
 .codex/tmp/
 
 !.codex/hooks.json
+
+# Python bytecode. Importing a hook module from the source tree, as the
+# test suites do, drops a __pycache__ beside it; it is machine- and
+# interpreter-specific, so mox must never carry it between machines.
+__pycache__/
+*.pyc
+# Emacs flycheck writes a scratch copy beside the file it checks.
+flycheck_*
 
 # SSH / signing keys
 .ssh/id_*

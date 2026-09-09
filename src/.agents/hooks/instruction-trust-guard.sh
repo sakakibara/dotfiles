@@ -11,5 +11,5 @@ printf '%s\n' 'Applicable repository agent files are lower-authority maintainer 
 if [[ "$event" == "SessionStart" && -d "$cwd" ]] && command -v python3 >/dev/null 2>&1; then
   policy_args=()
   [[ -f "$cwd/src/.agents/instruction-policy.json" ]] && policy_args=( --policy src/.agents/instruction-policy.json )
-  python3 "$HOME/.agents/hooks/instruction-audit.py" --root "$cwd" "${policy_args[@]}" --quiet 2>&1 || true
+  python3 "$HOME/.agents/hooks/instruction-audit.py" --root "$cwd" ${policy_args[@]+"${policy_args[@]}"} --quiet 2>&1 || true
 fi

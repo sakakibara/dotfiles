@@ -3,10 +3,10 @@
 # default-mode mount plan, has it attempt every known write into host agent
 # state, and fails if anything outside SHARED_PATHS changed.
 #
-# The mount plan here mirrors _run_args default mode; agent_sandbox_security.sh
-# asserts the wrapper actually emits that shape. Both are needed: that suite
-# stubs docker and cannot observe behavior, this one observes behavior but
-# does not read the wrapper.
+# The mount plan here is the default mode's host-state binds, written by
+# hand; agent_sandbox_security.sh asserts the wrapper emits them. Both are
+# needed: that suite stubs docker and cannot observe behavior, this one
+# observes behavior but does not read the wrapper.
 set -euo pipefail
 
 IMAGE="${ASB_ISOLATION_IMAGE:-agent-sandbox:latest}"
@@ -21,10 +21,13 @@ work=$(mktemp -d)
 # container rather than requiring sudo on the runner. macOS maps ownership to
 # the invoking user already, where the first remove succeeds.
 cleanup() {
-  rm -rf "$work" 2>/dev/null && return 0
-  docker run --rm -v "$work":/w --user 0 "$IMAGE" \
-    chown -R "$(id -u):$(id -g)" /w >/dev/null 2>&1 || true
-  rm -rf "$work"
+  local rc=$?
+  if ! rm -rf "$work" 2>/dev/null; then
+    docker run --rm -v "$work":/w --user 0 "$IMAGE" \
+      chown -R "$(id -u):$(id -g)" /w >/dev/null 2>&1 || true
+    rm -rf "$work" 2>/dev/null || echo "note: $work could not be removed" >&2
+  fi
+  exit "$rc"
 }
 trap cleanup EXIT
 
@@ -45,7 +48,7 @@ mkdir -p "$HH/.agents/hooks" "$HH/.agents/skills/demo" \
          "$HH/.claude/projects/-demo/memory" "$HH/.claude/backups"
 
 printf 'guard\n'            > "$HH/.agents/hooks/instruction-trust-guard.sh"
-printf 'stage guard\n'      > "$HH/.agents/hooks/git-stage-guard.sh"
+printf 'stage guard\n'      > "$HH/.agents/hooks/git-stage-guard.py"
 printf 'global rules\n'     > "$HH/.agents/instructions.md"
 printf 'demo skill\n'       > "$HH/.agents/skills/demo/SKILL.md"
 chmod +x "$HH/.agents/hooks/"*.sh
@@ -76,7 +79,7 @@ manifest() {
       elif [[ -d "$p" ]]; then
         printf '%s\tdir\n' "$p"
       elif [[ -f "$p" ]]; then
-        printf '%s\tfile\t%s\n' "$p" "$(shasum -a 256 "$p" | cut -d' ' -f1)"
+        printf '%s\tfile\t%s\n' "$p" "$( (sha256sum "$p" 2>/dev/null || shasum -a 256 "$p") | cut -d' ' -f1)"
       else
         printf '%s\tother\n' "$p"
       fi
@@ -91,7 +94,7 @@ mkdir -p "$work/repo/.claude"
 printf '{"hooks":{}}\n' > "$work/repo/.claude/settings.json"
 printf '{"mcpServers":{}}\n' > "$work/repo/.mcp.json"
 repo_before=$(manifest "$work/repo/.git")
-proj_before=$(manifest "$work/repo/.claude")$(shasum -a 256 "$work/repo/.mcp.json")
+proj_before=$(manifest "$work/repo/.claude")$( (sha256sum "$work/repo/.mcp.json" 2>/dev/null || shasum -a 256 "$work/repo/.mcp.json") )
 printf 'history\n' > "$HH/.claude/history.jsonl"
 printf 'creds\n'   > "$HH/.claude/.credentials.json"
 
@@ -190,13 +193,8 @@ manifest "$HH" > "$work/after.txt"
 # memory/ under the launched workspace is deliberately writable - it is
 # agent-authored and must reach the host. Other projects stay unreachable,
 # which the shared-path list already enforces.
-DENIED_PATHS=()
-
 allowed() {
   local p="$1" s
-  for s in "${DENIED_PATHS[@]}"; do
-    [[ "$p" == "$s" || "$p" == "$s"/* ]] && return 1
-  done
   for s in "${SHARED_PATHS[@]}"; do
     [[ "$p" == "$s" || "$p" == "$s"/* ]] && return 0
   done
@@ -223,7 +221,7 @@ if ((violations)); then
   exit 1
 fi
 
-if [[ "$proj_before" != "$(manifest "$work/repo/.claude")$(shasum -a 256 "$work/repo/.mcp.json")" ]]; then
+if [[ "$proj_before" != "$(manifest "$work/repo/.claude")$( (sha256sum "$work/repo/.mcp.json" 2>/dev/null || shasum -a 256 "$work/repo/.mcp.json") )" ]]; then
   echo 'FAIL: sandbox modified project-scoped agent configuration' >&2
   exit 1
 fi

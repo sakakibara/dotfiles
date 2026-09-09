@@ -12,7 +12,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash $HOME/.agents/hooks/instruction-trust-guard.sh"
+            "command": "bash \"$HOME/.agents/hooks/instruction-trust-guard.sh\""
           }
         ]
       },
@@ -21,7 +21,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash $HOME/.claude/hooks/herdr-agent-state.sh session",
+            "command": "bash \"$HOME/.agents/hooks/herdr-agent-state.sh\" session",
             "timeout": 10
           }
         ]
@@ -33,11 +33,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash $HOME/.agents/hooks/git-stage-guard.sh"
+            "command": "python3 \"$HOME/.agents/hooks/git-stage-guard.py\""
           },
           {
             "type": "command",
-            "command": "python3 $HOME/.agents/hooks/commit-style-guard.py"
+            "command": "python3 \"$HOME/.agents/hooks/commit-style-guard.py\""
           }
         ]
       }
@@ -52,7 +52,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "bash $HOME/.claude/statusline.sh"
+    "command": "bash \"$HOME/.claude/statusline.sh\""
   },
   "tui": "fullscreen",
   "agentPushNotifEnabled": true
