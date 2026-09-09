@@ -1,4 +1,4 @@
--- Centralized icon table — single source of truth for diagnostic, git, LSP
+-- Centralized icon table -- single source of truth for diagnostic, git, LSP
 -- kind, status, DAP, and powerline glyphs. Ported verbatim from the old
 -- config's Util.config.icons table (proven to render in the user's nerd
 -- font). When adding a new icon, add it here and reference via Lib.icons.

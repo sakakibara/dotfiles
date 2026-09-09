@@ -2,7 +2,7 @@
 vim.loader.enable()
 
 -- Disable built-in plugins we don't use, before runtime sourcing scans them.
--- Each save is small (~0.05–0.6 ms); cumulatively ~1 ms off cold start.
+-- Each save is small (~0.05-0.6 ms); cumulatively ~1 ms off cold start.
 do
   local builtins = {
     "netrwPlugin",   -- using oil.nvim

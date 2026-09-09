@@ -1,7 +1,7 @@
 --
 -- Two-zone winbar:
---   LEFT   — code scope (treesitter symbol trail, primary focus)
---   RIGHT  — file path (secondary context, dimmed)
+--   Left   -- code scope (treesitter symbol trail, primary focus)
+--   Right  -- file path (secondary context, dimmed)
 --
 -- Both zones are clickable. Each scope segment opens a sibling-symbol
 -- picker; each path segment opens a dir listing picker (with l/<Right>
@@ -12,8 +12,8 @@
 -- redo the treesitter walk.
 --
 -- Keyboard entrypoints on config/keymaps.lua:
---   <Leader>;   → M.pick_scope()   sibling-symbol picker at cursor
---   <Leader>.   → M.pick_path()    directory picker for current file
+--   <Leader>;   -> M.pick_scope()   sibling-symbol picker at cursor
+--   <Leader>.   -> M.pick_path()    directory picker for current file
 --
 -- Inactive windows get path-only (scope depends on cursor, which lives
 -- in the active window).
@@ -25,22 +25,10 @@ local menu = require("lib.winbar_menu")
 -- Lib isn't forced at require time.
 local function SEP() return " " .. Lib.icons.status.Separator.Breadcrumb .. " " end
 
--- Get the path-like name for a buffer, resolving oil:// URIs to their
--- actual directory so the winbar path zone shows real segments.
-local function buf_path_name(buf)
-  if vim.bo[buf].filetype == "oil" then
-    local ok, oil = pcall(require, "oil")
-    if ok and oil.get_current_dir then
-      return oil.get_current_dir(buf) or ""
-    end
-  end
-  return vim.api.nvim_buf_get_name(buf)
-end
+local function buf_path_name(buf) return Lib.path.buf_get_name(buf) end
 
--- ─────────────────────────────────────────────────────────────────────
--- ICON MAP — keys match Lib.icons.kinds entries. Resolved lazily so we
+-- Icon map -- keys match Lib.icons.kinds entries. Resolved lazily so we
 -- don't force Lib load at module require.
--- ─────────────────────────────────────────────────────────────────────
 local function kind_icon(kind)
   local map = {
     class     = "Class",     struct    = "Struct",     interface = "Interface",
@@ -54,11 +42,9 @@ local function kind_icon(kind)
   return key and Lib.icons.kinds[key] or ""
 end
 
--- ─────────────────────────────────────────────────────────────────────
--- TS NODE TYPE TABLE — maps treesitter node type → { kind = <logical> }
+-- TS node type table -- maps treesitter node type -> { kind = <logical> }
 -- `kind` feeds kind_icon() for display, and also becomes a grouping
 -- label for the sibling picker.
--- ─────────────────────────────────────────────────────────────────────
 local T = {
   lua = {
     function_declaration    = "function_",
@@ -144,11 +130,9 @@ local T = {
 
 local function types_for(ft) return T[ft] end
 
--- ─────────────────────────────────────────────────────────────────────
--- CLICK DISPATCHER — winbar `%@` callbacks look up actions by id.
+-- Click dispatcher -- winbar `%@` callbacks look up actions by id.
 -- Each handler carries its rendered screen column so menu.open can
 -- anchor under the clicked segment.
--- ─────────────────────────────────────────────────────────────────────
 local handlers, next_id = {}, 100
 
 local function register(action)
@@ -178,12 +162,10 @@ local function clickable(id, content)
   return ("%%%d@v:lua.Lib.winbar.click@%s%%X"):format(id, content)
 end
 
--- ─────────────────────────────────────────────────────────────────────
--- TREESITTER WALKS
--- ─────────────────────────────────────────────────────────────────────
+-- Treesitter walks
 local function get_symbol_name(node, bufnr)
   -- Most treesitter grammars expose the symbol name via a "name" field.
-  -- Try that first — it handles Lua's `M.outer` (dot_index_expression),
+  -- Try that first -- it handles Lua's `M.outer` (dot_index_expression),
   -- Rust's scoped names, TypeScript's computed method names, etc.
   local fields = node:field("name")
   if fields and fields[1] then
@@ -269,9 +251,7 @@ local function sibling_symbols(bufnr, node, types)
   return out
 end
 
--- ─────────────────────────────────────────────────────────────────────
--- FILESYSTEM HELPERS
--- ─────────────────────────────────────────────────────────────────────
+-- Filesystem helpers
 local function list_dir(path)
   local fd = vim.uv.fs_scandir(path)
   if not fd then return {} end
@@ -312,9 +292,7 @@ local function dir_items(path)
   return items
 end
 
--- ─────────────────────────────────────────────────────────────────────
--- SEGMENTS
--- ─────────────────────────────────────────────────────────────────────
+-- Segments
 -- Each segment builder returns { content, width, id } so render() can
 -- track the rendered screen column and patch handlers[id].col.
 
@@ -402,9 +380,7 @@ local function segment_path_file(abs_path, label, modified)
   }
 end
 
--- ─────────────────────────────────────────────────────────────────────
--- RENDER
--- ─────────────────────────────────────────────────────────────────────
+-- Render
 function M.render()
   local winid      = vim.g.statusline_winid or vim.api.nvim_get_current_win()
   local bufnr      = vim.api.nvim_win_get_buf(winid)
@@ -430,7 +406,7 @@ function M.render()
   local sep = SEP()
   local sep_item = { content = "%#WinBarDim#" .. sep, width = vim.fn.strdisplaywidth(sep) }
 
-  -- ── LEFT: scope breadcrumb (active window only) ─────────────────────
+  -- Left: scope breadcrumb (active window only)
   local scope_out = {}
   if is_current then
     local cur = vim.api.nvim_win_get_cursor(winid)
@@ -443,7 +419,7 @@ function M.render()
     end
   end
 
-  -- ── RIGHT: dim path (always) ────────────────────────────────────────
+  -- Right: dim path (always)
   -- Strip oil's / other directory-buffer trailing slash before splitting
   -- so we don't get an empty last segment.
   local rel     = vim.fn.fnamemodify(name, ":~:."):gsub("/$", "")
@@ -464,7 +440,7 @@ function M.render()
     end
   end
 
-  -- ── Adaptive trim: drop leading dir segments until the path zone fits
+  -- Adaptive trim: drop leading dir segments until the path zone fits
   --    the width left over by scope + padding. Replace dropped prefix
   --    with a dim ellipsis so the truncation is visible.
   local win_pos   = vim.api.nvim_win_get_position(winid)
@@ -519,9 +495,7 @@ function M.render()
   return left .. "%#WinBarFill#%=" .. right
 end
 
--- ─────────────────────────────────────────────────────────────────────
--- KEYBOARD ENTRYPOINTS
--- ─────────────────────────────────────────────────────────────────────
+-- Keyboard entrypoints
 function M.pick_scope()
   local winid = vim.api.nvim_get_current_win()
   local bufnr = vim.api.nvim_win_get_buf(winid)
@@ -560,12 +534,7 @@ function M.pick_path()
   })
 end
 
--- Back-compat: old keymap bound Lib.winbar.pick() → map to file picker.
-M.pick = M.pick_path
-
--- ─────────────────────────────────────────────────────────────────────
--- SETUP
--- ─────────────────────────────────────────────────────────────────────
+-- Setup
 function M.setup()
   local function hex(n, a)
     local h = vim.api.nvim_get_hl(0, { name = n, link = false })

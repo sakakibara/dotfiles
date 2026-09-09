@@ -5,12 +5,12 @@
 -- Ordering problem this solves: lang files register adapters via Lib.neotest.add
 -- at plugin-spec-registration time, but their host plugins (e.g. neotest-go)
 -- are ft-lazy with `dependencies = { "neotest" }`. When a Go file ft-triggers
--- neotest-go, core.pack's load_spec walks deps first — neotest loads fully
+-- neotest-go, core.pack's load_spec walks deps first -- neotest loads fully
 -- (packadd + config) BEFORE neotest-go packadds. So at the moment
 -- require("neotest").setup runs, require("neotest-go") still fails.
 --
 -- Fix: list() skips adapters whose host plugin isn't yet loaded (not a
--- warning — it's the expected state during dep load). When an adapter's host
+-- warning -- it's the expected state during dep load). When an adapter's host
 -- plugin eventually loads, an on_load hook re-applies neotest.setup with the
 -- now-expanded adapter list. The on_load pattern is idempotent: neotest.setup
 -- replaces adapters wholesale, and late-add is the documented upstream path
@@ -45,7 +45,7 @@ function M.add(name, factory)
   seen[name] = true
   table.insert(factories, { name = name, factory = factory })
   -- Re-apply when the host plugin loads, so adapters that packadd after
-  -- neotest's initial setup (the common case — see header) still land.
+  -- neotest's initial setup (the common case -- see header) still land.
   Lib.plugin.on_load(name, apply)
 end
 

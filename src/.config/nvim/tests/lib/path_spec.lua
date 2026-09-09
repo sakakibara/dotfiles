@@ -14,7 +14,7 @@ T.describe("lib.path", function()
   T.it("is_remote detects /mnt and UNC-style paths (truthy on match)", function()
     local P = fresh()
     -- is_remote uses string:match, which returns the matched substring (truthy)
-    -- or nil — not a strict boolean. Test the contract semantically.
+    -- or nil -- not a strict boolean. Test the contract semantically.
     T.truthy(P.is_remote("/mnt/data/file"))
     T.truthy(P.is_remote("//server/share"))
     T.truthy(P.is_remote("\\\\server\\share"))
@@ -47,7 +47,7 @@ T.describe("lib.path", function()
 
   T.it("short collapses interior segments with an ellipsis when over max_seg", function()
     local P = fresh()
-    -- 5 segments, max_seg=3 → keep first + ellipsis + last 2
+    -- 5 segments, max_seg=3 -> keep first + ellipsis + last 2
     local got = P.short("/a/b/c/d/e", 3)
     local want = table.concat({ "a", "…", "d", "e" }, P.sep)
     T.eq(got, want)
@@ -65,8 +65,8 @@ T.describe("lib.path", function()
     -- Construct a path inside home with enough segments to trigger truncation.
     local long = P.home .. "/" .. table.concat({ "p1", "p2", "p3", "p4" }, "/")
     local got = P.short(long, 2)
-    -- After replace_home: ~/p1/p2/p3/p4 → split: {"~","p1","p2","p3","p4"}
-    -- Keep first + ellipsis + last 1 (max_seg=2 → kept = parts[1] + "…" + last 1)
+    -- After replace_home: ~/p1/p2/p3/p4 -> split: {"~","p1","p2","p3","p4"}
+    -- Keep first + ellipsis + last 1 (max_seg=2 -> kept = parts[1] + "…" + last 1)
     local want = table.concat({ "~", "…", "p4" }, P.sep)
     T.eq(got, want)
   end)
@@ -79,5 +79,56 @@ T.describe("lib.path", function()
     -- For non-existent paths and nil, exists is falsey (false or nil).
     T.eq(P.exists("/definitely/does/not/exist/" .. tostring(os.time())) or false, false)
     T.eq(P.exists(nil) or false, false)
+  end)
+end)
+
+T.describe("lib.path.buf_get_name", function()
+  T.it("returns an ordinary buffer's name unchanged", function()
+    local P = fresh()
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_name(buf, "/tmp/plain.txt")
+    T.eq(P.buf_get_name(buf), vim.api.nvim_buf_get_name(buf))
+    vim.api.nvim_buf_delete(buf, { force = true })
+  end)
+
+  T.it("resolves an oil buffer to its directory by filetype when the name is not a URI", function()
+    local P = fresh()
+    package.loaded["oil"] = { get_current_dir = function() return "/srv/by-ft" end }
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_name(buf, "/tmp/plain-name")
+    vim.bo[buf].filetype = "oil"
+    T.eq(P.buf_get_name(buf), "/srv/by-ft")
+    vim.api.nvim_buf_delete(buf, { force = true })
+    package.loaded["oil"] = nil
+  end)
+
+  T.it("keeps the buffer name when oil is present without get_current_dir", function()
+    local P = fresh()
+    package.loaded["oil"] = {}
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_name(buf, "oil:///srv/plain")
+    T.eq(P.buf_get_name(buf), "oil:///srv/plain")
+    package.loaded["oil"] = nil
+  end)
+
+  T.it("resolves an oil buffer to its directory, by URI before the filetype is set", function()
+    local P = fresh()
+    package.loaded["oil"] = { get_current_dir = function() return "/srv/dir" end }
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_name(buf, "oil:///srv/dir")
+    T.eq(P.buf_get_name(buf), "/srv/dir")
+    vim.api.nvim_buf_delete(buf, { force = true })
+    package.loaded["oil"] = nil
+  end)
+
+  T.it("falls back to an empty name, which renders as no name, not a split URI", function()
+    local P = fresh()
+    package.loaded["oil"] = { get_current_dir = function() return nil end }
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_name(buf, "oil:///srv/other")
+    vim.bo[buf].filetype = "oil"
+    T.eq(P.buf_get_name(buf), "")
+    vim.api.nvim_buf_delete(buf, { force = true })
+    package.loaded["oil"] = nil
   end)
 end)

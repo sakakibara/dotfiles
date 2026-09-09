@@ -12,7 +12,7 @@
 --     autoformat-enabled check (used by :Format / <Leader>cf).
 --   - On-save calls M.format({buf}) without force: no-op if disabled, no-op
 --     if no source has anything to do. No spam on every save.
---   - With force AND nothing active: warn (the user asked — they should
+--   - With force AND nothing active: warn (the user asked -- they should
 --     know why nothing happened).
 --
 -- Why vim.g/vim.b.autoformat specifically: standard convention (LazyVim,
@@ -111,7 +111,7 @@ end
 
 -- Summarize current state + available sources. Writes markdown so
 -- snacks.notifier (default ft=markdown) renders bold/inline-code/italic
--- as a proper floating card — not a drab :messages dump.
+-- as a proper floating card -- not a drab :messages dump.
 function M.info(buf)
   buf = (buf == nil or buf == 0) and vim.api.nvim_get_current_buf() or buf
   local gaf = vim.g.autoformat == nil or vim.g.autoformat
@@ -163,7 +163,7 @@ function M.formatexpr()
 end
 
 function M.setup()
-  -- Built-in LSP source — non-primary so it runs alongside a primary
+  -- Built-in LSP source -- non-primary so it runs alongside a primary
   -- formatter (e.g. conform) when both have sources; takes over fully if
   -- no primary has anything configured.
   M.register({

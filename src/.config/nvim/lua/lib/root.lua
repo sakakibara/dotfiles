@@ -49,7 +49,7 @@ end
 
 -- Run a spec against a buffer. Default spec is M.spec; passing a custom
 -- spec lets the named accessors below reuse the same engine. Cache is
--- only consulted for the default spec — custom specs are cheap enough
+-- only consulted for the default spec -- custom specs are cheap enough
 -- that caching them isn't worth the invalidation surface.
 function M.detect(buf, spec)
   buf = buf or vim.api.nvim_get_current_buf()

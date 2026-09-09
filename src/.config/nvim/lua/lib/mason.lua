@@ -6,8 +6,8 @@
 
 local M = {}
 
-local by_ft = {}      -- ft → list of names
-local seen  = {}      -- (ft .. ":" .. name) → true
+local by_ft = {}      -- ft -> list of names
+local seen  = {}      -- (ft .. ":" .. name) -> true
 
 local function add_for_ft(name, ft)
   by_ft[ft] = by_ft[ft] or {}

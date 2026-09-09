@@ -1,13 +1,8 @@
---
--- Statusline designed for two things:
---   1. Premium appearance: powerline-slant separators, catppuccin-sourced
---      palette, clear typographic hierarchy (mode block > primary > dim),
---      breathing mode color animation.
---   2. Snappiness: per-buffer per-segment cache, invalidated only on
---      relevant events. Hot render path is pure table.concat of cached
---      strings — no IO, no LSP/diagnostic scans, no path manipulation.
---
--- No backwards compat with heirline or lualine. This is ours.
+-- Statusline: powerline-slant separators, a palette taken from the
+-- colorscheme, a mode block > primary > dim hierarchy, and a breathing mode
+-- colour animation. Segments are cached per buffer and invalidated only on
+-- the events that change them, so the render path is a table.concat of
+-- cached strings: no IO, no LSP or diagnostic scans, no path manipulation.
 
 local M = {}
 
@@ -42,7 +37,7 @@ local function shade(hex, delta)
   return string.format("#%02x%02x%02x", r, g, b)
 end
 
--- Powerline glyphs — declared up here (before derive_palette) so the
+-- Powerline glyphs -- declared up here (before derive_palette) so the
 -- function captures these locals as upvalues. derive_palette() rewrites
 -- SEP from the real glyphs to "" on a fresh boot when the bar bg matches
 -- Normal.bg (default colorscheme), and back to glyphs once a colorscheme
@@ -56,13 +51,13 @@ local SEP = {
 local SEP_GLYPHS = {
   cap_l   = "\u{e0b6}",  -- rounded left
   cap_r   = "\u{e0b4}",  -- rounded right
-  slant_r = "\u{e0b8}",  -- slant-right (mode→mid)
-  slant_l = "\u{e0ba}",  -- slant-left  (mid→mode on right side, unused)
+  slant_r = "\u{e0b8}",  -- slant-right (mode->mid)
+  slant_l = "\u{e0ba}",  -- slant-left  (mid->mode on right side, unused)
 }
 
 local function derive_palette()
   local bg_end   = get("Normal", "bg", "#000000")
-  -- Recessed (darker than Normal.bg) bar — modern minimal look. Catppuccin
+  -- Recessed (darker than Normal.bg) bar -- modern minimal look. Catppuccin
   -- mocha sets StatusLine.bg to mantle (#181825), which is darker than
   -- Normal.bg (base #1e1e2e) and gives crisp contrast for all fg colors.
   local bg_a     = get("StatusLine", "bg", nil) or get("Folded", "bg", nil) or bg_end
@@ -73,14 +68,14 @@ local function derive_palette()
   local fg_bold  = get("Normal", "fg", "#ffffff")
   -- fg_dim must clear WCAG AA (4.5:1) on bg_a. LineNr (#45475a / surface1)
   -- and NonText (#6c7086 / overlay0) both fail on mantle (~1.9:1 and ~4.0:1).
-  -- Conceal.fg is overlay1 (#7f849c) which gives ~5.3:1 on mantle — PASS.
+  -- Conceal.fg is overlay1 (#7f849c) which gives ~5.3:1 on mantle -- PASS.
   local fg_dim   = get("Conceal", "fg", nil) or get("Comment", "fg", nil) or get("NonText", "fg", fg)
   -- Path cwd specifically: bumped further for clear legibility (was the
   -- "current dir hard to see" complaint). Pmenu.fg is overlay2 in mocha
-  -- (#9399b2); Conceal.fg is overlay1 (#7f849c) — use Pmenu first.
+  -- (#9399b2); Conceal.fg is overlay1 (#7f849c) -- use Pmenu first.
   local fg_path_cwd = get("Pmenu", "fg", nil) or get("Conceal", "fg", nil) or fg_dim
 
-  -- Semantic source groups — every theme defines these
+  -- Semantic source groups -- every theme defines these
   local red      = get("DiagnosticError", "fg", nil) or get("Error",       "fg", "#ff5555")
   local yellow   = get("DiagnosticWarn",  "fg", nil) or get("WarningMsg",  "fg", "#f1fa8c")
   local info     = get("DiagnosticInfo",  "fg", nil) or get("Function",    "fg", "#8be9fd")
@@ -104,7 +99,7 @@ local function derive_palette()
   }
 
   -- Wire (or unwire) the powerline separators based on whether the bar bg
-  -- is actually distinct from Normal.bg. Same colors on both sides → ugly
+  -- is actually distinct from Normal.bg. Same colors on both sides -> ugly
   -- gray triangle, so we blank the separators in that case. Themes like
   -- catppuccin set StatusLine.bg = mantle (≠ base), and pass.
   local has_distinct_bg = bg_a ~= bg_end
@@ -117,7 +112,7 @@ local function define_highlights()
   derive_palette()
   local p = palette
 
-  -- fg_dim (#7f849c / overlay1) is 4.44:1 on bg_end — just below WCAG AA.
+  -- fg_dim (#7f849c / overlay1) is 4.44:1 on bg_end -- just below WCAG AA.
   -- Use fg_path_cwd (#9399b2 / overlay2) for the inactive bar to clear 4.5:1.
   hl("StslNc",        { fg = p.fg_path_cwd, bg = p.bg_end })
   hl("Stsl",          { fg = p.fg, bg = p.bg_mid })
@@ -147,9 +142,8 @@ local function define_highlights()
   hl("StslLsp",       { fg = p.green,    bg = p.bg_mid, bold = true })
   hl("StslFT",        { fg = p.fg_bold,  bg = p.bg_mid, bold = true })
 
-  -- File-path zones (cwd / relative-dir / basename), mirroring the old
-  -- heirline split: dim gray cwd, themed-accent relative dir, bright
-  -- bold basename (orange when modified, red when readonly).
+  -- File-path zones: dim gray cwd, themed-accent relative dir, bright bold
+  -- basename (orange when modified, red when readonly).
   hl("StslPathCwd",   { fg = p.fg_path_cwd, bg = p.bg_mid, italic = true })
   hl("StslPathRel",   { fg = p.blue,     bg = p.bg_mid })
   hl("StslPathFile",  { fg = p.fg_bold,  bg = p.bg_mid, bold = true })
@@ -169,7 +163,7 @@ end
 
 -- 6 levels of horizontal-bar glyphs (U+1FB76..U+1FB7B). Used as a 2-char
 -- scrollbar: picks one glyph for the cursor's vertical position in the
--- file and renders it twice. Matches old heirline scrollbar.
+-- file and renders it twice.
 local BAR_BLOCKS = { "🭶", "🭷", "🭸", "🭹", "🭺", "🭻" }
 
 -- Public segment builders (for tests)
@@ -262,24 +256,12 @@ local function build_git(buf)
   return clickable(1, function() pcall(function() Snacks.picker.git_log() end) end, content)
 end
 
--- Get the path-like name for a buffer. For oil:// buffers we resolve to
--- the actual directory being edited so the statusline shows sensible
--- path segments instead of the literal URI.
-local function buf_path_name(buf)
-  local ft = vim.bo[buf].filetype
-  if ft == "oil" then
-    local ok, oil = pcall(require, "oil")
-    if ok and oil.get_current_dir then
-      return oil.get_current_dir(buf) or ""
-    end
-  end
-  return vim.api.nvim_buf_get_name(buf)
-end
+local function buf_path_name(buf) return Lib.path.buf_get_name(buf) end
 
 -- Split an absolute path into (cwd_display, rel_dir, basename) for the
--- tri-color renderer. home → `~` in the cwd zone. Directory paths keep
+-- tri-color renderer. home -> `~` in the cwd zone. Directory paths keep
 -- their trailing slash on the basename so the user can see it's a dir.
--- Edge case: if abs IS cwd (or a trailing-slashed variant — oil on cwd),
+-- Edge case: if abs IS cwd (or a trailing-slashed variant -- oil on cwd),
 -- we break cwd into parent + name so the three zones don't duplicate.
 local function split_path_zones(abs)
   local cwd  = vim.uv.cwd() or ""
@@ -334,7 +316,7 @@ local function build_path(buf, budget)
   local name = buf_path_name(buf)
   if name == "" then return "%#StslDim# [No Name] " end
 
-  -- Scratch buffers (buftype=nofile) — nvim_buf_set_name stores names with
+  -- Scratch buffers (buftype=nofile) -- nvim_buf_set_name stores names with
   -- cwd prefix, so render only the tail to avoid the misleading cwd. Use
   -- StslPathRO (italic dim) since these are read-only listing buffers.
   -- If the name is a `scheme://id` URI (organ-agenda://8, term://, etc.),
@@ -419,7 +401,7 @@ local function build_lsp(buf)
   local width = vim.api.nvim_win_get_width(0)
   local names
   if width < 80 then
-    names = "lsp×" .. #clients
+    names = "lsp:" .. #clients
   else
     local n = {}
     for _, c in ipairs(clients) do n[#n + 1] = c.name end
@@ -463,7 +445,7 @@ local function build_fmt(buf)
 end
 
 -- Auto-format state indicator. Hidden when the default is active (global on,
--- no buffer override). Shown only when state is "unusual" — global off, or
+-- no buffer override). Shown only when state is "unusual" -- global off, or
 -- a per-buffer override is set. Clickable: toggles the current scope.
 local function build_autofmt(buf)
   local gaf = vim.g.autoformat == nil or vim.g.autoformat
@@ -485,7 +467,7 @@ local function build_autofmt(buf)
     "%#" .. hl .. "#  " .. label .. " ")
 end
 
--- NOT cached — state changes per keystroke but this is fast
+-- NOT cached -- state changes per keystroke but this is fast
 local function build_spell()
   if not vim.wo.spell then return "" end
   return "%#StslSpell# 󰓆 " .. table.concat(vim.opt_local.spelllang:get(), ",") .. " "
@@ -706,11 +688,6 @@ function M.setup()
     group = grp,
     callback = function() pcall(vim.cmd, "redrawstatus!") end,
   })
-end
-
--- Legacy entry (kept for test compatibility)
-function M.handle_click(_, _, button, _)
-  if button == "l" then pcall(function() Snacks.picker.diagnostics_buffer() end) end
 end
 
 return M

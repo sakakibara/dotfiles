@@ -11,9 +11,9 @@ end
 function M.buf_get_name(buf)
   buf = buf or 0
   local name = vim.api.nvim_buf_get_name(buf)
-  if name:match("^oil://") then
+  if vim.bo[buf].filetype == "oil" or name:match("^oil://") then
     local ok, oil = pcall(require, "oil")
-    if ok then return oil.get_current_dir(buf) or name end
+    if ok and oil.get_current_dir then return oil.get_current_dir(buf) or "" end
   end
   return name
 end

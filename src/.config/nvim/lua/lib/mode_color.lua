@@ -1,6 +1,6 @@
 -- Drives the mode block's color (StslMode bg, StslModeSep fg, StslCapL fg)
 -- and animates transitions between modes with a 6-frame RGB interpolation.
--- Colors are derived from the current colorscheme's standard HL groups —
+-- Colors are derived from the current colorscheme's standard HL groups --
 -- works with any theme.
 
 local M = {}

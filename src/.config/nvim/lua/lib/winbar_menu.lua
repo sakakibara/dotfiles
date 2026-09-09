@@ -35,9 +35,7 @@ local function set_hl()
   vim.api.nvim_set_hl(0, "LibWinbarMenuBorder",  { fg = border_fg,  bg = normal_bg })
 end
 
--- ─────────────────────────────────────────────────────────────────────
 -- Menu instance
--- ─────────────────────────────────────────────────────────────────────
 local Menu = {}
 Menu.__index = Menu
 
@@ -148,7 +146,7 @@ function Menu:open()
 
   local max_h = math.min(#lines, math.max(6, math.floor(vim.o.lines * 0.4)))
   -- One extra cell so visual-mode cursor at EOL (exclusive selection)
-  -- sits on blank padding instead of the window edge — avoids the
+  -- sits on blank padding instead of the window edge -- avoids the
   -- horizontal scroll nudge during mouse drag-select.
   local width  = widest + 1
   local anchor = math.min(self.anchor_col, math.max(0, vim.o.columns - width - 2))
@@ -307,7 +305,7 @@ function Menu:_wire_autocmds()
   vim.api.nvim_create_autocmd("WinClosed", {
     group = group, pattern = tostring(self.win), once = true,
     callback = function()
-      -- Window is closing — tear down self and child without trying to
+      -- Window is closing -- tear down self and child without trying to
       -- re-close the already-closing window.
       if not self.is_opened then return end
       self.is_opened = false
@@ -333,8 +331,8 @@ function Menu:_wire_autocmds()
     end,
   })
 
-  -- Keep self.sel in sync with cursor line (updated by mouse click —
-  -- default vim behavior — or arrow keys / j/k). Guard so our own
+  -- Keep self.sel in sync with cursor line (updated by mouse click --
+  -- default vim behavior -- or arrow keys / j/k). Guard so our own
   -- :select() calls don't loop.
   vim.api.nvim_create_autocmd("CursorMoved", {
     group = group, buffer = self.buf,
@@ -350,9 +348,7 @@ function Menu:_wire_autocmds()
   })
 end
 
--- ─────────────────────────────────────────────────────────────────────
--- Public API — keeps the signatures callers expect
--- ─────────────────────────────────────────────────────────────────────
+-- Public API -- keeps the signatures callers expect
 function M.open(items, opts)
   if not items or #items == 0 then return end
   opts = opts or {}

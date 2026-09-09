@@ -1,4 +1,4 @@
--- Feature-rich tabline — for actual tab pages, not buffers. Shows:
+-- Tabline for actual tab pages, not buffers. Shows:
 --   [N] <icon> <focus-buffer-name> +<extra-window-count> <modified-dot>
 -- Clickable tab pills (left-click switches, middle-click closes via %NX),
 -- cwd on the right, inherits TabLineSel / TabLine / TabLineFill from the
@@ -43,7 +43,7 @@ end
 -- trailing 2 spaces. We track the "decoration overhead" per tab so we
 -- know how much the label can take from the remaining budget.
 local function decoration_width(info)
-  local w = 5                                   -- "  N  " (approx — N may be >9)
+  local w = 5                                   -- "  N  " (approx -- N may be >9)
   w = w + 2                                     -- icon + space
   if info.wins > 1 then w = w + 3 end           -- "  +K"
   if info.modified then w = w + 3 end           -- "  ●"
