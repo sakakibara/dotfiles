@@ -30,7 +30,7 @@ export XDG_DATA_HOME=${XDG_DATA_HOME:-$HOME/.local/share}
 export XDG_STATE_HOME=${XDG_STATE_HOME:-$HOME/.local/state}
 export XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-$HOME/.xdg}
 
-# Theme state — drives THEME_FAMILY / THEME_VARIANT for theme-aware tools.
+# Theme state -- drives THEME_FAMILY / THEME_VARIANT for theme-aware tools.
 # State file is written by `theme set` and re-read on every shell start.
 if [[ -f "${XDG_STATE_HOME}/dotfiles/theme" ]]; then
   IFS=/ read -r THEME_FAMILY THEME_VARIANT < "${XDG_STATE_HOME}/dotfiles/theme"
@@ -84,7 +84,7 @@ fi
 # ~/.config/zsh/paths.zsh. __mox_paths_sync re-sources it whenever its mtime
 # changes, so a `mox apply` that touches the registry takes effect at the
 # next prompt, without a new shell.
-zmodload zsh/stat 2>/dev/null
+zmodload -F zsh/stat b:zstat 2>/dev/null
 typeset -g __mox_paths_file="${HOME}/.config/zsh/paths.zsh"
 typeset -g __mox_paths_mtime=""
 
@@ -119,9 +119,11 @@ if (( ${+commands[fzf]} )); then
   elif (( ${+commands[fdfind]} )); then
     fd_command="fdfind"
   fi
-  export FZF_DEFAULT_COMMAND="${fd_command} --type file --follow --hidden --exclude .git"
-  export FZF_CTRL_T_COMMAND="${FZF_DEFAULT_COMMAND}"
-  export FZF_ALT_C_COMMAND="${fd_command} --type directory --follow --hidden"
+  if [[ -n "$fd_command" ]]; then
+    export FZF_DEFAULT_COMMAND="${fd_command} --type file --follow --hidden --exclude .git"
+    export FZF_CTRL_T_COMMAND="${FZF_DEFAULT_COMMAND}"
+    export FZF_ALT_C_COMMAND="${fd_command} --type directory --follow --hidden"
+  fi
 
   case "$THEME_FAMILY" in
     catppuccin)
@@ -232,7 +234,7 @@ keyinfo=(
 
 for key in "${(k)keyinfo[@]}"; do
   if [[ -z "$keyinfo[$key]" ]]; then
-    keyinfo[$key]='�'
+    keyinfo[$key]=$'\xef\xbf\xbd'
   fi
 done
 
@@ -242,7 +244,7 @@ zle -N edit-command-line
 #
 # Key bind functions
 #
-# Function bodies live in dot_zfunc/ and are autoloaded via the fpath setup
+# Function bodies live in .zfunc/ and are autoloaded via the fpath setup
 # above; register the ZLE widgets here. `bindkey-all` is an interactive
 # helper, not a widget, so no `zle -N` for it.
 #
@@ -404,7 +406,7 @@ for keymap in 'emacs' 'viins'; do
     bindkey -M "$keymap" "$key" copy-prev-shell-word
 
   # Use a more flexible push-line
-  for key in "$keyinfo[Control]Q" "$keyinfo[Escape]"{q,Q}
+  for key in "$keyinfo[Escape]"{q,Q}
     bindkey -M "$keymap" "$key" push-line-or-edit
 
   # Bind Shift + Tab to go to the previous menu item
@@ -460,7 +462,7 @@ alias ll="ls -l"
 alias la="ls -la"
 
 # File size utility aliases
-alias fs="stat -f '%z bytes'"
+fs() { [ $# -gt 0 ] || { print -u2 "usage: fs FILE..."; return 2; }; wc -c "$@"; }
 alias df="df -h"
 
 # Load local configuration
@@ -482,10 +484,10 @@ export ANTIDOTE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}/antidote"
 
 zstyle ':antidote:bundle' use-friendly-names 'yes'
 
-# Clone antidote if necessary
-[[ -e "${HOME}/.antidote" ]] || git clone https://github.com/mattmc3/antidote.git "${HOME}/.antidote"
-
-# Source antidote
+[[ -e "${HOME}/.antidote" ]] || {
+  git clone --quiet --filter=blob:none https://github.com/mattmc3/antidote.git "${HOME}/.antidote" &&
+    git -C "${HOME}/.antidote" checkout --quiet 9bb69ab99c6f05d6e6ae237f7ce222eeeb5b4a14
+}
 source "${HOME}/.antidote/antidote.zsh"
 
 # Generate and source plugins from ~/.zsh_plugins.txt
@@ -554,7 +556,7 @@ if (( ${+commands[vivid]} )); then
 fi
 
 if (( ${+commands[starship]} )); then
-  _evalcache starship init zsh
+  _evalcache starship init zsh --print-full-init
 fi
 
 #

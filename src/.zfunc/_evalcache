@@ -12,6 +12,7 @@ done
 # the key; the -nt guard catches in-place binary replacement.
 local signal=""
 if typeset -f "${name}" > /dev/null; then
+  autoload +X "${name}" 2>/dev/null
   signal="${functions_source[$name]:-${ZDOTDIR:-$HOME}/.zshrc}"
 elif [[ "$name" == */* ]]; then
   [[ -e "$name" ]] && signal="${name:A}"
