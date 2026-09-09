@@ -87,7 +87,7 @@ recent = "zk edit --sort created- --created-after 'last two weeks' --interactive
 # Show a random note.
 lucky = "zk list --quiet --format full --sort random --limit 1"
 
-# Show a random note.
+# Start today's journal entry.
 journal = 'zk new --no-input "$ZK_NOTEBOOK_DIR/journal"'
 
 # LSP (EDITOR INTEGRATION)
