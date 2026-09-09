@@ -1,4 +1,4 @@
-# Theme state — drives $THEME_FAMILY / $THEME_VARIANT for theme-aware tools.
+# Theme state -- drives $THEME_FAMILY / $THEME_VARIANT for theme-aware tools.
 # State file is written by `theme set` and re-read on every shell start.
 # This conf.d snippet runs before config.fish, so we resolve XDG_STATE_HOME
 # defensively rather than relying on it being set yet.

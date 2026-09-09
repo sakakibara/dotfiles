@@ -1,4 +1,4 @@
-# theme-colors.fish — apply fish UI colors from the active theme.
+# theme-colors.fish -- apply fish UI colors from the active theme.
 #
 # Reads theme files cached by `theme install` at:
 #   $XDG_DATA_HOME/dotfiles/themes/fish/<family>-<variant>.theme
@@ -27,7 +27,7 @@ function __theme_apply_colors --on-event fish_prompt
         test (count $tokens) -lt 2; and continue
         switch $tokens[1]
             case 'fish_color_*' 'fish_pager_color_*'
-                set -gx $tokens[1] $tokens[2..-1]
+                set -g $tokens[1] $tokens[2..-1]
         end
     end < $theme_file
 end

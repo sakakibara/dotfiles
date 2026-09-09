@@ -3,15 +3,6 @@
 # dirs  755 drwxr-xr-x (777 minus 022)
 umask 022
 
-# Set directory for cache of eval commands.
-# XDG_CACHE_HOME isn't set yet at this point (it gets set further down), so
-# resolve the fallback inline.
-if not set -q FISH_EVALCACHE_DIR
-    set -l _cache $XDG_CACHE_HOME
-    test -z "$_cache"; and set _cache $HOME/.cache
-    set -gx FISH_EVALCACHE_DIR $_cache/fish-eval
-end
-
 _evalcache osname init
 
 if not set -q XDG_CONFIG_HOME
@@ -30,7 +21,7 @@ if not set -q XDG_RUNTIME_DIR
     set -gx XDG_RUNTIME_DIR $HOME/.xdg
 end
 
-if string match -q -- $OSNAME "darwin*"
+if test "$OSNAME" = macos
     if not set -q XDG_DESKTOP_DIR
         set -gx XDG_DESKTOP_DIR $HOME/Desktop
     end
@@ -70,7 +61,7 @@ set -gx DOTNET_CLI_TELEMETRY_OPTOUT 1
 function _brew_shellenv_no_path
     $argv[1] shellenv | grep -v fish_add_path
 end
-if string match -q -- $OSNAME macos
+if test "$OSNAME" = macos
     if test -f /opt/homebrew/bin/brew
         _evalcache _brew_shellenv_no_path /opt/homebrew/bin/brew
     end
@@ -114,9 +105,11 @@ if status --is-interactive
         else if test (command -v fdfind)
             set fd_command fdfind
         end
-        set -gx FZF_DEFAULT_COMMAND "$fd_command --type file --follow --hidden --exclude .git"
-        set -gx FZF_CTRL_T_COMMAND $FZF_DEFAULT_COMMAND
-        set -gx FZF_ALT_C_COMMAND "$fd_command --type directory --follow --hidden"
+        if test -n "$fd_command"
+            set -gx FZF_DEFAULT_COMMAND "$fd_command --type file --follow --hidden --exclude .git"
+            set -gx FZF_CTRL_T_COMMAND $FZF_DEFAULT_COMMAND
+            set -gx FZF_ALT_C_COMMAND "$fd_command --type directory --follow --hidden"
+        end
 
         switch $THEME_FAMILY
             case catppuccin
@@ -149,6 +142,14 @@ if status --is-interactive
         _evalcache holt init fish
     end
 
+    if test (command -v zoxide)
+        _evalcache zoxide init fish
+    end
+
+    if test (command -v starship)
+        _evalcache starship init fish --print-full-init
+    end
+
     if test (command -v pip)
         _evalcache pip completion --fish
     end
@@ -162,9 +163,9 @@ if status --is-interactive
     bind \e\cN history-token-search-forward
 
     # Abbreviations live in conf.d/abbreviations.fish (rendered from
-    # data/abbreviations.toml — single source of truth shared with zsh).
+    # data/abbreviations.toml -- single source of truth shared with zsh).
 
-    # LS_COLORS settings — no-variant families pass just the family name.
+    # LS_COLORS settings -- no-variant families pass just the family name.
     if test (command -v vivid)
         set -l _theme_id $THEME_FAMILY
         test -n "$THEME_VARIANT"; and set _theme_id "$THEME_FAMILY-$THEME_VARIANT"
@@ -172,10 +173,8 @@ if status --is-interactive
     end
 end
 
-# Added by OrbStack: command-line tools and integration
-# This won't be added again if you remove it.
-source ~/.orbstack/shell/init2.fish 2>/dev/null || :
-
-# pnpm
-set -gx PNPM_HOME "$HOME/.local/share/pnpm"
-# pnpm end
+# mox: when os=darwin
+if test -r "$HOME/.orbstack/shell/init2.fish"
+    source "$HOME/.orbstack/shell/init2.fish"
+end
+# mox: end
