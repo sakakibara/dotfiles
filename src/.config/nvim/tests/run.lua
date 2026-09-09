@@ -30,6 +30,16 @@ end
 
 require("lib").init()
 
+do
+  local dir = vim.fn.tempname()
+  vim.fn.mkdir(dir, "p")
+  require("core.pack.history")._dir_override = dir
+  require("core.pack.lock")._path_override = dir .. "/pack-lock.json"
+  require("core.pack.log")._path_override = dir .. "/core-pack-log.jsonl"
+  require("core.pack.txn")._path_override = dir .. "/core-pack/update.txn.json"
+  require("lib.colors.picker")._recents_path = dir .. "/lib-colors-recents.json"
+end
+
 for _, spec in ipairs(vim.fn.sort(vim.fn.glob(vim.fn.getcwd() .. "/tests/**/*_spec.lua", true, true))) do
   dofile(spec)
 end

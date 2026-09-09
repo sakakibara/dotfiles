@@ -8,10 +8,10 @@
 -- being *not* task markers, etc.) works without us re-implementing CommonMark.
 -- When the parser isn't available we fall back to a permissive regex that
 -- accepts common shapes (`- [ ] x`, `* [x]`, `1. [ ] y`, `> - [ ] z`,
--- `> > - [ ] z`). Toggle is a pure state flip on the 3-char marker span:
--- `[ ]` ⇄ `[x]`. We never insert a new marker — this is toggle-only so a
--- fat-fingered invocation on a plain list item is a no-op, not a surprise
--- edit.
+-- `> > - [ ] z`); a bare marker at end of line, which the grammar does not
+-- see as a task item, takes the regex path too, outside code blocks. Toggle
+-- is a pure state flip on the 3-char marker span, `[ ]` to `[x]`; it never
+-- inserts a marker, so a fat-fingered call on a plain list item is a no-op.
 
 local M = {}
 
@@ -67,11 +67,19 @@ end
 
 local function find_marker(bufnr, row)
   local has_ts, parser = pcall(vim.treesitter.get_parser, bufnr, "markdown")
-  if has_ts and parser then
-    return find_marker_ts(bufnr, parser, row)
-  end
   local line = vim.api.nvim_buf_get_lines(bufnr, row, row + 1, false)[1]
   if not line then return nil end
+  if has_ts and parser then
+    local col, state = find_marker_ts(bufnr, parser, row)
+    if col then return col, state end
+    if not line:match("%[[ xX]%]%s*$") then return nil end
+    local node = vim.treesitter.get_node({ bufnr = bufnr, pos = { row, 0 }, lang = "markdown" })
+    while node do
+      local t = node:type()
+      if t == "fenced_code_block" or t == "indented_code_block" then return nil end
+      node = node:parent()
+    end
+  end
   return find_marker_regex(line)
 end
 
