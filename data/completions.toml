@@ -26,3 +26,7 @@ command = "herdr completion"
 name = "mox"
 command = "mox completion"
 zsh_dispatch = "_mox_complete"
+
+[[completions]]
+name = "mise"
+command = "mise completion"
