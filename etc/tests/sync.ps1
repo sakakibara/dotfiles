@@ -1,5 +1,5 @@
 #!/usr/bin/env pwsh
-# Run with: pwsh -NoProfile -File etc/tests/sync_ps1.ps1   (from the repo root)
+# Run with: pwsh -NoProfile -File etc/tests/sync.ps1   (from the repo root)
 #
 # Tests sync.ps1's pure-logic surface: line parsing, profile filter,
 # action cycle, format-entry round-trip, and the apply file-writer.
@@ -9,6 +9,7 @@
 $ErrorActionPreference = 'Stop'
 
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
+$env:MOX_REPO = $repo
 . (Join-Path $repo 'src/.local/bin/sync.ps1')
 
 $fails = 0; $passes = 0
@@ -25,58 +26,58 @@ function Test-Eq([string]$desc, $expect, $actual) {
 }
 function Section([string]$s) { Write-Host ""; Write-Host $s }
 
-# _SyncParseLine
-Section '_SyncParseLine'
-$p = _SyncParseLine 'neovim'
+# ConvertFrom-PackagesLine
+Section 'ConvertFrom-PackagesLine'
+$p = ConvertFrom-PackagesLine 'neovim'
 Test-Eq 'bare name'             ''      $p.Kind
-Test-Eq 'bare name → name'      'neovim' $p.Name
-Test-Eq 'bare name → no profile' 0      $p.Profiles.Count
+Test-Eq 'bare name -> name'      'neovim' $p.Name
+Test-Eq 'bare name -> no profile' 0      $p.Profiles.Count
 
-$p = _SyncParseLine 'cask:firefox'
+$p = ConvertFrom-PackagesLine 'cask:firefox'
 Test-Eq 'kind extracted'        'cask'    $p.Kind
 Test-Eq 'name after kind'       'firefox' $p.Name
 
-$p = _SyncParseLine 'cask:slack @work'
+$p = ConvertFrom-PackagesLine 'cask:slack @work'
 Test-Eq 'kind + profile kind'   'cask'   $p.Kind
 Test-Eq 'kind + profile name'   'slack'  $p.Name
 Test-Eq 'kind + profile count'  1        $p.Profiles.Count
 Test-Eq 'kind + profile val'    'work'   $p.Profiles[0]
 
-$p = _SyncParseLine 'foo @personal,work'
+$p = ConvertFrom-PackagesLine 'foo @personal,work'
 Test-Eq 'multi-profile count'   2          $p.Profiles.Count
 Test-Eq 'multi-profile [0]'     'personal' $p.Profiles[0]
 Test-Eq 'multi-profile [1]'     'work'     $p.Profiles[1]
 
-$p = _SyncParseLine 'openssl@3'
+$p = ConvertFrom-PackagesLine 'openssl@3'
 Test-Eq 'versioned name kept'   'openssl@3' $p.Name
 Test-Eq 'versioned no profile'  0           $p.Profiles.Count
 
-$p = _SyncParseLine 'extras/firefox @personal'
+$p = ConvertFrom-PackagesLine 'extras/firefox @personal'
 Test-Eq 'bucket/name'           'extras/firefox' $p.Name
 Test-Eq 'bucket/name profile'   'personal'       $p.Profiles[0]
 
-$p = _SyncParseLine '   '
+$p = ConvertFrom-PackagesLine '   '
 Test-Eq 'whitespace only'       $null $p
 
-$p = _SyncParseLine '# comment'
+$p = ConvertFrom-PackagesLine '# comment'
 Test-Eq 'pure comment'          $null $p
 
-$p = _SyncParseLine 'neovim # trailing comment'
+$p = ConvertFrom-PackagesLine 'neovim # trailing comment'
 Test-Eq 'inline comment kind'   ''       $p.Kind
 Test-Eq 'inline comment name'   'neovim' $p.Name
 
-# _SyncAppliesTo
-Section '_SyncAppliesTo'
-$p = _SyncParseLine 'foo'
-Test-Eq 'no profile applies (personal)' $true (_SyncAppliesTo $p 'personal')
-Test-Eq 'no profile applies (work)'     $true (_SyncAppliesTo $p 'work')
+# Test-PackageApplies
+Section 'Test-PackageApplies'
+$p = ConvertFrom-PackagesLine 'foo'
+Test-Eq 'no profile applies (personal)' $true (Test-PackageApplies $p 'personal')
+Test-Eq 'no profile applies (work)'     $true (Test-PackageApplies $p 'work')
 
-$p = _SyncParseLine 'foo @personal'
-Test-Eq 'personal-only on personal' $true  (_SyncAppliesTo $p 'personal')
-Test-Eq 'personal-only on work'     $false (_SyncAppliesTo $p 'work')
+$p = ConvertFrom-PackagesLine 'foo @personal'
+Test-Eq 'personal-only on personal' $true  (Test-PackageApplies $p 'personal')
+Test-Eq 'personal-only on work'     $false (Test-PackageApplies $p 'work')
 
-# _SyncAll
-Section '_SyncAll'
+# Read-PackagesFileAll
+Section 'Read-PackagesFileAll'
 $tmp = New-TemporaryFile
 @(
     '# comment'
@@ -85,12 +86,16 @@ $tmp = New-TemporaryFile
     'cask:firefox'
     'cask:slack @work'
 ) | Set-Content -LiteralPath $tmp
-$entries = _SyncAll $tmp 'scoop'
-Test-Eq '_SyncAll count'      3        $entries.Count
-Test-Eq '_SyncAll [0] kind'   'scoop'  $entries[0].Kind
-Test-Eq '_SyncAll [0] name'   'neovim' $entries[0].Name
-Test-Eq '_SyncAll [1] kind'   'cask'   $entries[1].Kind
-Test-Eq '_SyncAll [2] name'   'slack'  $entries[2].Name
+$entries = Read-PackagesFileAll $tmp 'scoop'
+Test-Eq 'Read-PackagesFileAll count'      3        $entries.Count
+Test-Eq '[0] kind'   'scoop'  $entries[0].Kind
+Test-Eq '[0] name'   'neovim' $entries[0].Name
+Test-Eq '[1] kind'   'cask'   $entries[1].Kind
+Test-Eq '[2] name'   'slack'  $entries[2].Name
+$one = (New-TemporaryFile).FullName
+'neovim' | Set-Content -LiteralPath $one
+Test-Eq 'Read-PackagesFileAll one entry is still a list' 1 (Read-PackagesFileAll $one 'scoop').Count
+Remove-Item -LiteralPath $one -Force
 Remove-Item -LiteralPath $tmp
 
 # Sync-FormatEntry
@@ -103,14 +108,14 @@ Test-Eq 'bucket/name kept as name'  'extras/firefox'  (Sync-FormatEntry 'scoop' 
 
 # _SyncCycleAction
 Section '_SyncCycleAction (current=personal, other=work)'
-Test-Eq 'skip → add'           'add'        (_SyncCycleAction 'personal' 'work' 'skip')
-Test-Eq 'add → @personal'      '@personal'  (_SyncCycleAction 'personal' 'work' 'add')
-Test-Eq '@personal → @work'    '@work'      (_SyncCycleAction 'personal' 'work' '@personal')
-Test-Eq '@work → block'        'block'      (_SyncCycleAction 'personal' 'work' '@work')
-Test-Eq 'block → skip'         'skip'       (_SyncCycleAction 'personal' 'work' 'block')
+Test-Eq 'skip -> add'           'add'        (_SyncCycleAction 'personal' 'work' 'skip')
+Test-Eq 'add -> @personal'      '@personal'  (_SyncCycleAction 'personal' 'work' 'add')
+Test-Eq '@personal -> @work'    '@work'      (_SyncCycleAction 'personal' 'work' '@personal')
+Test-Eq '@work -> block'        'block'      (_SyncCycleAction 'personal' 'work' '@work')
+Test-Eq 'block -> skip'         'skip'       (_SyncCycleAction 'personal' 'work' 'block')
 
 Section '_SyncCycleAction with no other profile'
-Test-Eq '@personal → block (no other)' 'block' (_SyncCycleAction 'personal' '' '@personal')
+Test-Eq '@personal -> block (no other)' 'block' (_SyncCycleAction 'personal' '' '@personal')
 
 # Sync-Apply (writes to file)
 Section 'Sync-Apply writes packages + blacklist'
@@ -141,6 +146,20 @@ Test-Eq 'blacklist appends evil'    $true ($bocContent.Contains('evil'))
 Test-Eq 'blacklist no slack'        $false ($bocContent.Contains('slack'))
 
 Remove-Item -LiteralPath $pkgFile, $bocFile
+
+# Without the shared module the script refuses, naming the library it wanted.
+$bare = Join-Path ([IO.Path]::GetTempPath()) ("mox-sync-bare-" + [Guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $bare | Out-Null
+try {
+    $saved = $env:MOX_REPO
+    $env:MOX_REPO = $bare
+    $refusal = & pwsh -NoProfile -File (Join-Path $repo 'src/.local/bin/sync.ps1') --help 2>&1 | Out-String
+    $refusalRc = $LASTEXITCODE
+    $env:MOX_REPO = $saved
+    Test-Eq 'a source dir without the module is refused' $true ($refusalRc -ne 0 -and $refusal.Contains('lacks expected lib'))
+} finally {
+    Remove-Item -LiteralPath $bare -Recurse -Force -ErrorAction SilentlyContinue
+}
 
 Write-Host ''
 Write-Host "$passes passed, $fails failed"

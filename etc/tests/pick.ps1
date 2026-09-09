@@ -1,9 +1,9 @@
 #!/usr/bin/env pwsh
-# Run with: pwsh -NoProfile -File etc/tests/pick_ps1.ps1   (from the repo root)
+# Run with: pwsh -NoProfile -File etc/tests/pick.ps1   (from the repo root)
 #
 # Tests the testable surface of pick.ps1: item parsing, DOTFILES_PICK env
 # resolution, and state save/load round-trip. The TUI itself isn't
-# exercised — that needs an actual terminal session.
+# exercised -- that needs an actual terminal session.
 
 $ErrorActionPreference = 'Stop'
 
@@ -35,29 +35,29 @@ function Section([string]$s) { Write-Host ""; Write-Host $s }
 Section 'item parsing'
 
 $it = _ParseItem 'brew::setup'
-Test-Eq 'bare name → name'   'brew::setup' $it.Name
-Test-Eq 'bare name → label'  'brew::setup' $it.Label
-Test-Eq 'bare name → state'  'normal'      $it.State
-Test-Eq 'bare name → reason' ''            $it.Reason
+Test-Eq 'bare name -> name'   'brew::setup' $it.Name
+Test-Eq 'bare name -> label'  'brew::setup' $it.Label
+Test-Eq 'bare name -> state'  'normal'      $it.State
+Test-Eq 'bare name -> reason' ''            $it.Reason
 
 $it = _ParseItem 'brew::setup=Homebrew packages'
-Test-Eq 'name=label → name'  'brew::setup'        $it.Name
-Test-Eq 'name=label → label' 'Homebrew packages'  $it.Label
+Test-Eq 'name=label -> name'  'brew::setup'        $it.Name
+Test-Eq 'name=label -> label' 'Homebrew packages'  $it.Label
 
 $it = _ParseItem '+dep::setup=Install CLT'
-Test-Eq '+ → required state' 'required'   $it.State
-Test-Eq '+ → name'           'dep::setup' $it.Name
-Test-Eq '+ → label'          'Install CLT' $it.Label
+Test-Eq '+ -> required state' 'required'   $it.State
+Test-Eq '+ -> name'           'dep::setup' $it.Name
+Test-Eq '+ -> label'          'Install CLT' $it.Label
 
 $it = _ParseItem '~holt::setup=Workspace links~Requires holt command'
-Test-Eq '~ → disabled state' 'disabled'              $it.State
-Test-Eq '~ → name'           'holt::setup'           $it.Name
-Test-Eq '~ → label'          'Workspace links'       $it.Label
-Test-Eq '~ → reason'         'Requires holt command' $it.Reason
+Test-Eq '~ -> disabled state' 'disabled'              $it.State
+Test-Eq '~ -> name'           'holt::setup'           $it.Name
+Test-Eq '~ -> label'          'Workspace links'       $it.Label
+Test-Eq '~ -> reason'         'Requires holt command' $it.Reason
 
 $it = _ParseItem 'name=label-with-=-equals'
-Test-Eq '= splits first only — name'  'name'                $it.Name
-Test-Eq '= splits first only — label' 'label-with-=-equals' $it.Label
+Test-Eq '= splits first only -- name'  'name'                $it.Name
+Test-Eq '= splits first only -- label' 'label-with-=-equals' $it.Label
 
 $it = _ParseItem 'brew::setup=Brew|abc123'
 Test-Eq 'hash extracted'          'abc123'      $it.Hash
@@ -72,7 +72,7 @@ Test-Eq 'hash+reason reason' 'missing dep' $it.Reason
 Test-Eq 'hash+reason hash'   'deadbeef'    $it.Hash
 
 $it = _ParseItem 'noHash=label'
-Test-Eq 'absent hash → empty' '' $it.Hash
+Test-Eq 'absent hash -> empty' '' $it.Hash
 
 $it = _ParseItem '==Section title'
 Test-Eq 'header state' 'header'        $it.State
@@ -139,6 +139,14 @@ Test-Eq 'loaded holt'       $true  $Script:PickLastSelection.ContainsKey('holt')
 Test-Eq 'mise not loaded'   $false $Script:PickLastSelection.ContainsKey('mise')
 Test-Eq 'brew hash'         'h1'   $Script:PickLastSelection['brew']
 Test-Eq 'holt hash'         'h3'   $Script:PickLastSelection['holt']
+
+Section 'a state line without a hash column is not ours'
+Set-Content -LiteralPath $file -Value "brew`nmise`t`nholt`th3"
+_PickLoadLastSelection
+Test-Eq 'the hashless line is dropped' $false $Script:PickLastSelection.ContainsKey('brew')
+Test-Eq 'an empty hash is kept'        ''     $Script:PickLastSelection['mise']
+Test-Eq 'a hashed line is kept'        'h3'   $Script:PickLastSelection['holt']
+$Script:PickLastSelection = @{}
 
 # Cleanup
 $env:DOTFILES_PICK = $null

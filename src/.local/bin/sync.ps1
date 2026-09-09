@@ -1,5 +1,5 @@
 #!/usr/bin/env pwsh
-# sync — interactive review of installed-but-untracked packages (PowerShell port).
+# sync -- interactive review of installed-but-untracked packages (PowerShell port).
 #
 # Mirrors etc/bash/lib/sync.bash for native Windows. Same packages.txt
 # format, same blacklist semantics, same action set (skip/add/@profile/
@@ -20,54 +20,20 @@ $ErrorActionPreference = 'Stop'
 # Pull in pick.ps1 for shared TUI primitives.
 . (Join-Path $PSScriptRoot 'pick.ps1')
 
-# packages.txt parser
-#
-# Returns @{ Kind; Name; Profiles } for the given line, or $null for
-# blank/comment lines.
-function _SyncParseLine([string]$line) {
-    $line = $line -replace '#.*$', ''
-    $line = $line.Trim()
-    if (-not $line) { return $null }
-
-    $profiles = @()
-    # Profile suffix: split on the LAST literal " @". Versioned scoop
-    # entries like `openssl@3` use `@` without a leading space, so they're
-    # untouched.
-    $lastSpaceAt = $line.LastIndexOf(' @')
-    if ($lastSpaceAt -ge 0) {
-        $profilePart = $line.Substring($lastSpaceAt + 2)
-        $line = $line.Substring(0, $lastSpaceAt).Trim()
-        $profiles = @($profilePart -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
-    }
-
-    $kind = ''
-    $name = $line
-    if ($line -match '^([a-z]+):(.*)$') {
-        $kind = $matches[1]
-        $name = $matches[2]
-    }
-    return @{ Kind = $kind; Name = $name; Profiles = $profiles }
+# The packages.txt parser is the shared module in the repo; this script's
+# Sync-* functions call it directly.
+$Script:SourceDir = $env:MOX_REPO
+if (-not $Script:SourceDir) {
+    $base = if ($env:XDG_DATA_HOME) { $env:XDG_DATA_HOME } else { Join-Path $env:USERPROFILE '.local\share' }
+    $Script:SourceDir = Join-Path $base 'mox\dotfiles'
 }
-
-# Yield every line in $file as @{ Kind; Name } (profile-agnostic). Used
-# by compute_untracked and the bootstrap empty-tracked check. Default
-# kind fills in for unprefixed entries.
-function _SyncAll([string]$file, [string]$default_kind) {
-    if (-not (Test-Path -LiteralPath $file)) { return @() }
-    $out = @()
-    foreach ($line in Get-Content -LiteralPath $file) {
-        $p = _SyncParseLine $line
-        if (-not $p) { continue }
-        $k = if ($p.Kind) { $p.Kind } else { $default_kind }
-        $out += @{ Kind = $k; Name = $p.Name }
-    }
-    return ,$out
+$Script:PackagesModule = Join-Path $Script:SourceDir 'etc/powershell/lib/Packages.psm1'
+if (-not (Test-Path -LiteralPath $Script:PackagesModule)) {
+    [Console]::Error.WriteLine("sync: source dir lacks expected lib ($Script:PackagesModule)")
+    exit 1
 }
+Import-Module $Script:PackagesModule -Force
 
-function _SyncAppliesTo([hashtable]$parsed, [string]$current) {
-    if ($parsed.Profiles.Count -eq 0) { return $true }
-    return ($parsed.Profiles -contains $current)
-}
 
 # Neither DOTFILES_PROFILE nor a `mox facts` value resolving is a hard
 # error: sync runs outside `mox apply`, where there is no unbound-fact
@@ -145,8 +111,8 @@ function _SyncQueryInstalledWindows {
 function Sync-ComputeUntracked([string]$pkg_file, [string]$blacklist_file, [string]$default_kind) {
     $tracked     = @{}
     $blacklisted = @{}
-    foreach ($e in (_SyncAll $pkg_file       $default_kind)) { $tracked["$($e.Kind):$($e.Name)"]     = $true }
-    foreach ($e in (_SyncAll $blacklist_file $default_kind)) { $blacklisted["$($e.Kind):$($e.Name)"] = $true }
+    foreach ($e in (Read-PackagesFileAll $pkg_file $default_kind)) { $tracked["$($e.Kind):$($e.Name)"]     = $true }
+    foreach ($e in (Read-PackagesFileAll $blacklist_file $default_kind)) { $blacklisted["$($e.Kind):$($e.Name)"] = $true }
 
     $out = @()
     foreach ($row in (_SyncQueryInstalledWindows)) {
@@ -178,9 +144,9 @@ function Sync-ComputeMissing([string]$pkg_file, [string]$default_kind, [string]$
 
     $out = @()
     foreach ($line in Get-Content -LiteralPath $pkg_file) {
-        $p = _SyncParseLine $line
+        $p = ConvertFrom-PackagesLine $line
         if (-not $p) { continue }
-        if (-not (_SyncAppliesTo $p $profile)) { continue }
+        if (-not (Test-PackageApplies $p $profile)) { continue }
         $k = if ($p.Kind) { $p.Kind } else { $default_kind }
         $key = "${k}:$($p.Name)"
         if ($installed.ContainsKey($key)) { continue }
@@ -195,8 +161,8 @@ function Sync-ComputeMissing([string]$pkg_file, [string]$default_kind, [string]$
 
 # Description fetch
 #
-# scoop info <name> emits a "Description: …" line per package. winget show
-# <id> emits "Description: …" too. Each call is one subprocess; we run the
+# scoop info <name> emits a "Description: ..." line per package. winget show
+# <id> emits "Description: ..." too. Each call is one subprocess; we run the
 # scoop set and the winget set in parallel but stay serial WITHIN a kind
 # (scoop info doesn't accept multiple names at once). For typical untracked
 # subset sizes (~tens) this is fine; if it ever isn't, batch-via-job.
@@ -255,8 +221,8 @@ function _SyncFetchDescriptions([array]$items) {
 
 # Review TUI
 
-# Returns the next action in the cycle: skip → add → @<current> → @<other>
-# → block → skip. Mirrors sync::_cycle_action in bash.
+# Returns the next action in the cycle: skip -> add -> @<current> -> @<other>
+# -> block -> skip. Mirrors sync::_cycle_action in bash.
 function _SyncCycleAction([string]$current, [string]$other, [string]$action) {
     switch ($action) {
         'skip' { return 'add' }
@@ -311,7 +277,7 @@ function _SyncRender([int]$cursor, [string]$current) {
     [Console]::Write([char]27 + '[?2026h')                # DEC sync mode begin
     [Console]::Write([char]27 + '[H' + [char]27 + '[2J')  # home + clear
     [Console]::WriteLine([char]27 + '[1mReview untracked packages' + [char]27 + '[0m')
-    [Console]::WriteLine([char]27 + '[2m↑/↓ move · space cycle · a add · p add @personal · w add @work')
+    [Console]::WriteLine([char]27 + '[2mup/down move · space cycle · a add · p add @personal · w add @work')
     [Console]::WriteLine('   b blacklist · s skip · enter apply · q cancel · ?  help' + [char]27 + '[0m')
     [Console]::WriteLine('')
 
@@ -331,7 +297,7 @@ function _SyncRender([int]$cursor, [string]$current) {
         $desc = ''
         if ($Script:SyncDesc.ContainsKey($key)) { $desc = $Script:SyncDesc[$key] }
         if ($desc) {
-            [Console]::WriteLine(('{0}{1} {2} {3}— {4}{5}' -f $marker, $alabel, $display, ([char]27 + '[2m'), $desc, ([char]27 + '[0m')))
+            [Console]::WriteLine(('{0}{1} {2} {3}-- {4}{5}' -f $marker, $alabel, $display, ([char]27 + '[2m'), $desc, ([char]27 + '[0m')))
         } else {
             [Console]::WriteLine(('{0}{1} {2}' -f $marker, $alabel, $display))
         }
@@ -340,7 +306,7 @@ function _SyncRender([int]$cursor, [string]$current) {
     [Console]::WriteLine('')
     $footer = "$pending pending · profile: $current"
     if ($n -gt $body) {
-        $footer += " · $($Script:SyncOffset + 1)–$end/$n"
+        $footer += " · $($Script:SyncOffset + 1)-$end/$n"
     }
     [Console]::WriteLine([char]27 + '[2m' + $footer + [char]27 + '[0m')
     [Console]::Write([char]27 + '[?2026l')   # commit
@@ -351,14 +317,14 @@ function _SyncRenderHelp {
     [Console]::WriteLine([char]27 + '[1mSync keybindings' + [char]27 + '[0m')
     [Console]::WriteLine('')
     @"
-  ↑ / k          move up
-  ↓ / j          move down
-  space          cycle: skip → add → @<current> → @<other> → block → skip
-  a              add (no profile annotation — applies everywhere)
+  up / k         move up
+  down / j       move down
+  space          cycle: skip -> add -> @<current> -> @<other> -> block -> skip
+  a              add (no profile annotation -- applies everywhere)
   p              add @personal
   w              add @work
   b              blacklist (write to packages-blacklist.txt)
-  s              skip (default — no action)
+  s              skip (default -- no action)
   enter          apply pending actions
   q / esc        cancel without writing
   ?              this help
@@ -383,7 +349,7 @@ function Sync-Review {
     $Script:SyncActions = @('skip') * $n
     $Script:SyncOffset  = 0
 
-    Write-Host ([char]27 + '[1mFetching package descriptions…' + [char]27 + '[0m')
+    Write-Host ([char]27 + '[1mFetching package descriptions...' + [char]27 + '[0m')
     $Script:SyncDesc = _SyncFetchDescriptions $Script:SyncItems
 
     _PickTuiOpen
@@ -505,14 +471,13 @@ function Sync-Run {
     $defaultKind  = 'scoop'
     $profile      = _SyncCurrentProfile
 
-    Write-Host ([char]27 + '[1mComputing untracked packages…' + [char]27 + '[0m')
+    Write-Host ([char]27 + '[1mComputing untracked packages...' + [char]27 + '[0m')
     $Script:SyncItems = @(Sync-ComputeUntracked $pkgFile $blacklist $defaultKind)
 
     if ($Script:SyncItems.Count -eq 0) {
         Write-Host ('  ' + [char]27 + '[1;32m✔' + [char]27 + '[0m Everything installed is already tracked. Nothing to sync.')
     } else {
-        # Bootstrap mode: many installed + zero tracked → offer bulk import.
-        $trackedCount = (_SyncAll $pkgFile $defaultKind).Count
+        $trackedCount = (Read-PackagesFileAll $pkgFile $defaultKind).Count
         $hasTty       = (-not [Console]::IsInputRedirected) -and (-not [Console]::IsOutputRedirected)
         if ($Script:SyncItems.Count -ge 20 -and $trackedCount -eq 0 -and $hasTty) {
             Write-Host ([char]27 + '[1mBootstrap mode' + [char]27 + '[0m')
@@ -523,7 +488,7 @@ function Sync-Run {
             if ($ans.KeyChar -in 'y', 'Y') {
                 $Script:SyncActions = @('add') * $Script:SyncItems.Count
                 Sync-Apply $pkgFile $blacklist $defaultKind
-                Write-Host '  → Re-run `dotfiles sync` later to refine (profile-gate or blacklist individual entries).'
+                Write-Host '  -> Re-run `dotfiles sync` later to refine (profile-gate or blacklist individual entries).'
             } else {
                 $rc = Sync-Review
                 if ($rc -ne 0) { exit $rc }
@@ -543,7 +508,7 @@ function Sync-Run {
         Write-Host ([char]27 + '[1mTracked but not installed locally (run `dotfiles install` to fix):' + [char]27 + '[0m')
         foreach ($m in $missing) {
             $suffix = if ($m.Profiles) { ' ' + [char]27 + '[2m@' + $m.Profiles + [char]27 + '[0m' } else { '' }
-            Write-Host ("  • $($m.Kind):$($m.Name)$suffix")
+            Write-Host ("  - $($m.Kind):$($m.Name)$suffix")
         }
     }
 }

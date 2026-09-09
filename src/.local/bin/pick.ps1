@@ -1,5 +1,5 @@
 #!/usr/bin/env pwsh
-# pick — interactive multi-select runner (PowerShell port of pick.bash).
+# pick -- interactive multi-select runner (PowerShell port of pick.bash).
 #
 # Mirrors the bash version's item syntax, state files, run-log format, and
 # DOTFILES_PICK env semantics. Single source of truth for "show a TUI menu,
@@ -30,7 +30,7 @@
 # Exit code: number of failed steps (0 = success, 130 = user cancel).
 #
 # Scope cuts vs pick.bash:
-#   - Single-column layout (no 2-col overflow rendering — long lists scroll)
+#   - Single-column layout (no 2-col overflow rendering -- long lists scroll)
 #   - Width measurement assumes one cell per UTF-16 char (CJK won't align
 #     perfectly, but truncation/padding stays sane for ASCII labels)
 #   - Filter mode is ASCII-only for input (multi-byte composes via the host)
@@ -69,21 +69,18 @@ function _ParseItem([string]$spec) {
     if ($spec.StartsWith('+'))  { $out.State = 'required'; $spec = $spec.Substring(1) }
     elseif ($spec.StartsWith('~')) { $out.State = 'disabled'; $spec = $spec.Substring(1) }
 
-    # Hash trailer first ('|hash', last segment).
     $pipe = $spec.LastIndexOf('|')
     if ($pipe -ge 0) {
         $out.Hash = $spec.Substring($pipe + 1)
         $spec     = $spec.Substring(0, $pipe)
     }
 
-    # Reason ('~reason', after first '~' that wasn't the leading one).
     $tilde = $spec.IndexOf('~')
     if ($tilde -ge 0) {
         $out.Reason = $spec.Substring($tilde + 1)
         $spec       = $spec.Substring(0, $tilde)
     }
 
-    # name=label split on first '='.
     $eq = $spec.IndexOf('=')
     if ($eq -ge 0) {
         $out.Name  = $spec.Substring(0, $eq)
@@ -100,7 +97,7 @@ function _PickCols { try { [Console]::WindowWidth } catch { 80 } }
 function _PickRows { try { [Console]::WindowHeight } catch { 24 } }
 
 # Width-aware truncation: trim $s to at most $max display columns. Uses raw
-# string length as a width proxy — fine for ASCII; mis-pads CJK but stays
+# string length as a width proxy -- fine for ASCII; mis-pads CJK but stays
 # safe under truncation.
 function _PickTrunc([string]$s, [int]$max) {
     if ($s.Length -le $max) { return $s }
@@ -261,7 +258,7 @@ function _PickRender {
     [Console]::Write([char]27 + '[?2026h')
     [Console]::Write([char]27 + '[H' + [char]27 + '[2J')   # home + clear
     [Console]::WriteLine([char]27 + '[1mSelect steps to run' + [char]27 + '[0m')
-    [Console]::WriteLine([char]27 + '[2m↑/↓ move · space toggle · a all · n none · / filter · enter run · q quit · ? help' + [char]27 + '[0m')
+    [Console]::WriteLine([char]27 + '[2mup/down move · space toggle · a all · n none · / filter · enter run · q quit · ? help' + [char]27 + '[0m')
     [Console]::WriteLine('')
 
     $nv = $Script:PickVisible.Count
@@ -294,8 +291,8 @@ function _PickRenderHelp {
     [Console]::WriteLine([char]27 + '[1mKeybindings' + [char]27 + '[0m')
     [Console]::WriteLine('')
     @"
-  ↑ / k          move up
-  ↓ / j          move down
+  up / k         move up
+  down / j       move down
   space          toggle the highlighted item
   a              select all visible non-disabled items
   n              clear all visible non-required items
@@ -315,7 +312,7 @@ function _PickRenderHelp {
 function _PickResolveNonInteractive {
     $mode = [Environment]::GetEnvironmentVariable('DOTFILES_PICK')
     if (-not $mode -and (-not [Console]::IsInputRedirected) -and (-not [Console]::IsOutputRedirected)) {
-        # Both ttys + no env — caller should go interactive instead.
+        # Both ttys + no env -- caller should go interactive instead.
         return $true   # treated as no-op; caller sets up TUI
     }
 
@@ -326,7 +323,6 @@ function _PickResolveNonInteractive {
         }
     }
 
-    # Required items always selected.
     foreach ($it in $Script:PickItems) {
         if ($it.State -eq 'required') { $Script:PickSelected[$it.Name] = $true }
     }
@@ -373,14 +369,8 @@ function _PickLoadLastSelection {
     foreach ($line in Get-Content -LiteralPath $file) {
         if (-not $line) { continue }
         $tab = $line.IndexOf("`t")
-        if ($tab -ge 0) {
-            $name = $line.Substring(0, $tab)
-            $hash = $line.Substring($tab + 1)
-        } else {
-            $name = $line
-            $hash = ''
-        }
-        $Script:PickLastSelection[$name] = $hash
+        if ($tab -lt 0) { continue }
+        $Script:PickLastSelection[$line.Substring(0, $tab)] = $line.Substring($tab + 1)
     }
 }
 
@@ -416,7 +406,7 @@ function _PickRunStep([string]$name, [string]$label) {
     $logFile = Join-Path $Script:PickLogDir ((_PickSafeName $name) + '.log')
 
     Write-Host ''
-    Write-Host ([char]27 + '[1m→ ' + $label + [char]27 + '[0m')
+    Write-Host ([char]27 + '[1m-> ' + $label + [char]27 + '[0m')
 
     $sw = [Diagnostics.Stopwatch]::StartNew()
     $exitCode = 0
@@ -496,7 +486,7 @@ function _PickRunSelected {
 
     Write-Host ''
     Write-Host ([char]27 + '[1mSummary' + [char]27 + '[0m')
-    $line = "  ✔ $ran ran   ✖ $failed failed   ↪ $skipped skipped"
+    $line = "  ✔ $ran ran   ✖ $failed failed   -> $skipped skipped"
     if ($aborted) { $line += '   ' + [char]27 + '[1;31m(aborted)' + [char]27 + '[0m' }
     Write-Host $line
     if ($failed -gt 0) { Write-Host "  logs: $Script:PickLogDir" }
@@ -543,9 +533,6 @@ function Invoke-Pick {
     $noTty   = [Console]::IsInputRedirected -or [Console]::IsOutputRedirected
     if ($envMode -or $noTty) {
         $proceed = -not (_PickResolveNonInteractive)
-        # Even if no env was set but we have ttys, _Resolve returned $true
-        # signaling caller to fall through to interactive. With env set
-        # we got here; save + run.
         if (-not $proceed) {
             _PickSaveSelection
             return (_PickRunSelected)
@@ -554,7 +541,6 @@ function Invoke-Pick {
 
     _PickTuiOpen
     try {
-        # Cursor placement: skip leading header.
         if ($Script:PickItems.Count -gt 0 -and $Script:PickItems[0].State -eq 'header') {
             _PickRecomputeVisible
             $first = _PickSeekSelectable -1 1
