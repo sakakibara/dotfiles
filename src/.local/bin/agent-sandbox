@@ -8,18 +8,7 @@
 # container is ephemeral and is removed when the agent exits.
 #
 # Subcommands:
-#   agent-sandbox [claude|codex|opencode] [--auto|--bypass] [--continue|--resume] [repo]
-#                                              start + attach (default; auto)
-#   agent-sandbox run-untrusted [repo] -- COMMAND
-#                                              run repo code without host access
-#   agent-sandbox start [--auto] [repo]      start detached (no TTY)
-#   agent-sandbox stop [name|--all]          stop & remove
-#   agent-sandbox list                       all sandboxes
-#   agent-sandbox info                       image + sandbox status
-#   agent-sandbox rebuild                    docker build --no-cache
-#   agent-sandbox enable-autostart [repo]    LaunchAgent: start at login
-#   agent-sandbox disable-autostart [repo]
-#   agent-sandbox help
+# Subcommands, flags and modes: `agent-sandbox help`.
 
 set -euo pipefail
 
@@ -352,12 +341,16 @@ _mox_repo() {
 
 _dockerfile_dir() { printf '%s/etc/sandbox\n' "$(_mox_repo)"; }
 
+_sha256() {
+  if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi | cut -d' ' -f1
+}
+
 # Hash of Dockerfile + entrypoint - used to detect when a rebuild is needed.
 _dockerfile_hash() {
   local dir; dir=$(_dockerfile_dir)
   [[ -f "$dir/Dockerfile" ]]   || _die "Dockerfile not found at $dir/Dockerfile"
   [[ -f "$dir/entrypoint.sh" ]] || _die "entrypoint.sh not found at $dir/entrypoint.sh"
-  cat "$dir/Dockerfile" "$dir/entrypoint.sh" | shasum -a 256 | cut -d' ' -f1
+  cat "$dir/Dockerfile" "$dir/entrypoint.sh" | _sha256
 }
 
 _built_hash_file() { printf '%s/built-hash\n' "$CACHE_DIR"; }
@@ -486,7 +479,7 @@ _worktree_path() {
   local abs base hash short
   abs=$(cd "$repo" && pwd -P)
   base=$(_sanitize_basename "$repo")
-  hash=$(printf '%s' "$abs" | shasum -a 256 | cut -c1-8)
+  hash=$(printf '%s' "$abs" | _sha256 | cut -c1-8)
   short="${name#${NAME_PREFIX}-}"
   printf '%s/worktrees/%s-%s-%s\n' "$CACHE_DIR" "$base" "$hash" "$short"
 }
@@ -528,27 +521,55 @@ _ensure_sandbox_home() {
 # Directory symlinks inside a workspace, resolved to their real paths. A view
 # assembled from links - a holt hub project, whose code/, docs/ and assets/ all
 # point elsewhere - is useless in a container unless the targets come with it.
-# Depth 2 covers both the top-level links and code/<repo>. Results land in
-# LINK_TARGETS, deduped, with any target that contains another dropped so a
-# parent and its child are not both mounted.
+# Depth 2 covers both the top-level links and code/<repo>. A target must sit
+# strictly inside a holt root: the root itself is never mounted whole.
+# Results land in LINK_TARGETS, deduped, with any target inside another
+# dropped so a parent and its child are not both mounted.
+_link_mount_roots() {
+  if command -v holt >/dev/null 2>&1; then
+    holt config 2>/dev/null | awk -F' = ' '/^(code_root|hub_root|synced_root) =/ { print $2 }'
+  fi
+}
+
+# True when CANDIDATE sits strictly inside one of ROOTS (one per line), as
+# either the root's literal spelling or its physical one: a link's literal
+# target keeps the spelling holt wrote, its physical target the resolved one.
+_under_mount_root() {
+  local candidate="$1" roots="$2" root phys home_real
+  home_real=$(cd "$HOME" 2>/dev/null && pwd -P) || home_real="$HOME"
+  while IFS= read -r root; do
+    [[ -z "$root" || "$root" == / ]] && continue
+    phys=$(cd "$root" 2>/dev/null && pwd -P) || continue
+    [[ "$phys" == "$home_real" || "$root" == "$HOME" ]] && continue
+    [[ "$candidate" == "$root"/* || "$candidate" == "$phys"/* ]] && return 0
+  done <<< "$roots"
+  return 1
+}
+
 _resolve_workspace_links() {
-  local ws="$1" link target raw candidate seen=()
+  local ws="$1" link target raw candidate roots seen=() pair=()
   LINK_TARGETS=()
+  roots=$(_link_mount_roots || true)
   while IFS= read -r link; do
     target=$(cd "$link" 2>/dev/null && pwd -P) || continue
     # The physical path is what docker needs; the literal target is what the
     # link inside the container will point at. They differ wherever a parent
     # is itself a symlink (/var -> /private/var on macOS), and the link only
-    # resolves in the container if both are present.
+    # resolves in the container if both are present. One of them outside
+    # the holt roots drops both: a literal path resolves host-side too.
     raw=$(readlink "$link")
+    pair=()
     for candidate in "$target" "$raw"; do
       [[ "$candidate" == /* ]] || continue
       case "$candidate" in
-        "$ws" | "$ws"/* | / | "$HOME") continue ;;
+        "$ws" | "$ws"/*) continue ;;
+        / | "$HOME" | */../* | */..) pair=(); break ;;
       esac
-      [[ "$ws" == "$candidate"/* ]] && continue
-      seen+=( "$candidate" )
+      [[ "$ws" == "$candidate"/* ]] && { pair=(); break; }
+      _under_mount_root "$candidate" "$roots" || { pair=(); break; }
+      pair+=( "$candidate" )
     done
+    seen+=( ${pair[@]+"${pair[@]}"} )
   done < <(find "$ws" -mindepth 1 -maxdepth 2 -type l 2>/dev/null)
 
   local a b keep
@@ -681,13 +702,17 @@ _run_args() {
     args+=( -e "GIT_CONFIG_KEY_$git_n=user.email" -e "GIT_CONFIG_VALUE_$git_n=$git_email" )
     git_n=$((git_n + 1))
   fi
-  ((git_n)) && args+=( -e "GIT_CONFIG_COUNT=$git_n" )
   [[ -f "$HOME/.config/git/ignore" ]] &&
     args+=( -v "$HOME/.config/git/ignore":/home/claude/.config/git/ignore:ro )
-  # core.hooksPath in the host config resolves here; without the mount the
-  # commit-msg check is simply absent inside the container.
-  [[ -d "$HOME/.config/git/hooks" ]] &&
+  # The host git config (which carries core.hooksPath) is mounted only with
+  # --signing, so the hooks path is passed as config too; otherwise the
+  # commit-msg check would be absent inside the container.
+  if [[ -d "$HOME/.config/git/hooks" ]]; then
     args+=( -v "$HOME/.config/git/hooks":/home/claude/.config/git/hooks:ro )
+    args+=( -e "GIT_CONFIG_KEY_$git_n=core.hooksPath" -e "GIT_CONFIG_VALUE_$git_n=/home/claude/.config/git/hooks" )
+    git_n=$((git_n + 1))
+  fi
+  ((git_n)) && args+=( -e "GIT_CONFIG_COUNT=$git_n" )
 
   # File by file so the token beside them never enters.
   if ((SIGNING)); then
@@ -818,7 +843,7 @@ _op_agent_socket() {
 # Linux containers doesn't carry the protocol (the file mounts but
 # `Connection refused` on connect); TCP relay sidesteps the VM
 # boundary. Started lazily on first sandbox launch and persists
-# across invocations. Stop with: pkill -f "socat.*${SANDBOX_AGENT_PORT}".
+# across invocations. Stop with `agent-sandbox stop --relay`.
 #
 # Linux hosts skip this entirely - the wrapper bind-mounts the agent
 # socket directly into the container instead, since Linux-to-Linux
@@ -1287,7 +1312,7 @@ cmd_export() {
     fi
   fi
   case "$name" in
-    *-strict|*-strict-[0-9]*|*-strict-*) ;;
+    *-strict|*-strict-*) ;;
     *) _die "export only applies to --strict sandboxes; '$name' is not one" ;;
   esac
   local ws="${name}-ws"
@@ -1356,19 +1381,42 @@ cmd_rebuild() {
 
 # LaunchAgent path: per-repo, keyed by an 8-char path hash so multiple
 # repos can be autostarted independently.
+_xml() { printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'; }
+
+# One plist per repo, agent and named slot: a second name is a second
+# autostart, a repeat of the same name replaces its configuration.
 _plist_path() {
   local repo="$1"
-  local hash; hash=$(printf '%s\n%s' "$repo" "$AGENT_KIND" | shasum -a 256 | cut -c1-8)
-  printf '%s/Library/LaunchAgents/dev.sakakibara.agent-sandbox.%s.%s.plist\n' "$HOME" "$AGENT_KIND" "$hash"
+  local hash slot=""
+  hash=$(printf '%s\n%s' "$repo" "$AGENT_KIND" | _sha256 | cut -c1-8)
+  [[ -n "$NAME_OVERRIDE" ]] && slot=".$(printf '%s' "$NAME_OVERRIDE" | tr -c 'A-Za-z0-9_.-' '_')"
+  printf '%s/Library/LaunchAgents/dev.sakakibara.agent-sandbox.%s.%s%s.plist\n' "$HOME" "$AGENT_KIND" "$hash" "$slot"
 }
 
 cmd_enable_autostart() {
   local repo plist self
   _parse_common_flags "$@"
   repo=$(_resolve_repo "${REMAINING[0]:-}")
-  local MODEL_ARGS=""
-  [[ -n "$MODEL_ID" ]] && MODEL_ARGS=$(printf '\n    <string>--model</string>\n    <string>%s</string>' "$MODEL_ID")
-  [[ -n "$MODEL_PORT" ]] && MODEL_ARGS+=$(printf '\n    <string>--model-port</string>\n    <string>%s</string>' "$MODEL_PORT")
+  [[ ${#WORKSPACES[@]} -gt 0 ]] && _die "enable-autostart takes one repo path, not --workspace"
+  [[ ${#RESUME_FLAGS[@]} -gt 0 ]] && _die "enable-autostart cannot resume a session"
+  local flag_args=() f
+  [[ "$PERM_MODE" != auto ]] && flag_args+=( "--$PERM_MODE" )
+  [[ "$ISO_MODE" != default ]] && flag_args+=( "--$ISO_MODE" )
+  ((RUN_REPO_SETUP)) && flag_args+=( --repo-setup )
+  ((SIGNING)) && flag_args+=( --signing )
+  [[ -n "$NAME_OVERRIDE" ]] && flag_args+=( --name "$NAME_OVERRIDE" )
+  [[ -n "$MODEL_ID" ]] && flag_args+=( --model "$MODEL_ID" )
+  [[ -n "$MODEL_PORT" ]] && flag_args+=( --model-port "$MODEL_PORT" )
+  local MODEL_ARGS="" EXTRA_ARGS=""
+  for f in ${flag_args[@]+"${flag_args[@]}"}; do
+    MODEL_ARGS+=$(printf '\n    <string>%s</string>' "$(_xml "$f")")
+  done
+  if [[ ${#AGENT_EXTRA[@]} -gt 0 ]]; then
+    EXTRA_ARGS=$(printf '\n    <string>--</string>')
+    for f in "${AGENT_EXTRA[@]}"; do
+      EXTRA_ARGS+=$(printf '\n    <string>%s</string>' "$(_xml "$f")")
+    done
+  fi
   plist=$(_plist_path "$repo")
   self=$(command -v agent-sandbox) || _die "agent-sandbox not on PATH"
   mkdir -p "$(dirname "$plist")" "$CACHE_DIR"
@@ -1382,17 +1430,17 @@ cmd_enable_autostart() {
   <string>$(basename "$plist" .plist)</string>
   <key>ProgramArguments</key>
   <array>
-    <string>$self</string>
+    <string>$(_xml "$self")</string>
     <string>$AGENT_KIND</string>
     <string>start</string>${MODEL_ARGS}
-    <string>$repo</string>
+    <string>$(_xml "$repo")</string>${EXTRA_ARGS}
   </array>
   <key>RunAtLoad</key>
   <true/>
   <key>StandardOutPath</key>
-  <string>$CACHE_DIR/autostart.log</string>
+  <string>$(_xml "$CACHE_DIR")/autostart.log</string>
   <key>StandardErrorPath</key>
-  <string>$CACHE_DIR/autostart.log</string>
+  <string>$(_xml "$CACHE_DIR")/autostart.log</string>
 </dict>
 </plist>
 EOF
@@ -1403,7 +1451,8 @@ EOF
 
 cmd_disable_autostart() {
   local repo plist
-  repo=$(_resolve_repo "${1:-}")
+  _parse_common_flags "$@"
+  repo=$(_resolve_repo "${REMAINING[0]:-}")
   plist=$(_plist_path "$repo")
   if [[ -f "$plist" ]]; then
     launchctl unload "$plist" 2>/dev/null || true
@@ -1441,8 +1490,10 @@ Usage:
   agent-sandbox list                       all sandboxes (with workspace col)
   agent-sandbox info                       image + sandbox status
   agent-sandbox rebuild                    docker build --no-cache
-  agent-sandbox enable-autostart [repo]    LaunchAgent: start at login
-  agent-sandbox disable-autostart [repo]
+  agent-sandbox enable-autostart [flags] [repo] [-- agent args]
+                                           LaunchAgent: start at login with
+                                           these flags; --name is its own slot
+  agent-sandbox disable-autostart [--name X] [repo]
   agent-sandbox help
 
 Naming:

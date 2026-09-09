@@ -132,6 +132,56 @@ want_name=$(printf '%q' 'GIT_CONFIG_VALUE_0=Fixture User')
 [[ "$log" != *'account-token'* ]] || { echo 'FAIL: the git account token is exposed to the sandbox' >&2; exit 1; }
 [[ "$log" == *"$work/home/.config/git/ignore:/home/claude/.config/git/ignore:ro"* ]] || { echo 'FAIL: the global git ignore is not mounted' >&2; exit 1; }
 
+# The default mode's host-state binds: every host path that must be
+# read-only or absent is emitted exactly so.
+: > "$work/docker.log"
+mkdir -p "$work/home/.config/git/hooks" "$work/home/.claude/plugins/cache" "$work/gitrepo/.git/hooks" "$work/gitrepo/.claude"
+printf 'hook\n' > "$work/home/.config/git/hooks/commit-msg"
+printf '[core]\n' > "$work/gitrepo/.git/config"
+printf '{}\n' > "$work/gitrepo/.mcp.json"
+printf 'history\n' > "$work/home/.claude/history.jsonl"
+printf 'creds\n' > "$work/home/.claude/.credentials.json"
+enc=$(printf '%s' "$work/gitrepo" | tr '/.' '--')
+mkdir -p "$work/home/.claude/projects/$enc"
+mkdir -p "$work/etc-target" "$work/gitrepo/links" "$work/home/.ssh"
+ln -s "$work/home/.config/git" "$work/gitrepo/links/gitconfig"
+ln -s "$work/home/.ssh" "$work/gitrepo/links/ssh"
+ln -s /etc "$work/gitrepo/links/etc"
+outside=$(mktemp -d)
+trap 'rm -rf "$work" "$outside"' EXIT
+ln -s "$outside" "$work/gitrepo/links/outside"
+# A stub holt names roots that admit none of these links, so the roots
+# filter, not the absence of holt, is what keeps them out.
+mkdir -p "$work/real" "$work/hub"
+# The holt roots are the only places a workspace symlink may lead: a stub
+# holt names them, since nothing else about the fixture is a real workspace.
+cat > "$work/bin/holt" <<EOF
+#!/bin/sh
+[ "\$1" = config ] || exit 1
+printf 'code_root = %s\\nhub_root = %s\\nsynced_root = %s\\n' "$work/real" "$work/hub" "$work/real"
+EOF
+chmod +x "$work/bin/holt"
+run_sandbox "$work/gitrepo"
+log=$(cat "$work/docker.log")
+for value in \
+  "$work/home/.config/git/hooks:/home/claude/.config/git/hooks:ro" \
+  "$work/home/.config/git/hooks:$work/home/.config/git/hooks:ro" \
+  "$work/home/.claude/plugins/cache:$work/home/.claude/plugins/cache:ro" \
+  "$work/home/.claude/projects/$enc:$work/home/.claude/projects/$enc" \
+  "$work/home/.claude/history.jsonl:$work/home/.claude/history.jsonl" \
+  "$work/home/.claude/.credentials.json:$work/home/.claude/.credentials.json" \
+  "$work/gitrepo/.git/hooks:$work/gitrepo/.git/hooks:ro" \
+  "$work/gitrepo/.git/config:$work/gitrepo/.git/config:ro" \
+  "$work/gitrepo/.claude:$work/gitrepo/.claude:ro" \
+  "$work/gitrepo/.mcp.json:$work/gitrepo/.mcp.json:ro"; do
+  [[ "$log" == *"$value"* ]] || { echo "FAIL: default mode mount plan lacks $value" >&2; exit 1; }
+done
+[[ "$log" == *'<GIT_CONFIG_KEY_2=core.hooksPath>'*'<GIT_CONFIG_VALUE_2=/home/claude/.config/git/hooks>'*'<GIT_CONFIG_COUNT=3>'* ]] || { echo 'FAIL: core.hooksPath is not passed as env config, so the commit-msg check is absent inside the container' >&2; exit 1; }
+for value in "$work/home/.config/git:$work/home/.config/git" "$work/home/.ssh:" '</etc:/etc>' "$outside:"; do
+  [[ "$log" != *"$value"* ]] || { echo "FAIL: a workspace symlink mounted $value" >&2; exit 1; }
+done
+rm -f "$work/bin/holt"
+
 : > "$work/docker.log"
 run_sandbox "$work/fixture" -- --debug --verbose
 log=$(cat "$work/docker.log")
@@ -140,16 +190,55 @@ log=$(cat "$work/docker.log")
 
 : > "$work/docker.log"
 mkdir -p "$work/hub/code" "$work/real/repo" "$work/real/design docs"
+# The holt roots are the only places a workspace symlink may lead: a stub
+# holt names them, since nothing else about the fixture is a real workspace.
+cat > "$work/bin/holt" <<EOF
+#!/bin/sh
+[ "\$1" = config ] || exit 1
+printf 'code_root = %s\\nhub_root = %s\\nsynced_root = %s\\n' "$work/real" "$work/hub" "$work/real"
+EOF
+chmod +x "$work/bin/holt"
 ln -s "$work/real/repo" "$work/hub/code/repo"
 ln -s "$work/real/design docs" "$work/hub/docs"
+# A link whose literal target reaches a root only through an alias outside
+# it: the physical path is inside, the literal one is not, and only paths
+# inside the roots are mounted.
+mkdir -p "$work/outside"
+ln -s "$work/real" "$work/outside/alias"
+ln -s "$work/outside/alias/repo" "$work/hub/sneaky"
+# A literal target inside a root that is itself a link out of every root:
+# docker would follow it host-side, so neither path of the pair is mounted.
+mkdir -p "$work/secret"
+ln -s "$work/secret" "$work/real/alias"
+ln -s "$work/real/alias" "$work/hub/leak"
+# A literal target that leaves a root through `..` is not inside it, whatever
+# the prefix says; one that stays inside a root through `..` is still not
+# mounted as written, since the container would resolve it host-side.
+ln -s "$work/real/../outside" "$work/hub/dotdot"
+mkdir -p "$work/real/sub"
+ln -s "$work/real/sub/../sub" "$work/hub/dotdot-inside"
 run_sandbox "$work/hub"
 log=$(cat "$work/docker.log")
 real_phys=$(cd "$work/real" && pwd -P)
 [[ "$log" == *"$real_phys/repo:$real_phys/repo"* ]] || { echo 'FAIL: hub code symlink target not mounted' >&2; exit 1; }
 [[ "$log" == *"$work/real/repo:$work/real/repo"* ]] || { echo 'FAIL: hub code symlink literal target not mounted' >&2; exit 1; }
+[[ "$log" != *"$work/outside/alias"* ]] || { echo 'FAIL: a literal target outside the roots was mounted through an alias' >&2; exit 1; }
+[[ "$log" != *"$work/real/../outside"* ]] || { echo 'FAIL: a literal target leaving a root through .. was mounted' >&2; exit 1; }
+[[ "$log" != *"$work/real/sub/../sub"* && "$log" != *"$work/real/sub:"* ]] || { echo 'FAIL: a literal target reaching a root through .. was mounted' >&2; exit 1; }
+[[ "$log" != *"$work/real/alias"* && "$log" != *"$work/secret"* ]] || { echo 'FAIL: a link inside a root that points out of it was mounted' >&2; exit 1; }
 want_spaced=$(printf '%q' "$real_phys/design docs:$real_phys/design docs")
 [[ "$log" == *"$want_spaced"* ]] || { echo 'FAIL: hub docs symlink target with a space not mounted' >&2; exit 1; }
 [[ "$log" != *"$work/home:$work/home"* ]] || { echo 'FAIL: a symlink to the host home was followed' >&2; exit 1; }
+# A sibling of the workspace is not a project root: with no holt roots
+# admitting it, the link is dropped.
+: > "$work/docker.log"
+mkdir -p "$work/sibling/proj/links" "$work/sibling/private"
+ln -s "$work/sibling/private" "$work/sibling/proj/links/private"
+mv "$work/bin/holt" "$work/bin/holt.off"
+run_sandbox "$work/sibling/proj"
+mv "$work/bin/holt.off" "$work/bin/holt"
+log=$(cat "$work/docker.log")
+[[ "$log" != *"$work/sibling/private:"* ]] || { echo 'FAIL: a workspace symlink mounted a sibling directory' >&2; exit 1; }
 
 : > "$work/docker.log"
 ( cd "$work/fixture" && run_sandbox --bypass -- --debug )
@@ -386,6 +475,42 @@ run_sandbox enable-autostart "$work/fixture"
 run_sandbox codex enable-autostart "$work/fixture"
 plist_count=$(find "$work/home/Library/LaunchAgents" -name 'dev.sakakibara.agent-sandbox.*.plist' | wc -l | tr -d ' ')
 [[ $plist_count -eq 2 ]] || { echo 'FAIL: Claude and Codex autostart identities collide' >&2; exit 1; }
+# Every flag and the agent passthrough reach the plist, escaped; a named slot
+# is its own autostart, and a repeat of the name replaces it.
+run_sandbox enable-autostart --bypass --worktree --signing --name one --model m1 "$work/fixture" -- --debug '--note=<a&b>'
+run_sandbox enable-autostart --name two "$work/fixture"
+out=$(run_sandbox enable-autostart --workspace "$work/fixture" "$work/fixture" 2>&1) && { echo 'FAIL: enable-autostart accepted --workspace' >&2; exit 1; }
+[[ "$out" == *"not --workspace"* ]] || { echo "FAIL: enable-autostart --workspace refusal unnamed: $out" >&2; exit 1; }
+for flag in --continue --resume=abc; do
+  out=$(run_sandbox enable-autostart "$flag" "$work/fixture" 2>&1) && { echo "FAIL: enable-autostart accepted $flag" >&2; exit 1; }
+  [[ "$out" == *"cannot resume a session"* ]] || { echo "FAIL: enable-autostart $flag refusal unnamed: $out" >&2; exit 1; }
+done
+plists=$(find "$work/home/Library/LaunchAgents" -name 'dev.sakakibara.agent-sandbox.claude.*.plist' | wc -l | tr -d ' ')
+[[ $plists -eq 3 ]] || { echo "FAIL: named autostart slots collide ($plists claude plists)" >&2; exit 1; }
+# A name is a filesystem-safe slot, by the rule the container name uses.
+run_sandbox enable-autostart --name 'x/../../evil' "$work/fixture"
+slotted=$(find "$work/home/Library/LaunchAgents" -name 'dev.sakakibara.agent-sandbox.claude.*.x_.._.._evil.plist' | wc -l | tr -d ' ')
+[[ $slotted -eq 1 ]] || { echo 'FAIL: a slashed --name did not land as a sanitized plist slot' >&2; exit 1; }
+[[ -z "$(find "$work/home" -name '*.plist' -not -path '*/Library/LaunchAgents/*')" ]] || { echo 'FAIL: a slashed --name wrote a plist outside LaunchAgents' >&2; exit 1; }
+rm -f "$work/home/Library/LaunchAgents"/dev.sakakibara.agent-sandbox.claude.*.x_.._.._evil.plist
+one=$(grep -l '<string>one</string>' "$work/home/Library/LaunchAgents"/dev.sakakibara.agent-sandbox.claude.*.plist)
+for want in '<string>--bypass</string>' '<string>--worktree</string>' '<string>--signing</string>' '<string>--model</string>' '<string>m1</string>' '<string>--</string>' '<string>--debug</string>' '<string>--note=&lt;a&amp;b&gt;</string>'; do
+  grep -qF "$want" "$one" || { echo "FAIL: autostart plist lacks $want" >&2; exit 1; }
+done
+run_sandbox enable-autostart --name one "$work/fixture"
+grep -qF '<string>--bypass</string>' "$one" && { echo 'FAIL: re-enabling a named slot kept its old flags' >&2; exit 1; }
+plists=$(find "$work/home/Library/LaunchAgents" -name 'dev.sakakibara.agent-sandbox.claude.*.plist' | wc -l | tr -d ' ')
+[[ $plists -eq 3 ]] || { echo "FAIL: re-enabling a named slot made a new plist ($plists)" >&2; exit 1; }
+# disable addresses the same slot enable wrote: the named one by name, the
+# plain one without it, each leaving the others alone.
+run_sandbox disable-autostart --name one "$work/fixture"
+[[ -f "$one" ]] && { echo 'FAIL: disable-autostart --name one left its plist' >&2; exit 1; }
+plists=$(find "$work/home/Library/LaunchAgents" -name 'dev.sakakibara.agent-sandbox.claude.*.plist' | wc -l | tr -d ' ')
+[[ $plists -eq 2 ]] || { echo "FAIL: disabling one named slot removed $((3 - plists)) plists" >&2; exit 1; }
+run_sandbox disable-autostart "$work/fixture"
+plists=$(find "$work/home/Library/LaunchAgents" -name 'dev.sakakibara.agent-sandbox.claude.*.plist' | wc -l | tr -d ' ')
+[[ $plists -eq 1 ]] || { echo "FAIL: disabling the plain slot left $plists claude plists" >&2; exit 1; }
+grep -qF '<string>two</string>' "$work/home/Library/LaunchAgents"/dev.sakakibara.agent-sandbox.claude.*.plist || { echo 'FAIL: disabling the plain slot took the named one' >&2; exit 1; }
 
 python3 - <<'PY' "$repo/src/.claude/keybindings.json"
 import json
