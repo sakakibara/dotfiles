@@ -46,7 +46,7 @@ return {
       routes = {
         -- list-style command output (`:Inspect`, `:ls`, `:command`,
         -- `:digraphs`, etc.) emits msg_show with kind=list_cmd via
-        -- nvim_echo(..., false, ...) — add_to_history=false. With
+        -- nvim_echo(..., false, ...) -- add_to_history=false. With
         -- cmdheight=0, the default cmdline path can't render it
         -- reliably; route to a persistent popup so output shows every
         -- invocation rather than flashing transiently.
@@ -69,7 +69,7 @@ return {
         -- blink.cmp's pre-built-binary download notifications fire on
         -- the first InsertEnter (when blink lazy-loads). Route to the
         -- mini view (bottom-right, lightweight) instead of the default
-        -- notify view — the default toast path was producing a brief
+        -- notify view -- the default toast path was producing a brief
         -- top-of-screen flash with cmdheight=0 before settling. No
         -- start-of-string anchor: blink sometimes emits these with a
         -- "[blink.cmp]: " prefix that would defeat `^`. Substring match
@@ -83,7 +83,7 @@ return {
       -- Noice installs a buffer-local K in every markdown-rendered hover
       -- float (noice/text/markdown.lua:244). When the cursor isn't on a
       -- URL/help-tag pattern, its handler calls
-      -- `nvim_feedkeys("K", "n", false)` — the "n" flag is noremap, so
+      -- `nvim_feedkeys("K", "n", false)` -- the "n" flag is noremap, so
       -- our global K (config/init.lua) is bypassed and nvim falls through
       -- to default `keywordprg=:Man`, spawning a subprocess per K press
       -- and producing `man.lua: no manual entry for X` spam on K-repeat.
@@ -117,7 +117,7 @@ return {
       indent = { char = "│", tab_char = "│" },
       scope = { show_start = false, show_end = false },
       exclude = {
-        filetypes = { "help", "alpha", "dashboard", "neo-tree", "lazy", "mason", "notify", "toggleterm", "lazyterm" },
+        filetypes = { "help", "mason", "snacks_terminal" },
       },
     },
   },

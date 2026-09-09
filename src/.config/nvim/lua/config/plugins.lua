@@ -1,6 +1,6 @@
 -- Auto-scan every .lua file under lua/config/plugins/ (recursively, one
 -- level deep) and flatten their returned spec lists. Plugin files simply
--- `return { ... specs }` — no registration call needed.
+-- `return { ... specs }` -- no registration call needed.
 
 local root = vim.fn.stdpath("config") .. "/lua/config/plugins"
 local specs = {}

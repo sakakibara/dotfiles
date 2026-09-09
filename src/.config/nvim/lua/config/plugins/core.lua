@@ -16,7 +16,6 @@ return {
         native_lsp = { enabled = true },
         treesitter = true,
         treesitter_context = true,  -- TreesitterContext / Bottom / LineNumber hl groups
-        heirline = true,  -- M3; no-op today, costs nothing
       },
       custom_highlights = function(C)
         return {
@@ -41,7 +40,7 @@ return {
       bigfile   = {
         enabled = true,
         -- Override the default setup. Stock snacks re-enables `syntax = ft`
-        -- on a scheduled tick, which re-arms Vim's regex syntax engine — and
+        -- on a scheduled tick, which re-arms Vim's regex syntax engine -- and
         -- that's what freezes nvim on multi-MB single lines (minified bundles,
         -- panic logs). We keep the rest of the disables and add wrap/cursorline.
         setup = function(ctx)
@@ -226,7 +225,6 @@ return {
             { pattern = "harpoon",        icon = I.harpoon, color = "azure"  },
             { pattern = "flash",          icon = I.flash,   color = "yellow" },
             { pattern = "fold",           icon = I.fold,    color = "grey"   },
-            { pattern = "^peek",          icon = I.fold,    color = "grey"   },
             { pattern = "surround",       icon = I.surround, color = "purple" },
             { pattern = "grep",           icon = I.find,    color = "green"  },
             { pattern = "^run",           icon = I.play,    color = "green"  },

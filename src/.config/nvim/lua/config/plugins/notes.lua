@@ -1,6 +1,6 @@
 -- Note-taking plugins:
---   zk-nvim   — Zettelkasten via the `zk` CLI. Requires ZK_NOTEBOOK_DIR.
---   organ.nvim — unified org-mode + org-roam. Build hook clones and compiles
+--   zk-nvim   -- Zettelkasten via the `zk` CLI. Requires ZK_NOTEBOOK_DIR.
+--   organ.nvim -- unified org-mode + org-roam. Build hook clones and compiles
 --                the tree-sitter-organ + tree-sitter-organ-inline grammars
 --                into stdpath("data")/organ/parser/ via the plugin's own
 --                installer. Requires git, make, node + (npm or pnpm).
@@ -46,7 +46,7 @@ return {
       },
     },
     opts = {
-      -- zk-nvim ships a snacks.picker backend. Use it explicitly — the
+      -- zk-nvim ships a snacks.picker backend. Use it explicitly -- the
       -- default "select" fallback routes through vim.ui.select which
       -- isn't as rich as the native source.
       picker = "snacks_picker",

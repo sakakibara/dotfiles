@@ -28,7 +28,7 @@ return {
     },
   },
 
-  -- Better text objects — treesitter-aware function / class / block regions
+  -- Better text objects -- treesitter-aware function / class / block regions
   {
     "echasnovski/mini.ai",
     event = "VeryLazy",
@@ -200,7 +200,7 @@ return {
     dependencies = { "nvim-treesitter" },
   },
 
-  -- Incremental rename preview — see the rename happen while you type.
+  -- Incremental rename preview -- see the rename happen while you type.
   -- The `grn` key is wired in lib/lsp.lua on LspAttach, overriding Neovim
   -- 0.11+'s default plain-rename with this preview variant. This spec just
   -- declares the plugin + its loader; the keymap lives with the LSP setup.
@@ -259,7 +259,7 @@ return {
     opts = {},
   },
 
-  -- jk chord → <Esc> in insert + cmdline
+  -- jk chord -> <Esc> in insert + cmdline
   {
     "max397574/better-escape.nvim",
     event = { "InsertEnter", "CmdlineEnter" },

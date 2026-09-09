@@ -6,25 +6,25 @@ local SILENT_KIND = "lib_tee"
 
 function M.setup()
   -- Wrapper A: install a queueing vim.notify synchronously, BEFORE
-  -- require("lib").init() and core.pack.setup — before any plugin, autocmd,
+  -- require("lib").init() and core.pack.setup -- before any plugin, autocmd,
   -- or buffer load can fire vim.notify.
   --
   -- The window this closes: noice's `ext_messages` attach is scheduled from
   -- VeryLazy. Anything calling vim.notify before noice's attach completes
-  -- — FileType autocmds firing during cold-boot argv reads, core.pack
-  -- internals reporting keymap conflicts, etc. — would otherwise hit
+  -- -- FileType autocmds firing during cold-boot argv reads, core.pack
+  -- internals reporting keymap conflicts, etc. -- would otherwise hit
   -- nvim's cmdline backend with cmdheight=0 and trigger press-ENTER
   -- prompts that block the main thread.
   --
   -- We just queue and rely on wrapper B (in the VeryLazy callback below)
-  -- to drain the queue once noice's ext_messages backend is live —
+  -- to drain the queue once noice's ext_messages backend is live --
   -- replaying via nvim_echo with kind=SILENT_KIND so :messages records
   -- every pre-noice message and the SILENT_KIND filter on Manager.add
   -- prevents noice from rendering them as duplicate toasts.
   --
   -- vim.notify_once late-binds via `vim.notify` field lookup, so wrapper A
   -- catches it too; its internal `notified[msg]` cache is set on first call,
-  -- which means the replay doesn't re-fire vim.notify_once — wrapper B
+  -- which means the replay doesn't re-fire vim.notify_once -- wrapper B
   -- replays through `prev` directly, bypassing the cache entirely.
   vim.notify = function(msg, level, opts)
     table.insert(_pending, { msg = msg, level = level, opts = opts })
@@ -39,29 +39,28 @@ function M.setup()
   -- Keymaps load BEFORE pack.setup so that mapleader/maplocalleader (set at
   -- the top of keymaps.lua) are in place before any eager plugin's config()
   -- registers `<leader>x` keymaps, AND so keymaps are bound from t=0 instead
-  -- of after the UIEnter→VeryLazy window (~30–100 ms where rapid leader
+  -- of after the UIEnter->VeryLazy window (~30-100 ms where rapid leader
   -- presses would otherwise sit in timeoutlen or hit a `\` literal).
   require("config.keymaps")
 
-  -- Autocmds load unconditionally so our SwapExists handler is in place
-  -- before any buffer (argument file, :e, session restore) is ever read.
+  -- Autocmds load unconditionally so the directory-creation, bigfile and
+  -- yank-highlight handlers are in place before any buffer is read.
   require("config.autocmds")
 
   Lib.mox.setup()
 
-  -- K must be remapped in Stage 1: if user spams K during startup before
-  -- Stage 3 (VeryLazy) runs, nvim's default K → keywordprg=:Man spawns a
-  -- synchronous subprocess per press and stalls the input queue. Installing
-  -- globally here also suppresses nvim's LspAttach-installed buffer-local K
-  -- (it only installs when maparg('K','n',...) is empty). Noice's markdown
-  -- K inside hover floats is dealt with separately in plugins/ui.lua.
+  -- K is remapped in Stage 1 so a press before Stage 3 (VeryLazy) reaches
+  -- our hover rather than nvim's default keywordprg. Installing it globally
+  -- here also suppresses nvim's LspAttach-installed buffer-local K (that one
+  -- installs only when maparg('K','n',...) is empty). Noice's markdown K
+  -- inside hover floats is dealt with separately in plugins/ui.lua.
   vim.keymap.set("n", "K", function()
     local clients = vim.lsp.get_clients({ bufnr = 0, method = "textDocument/hover" })
     if #clients > 0 then vim.lsp.buf.hover() end
   end, { desc = "LSP hover (no-op without hover client)" })
 
   -- Plugins. install.colorscheme pre-applies catppuccin synchronously
-  -- after install, before any eager spec's config — so chrome's apply_hl
+  -- after install, before any eager spec's config -- so chrome's apply_hl
   -- (called below) samples themed highlights the first time.
   require("core.pack").setup({
     specs   = require("config.plugins"),
@@ -71,7 +70,7 @@ function M.setup()
   Lib.colors.setup({})
 
   -- Chrome highlights are derived (fg = Function.fg etc.) so they must
-  -- be registered AFTER catppuccin applied — otherwise we'd sample
+  -- be registered AFTER catppuccin applied -- otherwise we'd sample
   -- default highlights and rely on ColorScheme to re-apply, which leaves
   -- a one-frame window where the bar renders with un-themed colors.
   -- Option strings (vim.o.statusline etc.) are set in options.lua so
@@ -80,7 +79,7 @@ function M.setup()
   Lib.winbar.setup()
   Lib.tabline.setup()
 
-  -- Stage 3: after UI ready — setups that benefit from deferring.
+  -- Stage 3: after UI ready -- setups that benefit from deferring.
   vim.api.nvim_create_autocmd("User", {
     pattern = "VeryLazy",
     once = true,
@@ -93,9 +92,9 @@ function M.setup()
       --
       -- Schedule ordering inside this tick, FIFO:
       --   1. noice's own `load` (scheduled from noice.setup during its
-      --      VeryLazy load_spec) — attaches ext_messages and replaces
+      --      VeryLazy load_spec) -- attaches ext_messages and replaces
       --      vim.notify with noice's handler, discarding wrapper A.
-      --   2. this callback — captures noice's vim.notify as `prev`, wraps
+      --   2. this callback -- captures noice's vim.notify as `prev`, wraps
       --      with the silent-kind tee, drains _pending into :messages.
       --
       -- The Manager.add wrapper filters msg_show events tagged SILENT_KIND
@@ -103,19 +102,19 @@ function M.setup()
       -- history) doesn't produce a duplicate :NoiceAll entry or toast.
       --
       -- Splash protection: while the cold-install splash is up, the post-
-      -- noice tee skips the prev() forward — :messages still records via
+      -- noice tee skips the prev() forward -- :messages still records via
       -- the silent-kind echo, but no top-right toast is rendered against
       -- the splash overlay. This preserves the original splash contract
       -- (no chrome competing with the centered box).
       --
       -- Queue drain (pre-noice messages):
-      --   * INFO and below stay on the SILENT_KIND-only path — replaying
+      --   * INFO and below stay on the SILENT_KIND-only path -- replaying
       --     every queued install-time notification as a toast burst after
       --     splash closes is an explicit non-goal. Stock noice doesn't
       --     backfill :NoiceAll with pre-attach history either.
       --   * WARN/ERROR forward through `prev` (noice). The SILENT_KIND
       --     echo path is invisible to both histories on builds where
-      --     ext_messages bypasses nvim's internal :messages — and errors
+      --     ext_messages bypasses nvim's internal :messages -- and errors
       --     are rare and signal real problems, so we accept the toast/
       --     popup that comes with replay rather than risk losing them.
       local function level_to_hl(level)

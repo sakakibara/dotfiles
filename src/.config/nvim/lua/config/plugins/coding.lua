@@ -2,8 +2,8 @@
 -- stock notify uses vim.api.nvim_echo with history=true; with our
 -- cmdheight=0 that produces a brief "more"-style popup at the top of
 -- the screen plus a duplicated toast. Our replacement:
---   - During cold-install splash → splash status_text (centered box)
---   - Otherwise → vim.notify (route via the noice mini route to
+--   - During cold-install splash -> splash status_text (centered box)
+--   - Otherwise -> vim.notify (route via the noice mini route to
 --     bottom-right strip; no top-of-screen flash)
 local function patch_utils_notify(utils)
   utils.notify = function(msg, lvl)
@@ -45,7 +45,7 @@ return {
           -- own setup-time call coalesce into a single in-flight
           -- download. Without this, blink's setup() (fired by the
           -- InsertEnter lazy trigger) calls ensure_downloaded a
-          -- second time while ours is still downloading — sees no
+          -- second time while ours is still downloading -- sees no
           -- binary yet, kicks off a duplicate download with its own
           -- "Downloading pre-built binary" notification.
           local ok_dl, dl = pcall(require, "blink.cmp.fuzzy.download")

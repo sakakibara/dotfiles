@@ -8,7 +8,7 @@ return {
       -- Register as a primary format source. Done in init (pre-load) so
       -- Lib.format.resolve sees conform before the first BufWritePre fires.
       -- sources() uses list_formatters (configured, regardless of binary
-      -- availability) — conform.format() itself will surface the real
+      -- availability) -- conform.format() itself will surface the real
       -- error if the binary is missing.
       Lib.format.register({
         name     = "conform",
@@ -69,7 +69,7 @@ return {
       -- must each get linted (a single shared timer would cancel the earlier
       -- one). try_lint reads the current buffer, so we run it via
       -- nvim_buf_call to target the buffer that actually triggered the
-      -- event — even if focus has moved since.
+      -- event -- even if focus has moved since.
       local timers = {} ---@type table<integer, uv.uv_timer_t>
       local function cleanup(buf)
         local t = timers[buf]
@@ -105,7 +105,7 @@ return {
             for _, name in ipairs(configured) do
               -- Resolve the binary: prefer linter.cmd if it's a static string,
               -- else fall back to the linter name. (Don't invoke function cmds
-              -- speculatively — they may have side effects.)
+              -- speculatively -- they may have side effects.)
               local linter = lint.linters[name]
               local bin = (type(linter) == "table" and type(linter.cmd) == "string")
                 and linter.cmd

@@ -39,7 +39,7 @@ return {
     },
   },
 
-  -- LSP file operations: oil rename/move → workspace/didRename to server
+  -- LSP file operations: oil rename/move -> workspace/didRename to server
   {
     "antosha417/nvim-lsp-file-operations",
     dependencies = { "plenary.nvim" },
