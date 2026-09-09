@@ -85,7 +85,7 @@ packages::parse "name @work"
 packages::applies_to work;     _true  "matching profile" "$?"
 packages::applies_to personal; _false "non-matching profile" "$?"
 
-packages::parse "name"  # no profile → applies to all
+packages::parse "name"  # no profile -> applies to all
 packages::applies_to anything; _true "no annotation = applies to all" "$?"
 
 # filtered() integration
@@ -125,7 +125,7 @@ _false "missing file" "$?"
 
 _section "filtered: missing blacklist is OK"
 empty_bl=$(packages::filtered "$TMP/packages.txt" work brew "$TMP/no-blacklist.txt" | wc -l | tr -d ' ')
-_eq "no blacklist file → all 7 work entries pass through" "7" "$empty_bl"
+_eq "no blacklist file -> all 7 work entries pass through" "7" "$empty_bl"
 
 # current_profile
 _section "skipped_for_profile: lists entries that DON'T apply to current profile"

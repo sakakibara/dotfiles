@@ -31,18 +31,18 @@ _eq "non-default + profile"   "cask:figma @work" "$(sync::_format_entry cask fig
 
 # _cycle_action
 _section "_cycle_action: full cycle on personal/work"
-_eq "skip → add"        "add"          "$(sync::_cycle_action personal work skip)"
-_eq "add → @personal"   "@personal"    "$(sync::_cycle_action personal work add)"
-_eq "@personal → @work" "@work"        "$(sync::_cycle_action personal work "@personal")"
-_eq "@work → block"     "block"        "$(sync::_cycle_action personal work "@work")"
-_eq "block → skip"      "skip"         "$(sync::_cycle_action personal work block)"
+_eq "skip -> add"        "add"          "$(sync::_cycle_action personal work skip)"
+_eq "add -> @personal"   "@personal"    "$(sync::_cycle_action personal work add)"
+_eq "@personal -> @work" "@work"        "$(sync::_cycle_action personal work "@personal")"
+_eq "@work -> block"     "block"        "$(sync::_cycle_action personal work "@work")"
+_eq "block -> skip"      "skip"         "$(sync::_cycle_action personal work block)"
 
 _section "_cycle_action: when current=work"
-_eq "add → @work first" "@work"        "$(sync::_cycle_action work personal add)"
-_eq "@work → @personal" "@personal"    "$(sync::_cycle_action work personal "@work")"
+_eq "add -> @work first" "@work"        "$(sync::_cycle_action work personal add)"
+_eq "@work -> @personal" "@personal"    "$(sync::_cycle_action work personal "@work")"
 
 _section "_cycle_action: with no other profile"
-_eq "@current → block (no other)" "block" "$(sync::_cycle_action solo "" "@solo")"
+_eq "@current -> block (no other)" "block" "$(sync::_cycle_action solo "" "@solo")"
 
 # compute_untracked (with stubbed installed query)
 _section "compute_untracked: tracked + blacklisted entries are skipped"
@@ -165,8 +165,8 @@ _eq "linux: only something-extra is untracked" "pkg=something-extra," "$untracke
 
 _section "compute_missing (linux): tracked-but-not-installed for current profile"
 missing=$(sync::compute_missing "$TMP/linux-pkgs.txt" linux pkg work | tr '\t' = | tr '\n' ',')
-# Expected: ripgrep is tracked-everywhere but not installed → missing.
-# slack is @work and not installed → missing.
+# Expected: ripgrep is tracked-everywhere but not installed -> missing.
+# slack is @work and not installed -> missing.
 _eq "work missing: ripgrep + slack" "pkg=ripgrep=,pkg=slack=work," "$missing"
 
 # _fetch_descriptions_linux parser

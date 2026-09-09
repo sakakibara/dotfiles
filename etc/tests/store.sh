@@ -2,7 +2,7 @@
 # Run with: bash etc/tests/store.sh   (from the repo root)
 #
 # Unit tests for the store set/map containers. Same coverage shape as the
-# (former) dict tests — round-trips, edge cases (empty, missing, special
+# (former) dict tests -- round-trips, edge cases (empty, missing, special
 # chars in keys/values), and name validation against the eval boundary.
 
 set -uo pipefail
