@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# sync — interactive review of installed-but-untracked packages.
+# sync -- interactive review of installed-but-untracked packages.
 #
 # Diffs `<os pkg manager>` output against the tracked packages file
 # (and the blacklist) and offers a per-row TUI to assign one of these
 # actions to each untracked entry:
 #
-#   skip   — leave it alone
-#   add    — append plain `kind:name` to packages.txt (applies everywhere)
-#   @prof  — append `kind:name @profile` (profile-gated)
-#   block  — append to packages-blacklist.txt (sync won't surface again)
+#   skip   -- leave it alone
+#   add    -- append plain `kind:name` to packages.txt (applies everywhere)
+#   @prof  -- append `kind:name @profile` (profile-gated)
+#   block  -- append to packages-blacklist.txt (sync won't surface again)
 #
 # State is held in two parallel arrays (one row per item):
 #   _sync_items[]    "kind<TAB>name"
@@ -59,7 +59,7 @@ sync::_query_installed_linux() {
       ;;
     suse)
       # `zypper se -i -t package` includes deps; filter to "i+" rows
-      # (user-installed, not auto). zypper output has 7 columns —
+      # (user-installed, not auto). zypper output has 7 columns --
       # 'S | Repo | Name | ...'; we want the Name column.
       zypper --non-interactive se -i -t package 2>/dev/null \
         | awk -F'|' '$1 ~ /i\+/ {gsub(/^[[:space:]]+|[[:space:]]+$/,"",$3); print $3}' \
@@ -69,7 +69,7 @@ sync::_query_installed_linux() {
 }
 
 sync::_query_installed_darwin() {
-  # Three brew calls in parallel — each spawns Ruby (~200-500ms), and they
+  # Three brew calls in parallel -- each spawns Ruby (~200-500ms), and they
   # don't share state, so wall time = max(taps, leaves, casks) instead of
   # the sum. Each producer prefixes its lines with kind+TAB and skips
   # empties; outputs interleave on the outer pipe but every line is
@@ -161,7 +161,7 @@ sync::_fetch_descriptions_darwin() {
     esac
   done
 
-  # Run formula and cask description fetches in parallel — same shape as
+  # Run formula and cask description fetches in parallel -- same shape as
   # the parallel _query_installed_darwin call. Each producer prefixes its
   # output lines with kind+TAB so the merged stream stays parseable; the
   # `&&` inside the brace block gates each spawn on the kind being non-
@@ -274,15 +274,7 @@ sync::_fetch_descriptions() {
 
 # Review TUI
 
-# Pad an action label to ACTION_LABEL_WIDTH columns, accounting for visible
-# width (for CJK if anyone ever puts a multi-byte profile name).
-sync::_action_label() {
-  local _sync_action_str
-  sync::_action_label_v "$1"
-  printf '%s' "$_sync_action_str"
-}
-
-# Subshell-free: writes the styled `[ … action … ]` block (centered) to
+# Subshell-free: writes the styled `[ ... action ... ]` block (centered) to
 # the dynamic-scoped `_sync_action_str`.
 sync::_action_label_v() {
   local action="$1"
@@ -329,12 +321,12 @@ sync::_render() {
     (( _sync_offset > n - body_rows )) && _sync_offset=$((n - body_rows))
   fi
 
-  # DEC sync mode 2026 — commit the redraw atomically (no flash between
+  # DEC sync mode 2026 -- commit the redraw atomically (no flash between
   # clear and re-draw). Ignored by terminals that don't support it.
   printf '\033[?2026h'
   printf '\033[H\033[2J'
   printf '\033[1mReview untracked packages\033[0m\n'
-  printf '\033[2m↑/↓ move · space cycle · a add · p add @personal · w add @work\n'
+  printf '\033[2mup/down move · space cycle · a add · p add @personal · w add @work\n'
   printf '   b blacklist · s skip · enter apply · q cancel · ? help\033[0m\n\n'
 
   local end=$((_sync_offset + body_rows))
@@ -364,7 +356,7 @@ sync::_render() {
 
     local desc="${_sync_desc[i]:-}"
     if [[ -n "$desc" ]]; then
-      printf '%s%b %s \033[2m— %s\033[0m\n' "$marker" "$_sync_action_str" "$display" "$desc"
+      printf '%s%b %s \033[2m-- %s\033[0m\n' "$marker" "$_sync_action_str" "$display" "$desc"
     else
       printf '%s%b %s\n' "$marker" "$_sync_action_str" "$display"
     fi
@@ -372,7 +364,7 @@ sync::_render() {
 
   printf '\n\033[2m%d pending · profile: %s' "$pending" "$current"
   if (( n > body_rows )); then
-    printf ' · %d–%d/%d' "$((_sync_offset + 1))" "$end" "$n"
+    printf ' · %d-%d/%d' "$((_sync_offset + 1))" "$end" "$n"
   fi
   printf '\033[0m\n'
   printf '\033[?2026l'  # commit atomic redraw
@@ -382,14 +374,14 @@ sync::_render_help() {
   printf '\033[H\033[2J'
   printf '\033[1mSync keybindings\033[0m\n\n'
   cat <<'EOF'
-  ↑ / k          move up
-  ↓ / j          move down
-  space          cycle: skip → add → @<current> → @<other> → block → skip
-  a              add (no profile annotation — applies everywhere)
+  up / k         move up
+  down / j       move down
+  space          cycle: skip -> add -> @<current> -> @<other> -> block -> skip
+  a              add (no profile annotation -- applies everywhere)
   p              add @personal
   w              add @work
   b              blacklist (write to packages-blacklist.txt)
-  s              skip (default — no action)
+  s              skip (default -- no action)
   enter          apply pending actions
   q / esc        cancel without writing
   ?              this help
@@ -399,7 +391,7 @@ EOF
   pick::_read_key >/dev/null
 }
 
-# Cycle through actions: skip → add → @<current> → @<other> → block → skip.
+# Cycle through actions: skip -> add -> @<current> -> @<other> -> block -> skip.
 sync::_cycle_action() {
   local current="$1" other="$2" action="$3"
   case "$action" in
@@ -436,7 +428,7 @@ sync::review() {
   local i
   for ((i=0; i<n; i++)); do _sync_actions[i]=skip; done
 
-  msg::heading "Fetching package descriptions…"
+  msg::heading "Fetching package descriptions..."
   sync::_fetch_descriptions
 
   pick::_tui_open
@@ -473,7 +465,7 @@ sync::review() {
 # Apply
 
 # Format a parsed entry back into the file's flat-text syntax. Default
-# kind (e.g. "brew" on darwin) is dropped — bare names are formula entries.
+# kind (e.g. "brew" on darwin) is dropped -- bare names are formula entries.
 # Args: kind name default_kind [profile_annotation]
 sync::_format_entry() {
   local kind="$1" name="$2" default_kind="$3" annotation="${4:-}"
@@ -554,13 +546,13 @@ sync::apply() {
 
 # Main entry
 
-# sync::run [os] — the orchestration function the wrapper calls.
+# sync::run [os] -- the orchestration function the wrapper calls.
 sync::run() {
   local os
   case "$(uname -s)" in
     Darwin) os=darwin ;;
     Linux)  os=linux  ;;
-    *) msg::error "sync: unsupported OS $(uname -s) (Windows path is PowerShell-only — see windows/scoop.ps1)"; return 1 ;;
+    *) msg::error "sync: unsupported OS $(uname -s) (Windows path is PowerShell-only -- see src/.local/bin/sync.ps1)"; return 1 ;;
   esac
 
   local source_dir pkg_file blacklist_file default_kind profile
@@ -590,7 +582,7 @@ sync::run() {
   esac
   profile=$(packages::current_profile) || return 1
 
-  msg::heading "Computing untracked packages…"
+  msg::heading "Computing untracked packages..."
   _sync_items=()
   while IFS= read -r line; do
     [[ -z "$line" ]] && continue
@@ -601,7 +593,7 @@ sync::run() {
     msg::success "Everything installed is already tracked. Nothing to sync."
   else
     # First-run bootstrap: packages.txt is essentially empty AND many items
-    # are installed. Per-item review on a 200-package list is hostile —
+    # are installed. Per-item review on a 200-package list is hostile --
     # offer a single-key bulk import instead.
     local tracked_count
     tracked_count=$(packages::all "$pkg_file" "$default_kind" 2>/dev/null | wc -l | tr -d ' ')
@@ -637,7 +629,7 @@ sync::run() {
       [[ -z "$kind" ]] && continue
       local suffix=""
       [[ -n "$profiles" ]] && suffix=" \033[2m@$profiles\033[0m"
-      printf '  • %s:%s%b\n' "$kind" "$name" "$suffix"
+      printf '  - %s:%s%b\n' "$kind" "$name" "$suffix"
     done <<<"$missing"
   fi
 }

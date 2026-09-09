@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# packages — shared parser for the per-OS package list files
+# packages -- shared parser for the per-OS package list files
 # (etc/darwin/packages.txt, etc/linux/packages-{distro}.txt, etc/windows/packages.txt).
 #
 # Line format:
-#   [kind:]name [@profile[,profile…]]
+#   [kind:]name [@profile[,profile...]]
 #
 #   - kind prefix is optional. Used by macOS (`tap:`, `cask:`, default = formula)
 #     and Windows (`winget:`, default = scoop). On Linux every line is a
@@ -11,7 +11,7 @@
 #     by the caller.
 #   - `name` is everything between the prefix and the optional ` @` suffix.
 #     Names may contain `/` (e.g. tap names, scoop buckets) and `@` (e.g.
-#     `openssl@3` formula version pinning) — the profile suffix requires a
+#     `openssl@3` formula version pinning) -- the profile suffix requires a
 #     literal SPACE before the @ so versioned formulae aren't confused.
 #   - `@profile` (or `@p1,p2`) restricts the line to those profiles.
 #     A line with no `@` suffix applies to every profile.
@@ -30,7 +30,7 @@ store::set _packages_blacklist
 #
 # Neither resolving is a hard error: callers run outside `mox apply`, where
 # there is no unbound-fact guard, so this must not guess. Prints to stderr
-# and returns 1 — run in `$(...)`, so callers MUST check the exit status
+# and returns 1 -- run in `$(...)`, so callers MUST check the exit status
 # (a bare `exit 1` here would only exit the subshell).
 packages::current_profile() {
   if [[ -n "${DOTFILES_PROFILE:-}" ]]; then
@@ -51,7 +51,7 @@ packages::current_profile() {
 
 # Parse one packages-file line into globals:
 #   _pkg_kind     kind prefix without colon ("brew" by default for un-prefixed
-#                 darwin entries, "pkg" elsewhere — caller decides). The parser
+#                 darwin entries, "pkg" elsewhere -- caller decides). The parser
 #                 itself only emits the literal prefix or "" if no prefix.
 #   _pkg_name     name part
 #   _pkg_profiles array of profile names; empty = applies to every profile
@@ -87,7 +87,7 @@ packages::parse() {
   fi
 
   # Kind prefix. We accept `kind:rest` where kind matches [a-z]+. The
-  # remainder may itself contain `:` (rare but legal — caller decides).
+  # remainder may itself contain `:` (rare but legal -- caller decides).
   if [[ "$line" =~ ^([a-z]+):(.*)$ ]]; then
     _pkg_kind="${BASH_REMATCH[1]}"
     _pkg_name="${BASH_REMATCH[2]}"
@@ -110,13 +110,8 @@ packages::applies_to() {
   return 1
 }
 
-# Yield every line in FILE as `kind<TAB>name` on stdout, ignoring profile
-# annotations and blacklists. Used by sync to recognize "is this tracked
-# anywhere" regardless of which profile the entry happens to apply to.
-#
-# Args: FILE [DEFAULT_KIND]
-# Yield entries from FILE that DON'T apply to PROFILE — i.e. the
-# profile-gated items skipped on this machine. Output: kind<TAB>name<TAB>profiles
+# Yield entries from FILE that DON'T apply to PROFILE - the profile-gated
+# items skipped on this machine. Output: kind<TAB>name<TAB>profiles
 # (profiles = comma-separated). Used by install paths to be honest about
 # what was filtered out.
 #
@@ -136,6 +131,11 @@ packages::skipped_for_profile() {
   done < "$file"
 }
 
+# Yield every line in FILE as `kind<TAB>name` on stdout, ignoring profile
+# annotations and blacklists. Used by sync to recognize "is this tracked
+# anywhere" regardless of which profile the entry happens to apply to.
+#
+# Args: FILE [DEFAULT_KIND]
 packages::all() {
   local file="$1" default_kind="${2:-pkg}"
   [[ -r "$file" ]] || return 1

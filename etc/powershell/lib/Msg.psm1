@@ -1,4 +1,4 @@
-# msg — output helpers (analog of etc/bash/lib/msg.bash).
+# msg -- output helpers (analog of etc/bash/lib/msg.bash).
 # ANSI bold + color, gracefully falling back to plain text when stdout is
 # redirected. Names follow the PowerShell Verb-Noun convention; `Failure`
 # stands in for `Error` to avoid clashing with the built-in `Write-Error`.
@@ -26,7 +26,7 @@ function Write-Success([string]$msg) {
     Write-Host ('  {0}✔{1} {2}' -f $Script:MsgGreen, $Script:MsgReset, $msg)
 }
 function Write-Failure([string]$msg) {
-    [Console]::Error.WriteLine('  {0}✖{1} {2}' -f $Script:MsgRed, $Script:MsgReset, $msg)
+    [Console]::Error.WriteLine(('  {0}✖{1} {2}' -f $Script:MsgRed, $Script:MsgReset, $msg))
 }
 
 Export-ModuleMember -Function Write-Heading, Write-Arrow, Write-Success, Write-Failure

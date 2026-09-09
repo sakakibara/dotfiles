@@ -3,21 +3,20 @@
 import msg packages
 
 # Detect the distro family. Returns one of: fedora, debian, arch, suse, unknown.
-# Maps RHEL-family (Fedora/Rocky/Alma/CentOS) → fedora, Debian-family
-# (Debian/Ubuntu/Mint/Pop) → debian, Arch-family (Arch/Manjaro/Endeavour) →
-# arch, SUSE-family (openSUSE/SLES) → suse.
+# Maps RHEL-family (Fedora/Rocky/Alma/CentOS) -> fedora, Debian-family
+# (Debian/Ubuntu/Mint/Pop) -> debian, Arch-family (Arch/Manjaro/Endeavour) ->
+# arch, SUSE-family (openSUSE/SLES) -> suse.
 #
 # Detection order (first that yields an ID wins):
-#   1. /etc/os-release — modern standard, has ID + ID_LIKE.
-#   2. lsb_release -si — older Debian/Ubuntu fallback.
-#   3. /etc/lsb-release — same era.
+#   1. /etc/os-release -- modern standard, has ID + ID_LIKE.
+#   2. lsb_release -si -- older Debian/Ubuntu fallback.
+#   3. /etc/lsb-release -- same era.
 #   4. distro-specific marker files (fedora-release, debian_version,
-#      arch-release) — minimal containers / very old systems.
+#      arch-release) -- minimal containers / very old systems.
 linux::detect_distro() {
   local id="" id_like=""
 
   if [[ -f /etc/os-release ]]; then
-    # shellcheck disable=SC1091
     id=$(awk -F= '$1=="ID"      {gsub(/"/,"",$2); print tolower($2)}' /etc/os-release)
     id_like=$(awk -F= '$1=="ID_LIKE" {gsub(/"/,"",$2); print tolower($2)}' /etc/os-release)
   elif command -v lsb_release >/dev/null 2>&1; then
@@ -41,7 +40,7 @@ linux::detect_distro() {
   esac
 }
 
-# True if running under WSL. Three signals — any one is sufficient.
+# True if running under WSL. Three signals -- any one is sufficient.
 linux::is_wsl() {
   grep -qiE 'microsoft|wsl' /proc/sys/kernel/osrelease 2>/dev/null && return 0
   [[ -f /proc/version ]] && grep -qi microsoft /proc/version && return 0
@@ -81,22 +80,27 @@ linux::install_packages() {
     return 0
   fi
 
+  local rc=0
   case "$distro" in
-    fedora) sudo dnf install -y "${pkgs[@]}" ;;
+    fedora) sudo dnf install -y "${pkgs[@]}" || rc=$? ;;
     debian)
-      sudo apt-get update
-      sudo apt-get install -y "${pkgs[@]}"
+      sudo apt-get update || rc=$?
+      (( rc == 0 )) && { sudo apt-get install -y "${pkgs[@]}" || rc=$?; }
       ;;
-    arch)   sudo pacman -Syu --needed --noconfirm "${pkgs[@]}" ;;
+    arch)   sudo pacman -Syu --needed --noconfirm "${pkgs[@]}" || rc=$? ;;
     suse)
-      sudo zypper --non-interactive refresh
-      sudo zypper --non-interactive install "${pkgs[@]}"
+      sudo zypper --non-interactive refresh || rc=$?
+      (( rc == 0 )) && { sudo zypper --non-interactive install "${pkgs[@]}" || rc=$?; }
       ;;
     *)
       msg::error "unsupported distro: $distro"
       return 1
       ;;
   esac
+  if (( rc != 0 )); then
+    msg::error "package install failed ($distro)"
+    return "$rc"
+  fi
 
   # Symmetry: list profile-skipped entries.
   local skipped

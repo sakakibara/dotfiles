@@ -1,26 +1,26 @@
 #!/usr/bin/env bash
-# store — eval-free set + map data structures backed by indexed arrays.
+# store -- eval-free set + map data structures backed by indexed arrays.
 #
 # Why this exists
 #   bash 3.2 lacks `declare -A`. The natural eval-based polyfill is fine
-#   for occasional reads but is ~300× slower than direct array access in
+#   for occasional reads but far slower than direct array access in
 #   inner loops (each linear-scan iteration pays an eval). This module
 #   code-generates per-instance helpers at definition time, so the runtime
-#   path is plain indexed-array iteration — no eval, no indirection.
+#   path is plain indexed-array iteration -- no eval, no indirection.
 #
 #   The eval lives at module load (`store::set foo` defines `foo::has`,
 #   etc., once), and the names are validated against a strict regex first.
 #
 # Constructors
 #   store::set <name>   set semantics (membership only)
-#   store::map <name>   key→value map
+#   store::map <name>   key->value map
 #
 # Methods (all generated as `<name>::<method>`)
 #   set: ::add v, ::del v, ::has v, ::clear, ::list
 #   map: ::put k v, ::del k, ::has k, ::get k, ::clear, ::keys
 #
 # Constraints
-#   <name> must match [a-zA-Z_][a-zA-Z0-9_]+ — eval'd at define time, so
+#   <name> must match [a-zA-Z_][a-zA-Z0-9_]+ -- eval'd at define time, so
 #   an unvalidated name would be a code-execution sink.
 
 # Internal: name validation. Same constraint shape as bash variable names.
