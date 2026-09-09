@@ -8,15 +8,12 @@
 
 set -uo pipefail
 
-hits=0
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "comment-markers.sh: not inside a git work tree, so there are no tracked files to scan" >&2
+  exit 2
+fi
 
-# Generated / third-party files keep their upstream formatting.
-_excluded() {
-  case "$1" in
-    src/.config/fish/conf.d/zoxide.fish) return 0 ;;
-  esac
-  return 1
-}
+hits=0
 
 # Comment-leader regex per file type. Empty means "not checked":
 # binary, markdown (# is a heading, --- a rule), data and comment-less
@@ -25,19 +22,22 @@ _excluded() {
 # comments, and files without hash comments simply never match.
 _leader_for() {
   case "$1" in
-    *.md|*.markdown|*.txt|*.json|*.tmTheme|*.plist|*.icns|*.css|*.cmd|*.vbs) ;;
+    *.md|*.markdown|*.json|*.tmTheme|*.icns|*.css|*.cmd) ;;
     *.lua) printf '%s' '--' ;;
     *.el|*.scm) printf '%s' ';+' ;;
     */.vimrc|*.vim) printf '%s' '"' ;;
-    *.zig|*.c|*.h|*.js|*.ts) printf '%s' '//' ;;
+    *.zig|*.c|*.h|*.js|*.ts|*.jsonc) printf '%s' '//' ;;
     *) printf '%s' '#' ;;
   esac
 }
+
+_box=$'\xe2\x94\x80|\xe2\x95\x90|\xe2\x94\x81|\xe2\x96\x94|\xe2\x95\x8c|\xe2\x94\x84'
 
 _check() {
   local file="$1" lead="$2" out n
   out=$(grep -nE \
     -e "^[[:space:]]*${lead}[[:space:]]*[-=#*~]{4,}" \
+    -e "^[[:space:]]*${lead}[[:space:]]*(${_box}){2,}" \
     -e "^[[:space:]]*${lead}[[:space:]]*[-=]{3,}[[:space:]].*[[:space:]][-=]{3,}[[:space:]]*$" \
     -e "^[[:space:]]*${lead}[[:space:]]*(MARK|SECTION)[[:space:]]*:" \
     -e "^[[:space:]]*${lead}[[:space:]]*#?(region|endregion)([^[:alnum:]_]|$)" \
@@ -50,7 +50,6 @@ _check() {
 }
 
 while IFS= read -r -d '' f; do
-  _excluded "$f" && continue
   lead=$(_leader_for "$f")
   [[ -n "$lead" ]] && [[ -f "$f" ]] && _check "$f" "$lead"
 done < <(git ls-files -z)

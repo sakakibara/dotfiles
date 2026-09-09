@@ -26,7 +26,7 @@ _check_raw() {
 }
 
 # Bash files
-while IFS= read -r -d '' f; do _check_raw bash "$f"; done < <(
+while IFS= read -r -d '' f; do _check_raw "$_bash_interp" "$f"; done < <(
   {
     find src/.local/bin -type f -not -name '*.ps1' -not -name '*.cmd' -print0 2>/dev/null
     find etc/bash/lib -type f -name '*.bash' -print0 2>/dev/null
@@ -61,9 +61,9 @@ fi
 #   - src/.config/nvim/**/*.lua  -> LuaJIT (~Lua 5.1 + extensions)
 #   - src/.config/wezterm/*.lua  -> Lua 5.4 (wezterm bundles mlua/Lua 5.4)
 # Using the wrong parser produces false positives (LuaJIT rejects `<close>`,
-# Lua 5.4 rejects some LuaJIT extensions) — pick the right one per location.
+# Lua 5.4 rejects some LuaJIT extensions) -- pick the right one per location.
 
-# nvim's lua → luajit. `mapfile` is bash 4+; macOS ships bash 3.2 — using
+# nvim's lua -> luajit. `mapfile` is bash 4+; macOS ships bash 3.2 -- using
 # it there silently dropped through and reported "all checks passed"
 # without running anything. Portable while-loop array build instead.
 if command -v luajit >/dev/null 2>&1; then
@@ -79,8 +79,8 @@ else
   skips+=("luajit")
 fi
 
-# Everything else (wezterm.lua + any future Lua-5.4+ consumer) → stock
-# Lua 5.4 or newer. Brew currently ships 5.5 so we accept any 5.4+ — the
+# Everything else (wezterm.lua + any future Lua-5.4+ consumer) -> stock
+# Lua 5.4 or newer. Brew currently ships 5.5 so we accept any 5.4+ -- the
 # wezterm.lua syntax we're checking is forward-compatible.
 _find_lua54
 if [[ -n "$_lua54" ]]; then
@@ -109,7 +109,7 @@ else
   skips+=("python3-tomllib")
 fi
 
-# YAML files. Use Ruby's stdlib YAML — no extra dep on standard CI runners.
+# YAML files. Use Ruby's stdlib YAML -- no extra dep on standard CI runners.
 if command -v ruby >/dev/null 2>&1; then
   while IFS= read -r -d '' f; do _check_raw yaml "$f"; done < <(
     find . -type f \( -name '*.yml' -o -name '*.yaml' \) \
@@ -135,14 +135,35 @@ fi
 # agent reports a non-blocking error and proceeds unguarded. Hooks are invoked
 # through an explicit interpreter so the executable bit cannot break them, but
 # a stale path still can.
+_hook_exists() { [[ -f "src/$1" ]]; }
+
 for reg in src/.claude/settings.json src/.codex/hooks.json; do
   [[ -f "$reg" ]] || continue
   while IFS= read -r hook; do
-    if [[ ! -f "src/.agents/hooks/$hook" ]]; then
+    if ! _hook_exists "$hook"; then
       echo "FAIL: $reg registers a hook that does not exist: $hook" >&2
       fails=$((fails + 1))
     fi
-  done < <(grep -o '\.agents/hooks/[A-Za-z0-9_.-]*' "$reg" | sed 's|.*/||' | sort -u)
+  done < <(grep -oE '\$HOME/[.][A-Za-z0-9_./-]+' "$reg" | sed 's|^\$HOME/||' | sort -u)
+done
+
+# A top-level setup script runs on every OS unless it carries its own gate,
+# and mox reads the gate only above the first content line. A `.sh` spawned
+# on Windows fails, a `.ps1` elsewhere, and a package installer must not run
+# on the wrong OS.
+for f in scripts/pre/*.sh scripts/pre/*.ps1 scripts/post/*.sh scripts/post/*.ps1; do
+  [[ -f "$f" ]] || continue
+  if ! awk '
+    NR == 1 && /^#!/ { next }
+    /^[[:space:]]*#[[:space:]]*mox: when [^[:space:]]/ { found = 1; exit }
+    /^[[:space:]]*#/ { next }
+    /^[[:space:]]*$/ { next }
+    { exit }
+    END { exit !found }
+  ' "$f"; then
+    echo "FAIL: $f has no mox gate line before its first content line" >&2
+    fails=$((fails + 1))
+  fi
 done
 
 _promote_ci_skips
