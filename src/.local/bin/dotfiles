@@ -3,13 +3,14 @@
 #
 # `dotfiles` (no args) or `dotfiles info` prints a snapshot of the
 # deployment: source dir, git state, mox drift, theme, tool versions.
-# Any other invocation forwards to `mox` via `exec`. Some subcommands
-# (currently `cd`) are overridden by shell-function wrappers in .zfunc/
-# and .config/fish/functions/ to operate on the calling shell directly.
+# Any other invocation forwards to `mox` via `exec`. The `cd` and `apply`
+# subcommands are overridden by shell-function wrappers in .zfunc/ and
+# .config/fish/functions/, and in PowerShell once the profile dot-sources
+# .config/powershell/dotfiles-shell.ps1, to act on the calling shell.
 
 set -euo pipefail
 
-# ANSI color helpers — only when stdout is a TTY.
+# ANSI color helpers -- only when stdout is a TTY.
 if [[ -t 1 ]]; then
   C_DIM=$'\033[2m'
   C_BOLD=$'\033[1m'
@@ -32,6 +33,10 @@ _version_of() {
 
 _mox_repo() {
   printf '%s' "${MOX_REPO:-${XDG_DATA_HOME:-$HOME/.local/share}/mox/dotfiles}"
+}
+
+_profile_fact() {
+  mox facts </dev/null 2>/dev/null | sed -n 's/^profile = "\(.*\)"$/\1/p' || true
 }
 
 cmd_info() {
@@ -100,6 +105,7 @@ Usage:
   dotfiles info             Same as default
   dotfiles install          Interactive menu to (re)run install steps
   dotfiles install all      Run every install step non-interactively
+  dotfiles install none     Run only the required steps
   dotfiles install <names>  Run only the named steps (e.g. brew mise)
   dotfiles sync             Review untracked packages and add/blacklist them
   dotfiles edit <pattern>   Fuzzy-find a managed file and edit via mox
@@ -109,7 +115,7 @@ Usage:
   dotfiles <cmd>            Forward to mox (e.g. dotfiles apply, dotfiles diff)
   dotfiles --help           Show this help
 
-Shell-function overrides (active in zsh and fish):
+Shell-function overrides (zsh and fish; PowerShell after dot-sourcing ~/.config/powershell/dotfiles-shell.ps1):
   dotfiles cd               cd current shell to mox repo dir
   dotfiles apply            Re-source shell rc file on successful apply
 
@@ -117,14 +123,17 @@ For mox-specific help: mox --help
 EOF
 }
 
-# Hash a single file with sha256. Empty output for missing files.
-_hash_file() {
-  local f="$1"
-  [[ -r "$f" ]] || { printf ''; return; }
+# sha256 over the readable files given, concatenated; empty when none is.
+_hash_files() {
+  local f readable=()
+  for f in "$@"; do
+    [[ -r "$f" ]] && readable+=("$f")
+  done
+  (( ${#readable[@]} > 0 )) || { printf ''; return; }
   if command -v sha256sum >/dev/null 2>&1; then
-    sha256sum "$f" | awk '{print $1}'
+    cat "${readable[@]}" | sha256sum | awk '{print $1}'
   else
-    shasum -a 256 "$f" 2>/dev/null | awk '{print $1}'
+    cat "${readable[@]}" | shasum -a 256 2>/dev/null | awk '{print $1}'
   fi
 }
 
@@ -160,7 +169,7 @@ EOF
   while IFS= read -r rel; do
     [[ -z "$rel" ]] && continue
     matches+=("$rel")
-  done < <(mox status 2>/dev/null | sed -E 's/^  [A-Za-z]+ +//' | sed "s#^$HOME/##" | grep -iF -- "$pattern" || true)
+  done < <(mox status 2>/dev/null | sed -nE -e '/^  ERROR /d' -e 's/ +\((own|disown) [0-9]+\)$//' -e 's#^  [A-Za-z]+ +~/(.*)$#\1#p' | grep -iF -- "$pattern" || true)
 
   case ${#matches[@]} in
     0)
@@ -199,7 +208,7 @@ Usage:
 
 Switching writes the `profile` fact (`mox facts set profile <name>`) and then
 runs `mox apply`. All profile-gated content (packages.txt entries, holt
-config, role.lua, ...) re-renders accordingly.
+config, mise settings, ...) re-renders accordingly.
 EOF
       return 0
       ;;
@@ -212,7 +221,7 @@ EOF
 
   if [[ -z "${1:-}" ]]; then
     local current
-    current=$(mox facts </dev/null 2>/dev/null | awk -F' = ' '$1 == "profile" { gsub(/"/, "", $2); print $2 }' || true)
+    current=$(_profile_fact)
     if [[ -z "$current" ]]; then
       printf "dotfiles profile: profile fact is unset; run 'mox facts set profile <personal|work>'\n" >&2
       return 1
@@ -242,15 +251,15 @@ cmd_doctor() {
 dotfiles doctor -- health check for the dotfiles + mox setup.
 
 Verifies that the mox binary is reachable, the repo resolves, the profile
-resolves, package files parse, the theme state file is intact, and the
-OS-specific install lib (brew or linux) is usable. Exits 0 when all checks
-pass, 1 if any failed.
+resolves, `mox doctor` reports no advisory, package files parse, the theme
+state file is intact, and the OS-specific install lib (brew or linux) is
+usable. Exits 0 when all checks pass, 1 if any failed.
 EOF
       return 0
       ;;
   esac
 
-  # Doctor relies on bare `[[ … ]]` tests to detect failures; set -e would
+  # Doctor relies on bare `[[ ... ]]` tests to detect failures; set -e would
   # exit on the first negative test before _check could record it.
   set +e +u +o pipefail
 
@@ -285,15 +294,42 @@ EOF
 
   local profile=""
   if command -v mox >/dev/null 2>&1; then
-    profile=$(mox facts </dev/null 2>/dev/null | awk -F' = ' '$1 == "profile" { gsub(/"/, "", $2); print $2 }' || true)
+    profile=$(_profile_fact)
   fi
   [[ -n "$profile" ]]
   # shellcheck disable=SC2319  # the preceding condition is the check
   _check "profile resolves" $? "$profile"
 
+  if command -v mox >/dev/null 2>&1; then
+    local report advisories
+    report=$(mox doctor 2>&1)
+    advisories=$(printf '%s\n' "$report" | sed -nE 's/^.*[^0-9]([0-9]+) advisory item.*/\1/p' | tail -n1)
+    local skipped detail
+    skipped=$(printf '%s\n' "$report" | sed -nE 's/^.*[^0-9]([0-9]+) check\(s\) skipped.*/\1/p' | tail -n1)
+    if [[ -z "$advisories" ]]; then
+      if [[ -n "$skipped" ]]; then
+        advisories="$skipped skipped"
+      elif [[ "$report" == *"mox doctor: healthy"* ]]; then
+        advisories=0
+      else
+        advisories=unparsed
+      fi
+    fi
+    case "$advisories" in
+      0) detail="" ;;
+      *[!0-9]*) detail="$advisories" ;;
+      *) detail="$advisories advisory" ;;
+    esac
+    [[ "$advisories" == 0 ]]
+    # shellcheck disable=SC2319  # the preceding condition is the check
+    _check "mox doctor reports no advisory" $? "$detail"
+  fi
+
   if [[ -n "$source_dir" ]]; then
-    bash -n "$source_dir/etc/bash/lib/init.bash" 2>/dev/null
-    _check "etc/bash/lib/init.bash parses" $?
+    local system_bash=/bin/bash
+    [[ -x "$system_bash" ]] || system_bash=bash
+    "$system_bash" -n "$source_dir/etc/bash/lib/init.bash" 2>/dev/null
+    _check "etc/bash/lib/init.bash parses under $system_bash" $?
   fi
 
   # OS-specific package list
@@ -352,23 +388,21 @@ cmd_upgrade() {
   case "${1:-}" in
     -h|--help)
       cat <<'EOF'
-dotfiles upgrade -- bring managed tools up to date.
+dotfiles upgrade -- bring mox and the managed tools up to date.
 
 Usage:
-  dotfiles upgrade           Explain that mox has no self-upgrade
-  dotfiles upgrade --all     brew + mise + holt
+  dotfiles upgrade           mox self-update (`mox upgrade`)
+  dotfiles upgrade --all     mox, then brew + mise + holt
 
-mox installs as a release binary and has no self-upgrade; `--all` runs the
-upgrade gestures for each managed tool in dependency order. On Linux it
-deliberately SKIPS distro package upgrade (`dnf upgrade` etc.) --
-kernel/service implications make that a manual gesture.
+`--all` runs the upgrade gestures for each managed tool in dependency
+order. On Linux it deliberately SKIPS distro package upgrade (`dnf upgrade`
+etc.) -- kernel/service implications make that a manual gesture.
 EOF
       return 0
       ;;
     "")
-      printf 'mox installs as a release binary; there is no self-upgrade.\n'
-      printf 'Use `dotfiles upgrade --all` to upgrade managed tools (brew, mise, holt).\n'
-      return 0
+      command -v mox >/dev/null 2>&1 || { printf 'dotfiles upgrade: mox not on PATH\n' >&2; return 1; }
+      mox upgrade
       ;;
     --all)
       _upgrade_all
@@ -389,6 +423,8 @@ _upgrade_all() {
     shift
     "$@" || fails=$((fails + 1))
   }
+
+  command -v mox >/dev/null 2>&1 && _step "mox" mox upgrade --yes
 
   case "$(uname -s)" in
     Darwin)
@@ -418,17 +454,17 @@ cmd_install() {
   case "${1:-}" in
     -h|--help)
       cat <<'EOF'
-dotfiles install — interactive multi-select runner for install steps.
+dotfiles install -- interactive multi-select runner for install steps.
 
 Usage:
   dotfiles install                  Open the menu (pre-checks items whose
                                     inputs have changed since the last run)
   dotfiles install all              Run every step non-interactively
   dotfiles install none             Run only required steps (skip everything else)
-  dotfiles install <name> <name>…   Run the named steps (e.g. brew mise)
+  dotfiles install <name> <name>...  Run the named steps (e.g. brew mise)
 
 Inside the menu:
-  ↑/↓ navigate · ←/→ jump column · space toggle · a/n select all/none
+  up/down navigate · left/right jump column · space toggle · a/n select all/none
   / filter · enter run · q/esc cancel · ? help
 EOF
       return 0
@@ -457,7 +493,7 @@ EOF
   source "$source_dir/etc/bash/lib/init.bash"
   case "$os" in
     darwin) import unix darwin brew mise holt pick ;;
-    linux)  import unix linux mise extras holt pick ;;
+    linux)  import unix linux mise tools holt pick ;;
   esac
 
   unix::keep_sudo
@@ -468,22 +504,29 @@ EOF
     case "$1" in
       all|none) export DOTFILES_PICK="$1" ;;
       *)
+        local picks=() name
+        for name in "$@"; do
+          case "$name" in
+            *::*) picks+=("$name") ;;
+            *) picks+=("${name}::setup") ;;
+          esac
+        done
         local IFS=','
-        export DOTFILES_PICK="$*"
+        export DOTFILES_PICK="${picks[*]}"
         ;;
     esac
   fi
 
   local mise_h holt_h
-  mise_h=$(_hash_file "$source_dir/src/.config/mise/config.toml")
-  holt_h=$(_hash_file "$source_dir/src/.config/holt/config.toml")
+  mise_h=$(_hash_files "$source_dir/src/.config/mise/config.toml")
+  holt_h=$(_hash_files "$source_dir/src/.config/holt/config.toml")
 
   local items=()
   case "$os" in
     darwin)
       darwin::require_clt || return 1
       local brew_h
-      brew_h=$(_hash_file "$source_dir/etc/darwin/Brewfile")
+      brew_h=$(_hash_files "$source_dir/etc/darwin/packages.txt" "$source_dir/etc/darwin/packages-blacklist.txt")
       items=(
         "==Packages"
         "brew::setup=Homebrew packages & casks|$brew_h"
@@ -494,15 +537,15 @@ EOF
       )
       ;;
     linux)
-      local distro pkg_file linux_h extras_h
-      distro=$(linux::distro 2>/dev/null || echo unknown)
+      local distro pkg_file linux_h tools_h
+      distro=$(linux::detect_distro 2>/dev/null || echo unknown)
       pkg_file="$source_dir/etc/linux/packages-${distro}.txt"
-      linux_h=$(_hash_file "$pkg_file")
-      extras_h=$(_hash_file "$source_dir/etc/bash/lib/extras.bash")
+      linux_h=$(_hash_files "$pkg_file" "$source_dir/etc/linux/packages-blacklist.txt")
+      tools_h=$(_hash_files "$source_dir/etc/bash/lib/tools.bash")
       items=(
         "==Packages"
         "linux::setup=System packages (${distro})|$linux_h"
-        "extras::setup=Bucket-3 tools (starship, gh, lazygit, …)|$extras_h"
+        "tools::setup=Tools outside the package manager (starship, gh, lazygit, ...)|$tools_h"
         "==Toolchains"
         "mise::setup=Language toolchains via mise|$mise_h"
         "==Workspace"
@@ -518,19 +561,19 @@ cmd_sync() {
   case "${1:-}" in
     -h|--help)
       cat <<'EOF'
-dotfiles sync — review installed-but-untracked packages.
+dotfiles sync -- review installed-but-untracked packages.
 
 Diffs the system package manager's current state against
 etc/<os>/packages.txt (and packages-blacklist.txt). For each untracked
 entry, opens an interactive TUI where you assign one action per row:
 
-  skip   — leave it alone
-  add    — append `kind:name` to packages.txt (no profile annotation)
-  @prof  — append `kind:name @profile` (profile-gated)
-  block  — append to packages-blacklist.txt (sync won't surface again)
+  skip   -- leave it alone
+  add    -- append `kind:name` to packages.txt (no profile annotation)
+  @prof  -- append `kind:name @profile` (profile-gated)
+  block  -- append to packages-blacklist.txt (sync won't surface again)
 
 Inside the menu:
-  ↑/↓ navigate · space cycle · a add · p add @personal · w add @work
+  up/down navigate · space cycle · a add · p add @personal · w add @work
   b blacklist · s skip · enter apply · q cancel · ? help
 EOF
       return 0
@@ -544,6 +587,34 @@ EOF
   source "$source_dir/etc/bash/lib/init.bash"
   import sync
   sync::run
+}
+
+_nearest_subcommand() {
+  {
+    printf '%s\n' info install sync edit profile doctor upgrade help cd
+    mox --help 2>/dev/null | awk '/^  [a-z][a-z-]*  / { print $1 }'
+  } | awk -v typo="$1" '
+    function lev(a, b,    i, j, la, lb, cost, best, d) {
+      la = length(a); lb = length(b)
+      for (j = 0; j <= lb; j++) d[0, j] = j
+      for (i = 1; i <= la; i++) {
+        d[i, 0] = i
+        for (j = 1; j <= lb; j++) {
+          cost = (substr(a, i, 1) == substr(b, j, 1)) ? 0 : 1
+          best = d[i - 1, j - 1] + cost
+          if (d[i - 1, j] + 1 < best) best = d[i - 1, j] + 1
+          if (d[i, j - 1] + 1 < best) best = d[i, j - 1] + 1
+          d[i, j] = best
+        }
+      }
+      return d[la, lb]
+    }
+    NF {
+      score = lev($1, typo)
+      if (nearest == "" || score < nearest_score) { nearest = $1; nearest_score = score }
+    }
+    END { if (nearest != "" && nearest_score <= 2) print nearest }
+  '
 }
 
 case "${1:-}" in
@@ -585,10 +656,16 @@ case "${1:-}" in
     # Flags pass through unchecked (e.g. mox --version). For bare
     # subcommands, probe `mox help <name>` first so typos surface a
     # dotfiles-aware error instead of silently routing to mox.
+    command -v mox >/dev/null 2>&1 || {
+      printf 'dotfiles: mox not on PATH; %q is forwarded to mox\n' "$1" >&2
+      exit 1
+    }
     if [[ "$1" == -* ]] || mox help "$1" >/dev/null 2>&1; then
       exec mox "$@"
     else
       printf 'dotfiles: unknown subcommand %q\n' "$1" >&2
+      nearest=$(_nearest_subcommand "$1")
+      [[ -n "$nearest" ]] && printf 'did you mean: dotfiles %s\n' "$nearest" >&2
       printf 'see `dotfiles --help` (wrapper) or `mox --help` (forwarded)\n' >&2
       exit 1
     fi

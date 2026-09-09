@@ -10,6 +10,7 @@ _dotfiles() {
     'profile:Print or switch the active profile'
     'doctor:Health-check the setup'
     'upgrade:Upgrade mox (or every tool with --all)'
+    'cd:Change directory to the mox repo'
     'help:Show help'
   )
 
@@ -28,11 +29,11 @@ _dotfiles() {
   # Per-subcommand argument completion.
   case "${words[2]:-}" in
     install)
-      _values 'install step' all none brew mise holt linux extras
+      _values 'install step' all none brew mise holt linux tools
       ;;
     edit)
       local -a managed
-      managed=("${(@f)$(mox status 2>/dev/null | sed 's/^  [^ ]*  //')}")
+      managed=("${(@f)$(mox status 2>/dev/null | sed -nE -e '/^  ERROR /d' -e 's/ +\((own|disown) [0-9]+\)$//' -e 's#^  [A-Za-z]+ +~/(.*)$#\1#p')}")
       _describe 'managed file' managed
       ;;
     profile)
@@ -41,11 +42,11 @@ _dotfiles() {
     upgrade)
       _values 'flag' --all
       ;;
-    sync|doctor|info|help|""|-h|--help)
+    sync|doctor|info|cd|help|""|-h|--help)
       ;;
     *)
       # Forward to mox completion for any subcommand we don't own
-      # (apply, diff, status, init, …). Cuts off the same way as the
+      # (apply, diff, status, init, ...). Cuts off the same way as the
       # wrapper's pass-through case in the bash dispatcher.
       words[1]=mox
       (( ${+functions[_mox]} )) && _mox "$@"

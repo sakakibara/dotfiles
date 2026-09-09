@@ -1,15 +1,10 @@
 #!/usr/bin/env pwsh
-# dotfiles — mox wrapper with status snapshot (PowerShell port).
+# dotfiles -- mox wrapper with status snapshot (PowerShell port).
 #
 # Mirrors the bash wrapper in src/.local/bin/dotfiles. Same
 # subcommands, same output shapes, same forwarding semantics: anything the
 # wrapper doesn't recognize is handed to `mox` (with a typo-aware error
-# if mox doesn't recognize it either).
-#
-# Status: session 1 — info, edit, profile, doctor, upgrade, help. The
-# install and sync subcommands stub out with a "use mox directly"
-# hint until their TUIs (`pick`, `sync` review) get ported in later
-# sessions.
+# if mox doesn't recognize it either), and doctor fails on a mox advisory.
 
 $ErrorActionPreference = 'Stop'
 
@@ -64,12 +59,46 @@ function _MoxProfile {
     return ''
 }
 
-# SHA256 of $file's contents, or empty if unreadable. Used to seed pick's
-# hash-diff "changed" marker so the menu pre-checks steps whose inputs
-# have shifted since the last run.
-function _HashFile([string]$file) {
-    if (-not $file -or -not (Test-Path -LiteralPath $file)) { return '' }
-    return (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLower()
+function _Levenshtein([string]$a, [string]$b) {
+    $prev = [int[]](0..$b.Length)
+    for ($i = 1; $i -le $a.Length; $i++) {
+        $cur = [int[]]::new($b.Length + 1)
+        $cur[0] = $i
+        for ($j = 1; $j -le $b.Length; $j++) {
+            $cost = if ($a[$i - 1] -ceq $b[$j - 1]) { 0 } else { 1 }
+            $cur[$j] = [Math]::Min([Math]::Min($prev[$j] + 1, $cur[$j - 1] + 1), $prev[$j - 1] + $cost)
+        }
+        $prev = $cur
+    }
+    return $prev[$b.Length]
+}
+
+function _NearestSubcommand([string]$word) {
+    $names = @('info', 'install', 'sync', 'edit', 'profile', 'doctor', 'upgrade', 'help', 'cd')
+    if (_Have mox) {
+        foreach ($line in (((& mox --help 2>$null) -join "`n") -split "`n")) {
+            if ($line -cmatch '^  ([a-z][a-z-]*)  ') { $names += $matches[1] }
+        }
+    }
+    $best = ''
+    $bestScore = 3
+    foreach ($n in $names) {
+        $s = _Levenshtein $n $word
+        if ($s -lt $bestScore) { $best = $n; $bestScore = $s }
+    }
+    return $best
+}
+
+function _HashFiles([string[]]$files) {
+    $readable = @($files | Where-Object { Test-Path -LiteralPath $_ })
+    if ($readable.Count -eq 0) { return '' }
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    $stream = New-Object System.IO.MemoryStream
+    foreach ($f in $readable) {
+        $bytes = [IO.File]::ReadAllBytes($f); $stream.Write($bytes, 0, $bytes.Length)
+    }
+    $stream.Position = 0
+    return ([BitConverter]::ToString($sha.ComputeHash($stream)) -replace '-', '').ToLower()
 }
 
 # Reverse mox's --porcelain field escaping (\\ \t \n \r). Windows paths are
@@ -153,21 +182,26 @@ function Cmd-Info {
 # Help
 function Cmd-Help {
     @"
-dotfiles — mox wrapper with status snapshot
+dotfiles -- mox wrapper with status snapshot
 
 Usage:
   dotfiles                  Print info snapshot (default)
   dotfiles info             Same as default
   dotfiles install          Interactive menu to (re)run install steps
   dotfiles install all      Run every install step non-interactively
+  dotfiles install none     Run only the required steps
   dotfiles install <names>  Run only the named steps (e.g. Install-Scoop, Install-Mise)
   dotfiles sync             Review untracked packages and add/blacklist them
   dotfiles edit <pattern>   Fuzzy-find a managed file and edit via mox
   dotfiles profile [name]   Print or switch the active mox profile
   dotfiles doctor           Health-check the dotfiles + mox setup
-  dotfiles upgrade [--all]  Upgrade managed tools (scoop, winget, mise, holt) with --all
+  dotfiles upgrade [--all]  mox self-update; --all also scoop, winget, mise, holt
   dotfiles <cmd>            Forward to mox (e.g. dotfiles apply, dotfiles diff)
   dotfiles --help           Show this help
+
+Shell-function overrides (source ~/.config/powershell/dotfiles-shell.ps1):
+  dotfiles cd               cd this shell to the mox repo dir
+  dotfiles apply            re-source \$PROFILE on a successful apply
 
 For mox-specific help: mox --help
 "@ | Write-Host
@@ -177,7 +211,7 @@ For mox-specific help: mox --help
 function Cmd-Edit([string[]]$EditArgs) {
     if ($EditArgs.Count -ge 1 -and ($EditArgs[0] -in '-h', '--help')) {
         @"
-dotfiles edit — fuzzy-find a managed file and open it via mox edit.
+dotfiles edit -- fuzzy-find a managed file and open it via mox edit.
 
 Usage:
   dotfiles edit <pattern>    Open managed file matching pattern in `$EDITOR
@@ -199,15 +233,13 @@ Opens the source behind the managed path; run `mox apply` to write it live.
     }
 
     $pattern = $EditArgs[0]
-    # `mox status` emits `  <state>  <path>` with an absolute path. Strip the
-    # state prefix and the $HOME prefix to get paths relative to $HOME, the
-    # same shape the matcher and picker expect.
-    $prefix = $HOME.TrimEnd('\', '/')
+    # `mox status` emits `  <state>  ~/<path>`, with an ownership annotation
+    # after a partially owned file; the path relative to $HOME is what the
+    # matcher and picker expect.
     $managed = @((& mox status 2>$null) | ForEach-Object {
-        $p = $_ -replace '^  [A-Za-z]+ +', ''
-        $p = $p.Trim()
-        if ($p.StartsWith($prefix)) { $p = $p.Substring($prefix.Length).TrimStart('\', '/') }
-        $p
+        if ($_ -cmatch '^  (?!ERROR )[A-Za-z]+ +~/(.*)$') {
+            $matches[1] -replace ' +\((own|disown) [0-9]+\)$', ''
+        }
     } | Where-Object { $_ -ne '' })
     # PowerShell -match is case-insensitive by default; -like with wildcards
     # is too. Use SimpleMatch via .IndexOf for the closest analogue to bash
@@ -245,7 +277,7 @@ Opens the source behind the managed path; run `mox apply` to write it live.
 function Cmd-Profile([string[]]$ProfileArgs) {
     if ($ProfileArgs.Count -ge 1 -and ($ProfileArgs[0] -in '-h', '--help')) {
         @"
-dotfiles profile — print or change the active mox profile.
+dotfiles profile -- print or change the active mox profile.
 
 Usage:
   dotfiles profile           Print the current profile
@@ -285,12 +317,13 @@ Usage:
 function Cmd-Doctor([string[]]$DoctorArgs) {
     if ($DoctorArgs.Count -ge 1 -and ($DoctorArgs[0] -in '-h', '--help')) {
         @"
-dotfiles doctor — health check for the dotfiles + mox setup.
+dotfiles doctor -- health check for the dotfiles + mox setup.
 
 Verifies that mox is reachable, the repo resolves, the profile
-resolves, the Windows package list is readable, the theme command
-resolves, and the Windows toolchain (pwsh + scoop or winget + mise +
-holt) is installed. Exits 0 when all checks pass, 1 if any failed.
+resolves, mox doctor reports no advisory, the Windows package list
+is readable, the theme command resolves, and the Windows toolchain
+(pwsh + scoop or winget + mise + holt) is installed. Exits 0 when
+all checks pass, 1 if any failed.
 "@ | Write-Host
         return
     }
@@ -313,6 +346,15 @@ holt) is installed. Exits 0 when all checks pass, 1 if any failed.
     Write-Host ('{0}Checks{1}' -f $Script:Bold, $Script:Reset)
 
     Script:_Check 'mox on PATH' (_Have mox)
+    if (_Have mox) {
+        $report = (& mox doctor 2>&1 | Out-String)
+        if ($report -match '(?m)[^0-9](\d+) advisory item') { $advisories = $matches[1] }
+        elseif ($report -match '(?m)[^0-9](\d+) check\(s\) skipped') { $advisories = "$($matches[1]) skipped" }
+        elseif ($report -match 'mox doctor: healthy') { $advisories = '0' }
+        else { $advisories = 'unparsed' }
+        $detail = if ($advisories -eq '0') { '' } elseif ($advisories -cmatch '^\d+$') { "$advisories advisory" } else { $advisories }
+        Script:_Check 'mox doctor reports no advisory' ($advisories -eq '0') $detail
+    }
 
     $sourceDir = _MoxRepo
     Script:_Check 'mox repo resolves to a directory' ([bool]($sourceDir -and (Test-Path -LiteralPath $sourceDir)))
@@ -347,21 +389,23 @@ function Cmd-Upgrade([string[]]$UpgradeArgs) {
     switch ($first) {
         { $_ -in '-h', '--help' } {
             @"
-dotfiles upgrade — bring managed tools up to date.
+dotfiles upgrade -- bring mox and the managed tools up to date.
 
 Usage:
-  dotfiles upgrade           Explain that mox has no self-upgrade
-  dotfiles upgrade --all     scoop + winget + mise + holt
+  dotfiles upgrade           mox self-update (mox upgrade)
+  dotfiles upgrade --all     mox, then scoop + winget + mise + holt
 
-mox installs as a release binary and has no self-upgrade; --all runs the
-upgrade gestures for each managed tool.
+--all runs the upgrade gestures for each managed tool.
 "@ | Write-Host
             return
         }
         '' {
-            Write-Host 'mox installs as a release binary; there is no self-upgrade.'
-            Write-Host 'Use `dotfiles upgrade --all` to upgrade managed tools (scoop, winget, mise, holt).'
-            return
+            if (-not (_Have mox)) {
+                [Console]::Error.WriteLine('dotfiles upgrade: mox not on PATH')
+                exit 1
+            }
+            & mox upgrade
+            exit $LASTEXITCODE
         }
         '--all' { _UpgradeAll; return }
         default {
@@ -381,6 +425,7 @@ function _UpgradeAll {
         if ($LASTEXITCODE -ne 0) { $script:upgradeFails++ }
     }
 
+    if (_Have mox)     { Script:_Step 'mox'                       { & mox upgrade --yes } }
     if (_Have scoop)   { Script:_Step 'scoop'                     { & scoop update *  } }
     if (_Have winget)  { Script:_Step 'winget'                    { & winget upgrade --all } }
     if (_Have mise)    { Script:_Step 'mise (self)'               { & mise self-update } }
@@ -399,17 +444,17 @@ function _UpgradeAll {
 function Cmd-Install([string[]]$InstallArgs) {
     if ($InstallArgs.Count -ge 1 -and ($InstallArgs[0] -in '-h', '--help')) {
         @"
-dotfiles install — interactive multi-select runner for install steps.
+dotfiles install -- interactive multi-select runner for install steps.
 
 Usage:
   dotfiles install                  Open the menu (pre-checks items whose
                                     inputs have changed since the last run)
   dotfiles install all              Run every step non-interactively
   dotfiles install none             Run only required steps (skip everything else)
-  dotfiles install <name> <name>…   Run the named steps (e.g. Install-Scoop Install-Mise)
+  dotfiles install <name> <name>...  Run the named steps (e.g. Install-Scoop Install-Mise)
 
 Inside the menu:
-  ↑/↓ navigate · space toggle · a/n select all/none
+  up/down navigate · space toggle · a/n select all/none
   / filter · enter run · q/esc cancel · ? help
 "@ | Write-Host
         return
@@ -445,9 +490,9 @@ Inside the menu:
 
     $env:MOX_REPO = $sourceDir
 
-    $scoopH = _HashFile (Join-Path $sourceDir 'etc/windows/packages.txt')
-    $miseH  = _HashFile (Join-Path $sourceDir 'src/.config/mise/config.toml')
-    $holtH  = _HashFile (Join-Path $sourceDir 'src/.config/holt/config.toml')
+    $scoopH = _HashFiles @((Join-Path $sourceDir 'etc/windows/packages.txt'), (Join-Path $sourceDir 'etc/windows/packages-blacklist.txt'))
+    $miseH  = _HashFiles @(Join-Path $sourceDir 'src/.config/mise/config.toml')
+    $holtH  = _HashFiles @(Join-Path $sourceDir 'src/.config/holt/config.toml')
 
     $items = @(
         '==Packages',
@@ -455,7 +500,7 @@ Inside the menu:
         '==Toolchains',
         "Install-Mise=Language toolchains via mise|$miseH",
         '==Workspace',
-        "Install-Holt=Workspace symlinks (holt)|$holtH"
+        "Initialize-Holt=Workspace symlinks (holt)|$holtH"
     )
 
     $env:DOTFILES_PICK_SCOPE = 'install'
@@ -466,19 +511,19 @@ Inside the menu:
 function Cmd-Sync([string[]]$SyncArgs) {
     if ($SyncArgs.Count -ge 1 -and ($SyncArgs[0] -in '-h', '--help')) {
         @"
-dotfiles sync — review installed-but-untracked packages.
+dotfiles sync -- review installed-but-untracked packages.
 
 Diffs scoop/winget's current state against etc/windows/packages.txt
 and offers a per-row TUI to assign one of these actions to each
 untracked entry:
 
-  skip   — leave it alone
-  add    — append plain `kind:name` to packages.txt (applies everywhere)
-  @prof  — append `kind:name @profile` (profile-gated)
-  block  — append to packages-blacklist.txt (sync won't surface again)
+  skip   -- leave it alone
+  add    -- append plain `kind:name` to packages.txt (applies everywhere)
+  @prof  -- append `kind:name @profile` (profile-gated)
+  block  -- append to packages-blacklist.txt (sync won't surface again)
 
 Inside the menu:
-  ↑/↓ move · space cycle · a add · p add @personal · w add @work
+  up/down move · space cycle · a add · p add @personal · w add @work
   b blacklist · s skip · enter apply · q cancel · ? help
 "@ | Write-Host
         return
@@ -531,6 +576,8 @@ switch ($first) {
             exit $LASTEXITCODE
         } else {
             [Console]::Error.WriteLine("dotfiles: unknown subcommand '$first'")
+            $near = _NearestSubcommand $first
+            if ($near) { [Console]::Error.WriteLine("did you mean: dotfiles $near") }
             [Console]::Error.WriteLine('see `dotfiles --help` (wrapper) or `mox --help` (forwarded)')
             exit 1
         }
