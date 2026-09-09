@@ -1,4 +1,4 @@
-# scoop — bootstrap + Windows package install (analog of etc/bash/lib/brew.bash).
+# scoop -- bootstrap + Windows package install (analog of etc/bash/lib/brew.bash).
 # Reads etc/windows/packages.txt, filters to the current profile, and
 # installs whatever's missing. Honors `bucket:`, `scoop` (default), and
 # `winget:` kinds.
@@ -7,6 +7,10 @@
 # but aren't intended for outside callers.
 
 Import-Module (Join-Path $PSScriptRoot 'Msg.psm1')      -Force
+
+# The scoop bootstrap script, pinned to a commit and checked by digest.
+$Script:ScoopInstallCommit = '1e2f334083d609986d8c8bc9e31ae8e87c39fab4'
+$Script:ScoopInstallSha256 = '94f983b190438311e006b957db7c8422709e0ba62a6c2ac04e278164108f2512'
 Import-Module (Join-Path $PSScriptRoot 'Packages.psm1') -Force
 
 # Bootstrap: install the scoop binary itself when missing. Returns $true
@@ -20,7 +24,25 @@ function Initialize-ScoopBinary {
     Write-Arrow 'Scoop is missing'
     Write-Heading 'Installing scoop'
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-    Invoke-RestMethod -Uri 'https://get.scoop.sh' | Invoke-Expression
+    # Scoop publishes no release artifact, so the bootstrap is pinned to a
+    # commit of its install repository and checked against a digest recorded
+    # here. When upstream changes the
+    # script this fails closed and the digest is updated deliberately, which
+    # is the point: piping an unpinned remote script into Invoke-Expression
+    # runs whatever it says today.
+    $tmp = Join-Path ([IO.Path]::GetTempPath()) ("scoop-install-" + [Guid]::NewGuid() + ".ps1")
+    try {
+        Invoke-WebRequest -Uri "https://raw.githubusercontent.com/ScoopInstaller/Install/$Script:ScoopInstallCommit/install.ps1" -OutFile $tmp -UseBasicParsing
+        $got = (Get-FileHash -Algorithm SHA256 -Path $tmp).Hash.ToLower()
+        if ($got -ne $Script:ScoopInstallSha256) {
+            Write-Failure "scoop installer checksum mismatch: $got (expected $Script:ScoopInstallSha256)"
+            Write-Arrow 'If upstream changed the script deliberately, review it and update ScoopInstallSha256.'
+            return $false
+        }
+        & $tmp
+    } finally {
+        Remove-Item $tmp -Force -ErrorAction SilentlyContinue
+    }
     if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
         Write-Failure 'Scoop installation has failed'
         return $false
@@ -85,7 +107,7 @@ function Install-Scoop {
     $pkgFile   = Join-Path $sourceDir 'etc/windows/packages.txt'
     $blFile    = Join-Path $sourceDir 'etc/windows/packages-blacklist.txt'
     $packages  = Read-PackagesFile $pkgFile 'scoop' $profile
-    $blacklist = Read-PackagesFile $blFile  'scoop' $profile
+    $blacklist = Read-PackagesFileAll $blFile 'scoop'
 
     $blockedKey = @{}
     foreach ($e in $blacklist) { $blockedKey["$($e.Kind):$($e.Name)"] = $true }
@@ -99,7 +121,7 @@ function Install-Scoop {
     $bucketEntries = @($packages | Where-Object { $_.Kind -eq 'bucket' })
     if ($bucketEntries.Count -gt 0) {
         Write-Heading 'scoop buckets'
-        $existing = @((& scoop bucket list 2>$null) | ForEach-Object { ($_ -split '\s+')[0] } | Where-Object { $_ -and $_ -ne 'Name' })
+        $existing = @((& scoop bucket list 2>$null) | ForEach-Object { $_.Name } | Where-Object { $_ })
         foreach ($b in $bucketEntries) {
             if ($existing -contains $b.Name) {
                 Write-Arrow ("$($b.Name) (already added)")
@@ -124,7 +146,7 @@ function Install-Scoop {
     if ($wingetEntries.Count -gt 0) {
         Write-Heading 'winget apps'
         if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
-            Write-Failure 'winget not on PATH — declared winget entries skipped (install App Installer from the Microsoft Store)'
+            Write-Failure 'winget not on PATH -- declared winget entries skipped (install App Installer from the Microsoft Store)'
         } else {
             $wingetInstalled = Get-WingetInstalledMap
             $missingWinget   = @($wingetEntries | Where-Object { -not $wingetInstalled.ContainsKey($_.Name) })

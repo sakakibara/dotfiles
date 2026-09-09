@@ -6,7 +6,12 @@
 
 Import-Module (Join-Path $PSScriptRoot 'Msg.psm1') -Force
 
-$Script:HoltInstallUrl = 'https://raw.githubusercontent.com/sakakibara/holt/main/scripts/install.ps1'
+# Fetched at a release tag and checked against a digest recorded here, and the
+# version is passed through so the binary is pinned too -- the bash path does
+# the same. A `main` URL piped straight into Invoke-Expression was neither.
+$Script:HoltVersion = '0.9.2'
+$Script:HoltInstallUrl = "https://raw.githubusercontent.com/sakakibara/holt/v$Script:HoltVersion/scripts/install.ps1"
+$Script:HoltInstallSha256 = '28f8202dc45ec4999d54b28102aaab2b788b25ec24b13740db1367b909716f6d'
 
 # The holt executable to invoke: the one on PATH, or its default install path
 # (install.ps1 adds itself to PATH, but the current session won't see that
@@ -58,7 +63,20 @@ function Install-Holt {
     Write-Arrow 'holt is missing'
     Write-Heading 'Installing holt'
     # Out-Null so nothing the installer emits leaks into this function's return.
-    Invoke-RestMethod $Script:HoltInstallUrl | Invoke-Expression | Out-Null
+    $tmp = Join-Path ([IO.Path]::GetTempPath()) ("holt-install-" + [Guid]::NewGuid() + ".ps1")
+    try {
+        Invoke-WebRequest -Uri $Script:HoltInstallUrl -OutFile $tmp -UseBasicParsing
+        $got = (Get-FileHash -Algorithm SHA256 -Path $tmp).Hash.ToLower()
+        if ($got -ne $Script:HoltInstallSha256) {
+            Write-Failure "holt installer checksum mismatch: $got"
+            return $false
+        }
+        $env:HOLT_VERSION = "v$Script:HoltVersion"
+        & $tmp | Out-Null
+    } finally {
+        Remove-Item $tmp -Force -ErrorAction SilentlyContinue
+        Remove-Item Env:HOLT_VERSION -ErrorAction SilentlyContinue
+    }
 
     if (-not (Get-HoltExe)) {
         Write-Failure 'holt installation failed'
