@@ -7,11 +7,11 @@ onboarding = false
 # ctrl+q is the only ergonomic single-modifier chord left unclaimed across
 # every layer that sees a keypress first: macOS globals (opt+space -> ChatGPT,
 # ctrl+space -> input switch), the terminal (Cmd, Ctrl+Shift), and the
-# shell/fzf (readline motions, C-t/C-r, and the zsh/fish rebinds). It only
-# shadows readline quoted-insert, which is duplicated on ctrl+v and still
-# reachable by pressing the prefix twice. Every action is prefix-guarded
-# except the direct alt+1..9 workspace jump below, which is safe because no
-# pane app binds alt+digit.
+# shell/fzf (readline motions, C-t/C-r, the zsh/fish rebinds; zsh keeps Esc-q
+# push-line-or-edit). It shadows readline quoted-insert (also on ctrl+v) and
+# nvim's terminal escape, both reachable by the prefix twice. Every action is
+# prefix-guarded except the direct alt+1..9 workspace jump below, which is
+# safe because no pane app binds alt+digit.
 prefix = "ctrl+q"
 
 # Every action is pinned explicitly, defaults included, so this file is the
@@ -108,8 +108,8 @@ command = "lazygit"
 # `theme set`. herdr can't shell out or include a file, so the current theme is
 # seeded here from the same state (via `theme resolve herdr`) - keeping apply and
 # runtime in sync so neither clobbers the other. The `|| echo` guard falls back
-# to catppuccin when the theme tool isn't yet on PATH (fresh machine) or predates
-# herdr support (first apply of this change); the next `theme set`/`reload` fixes it.
+# to catppuccin when the theme tool is not yet on PATH (fresh machine); the next
+# `theme set`/`reload` fixes it.
 name = "<secret:cmd:theme resolve herdr 2\>/dev/null || echo catppuccin>"
 
 [ui]
