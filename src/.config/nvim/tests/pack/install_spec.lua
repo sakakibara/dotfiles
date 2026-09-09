@@ -22,10 +22,13 @@ local function fresh()
   package.loaded["core.pack.jobs"] = nil
   package.loaded["core.pack.version"] = nil
   package.loaded["core.pack.ui"] = nil
+  package.loaded["core.pack.log"] = nil
   local I = require("core.pack.install")
   local L = require("core.pack.lock")
   L._path_override = vim.fn.tempname() .. ".json"
   os.remove(L._path_override)
+  -- install's final_cb appends to core.pack.log; keep it off the real state.
+  require("core.pack.log")._path_override = vim.fn.tempname() .. ".jsonl"
   I._install_root_override = vim.fn.tempname() .. "-pack"
   vim.fn.mkdir(I._install_root_override, "p")
   return I, L
@@ -296,7 +299,7 @@ T.describe("core.pack.install", function()
     T.eq(Txn.read().attempts, 2)
 
     -- A subsequent apply_pending writes a fresh txn (different pending) but
-    -- must NOT reset attempts — otherwise resume loops forever.
+    -- must NOT reset attempts -- otherwise resume loops forever.
     Txn.begin({ { spec = { name = "b" }, dir = "/y", from = "f", to = "t",
                   target_rev = "t", ref = nil, checkout_ref = nil } })
     T.eq(Txn.read().attempts, 2)

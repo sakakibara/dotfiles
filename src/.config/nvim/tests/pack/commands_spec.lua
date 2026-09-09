@@ -37,6 +37,15 @@ local function fresh_commands()
   return require("core.pack.commands")
 end
 
+local function fresh_log()
+  -- Drop any stub and hand back the real module on a throwaway path, so a
+  -- render that reaches log.append cannot touch the real state file.
+  package.loaded["core.pack.log"] = nil
+  local fresh = require("core.pack.log")
+  fresh._path_override = vim.fn.tempname() .. ".jsonl"
+  return fresh
+end
+
 T.describe("core.pack.commands :Pack dispatcher", function()
   T.it("registers a single :Pack command with bang and unbounded nargs", function()
     with_stubbed_command(function(get)
@@ -76,7 +85,7 @@ T.describe("core.pack.commands :Pack dispatcher", function()
   T.it("complete() respects the Pack! prefix when tokenizing", function()
     with_stubbed_command(function(get)
       fresh_commands().setup(fake_pack())
-      -- "Pack!" with a space then partial subcommand — the bang must not
+      -- "Pack!" with a space then partial subcommand -- the bang must not
       -- count as part of the subcommand name during tokenization.
       local out = get().opts.complete("up", "Pack! up", 8)
       T.eq(#out, 1)
@@ -512,7 +521,7 @@ T.describe("core.pack.commands :Pack log", function()
         T.truthy(found, "expected 'no log entries' notify, got: " .. vim.inspect(notes))
       end)
       package.preload["core.pack.log"] = nil
-      package.loaded["core.pack.log"] = nil
+      fresh_log()
     end)
   end)
 
@@ -537,7 +546,7 @@ T.describe("core.pack.commands :Pack log", function()
         end)
       end)
       package.preload["core.pack.log"] = nil
-      package.loaded["core.pack.log"] = nil
+      fresh_log()
       T.truthy(status_called_with, "UI.status should have been invoked")
       T.truthy(status_called_with.lines[1]:match("last %d+ entries"),
         "log header should mention entry count")

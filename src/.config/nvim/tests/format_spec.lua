@@ -11,7 +11,7 @@ local function clear_buffer_var(buf)
   pcall(function() vim.b[buf or 0].autoformat = nil end)
 end
 
-T.describe("lib.format — registration + resolution", function()
+T.describe("lib.format -- registration + resolution", function()
   T.it("register adds a formatter source", function()
     local fmt = reset_format()
     fmt.register({
@@ -82,7 +82,7 @@ T.describe("lib.format — registration + resolution", function()
   end)
 end)
 
-T.describe("lib.format — enable/disable + toggles", function()
+T.describe("lib.format -- enable/disable + toggles", function()
   T.it("enabled defaults to true", function()
     local fmt = reset_format()
     T.eq(fmt.enabled(0), true)
@@ -120,7 +120,7 @@ T.describe("lib.format — enable/disable + toggles", function()
   end)
 end)
 
-T.describe("lib.format — format() semantics", function()
+T.describe("lib.format -- format() semantics", function()
   T.it("no formatters + no force: silent, no warning", function()
     local fmt = reset_format()
     local warned = false

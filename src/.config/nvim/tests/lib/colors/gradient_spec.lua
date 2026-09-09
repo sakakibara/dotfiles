@@ -51,7 +51,7 @@ T.describe("lib.colors.gradient", function()
 
   T.it("ignores gradient calls with fewer than 2 colors", function()
     local G = require("lib.colors.gradient")
-    -- Direction only — no colors. parse_all returns 0 stops.
+    -- Direction only -- no colors. parse_all returns 0 stops.
     local buf = make_buf({ "bg: linear-gradient(90deg);" }, "css")
     G.render(buf, 0, 0)
     local marks = vim.api.nvim_buf_get_extmarks(buf, G.ns, 0, -1, {})

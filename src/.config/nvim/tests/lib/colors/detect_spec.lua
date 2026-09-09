@@ -30,7 +30,7 @@ T.describe("lib.colors.detect regex fallback", function()
   end)
 
   T.it("respects 256KB total visible cap", function()
-    -- 300 lines × 1000 chars = 300KB > 256KB
+    -- 300 lines x 1000 chars = 300KB > 256KB
     local lines = {}
     for i = 1, 300 do lines[i] = string.rep("x", 999) .. " #ff0000" end
     local buf = make_buf(lines)
@@ -44,7 +44,7 @@ T.describe("lib.colors.detect TS dispatch", function()
   T.it("uses TS for CSS buffers", function()
     -- Requires a CSS tree-sitter parser on disk. CI compiles one in
     -- .github/workflows/ci.yml. Locally the parser may be missing
-    -- (e.g., after trashing ~/.local/share/nvim/) — in that case skip
+    -- (e.g., after trashing ~/.local/share/nvim/) -- in that case skip
     -- the assertion rather than fail; regex fallback over-captures the
     -- comment color, which is a known limitation, not a regression.
     -- vim.treesitter.language.add returns false (no error) when the
@@ -52,13 +52,13 @@ T.describe("lib.colors.detect TS dispatch", function()
     local has_parser = vim.api.nvim_get_runtime_file("parser/css.so", false)[1]
       or vim.api.nvim_get_runtime_file("parser/css.dylib", false)[1]
     if not has_parser then
-      print("      (skipped — CSS treesitter parser not installed)")
+      print("      (skipped -- CSS treesitter parser not installed)")
       return
     end
     local buf = make_buf({
       ".btn {",
       "  color: #ff0000;",
-      "  /* #00ff00 — should be skipped (inside a comment) */",
+      "  /* #00ff00 -- should be skipped (inside a comment) */",
       "}",
     })
     vim.bo[buf].filetype = "css"
@@ -90,7 +90,7 @@ T.describe("lib.colors.detect JSON string values", function()
     })
     vim.bo[buf].filetype = "json"
     local results = D.detect(buf, 0, 0)
-    -- Two strings, two colors. (Keys are also strings — but "color"/"bg"
+    -- Two strings, two colors. (Keys are also strings -- but "color"/"bg"
     -- aren't valid colors so parse_all returns nothing for them.)
     T.eq(#results, 2)
   end)

@@ -8,7 +8,7 @@ local M = {}
 --   git tag --list                       -> "tag --list"
 --   git -C /some/dir rev-parse --verify HEAD -> "rev-parse --verify HEAD"
 -- Supports both sync (`:wait()`) and async (`vim.system(cmd, opts, cb)`)
--- callers — production code now uses the latter exclusively.
+-- callers -- production code now uses the latter exclusively.
 -- Returns a `restore` closure; call it to reinstate the original vim.system.
 function M.stub_system(responses)
   local orig = vim.system

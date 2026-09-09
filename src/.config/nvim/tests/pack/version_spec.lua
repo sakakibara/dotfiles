@@ -8,24 +8,24 @@ local refs = {
 }
 
 T.describe("core.pack.version.resolve", function()
-  T.it("nil version → default sentinel", function()
+  T.it("nil version -> default sentinel", function()
     local V = fresh()
     local r = V.resolve(nil, refs)
     T.eq(r.kind, "default")
     T.eq(r.name, nil)
   end)
 
-  T.it("exact tag string → tag", function()
+  T.it("exact tag string -> tag", function()
     local V = fresh()
     T.eq(V.resolve("v1.0.0", refs), { kind = "tag", name = "v1.0.0" })
   end)
 
-  T.it("branch string → branch (matched against branches list)", function()
+  T.it("branch string -> branch (matched against branches list)", function()
     local V = fresh()
     T.eq(V.resolve("develop", refs), { kind = "branch", name = "develop" })
   end)
 
-  T.it("40-char hex string → commit", function()
+  T.it("40-char hex string -> commit", function()
     local V = fresh()
     local sha = string.rep("a", 40)
     T.eq(V.resolve(sha, refs), { kind = "commit", name = sha })

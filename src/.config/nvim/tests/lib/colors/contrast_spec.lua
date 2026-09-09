@@ -45,14 +45,14 @@ T.describe("lib.colors.contrast", function()
     local buf = make_buf({ "color: #ffffff; background: #000000;" }, "css")
     vim.api.nvim_set_current_buf(buf)
 
-    -- Off → on
+    -- Off -> on
     local first = CT.toggle(buf)
     T.eq(first, true)
     T.eq(CT.is_enabled(buf), true)
     local marks = vim.api.nvim_buf_get_extmarks(buf, CT.ns, 0, -1, {})
     T.eq(#marks, 1)
 
-    -- On → off (clears marks)
+    -- On -> off (clears marks)
     local second = CT.toggle(buf)
     T.eq(second, false)
     marks = vim.api.nvim_buf_get_extmarks(buf, CT.ns, 0, -1, {})

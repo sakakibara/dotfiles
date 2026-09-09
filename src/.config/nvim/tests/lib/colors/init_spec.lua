@@ -173,7 +173,7 @@ T.describe("lib.colors :ColorConvert / :ColorYank", function()
     T.truthy(cmds.ColorYank,    ":ColorYank not registered")
   end)
 
-  T.it("convert(rgb) rewrites #ff0000 → rgb(255 0 0) inline", function()
+  T.it("convert(rgb) rewrites #ff0000 -> rgb(255 0 0) inline", function()
     package.loaded["lib.colors"] = nil
     require("lib").init()
     Lib.colors.setup({})
@@ -244,7 +244,7 @@ T.describe("lib.colors DirChanged rescans project", function()
     vim.api.nvim_exec_autocmds("DirChanged", { pattern = "global" })
 
     -- Overlay was reset (then scan_project was called against cwd; we don't
-    -- assert on its contents — just that the staged stale entry is gone).
+    -- assert on its contents -- just that the staged stale entry is gone).
     T.eq(TW._overlay["brand"], nil, "stale entry not cleared")
   end)
 end)

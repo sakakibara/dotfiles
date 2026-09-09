@@ -33,22 +33,22 @@ T.describe("core.pack.refs.validate", function()
 end)
 
 T.describe("core.pack.refs.qualified", function()
-  T.it("tag → refs/tags/<name>", function()
+  T.it("tag -> refs/tags/<name>", function()
     T.eq(reset_refs().qualified("tag", "v1.0"), "refs/tags/v1.0")
   end)
-  T.it("branch → refs/remotes/origin/<name>", function()
+  T.it("branch -> refs/remotes/origin/<name>", function()
     T.eq(reset_refs().qualified("branch", "main"), "refs/remotes/origin/main")
   end)
-  T.it("commit → name unchanged", function()
+  T.it("commit -> name unchanged", function()
     T.eq(reset_refs().qualified("commit", "abc123"), "abc123")
   end)
-  T.it("default → refs/remotes/origin/HEAD", function()
+  T.it("default -> refs/remotes/origin/HEAD", function()
     T.eq(reset_refs().qualified("default", nil), "refs/remotes/origin/HEAD")
   end)
 end)
 
 T.describe("core.pack.refs.resolve", function()
-  T.it("nil version → default branch SHA", function()
+  T.it("nil version -> default branch SHA", function()
     local Refs = reset_refs()
     local restore = stubs.stub_system({
       ["tag --list"] = { code = 0, stdout = "" },
@@ -64,7 +64,7 @@ T.describe("core.pack.refs.resolve", function()
     T.eq(resolved.sha, "deadbeef1234567")
   end)
 
-  T.it("explicit tag version → tag SHA", function()
+  T.it("explicit tag version -> tag SHA", function()
     local Refs = reset_refs()
     local restore = stubs.stub_system({
       ["tag --list"] = { code = 0, stdout = "v1.0\nv1.1\n" },
@@ -102,7 +102,7 @@ T.describe("core.pack.refs.resolve", function()
       -- rev-parse "succeeds" but returns garbage. Git.rev_parse itself will
       -- reject this (its own validation), but if it slipped through, refs
       -- would catch it. Simulate the slip-through by stubbing rev-parse to
-      -- return something that LOOKS hex-shaped but is somehow flag-like —
+      -- return something that LOOKS hex-shaped but is somehow flag-like --
       -- which Git.rev_parse's `^%x+$` check would reject. Use Git.rev_parse's
       -- existing rejection as the verification path.
       ["rev-parse --verify refs/remotes/origin/HEAD^{commit}"] = { code = 0, stdout = "not-a-sha\n" },

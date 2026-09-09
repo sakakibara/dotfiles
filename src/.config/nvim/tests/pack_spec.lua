@@ -403,8 +403,8 @@ T.describe("core.pack re-fires triggering event", function()
   T.it("does not nest past E218 when handler pumps the event loop", function()
     -- Regression: conform.format's internal vim.wait() drains pending schedule
     -- callbacks during a handler run. Without dedup, 15 pending re-fires for
-    -- BufWritePre stacked into the call stack (each invoking Lib.format →
-    -- conform.format → vim.wait → next pending) until nvim's nesting limit
+    -- BufWritePre stacked into the call stack (each invoking Lib.format ->
+    -- conform.format -> vim.wait -> next pending) until nvim's nesting limit
     -- (10) tripped E218.
     local pack = reset_pack()
     local nesting_error = false
@@ -468,7 +468,7 @@ T.describe("core.pack re-fires triggering event", function()
     vim.wait(200, function() return runs >= 1 end)
     -- One handler run from the first scheduled refire. The second refire
     -- queued mid-handler must wait for active=false to clear, but by then
-    -- the pending flag is clear and it runs — so we expect exactly 2 total.
+    -- the pending flag is clear and it runs -- so we expect exactly 2 total.
     -- The key assertion: runs did NOT reach 2 *during* the first's vim.wait
     -- (that would be nesting). Verify by checking that between the vim.wait
     -- and now, runs advanced from 1 to 2 (second runs after first returns).
@@ -497,7 +497,7 @@ T.describe("core.pack re-fires triggering event", function()
       end,
     })
 
-    -- Two schedules for different buffer keys — both must run.
+    -- Two schedules for different buffer keys -- both must run.
     pack._schedule_refire("BufWritePre", { buffer = buf_a, modeline = false })
     pack._schedule_refire("BufWritePre", { buffer = buf_b, modeline = false })
     vim.wait(200, function() return seen[buf_a] and seen[buf_b] end)
@@ -517,7 +517,7 @@ local function unmap_all(lhs, modes)
   end
 end
 
-T.describe("core.pack keys — rhs resolution", function()
+T.describe("core.pack keys -- rhs resolution", function()
   T.it("<Plug> string rhs resolves post-load (eager plugin)", function()
     local pack = reset_pack()
     unmap_all("<F20>")
@@ -596,7 +596,7 @@ T.describe("core.pack keys — rhs resolution", function()
     T.eq(pack.loaded("plug-lazy"), false)
     vim.api.nvim_feedkeys(
       vim.api.nvim_replace_termcodes("<F23>", true, false, true), "mx", false)
-    -- replay happens in "m" mode (remap) — give the scheduler a tick
+    -- replay happens in "m" mode (remap) -- give the scheduler a tick
     vim.wait(100, function() return fired end)
     T.truthy(fired, "lazy-triggered <Plug> did not fire after load + replay")
     T.truthy(pack.loaded("plug-lazy"))
@@ -624,7 +624,7 @@ T.describe("core.pack keys — rhs resolution", function()
   end)
 end)
 
-T.describe("core.pack keys — <Plug> validation", function()
+T.describe("core.pack keys -- <Plug> validation", function()
   T.it("warns when <Plug> rhs has no mapping after load", function()
     local pack = reset_pack()
     unmap_all("<F25>")
@@ -642,7 +642,7 @@ T.describe("core.pack keys — <Plug> validation", function()
     })
     -- bad-plug is lazy (keys-only trigger); force load so install_spec_keys
     -- runs validate_plug. A real user would see this warning the first
-    -- time they press the key — at load time, which is the right moment.
+    -- time they press the key -- at load time, which is the right moment.
     pack.load("bad-plug")
     vim.notify = orig
     T.truthy(warned, "no warning for unresolved <Plug> target")
@@ -650,7 +650,7 @@ T.describe("core.pack keys — <Plug> validation", function()
   end)
 end)
 
-T.describe("core.pack keys — conflict detection", function()
+T.describe("core.pack keys -- conflict detection", function()
   T.it("warns when two specs bind the same lhs+mode", function()
     local pack = reset_pack()
     unmap_all("<F26>")
@@ -717,12 +717,12 @@ T.describe("core.pack add_keys API", function()
   end)
 end)
 
-T.describe("core.pack keys — external collision detection", function()
+T.describe("core.pack keys -- external collision detection", function()
   T.it("warns when a spec key overrides an existing global mapping", function()
     local pack = reset_pack()
     unmap_all("<F29>")
     -- Pre-install an external mapping (simulating config/keymaps.lua or a
-    -- plugin's setup() body — neither goes through core.pack's spec path).
+    -- plugin's setup() body -- neither goes through core.pack's spec path).
     vim.keymap.set("n", "<F29>", "<Cmd>echo 'external'<CR>", { desc = "External pre-existing" })
 
     local notified = false
@@ -749,7 +749,7 @@ T.describe("core.pack keys — external collision detection", function()
   T.it("does NOT warn when our own spec re-installs its own keymap", function()
     local pack = reset_pack()
     unmap_all("<F30>")
-    -- First install via spec — sets the mapping with desc "key: own".
+    -- First install via spec -- sets the mapping with desc "key: own".
     pack.setup({
       specs = {
         { dev = true, name = "own", keys = { { "<F30>", function() end, mode = "n" } },
@@ -827,7 +827,7 @@ T.describe("core.pack keys — external collision detection", function()
     vim.wait(100, function() return pack.loaded("custom-desc-lazy") end)
     vim.notify = orig
     T.truthy(pack.loaded("custom-desc-lazy"),
-      "spec never loaded — stub->real did not fire; warning assertions would be vacuous")
+      "spec never loaded -- stub->real did not fire; warning assertions would be vacuous")
     for _, msg in ipairs(warnings) do
       T.eq(msg:match("Custom Description"), nil,
         "false-positive: stub->real warned with the spec's own desc")
@@ -887,7 +887,7 @@ T.describe("core.pack keys — external collision detection", function()
     vim.wait(100, function() return pack.loaded("override-lazy") end)
     vim.notify = orig
     T.truthy(pack.loaded("override-lazy"),
-      "spec never loaded — stub->real did not fire; warning assertion would be vacuous")
+      "spec never loaded -- stub->real did not fire; warning assertion would be vacuous")
     T.eq(#warnings, 0, "override = true should suppress warning at stub and at stub->real")
     unmap_all("<F34>")
   end)
@@ -1102,7 +1102,7 @@ T.describe("core.pack keys — external collision detection", function()
   end)
 end)
 
-T.describe("core.pack keys — ft-scoped external collisions", function()
+T.describe("core.pack keys -- ft-scoped external collisions", function()
   T.it("ft-scoped preserve runs at FileType time, per-buffer", function()
     local pack = reset_pack()
     unmap_all("<F50>")
@@ -1113,7 +1113,7 @@ T.describe("core.pack keys — ft-scoped external collisions", function()
     for _ = 1, 2 do
       local buf = vim.api.nvim_create_buf(true, false)
       table.insert(bufs, buf)
-      vim.api.nvim_buf_set_option(buf, "filetype", "")
+      vim.bo[buf].filetype = ""
       vim.api.nvim_set_current_buf(buf)
       vim.keymap.set("n", "<F50>", ":noh<CR>", { buffer = buf, desc = "Original buf" })
     end
@@ -1185,7 +1185,7 @@ T.describe("core.pack module name resolution", function()
     end)
   end)
 
-  T.it("resolves dash → underscore mismatch (better-escape.nvim → better_escape)", function()
+  T.it("resolves dash -> underscore mismatch (better-escape.nvim -> better_escape)", function()
     local pack = reset_pack()
     local root = make_plugin("better-escape.nvim", "better_escape")
     with_root(root, function()
@@ -1193,7 +1193,7 @@ T.describe("core.pack module name resolution", function()
     end)
   end)
 
-  T.it("resolves nvim- prefix mismatch (nvim-treesitter-context → treesitter-context)", function()
+  T.it("resolves nvim- prefix mismatch (nvim-treesitter-context -> treesitter-context)", function()
     local pack = reset_pack()
     local root = make_plugin("nvim-treesitter-context", "treesitter-context")
     with_root(root, function()
@@ -1201,7 +1201,7 @@ T.describe("core.pack module name resolution", function()
     end)
   end)
 
-  T.it("resolves nvim- prefix + .nvim suffix (nvim-ufo → ufo)", function()
+  T.it("resolves nvim- prefix + .nvim suffix (nvim-ufo -> ufo)", function()
     local pack = reset_pack()
     local root = make_plugin("nvim-ufo", "ufo")
     with_root(root, function()
@@ -1211,8 +1211,8 @@ T.describe("core.pack module name resolution", function()
 
   T.it("falls through to derived name when no module dir matches", function()
     -- ibl-style: lua/ibl exists but plugin name is indent-blankline.nvim. The
-    -- normalized names don't match, so we fall through to derived "indent-blankline"
-    -- — this is a case where the user MUST set spec.main = "ibl" explicitly.
+    -- normalized names don't match, so we fall through to derived "indent-blankline":
+    -- this is a case where the user MUST set spec.main = "ibl" explicitly.
     local pack = reset_pack()
     local root = make_plugin("indent-blankline.nvim", "ibl")
     with_root(root, function()
@@ -1547,7 +1547,7 @@ T.describe("core.pack install_all on_complete callback", function()
     Install.install_dir     = orig_id
     vim.notify = orig_notify
 
-    -- 2 specs total, 1 failed → message says "installed 1 plugins"
+    -- 2 specs total, 1 failed -> message says "installed 1 plugins"
     local matched
     for _, m in ipairs(notifications) do
       if m:match("installed 1 plugins") then matched = m; break end

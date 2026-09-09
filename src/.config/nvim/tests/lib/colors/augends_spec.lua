@@ -51,7 +51,7 @@ T.describe("lib.colors.augends add()", function()
     local hue = A.hue({ step = 30 })
     local C = require("lib.colors.color")
     -- One full rotation (12 * 30° = 360°) should land back near the
-    -- original h — pure red is ~29° in OKLCH, not 0°, so we compare
+    -- original h -- pure red is ~29° in OKLCH, not 0°, so we compare
     -- against the source h rather than 0.
     local _, _, h0 = C.to_oklch(C.from_hex("#ff0000"))
     local out      = hue.add("#ff0000", 12, 1).text
