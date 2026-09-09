@@ -3,23 +3,26 @@ M.__index = M
 
 local DIRECTIVES = {
   "when", "end", "include", "secret", "replace", "append", "prepend",
-  "remove", "from", "for",
-}
+  "remove", "from", "for", "default", "keep-empty", "completions", "own",
+  "disown", "check", }
 
-local AXES = { "os", "arch", "profile", "machine", "tool", "env", "path" }
+local AXES = { "os", "arch", "profile", "machine", "hostname", "tool", "env" }
 
 local NAMESPACES = { "machine.", "env.", "data.", "entry.", "secret:" }
 
 local MACHINE_FIELDS = {
-  "os", "arch", "home", "hostname", "brew_prefix", "xdg_config_home", "tool_path.",
+  "os", "arch", "hostname", "username", "home",
+  "xdg_config_home", "xdg_cache_home", "xdg_data_home", "xdg_state_home",
+  "tool_path.",
 }
 
-local _facts_cache = { mtime = 0, keys = {} }
+local _facts_cache = { path = "", mtime = 0, keys = {} }
+local _derived_cache = { path = "", mtime = 0, keys = {} }
 
 function M.read_facts(path)
   local stat = vim.uv.fs_stat(path)
   if not stat then return {} end
-  if stat.mtime.sec == _facts_cache.mtime then return _facts_cache.keys end
+  if path == _facts_cache.path and stat.mtime.sec == _facts_cache.mtime then return _facts_cache.keys end
   local keys = {}
   local f = io.open(path, "r")
   if not f then return {} end
@@ -29,12 +32,38 @@ function M.read_facts(path)
   end
   f:close()
   table.sort(keys)
-  _facts_cache = { mtime = stat.mtime.sec, keys = keys }
+  _facts_cache = { path = path, mtime = stat.mtime.sec, keys = keys }
   return keys
 end
 
+function M.read_derived_facts(path)
+  local stat = vim.uv.fs_stat(path)
+  if not stat then return {} end
+  if path == _derived_cache.path and stat.mtime.sec == _derived_cache.mtime then return _derived_cache.keys end
+  local keys = {}
+  local f = io.open(path, "r")
+  if not f then return {} end
+  for line in f:lines() do
+    local key = line:match('^%s*name%s*=%s*"([%w_]+)"')
+    if key then table.insert(keys, key) end
+  end
+  f:close()
+  table.sort(keys)
+  _derived_cache = { path = path, mtime = stat.mtime.sec, keys = keys }
+  return keys
+end
+
+function M.fact_names()
+  local config = vim.env.XDG_CONFIG_HOME
+  config = (config and config ~= "") and config or vim.fn.expand("~/.config")
+  local out = vim.list_extend({}, M.read_facts(config .. "/mox/facts.toml"))
+  vim.list_extend(out, M.read_derived_facts(require("lib.mox").repo() .. "/data/facts.toml"))
+  table.sort(out)
+  return out
+end
+
 function M.directive_candidates(line_to_cursor)
-  if not line_to_cursor:match("mox:%s*[%w]*$") then return nil end
+  if not line_to_cursor:match("mox:%s*[%w%-]*$") then return nil end
   return DIRECTIVES
 end
 
@@ -77,7 +106,7 @@ function M:get_completions(_ctx, callback)
   local Kind = require("blink.cmp.types").CompletionItemKind
   local row_col = vim.api.nvim_win_get_cursor(0)
   local line = vim.api.nvim_get_current_line():sub(1, row_col[2])
-  local facts = M.read_facts(vim.fn.expand("~/.config/mox/facts.toml"))
+  local facts = M.fact_names()
   local items = {}
 
   local directives = M.directive_candidates(line)

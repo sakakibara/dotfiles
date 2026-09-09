@@ -3,6 +3,8 @@ local M = {}
 function M.repo()
   local r = vim.env.MOX_REPO
   if r and r ~= "" then return (r:gsub("/+$", "")) end
+  local data = vim.env.XDG_DATA_HOME
+  if data and data ~= "" then return (data:gsub("/+$", "")) .. "/mox/dotfiles" end
   return vim.fn.expand("~/.local/share/mox/dotfiles")
 end
 
@@ -38,6 +40,18 @@ local function buf_path()
   return vim.api.nvim_buf_get_name(0)
 end
 
+function M.is_generator(src_path)
+  local fd = io.open(src_path, "r")
+  if not fd then return false end
+  for _ = 1, 16 do
+    local line = fd:read("*l")
+    if not line then break end
+    if line:match("mox:%s*for%s+.*%sinto%s") or line:match("mox:%s*completions%s") then fd:close(); return true end
+  end
+  fd:close()
+  return false
+end
+
 local function live_target_of_current()
   local name = buf_path()
   local live = M.live_of(name)
@@ -45,6 +59,13 @@ local function live_target_of_current()
   local src = M.source_of(name)
   if src and vim.uv.fs_stat(src) then return name end
   return nil
+end
+
+function M.diff_text(out)
+  if out.code ~= 0 then return nil end
+  local text = out.stdout or ""
+  if text == "" then return "(no difference)" end
+  return text
 end
 
 local function notify_result(verb, out)
@@ -59,12 +80,22 @@ local function notify_result(verb, out)
 end
 
 local function run_scoped(verb, target, on_done)
-  vim.system({ "mox", verb, target }, { text = true }, function(out)
+  local cmd = { "mox", verb }
+  if target then cmd[#cmd + 1] = target end
+  vim.system(cmd, { text = true }, function(out)
     vim.schedule(function()
       notify_result(verb, out)
       if on_done then on_done(out) end
     end)
   end)
+end
+
+function M.touched_nothing(out)
+  local text = (out.stdout or "") .. "\n" .. (out.stderr or "")
+  local written = text:match("(%d+) written")
+  local removed = text:match("(%d+) removed")
+  local unchanged = text:match("(%d+) unchanged")
+  return written == "0" and removed == "0" and unchanged == "0"
 end
 
 local function show_scratch(name, lines, ft)
@@ -95,8 +126,13 @@ function M.setup()
     pattern = src_root .. "/*",
     callback = function(ev)
       if vim.g.mox_apply_on_save == false or vim.b[ev.buf].mox_apply_on_save == false then return end
-      local live = M.live_of(vim.api.nvim_buf_get_name(ev.buf))
-      if live then run_scoped("apply", live) end
+      local name = vim.api.nvim_buf_get_name(ev.buf)
+      if M.is_generator(name) then
+        run_scoped("apply", nil)
+      else
+        local live = M.live_of(name)
+        if live then run_scoped("apply", live) end
+      end
     end,
   })
 
@@ -117,12 +153,23 @@ function M.setup()
   end, { desc = "Edit the live file this mox source composes" })
 
   vim.api.nvim_create_user_command("MoxApply", function()
+    local name = buf_path()
+    if M.is_generator(name) then
+      return run_scoped("apply", nil, function(out)
+        if out.code == 0 then vim.notify("mox: applied the tree (generator source)") end
+      end)
+    end
     local live = live_target_of_current()
     if not live then
       return vim.notify("mox: this file is not managed", vim.log.levels.WARN)
     end
     run_scoped("apply", live, function(out)
-      if out.code == 0 then vim.notify("mox: applied " .. vim.fn.fnamemodify(live, ":~")) end
+      if out.code ~= 0 then return end
+      if M.touched_nothing(out) then
+        vim.notify("mox: nothing matched " .. vim.fn.fnamemodify(live, ":~"), vim.log.levels.WARN)
+      else
+        vim.notify("mox: applied " .. vim.fn.fnamemodify(live, ":~"))
+      end
     end)
   end, { desc = "mox apply, scoped to this file" })
 
@@ -133,8 +180,10 @@ function M.setup()
     end
     vim.system({ "mox", "diff", live }, { text = true }, function(out)
       vim.schedule(function()
-        local text = (out.stdout or "")
-        if text == "" then text = "(no difference)" end
+        local text = M.diff_text(out)
+        if not text then
+          return notify_result("diff", out)
+        end
         show_scratch("mox://diff", vim.split(text, "\n"), "diff")
       end)
     end)
