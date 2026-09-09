@@ -45,6 +45,23 @@ jobs:
         run: bash etc/ci/shellcheck.sh
       - run: bash etc/ci/comment-markers.sh
       - run: bash etc/tests/agent-instructions.sh
+      - name: Install mox
+        shell: bash
+        run: |
+          case "$(uname -s)-$(uname -m)" in
+            Linux-x86_64)  asset=mox-x86_64-linux.tar.gz ;;
+            Linux-aarch64) asset=mox-aarch64-linux.tar.gz ;;
+            Darwin-arm64)  asset=mox-aarch64-macos.tar.gz ;;
+            Darwin-x86_64) asset=mox-x86_64-macos.tar.gz ;;
+            *) echo "unsupported: $(uname -s)-$(uname -m)" >&2; exit 1 ;;
+          esac
+          mkdir -p "$HOME/.local/bin"
+          base="https://github.com/sakakibara/mox/releases/download/$MOX_VERSION"
+          curl -fsSL "$base/$asset" -o "$RUNNER_TEMP/$asset"
+          curl -fsSL "$base/SHA256SUMS" -o "$RUNNER_TEMP/SHA256SUMS"
+          (cd "$RUNNER_TEMP" && grep " $asset$" SHA256SUMS | shasum -a 256 -c -)
+          tar xzf "$RUNNER_TEMP/$asset" -C "$HOME/.local/bin"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - run: bash etc/tests/shell_completions.sh
 
   syntax-powershell:

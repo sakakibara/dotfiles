@@ -4,7 +4,7 @@ function tm
     set -l sessions
     set -q TMUX; and set change switch-client; or set change attach-session
     if test -n "$argv"
-        command tmux $change -t "$argv" ^/dev/null; or begin
+        command tmux $change -t "$argv" 2>/dev/null; or begin
             command tmux new-session -d -s $argv; and command tmux $change -t "$argv"
         end
         return

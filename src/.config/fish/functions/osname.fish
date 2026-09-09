@@ -6,12 +6,12 @@ function osname -d "Get the current OS name"
         case CYGWIN'*'
             set osname cygwin
         case Linux
-            if test -f /etc/osname-release
-                set osname (awk -F= '$1=="ID" { print tolower($2) ;}' "/etc/os-release")
+            if test -f /etc/os-release
+                set osname (awk -F= '$1=="ID" { print tolower($2) ;}' "/etc/os-release" | string trim -c '"')
             else if command -v lsb_release &>/dev/null
-                set osname (lsb_release -si)
+                set osname (lsb_release -si | string lower)
             else if test -f /etc/lsb-release
-                set osname (awk -F= '$1=="DISTRIB_ID" { print tolower($2) ;}' "/etc/lsb-release")
+                set osname (awk -F= '$1=="DISTRIB_ID" { print tolower($2) ;}' "/etc/lsb-release" | string trim -c '"')
             else if test -f /etc/fedora-release
                 set osname fedora
             else if test -f /etc/debian_version

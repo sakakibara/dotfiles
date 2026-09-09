@@ -1,11 +1,5 @@
 # mox: when os=darwin
-function show_desktop
-    # Treat it as unknown command if the os isn't the specifcied one
-    if not test $OSNAME = macos
-        echo "fish: Unknown command '$_'"
-        return 127
-    end
-
+function show_desktop -d "Show the Finder desktop icons"
     defaults write com.apple.finder CreateDesktop -bool true
     and killall Finder
 end
