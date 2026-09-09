@@ -129,8 +129,8 @@
     (set-fontset-font +standard-fontset charset
                       (font-spec :family +cjk-font) nil 'prepend))
 
-  (dolist (charset '((#x2018 . #x2019)    ;; Curly single quotes "‘’"
-                     (#x201c . #x201d)))  ;; Curly double quotes "“”"
+  (dolist (charset '((#x2018 . #x2019)    ;; curly single quotes, U+2018/U+2019
+                     (#x201c . #x201d)))  ;; curly double quotes, U+201C/U+201D
     (set-fontset-font +standard-fontset charset
                       (font-spec :family +cjk-font) nil 'prepend)))
 
