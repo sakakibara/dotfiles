@@ -17,10 +17,13 @@ set -uo pipefail
 repo="$PWD"
 . "$repo/etc/ci/checklib.sh"
 
-work=$(mktemp -d)
+work=$(mktemp -d) || exit 1
 trap 'rm -rf "$work"' EXIT
 
 export HOME="$work/home"
+# The derived facts read these before their candidates; an ambient value
+# would bake this machine's paths into the composed output.
+unset PNPM_HOME GOPATH CARGO_HOME HOMEBREW_PREFIX
 export XDG_CONFIG_HOME="$work/config"
 export XDG_DATA_HOME="$work/data"
 export XDG_STATE_HOME="$work/state"
@@ -28,32 +31,66 @@ export XDG_CACHE_HOME="$work/cache"
 export MOX_REPO="$repo"
 mkdir -p "$HOME" "$XDG_CONFIG_HOME/mox" "$XDG_DATA_HOME" "$XDG_STATE_HOME"
 
-cat > "$XDG_CONFIG_HOME/mox/facts.toml" <<'EOF'
+# Three representative fact sets: a personal machine
+# without the 1Password agent, the same machine with it (the shape this
+# repository's own author runs), and a work machine with every optional fact
+# bound.
+_facts_personal() {
+  cat <<'EOF'
 email = "test@example.com"
 profile = "personal"
 locale = "en_US.UTF-8"
 nls_lang = "AMERICAN_AMERICA.AL32UTF8"
 timezone = "Japan"
 holt_backend = "icloud"
+use_1password_ssh_agent = "false"
 EOF
+}
+
+_facts_personal_1password() {
+  _facts_personal | sed 's/^use_1password_ssh_agent = "false"$/use_1password_ssh_agent = "true"/'
+  cat <<'EOF'
+onepassword_signing_item = "Personal Signing Key"
+onepassword_signing_vault = "Private"
+EOF
+}
+
+_facts_work() {
+  cat <<'EOF'
+email = "test@example.com"
+profile = "work"
+locale = "en_US.UTF-8"
+nls_lang = "AMERICAN_AMERICA.AL32UTF8"
+timezone = "Japan"
+holt_backend = "gdrive"
+gdrive_account = "test@example.com"
+use_1password_ssh_agent = "true"
+signing_work_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+onepassword_signing_item = "Work Signing Key"
+onepassword_signing_vault = "Work"
+EOF
+}
 
 fails=0
-for os in darwin linux windows; do
-  out_dir="$work/export-$os"
-  out=$(MOX_OS="$os" mox export "$out_dir" 2>&1)
-  rc=$?
-  printf '%s\n%s\n' "== MOX_OS=$os ==" "$out"
-  if (( rc != 0 )) || [[ "$out" != *", 0 failed)"* ]]; then
-    printf 'FAIL: mox export (MOX_OS=%s) did not compose cleanly\n' "$os" >&2
-    fails=$((fails + 1))
-  fi
+for facts in personal personal_1password work; do
+  "_facts_$facts" > "$XDG_CONFIG_HOME/mox/facts.toml"
+  for os in darwin linux windows; do
+    out_dir="$work/export-$facts-$os"
+    out=$(MOX_OS="$os" mox export "$out_dir" 2>&1)
+    rc=$?
+    printf '%s\n%s\n' "== facts=$facts MOX_OS=$os ==" "$out"
+    if (( rc != 0 )) || [[ "$out" != *", 0 failed)"* ]]; then
+      printf 'FAIL: mox export (facts=%s MOX_OS=%s) did not compose cleanly\n' "$facts" "$os" >&2
+      fails=$((fails + 1))
+    fi
+  done
 done
 
 if (( fails > 0 )); then
   printf '\n%d compose failure(s)\n' "$fails" >&2
   exit 1
 fi
-printf 'all mox exports composed cleanly (darwin, linux, windows)\n'
+printf 'all mox exports composed cleanly (personal, personal with 1Password, and work; darwin, linux, windows)\n'
 
 # Syntax-check the composed trees. Tool availability is probed once, not
 # per tree; PowerShell files are covered by the dedicated Windows CI job.
@@ -93,11 +130,20 @@ have_ruby=""
 command -v ruby >/dev/null 2>&1 && have_ruby=1 || { echo "skip: ruby not on PATH" >&2; skips+=("ruby"); }
 have_python3=""
 command -v python3 >/dev/null 2>&1 && have_python3=1 || { echo "skip: python3 not on PATH" >&2; skips+=("python3"); }
+# The tmux probe needs a HOME prepared with tpm; where RENDER_TMUX_HOME is
+# unset the probe is not configured rather than skipped.
+have_tmux=""
+if [[ -n "${RENDER_TMUX_HOME:-}" ]]; then
+  if command -v tmux >/dev/null 2>&1 && [[ -x "$RENDER_TMUX_HOME/.tmux/plugins/tpm/tpm" ]]; then
+    have_tmux=1
+  else
+    echo "skip: RENDER_TMUX_HOME is set but tmux or tpm is missing" >&2; skips+=("tmux")
+  fi
+fi
 
-for os in darwin linux windows; do
-  t="$work/export-$os"
-
-  while IFS= read -r -d '' f; do _check_composed bash "$f"; done < <(
+for t in "$work"/export-*; do
+  [[ -n "$have_tmux" && -f "$t/.tmux.conf" ]] && _check_tmux "$t/.tmux.conf"
+  while IFS= read -r -d '' f; do _check_composed "$_bash_interp" "$f"; done < <(
     {
       find "$t/.local/bin" -type f -not -name '*.ps1' -not -name '*.cmd' -print0 2>/dev/null
       find "$t" -type f \( -name '*.sh' -o -name '*.bash' \) -print0 2>/dev/null
@@ -165,4 +211,4 @@ if (( fails > 0 )); then
   printf '\n%d composed-output syntax failure(s)\n' "$fails" >&2
   exit 1
 fi
-printf 'all composed outputs parse cleanly (darwin, linux, windows)\n'
+printf 'all composed outputs parse cleanly\n'

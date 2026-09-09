@@ -6,7 +6,27 @@
 _checklib_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
 fails=0
-skips=()  # tools expected but missing — promoted to failures under CI=true
+skips=()  # tools expected but missing - promoted to failures under CI=true
+
+# macOS ships bash 3.2 as /bin/bash; a newer bash on PATH would hide the
+# syntax that 3.2 rejects.
+_bash_interp=/bin/bash
+[[ -x "$_bash_interp" ]] || _bash_interp=bash
+
+
+# Loads a composed tmux config into a throwaway server under the HOME that
+# RENDER_TMUX_HOME names, which holds tpm at the pinned tag. `-f file
+# start-server` does not parse the file -- it defers a config error to the
+# message log -- so the config is sourced into a live server, which returns
+# non-zero on a parse error.
+_check_tmux() {
+  local file="$1" sock="ci-probe-$$" out
+  if ! out=$(HOME="$RENDER_TMUX_HOME" tmux -L "$sock" start-server \; source-file "$file" 2>&1); then
+    printf 'FAIL: %s (tmux config)\n%s\n' "$file" "$out" >&2
+    fails=$((fails + 1))
+  fi
+  tmux -L "$sock" kill-server 2>/dev/null || true
+}
 
 _check() {
   local interp="$1" file="$2"
@@ -17,7 +37,7 @@ _check() {
 }
 
 _check_lua_batch() {
-  # Single Lua-interpreter invocation for all files at once — much faster
+  # Single Lua-interpreter invocation for all files at once -- much faster
   # than spawning the interpreter per file. lua-check.lua tallies its own
   # failures and exits non-zero if any. We only know "did it succeed or
   # not" here, but the per-file FAIL lines go to stderr.
@@ -75,7 +95,7 @@ _find_lua54() {
 }
 
 # In CI all expected tooling must be installed by the workflow's setup
-# steps. A "skip" message there means the install step is broken — promote
+# steps. A "skip" message there means the install step is broken -- promote
 # to a failure so it doesn't ride along under "all checks passed".
 _promote_ci_skips() {
   if [[ "${CI:-}" == "true" ]] && [[ ${#skips[@]} -gt 0 ]]; then
