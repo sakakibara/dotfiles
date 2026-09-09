@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# mox: when os=darwin
 mox trigger hash "$MOX_REPO/etc/darwin/packages.txt" "$MOX_REPO/etc/darwin/packages-blacklist.txt" "$MOX_REPO/etc/bash/lib/brew.bash" "$MOX_REPO/etc/bash/lib/packages.bash" || exit 0
 # Hash trigger: mox re-runs this whenever any of the hashed files above
 # changes (packages list, blacklist, or the brew/packages library code).

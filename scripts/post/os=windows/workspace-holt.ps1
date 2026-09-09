@@ -6,7 +6,6 @@ if ($LASTEXITCODE -ne 0) { exit 0 }
 # Hash trigger - re-runs when the holt config or the holt lib changes.
 
 $ErrorActionPreference = 'Stop'
-$env:MOX_REPO = $env:MOX_REPO
 
 Import-Module (Join-Path $env:MOX_REPO 'etc/powershell/lib/Holt.psm1') -Force
 exit (Initialize-Holt)

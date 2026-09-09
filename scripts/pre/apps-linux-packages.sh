@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# mox: when os=linux
 mox trigger hash "$MOX_REPO/etc/linux/packages-fedora.txt" "$MOX_REPO/etc/linux/packages-debian.txt" "$MOX_REPO/etc/linux/packages-arch.txt" "$MOX_REPO/etc/linux/packages-suse.txt" "$MOX_REPO/etc/linux/packages-blacklist.txt" "$MOX_REPO/etc/bash/lib/linux.bash" "$MOX_REPO/etc/bash/lib/packages.bash" || exit 0
 # Hash trigger: re-runs whenever the per-distro lists, blacklist, or
 # the linux/packages library code change.
