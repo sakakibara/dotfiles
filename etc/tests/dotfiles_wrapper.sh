@@ -201,16 +201,19 @@ pick() {
 EOF
 printf '#!/bin/sh\necho Linux\n' > "$FIX/bin/uname"
 chmod +x "$FIX/bin/uname"
+mkdir -p "$FIX/bindarwin"
+printf '#!/bin/sh\necho Darwin\n' > "$FIX/bindarwin/uname"
+chmod +x "$FIX/bindarwin/uname"
 
 _section "install maps step names to their registered items"
-out=$(MOX_REPO="$FIX" bash "$BIN" install brew mise 2>&1)
+out=$(MOX_REPO="$FIX" PATH="$FIX/bindarwin:$PATH" bash "$BIN" install brew mise 2>&1)
 _match "brew becomes brew::setup" "PICK=brew::setup,mise::setup" "$out"
-out=$(MOX_REPO="$FIX" bash "$BIN" install all 2>&1)
+out=$(MOX_REPO="$FIX" PATH="$FIX/bindarwin:$PATH" bash "$BIN" install all 2>&1)
 _match "all passes through" "PICK=all" "$out"
 _match "darwin lists the brew step" "ITEM=brew::setup=" "$out"
 h1=$(printf '%s\n' "$out" | sed -n 's/^ITEM=brew::setup=.*|//p' | head -n1)
 printf 'blocked\n' >> "$FIX/etc/darwin/packages-blacklist.txt"
-out=$(MOX_REPO="$FIX" bash "$BIN" install all 2>&1)
+out=$(MOX_REPO="$FIX" PATH="$FIX/bindarwin:$PATH" bash "$BIN" install all 2>&1)
 h2=$(printf '%s\n' "$out" | sed -n 's/^ITEM=brew::setup=.*|//p' | head -n1)
 [[ -n "$h1" && -n "$h2" && "$h1" != "$h2" ]] && passes=$((passes+1)) || { printf '  ✗ the blacklist is part of the brew step hash (before=%s after=%s)\n' "$h1" "$h2"; fails=$((fails+1)); }
 
