@@ -33,7 +33,7 @@ $pwshExe = (Get-Process -Id $PID).Path
 # A stand-in real gh that reports what it was handed. On Windows a .cmd is
 # what PATHEXT finds; elsewhere an executable script.
 if ($IsWindows) {
-    $real_cmd = "@echo REAL gh %* token=%GH_TOKEN%`r`n@exit /b 0"
+    $real_cmd = "@echo off`r`nif not defined GH_TOKEN set `"GH_TOKEN=none`"`r`necho REAL gh %* token=%GH_TOKEN%`r`nexit /b 0"
     $copy_cmd = '@"' + $pwshExe + '" -NoProfile -File "' + $copyDir + '\gh.ps1" %*' + "`r`n@exit /b %ERRORLEVEL%"
     $shim_cmd = '@"' + $pwshExe + '" -NoProfile -File "' + $shimDir + '\gh.ps1" %*' + "`r`n@exit /b %ERRORLEVEL%"
     Set-Content -LiteralPath (Join-Path $realDir 'gh.cmd') -Value $real_cmd -NoNewline
