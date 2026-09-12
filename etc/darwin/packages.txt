@@ -1,4 +1,5 @@
-# macOS packages -- formulae (bare names), casks (cask: prefix), and taps
+# macOS packages -- formulae (bare names, or owner/tap/name for a third-party
+# tap's formula, which brew.bash trusts), casks (cask: prefix), and taps
 # (tap: prefix). Profile gating: trailing ` @profile1,profile2` restricts a
 # line to the named profiles. Lines without a profile annotation
 # apply everywhere. Versioned formulae (`openssl@3`) keep `@` in the name --
@@ -79,6 +80,11 @@ wget
 yt-dlp
 zk
 zoxide
+
+# Emacs from a third-party tap. Homebrew requires the specific tap-qualified
+# formula be trusted; brew.bash trusts it, not the whole tap.
+tap:d12frosted/emacs-plus
+d12frosted/emacs-plus/emacs-plus@30 @personal
 
 # Casks (GUI apps)
 cask:1password

@@ -110,6 +110,18 @@ brew::setup() {
     brew tap "$t" || { msg::error "tap failed: $t"; fails=$((fails + 1)); }
   done
 
+  # Homebrew requires explicit trust for a third-party tap. Trust only the
+  # specific tap-qualified formulae and casks we install (the full name carries
+  # the tap), never the whole tap.
+  for p in "${brews[@]:-}"; do
+    [[ "$p" == */* ]] || continue
+    brew trust --formula "$p" || { msg::error "trust failed: $p"; fails=$((fails + 1)); }
+  done
+  for p in "${casks[@]:-}"; do
+    [[ "$p" == */* ]] || continue
+    brew trust --cask "$p" || { msg::error "trust failed: $p"; fails=$((fails + 1)); }
+  done
+
   # Filter to packages that aren't installed yet. `brew install` would
   # otherwise trigger upgrades on already-installed items, which surprises
   # the user during a routine apply. `brew upgrade` stays a deliberate
@@ -131,11 +143,11 @@ brew::setup() {
   local p
   for p in "${brews[@]:-}"; do
     [[ -z "$p" ]] && continue
-    _brew_installed_f::has "$p" || missing_brews+=("$p")
+    _brew_installed_f::has "${p##*/}" || missing_brews+=("$p")
   done
   for p in "${casks[@]:-}"; do
     [[ -z "$p" ]] && continue
-    _brew_installed_c::has "$p" || missing_casks+=("$p")
+    _brew_installed_c::has "${p##*/}" || missing_casks+=("$p")
   done
 
   if (( ${#missing_brews[@]} > 0 )); then

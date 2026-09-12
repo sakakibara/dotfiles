@@ -36,12 +36,21 @@ _brew_resolves() {
       json=$(brew info --cask --json=v2 "$name" 2>/dev/null) || return 1
       [[ "$(printf '%s' "$json" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d["casks"][0]["token"] if d["casks"] else "")')" == "$name" ]] ;;
     brew)
+      # A tap-qualified name (owner/tap/formula) lives in a third-party tap:
+      # tap it and trust the specific formula so Homebrew 6+ will load it,
+      # then match its full_name rather than the bare name it reports.
+      if [[ "$name" == */* ]]; then
+        brew tap "${name%/*}" >/dev/null 2>&1 || return 1
+        brew trust --formula "$name" >/dev/null 2>&1 || return 1
+      fi
       local json
       json=$(brew info --formula --json=v2 "$name" 2>/dev/null) || return 1
       python3 -c '
 import json, sys
 d = json.loads(sys.argv[1]); f = d["formulae"][0] if d["formulae"] else None
-sys.exit(0 if f and f.get("name") == sys.argv[2] and not f.get("disabled") and not f.get("deprecated") else 1)
+want = sys.argv[2]
+got = (f.get("full_name") if "/" in want else f.get("name")) if f else None
+sys.exit(0 if f and got == want and not f.get("disabled") and not f.get("deprecated") else 1)
 ' "$json" "$name" ;;
     *) return 1 ;;
   esac
