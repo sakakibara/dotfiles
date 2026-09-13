@@ -4,6 +4,16 @@
 # ignored -- every row is checked regardless of which machine it targets.
 # Run inside a container of that distro from CI.
 #
+# The manifest is read with awk, not a TOML parser, so it accepts a subset
+# of what mox does: a `[[packages]]` header (leading whitespace and an inline
+# comment allowed) followed by one `key = value` per line, where `name`,
+# `kind` and `backend` are quoted with double or single quotes and carry no
+# escape sequences; inline tables and `packages = [...]` arrays are not read.
+# A `[[packages]]` block whose name is not in that shape fails the run
+# rather than being skipped. Every row must route to the one backend this
+# script queries for the distro: a per-row `backend` naming another one is
+# reported, not checked.
+#
 # Usage: bash etc/ci/validate-packages.sh <darwin|fedora|debian|arch|suse>
 
 set -uo pipefail
@@ -12,20 +22,49 @@ repo_dir="$(cd "$(dirname "$0")/../.." && pwd)"
 
 distro="${1:?missing distro arg (darwin|fedora|debian|arch|suse)}"
 file="$repo_dir/data/packages/${distro}.toml"
-if [[ "$distro" == darwin ]]; then default_kind=brew; else default_kind=pkg; fi
+case "$distro" in
+  darwin) default_kind=brew; backend=brew ;;
+  fedora) default_kind=pkg;  backend=dnf ;;
+  debian) default_kind=pkg;  backend=apt ;;
+  arch)   default_kind=pkg;  backend=pacman ;;
+  suse)   default_kind=pkg;  backend=zypper ;;
+  *) echo "unknown distro: $distro" >&2; exit 1 ;;
+esac
 [[ -f "$file" ]] || { echo "no $file" >&2; exit 1; }
 
 # Every `[[packages]]` row of the manifest as `kind<TAB>name`: `cask` when the
-# row says `kind = "cask"`, else the default. `[[blacklist]]` and
-# `[[bootstrap]]` rows are not packages to resolve. Plain awk, no TOML
-# library: the rows this reads are flat by construction.
+# row says so, else the default. `[[blacklist]]` and `[[bootstrap]]` rows are
+# not packages to resolve. A block this cannot read, or one routed to a
+# backend other than the distro's, comes out as `error<TAB>message` so the
+# loop below fails on it instead of skipping it.
 _rows() {
-  awk -v dflt="$default_kind" '
-    function flush() { if (in_pkg && name != "") printf "%s\t%s\n", kind, name; in_pkg = 0; name = ""; kind = dflt }
-    /^\[\[packages\]\]/ { flush(); in_pkg = 1; next }
-    /^\[\[/               { flush(); next }
-    in_pkg && /^name = "/  { sub(/^name = "/, ""); sub(/".*$/, ""); name = $0; next }
-    in_pkg && /^kind = "cask"/ { kind = "cask"; next }
+  awk -v dflt="$default_kind" -v want="$backend" '
+    function value(s,   q) {
+      sub(/^[[:space:]]*[A-Za-z_-]+[[:space:]]*=[[:space:]]*/, "", s)
+      q = substr(s, 1, 1)
+      if (q != "\"" && q != "\047") return ""
+      s = substr(s, 2)
+      sub(q ".*$", "", s)
+      return s
+    }
+    function flush(   b) {
+      if (!in_pkg) return
+      in_pkg = 0
+      b = (row_backend != "" ? row_backend : file_backend)
+      if (name == "")
+        printf "error\t[[packages]] block at line %d: no readable name (expected name = \"...\" on its own line)\n", start
+      else if (b != want)
+        printf "error\t[[packages]] row \"%s\" (line %d) routes to backend \"%s\"; this run checks only %s\n", name, start, b, want
+      else
+        printf "%s\t%s\n", (kind == "cask" ? "cask" : dflt), name
+      name = ""; kind = ""; row_backend = ""
+    }
+    /^[[:space:]]*\[\[[[:space:]]*packages[[:space:]]*\]\]/ { flush(); in_pkg = 1; start = NR; seen_block = 1; next }
+    /^[[:space:]]*\[/ { flush(); seen_block = 1; next }
+    !seen_block && /^[[:space:]]*backend[[:space:]]*=/ { file_backend = value($0); next }
+    in_pkg && /^[[:space:]]*name[[:space:]]*=/    { name = value($0); next }
+    in_pkg && /^[[:space:]]*kind[[:space:]]*=/    { kind = value($0); next }
+    in_pkg && /^[[:space:]]*backend[[:space:]]*=/ { row_backend = value($0); next }
     END { flush() }
   ' "$file"
 }
@@ -65,6 +104,11 @@ checked=0
 kind=""; name=""
 while IFS=$'\t' read -r kind name; do
   [[ -z "$name" ]] && continue
+  if [[ "$kind" == error ]]; then
+    echo "FAIL: $name"
+    fails=$((fails + 1))
+    continue
+  fi
   if [[ "$distro" != darwin && "$kind" != "pkg" ]]; then
     echo "SKIP: unsupported kind '$kind' for linux (entry: ${kind}:${name})"
     continue
@@ -105,10 +149,6 @@ while IFS=$'\t' read -r kind name; do
         fails=$((fails + 1))
       fi
       ;;
-    *)
-      echo "unknown distro: $distro" >&2
-      exit 1
-      ;;
   esac
   checked=$((checked + 1))
 done < <(_rows)
@@ -122,7 +162,7 @@ if [[ $checked -eq 0 ]]; then
 fi
 
 if [[ $fails -gt 0 ]]; then
-  echo "$fails missing package(s) in $distro repos" >&2
+  echo "$fails package row(s) unreadable or missing in $distro repos" >&2
   exit 1
 fi
 printf 'all packages found in %s repos (%d checked)\n' "$distro" "$checked"
