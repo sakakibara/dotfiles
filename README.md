@@ -174,12 +174,13 @@ typo-aware error when the subcommand isn't valid for mox either).
 | --- | --- |
 | `dotfiles` / `dotfiles info` | status snapshot: repo, branch, drift, theme, tools |
 | `dotfiles apply` / `status` / `diff` | mox pass-through (`apply` re-sources the shell rc on success) |
-| `dotfiles install` | interactive step menu, pre-checking steps whose inputs changed; `install all` runs every step, `install none` only the required ones, `install brew mise` only the named ones |
+| `dotfiles install` | interactive step menu, pre-checking steps whose inputs changed; `install all` runs every step, `install none` only the required ones, `install mise holt` only the named ones |
 | `dotfiles cd` | change the calling shell's directory to the mox repo (a shell function in zsh and fish, and in PowerShell once the profile dot-sources `~/.config/powershell/dotfiles-shell.ps1`) |
 | `dotfiles edit <pattern>` | fuzzy-find a managed file, open its source via `mox edit` |
 | `dotfiles profile [name]` | print the active profile / switch the profile fact and re-apply |
 | `dotfiles doctor` | health-check mox, packages, theme, mise, holt |
 | `dotfiles upgrade [--all]` | mox self-update; `--all` then brew (macOS) + mise + holt (Linux distro packages stay manual) |
+| `dotfiles sync` | Windows only: review scoop/winget packages against `etc/windows/packages.txt`; macOS and Linux use `mox commit` instead |
 
 Per-step install output lands in `~/.local/state/dotfiles/pick/logs/`; a TSV
 run history at `~/.local/state/dotfiles/pick/run-log.tsv`.

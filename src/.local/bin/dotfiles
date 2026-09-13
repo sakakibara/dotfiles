@@ -115,7 +115,7 @@ Usage:
   dotfiles install          Interactive menu to (re)run install steps
   dotfiles install all      Run every install step non-interactively
   dotfiles install none     Run only the required steps
-  dotfiles install <names>  Run only the named steps (e.g. brew mise)
+  dotfiles install <names>  Run only the named steps (e.g. mise holt)
   dotfiles edit <pattern>   Fuzzy-find a managed file and edit via mox
   dotfiles profile [name]   Print or switch the active mox profile
   dotfiles doctor           Health-check the dotfiles + mox setup
@@ -215,7 +215,7 @@ Usage:
   dotfiles profile <name>    Switch profile and re-apply
 
 Switching writes the `profile` fact (`mox facts set profile <name>`) and then
-runs `mox apply`. All profile-gated content (packages.txt entries, holt
+runs `mox apply`. All profile-gated content (package rows, holt
 config, mise settings, ...) re-renders accordingly.
 EOF
       return 0
@@ -259,9 +259,10 @@ cmd_doctor() {
 dotfiles doctor -- health check for the dotfiles + mox setup.
 
 Verifies that the mox binary is reachable, the repo resolves, the profile
-resolves, `mox doctor` reports no advisory, package files parse, the theme
-state file is intact, and the OS-specific install lib (brew or linux) is
-usable. Exits 0 when all checks pass, 1 if any failed.
+resolves, `mox doctor` reports no advisory, the package manifest loads and
+its managers answer, the theme state file is intact, and the per-OS
+toolchain (brew on macOS, sudo on Linux, mise, holt) is on PATH. Exits 0
+when all checks pass, 1 if any failed.
 EOF
       return 0
       ;;
@@ -340,28 +341,27 @@ EOF
     _check "etc/bash/lib/init.bash parses under $system_bash" $?
   fi
 
-  # OS-specific package list
-  local os pkg_file
+  # Package manifest
+  local os
   case "$(uname -s)" in
-    Darwin) os=darwin; pkg_file="$source_dir/etc/darwin/packages.txt" ;;
-    Linux)
-      os=linux
-      if [[ -n "$source_dir" ]] && command -v mox >/dev/null 2>&1; then
-        # Source linux.bash to get distro detection
-        # shellcheck disable=SC1091
-        ( source "$source_dir/etc/bash/lib/init.bash"; import linux; linux::detect_distro ) >/dev/null 2>&1
-        _check "linux distro detection" $?
-        local distro
-        distro=$( source "$source_dir/etc/bash/lib/init.bash"; import linux; linux::detect_distro 2>/dev/null )
-        pkg_file="$source_dir/etc/linux/packages-${distro}.txt"
-      fi
-      ;;
+    Darwin) os=darwin ;;
+    Linux) os=linux ;;
     *) os=other ;;
   esac
 
-  if [[ -n "$pkg_file" ]]; then
-    [[ -r "$pkg_file" ]]
-    _check "package list readable" $? "$pkg_file"
+  if [[ -n "$source_dir" ]]; then
+    [[ -d "$source_dir/data/packages" ]]
+    # shellcheck disable=SC2319  # the preceding condition is the check
+    _check "data/packages manifest present" $?
+  fi
+
+  if command -v mox >/dev/null 2>&1; then
+    local rc
+    mox status --porcelain >/dev/null 2>&1
+    rc=$?
+    [[ $rc -ne 2 ]]
+    # shellcheck disable=SC2319  # the preceding condition is the check
+    _check "package manifest loads and its managers answer" $?
   fi
 
   # Theme command works (state file may legitimately not exist before the
@@ -507,7 +507,7 @@ EOF
   unix::keep_sudo
 
   # Translate positional args into DOTFILES_PICK so a non-interactive call
-  # (e.g. `dotfiles install brew mise`) skips the menu and runs immediately.
+  # (e.g. `dotfiles install mise holt`) skips the menu and runs immediately.
   if (( $# > 0 )); then
     case "$1" in
       all|none) export DOTFILES_PICK="$1" ;;

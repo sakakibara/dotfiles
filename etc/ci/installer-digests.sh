@@ -19,7 +19,7 @@ check() {
   if [[ "$got" == "$want" ]]; then
     echo "$label: digest matches"
   else
-    echo "FAIL: $label: $url has digest $got, the library records $want" >&2
+    echo "FAIL: $label: $url has digest $got, the manifest records $want" >&2
     fails=$((fails + 1))
   fi
 }
