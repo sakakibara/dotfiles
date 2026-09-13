@@ -176,6 +176,7 @@ switch ($a[0]) {
             "whole_file`t`t0`t$h/.zshrc"
             "package_missing`tbrew`tripgrep"
             "package_untracked`tbrew`tagg"
+            "package_broken`tdnf`t1"
             exit 1
         }
         '  clean    ~/.zshrc'; '  clean    ~/.codex/config.toml  (own 3)'; '  ERROR    ~/.broken.toml (compose failed: TomlParseError)'; 'unbound facts: none'
@@ -206,11 +207,12 @@ try {
 
     Section 'info lists every porcelain record, an empty key included'
     $r = Run-Wrapper 'info'
-    Match 'the counts cover files and packages' '2 file(s), 2 package(s)' $r.Out
+    Match 'the counts cover files and packages' '2 file(s), 3 package(s)' $r.Out
     Match 'an owned key is listed by its path' '.claude/settings.json (owned_key)' $r.Out
     Match 'a whole file with an empty key is listed by its path' '.zshrc (whole_file)' $r.Out
     Match 'a missing package is listed' 'ripgrep (brew, missing)' $r.Out
     Match 'an untracked package is listed' 'agg (brew, untracked)' $r.Out
+    Match 'a broken manager is listed by its exit code' 'dnf (broken, exited 1)' $r.Out
 
     Section 'info shows a package failure instead of no drift'
     $env:STUB_PKG_ERROR = '1'

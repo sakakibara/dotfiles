@@ -85,6 +85,7 @@ case "$1" in
       printf 'whole_file\t\t0\t%s/.zshrc\n' "$HOME"
       printf 'package_missing\tbrew\tripgrep\n'
       printf 'package_untracked\tbrew\tagg\n'
+      printf 'package_broken\tdnf\t1\n'
       exit 1
     fi
     printf '  clean    ~/.zshrc\n  clean    ~/.config/git/config\n  clean    ~/.codex/config.toml  (own 3)\n  ERROR    ~/.broken.toml (compose failed: TomlParseError)\n' ;;
@@ -160,11 +161,12 @@ _match "doctor runs mox doctor" "mox doctor reports no advisory" "$out"
 
 _section "info lists every porcelain record, an empty key included"
 out=$(PATH="$STUB:$PATH" bash "$BIN" info 2>&1)
-_match "the counts cover files and packages" "2 file(s), 2 package(s)" "$out"
+_match "the counts cover files and packages" "2 file(s), 3 package(s)" "$out"
 _match "an owned key is listed by its path" ".claude/settings.json (owned_key)" "$out"
 _match "a whole file with an empty key is listed by its path" ".zshrc (whole_file)" "$out"
 _match "a missing package is listed" "ripgrep (brew, missing)" "$out"
 _match "an untracked package is listed" "agg (brew, untracked)" "$out"
+_match "a broken manager is listed by its exit code" "dnf (broken, exited 1)" "$out"
 
 _section "info shows a package failure instead of no drift"
 out=$(PATH="$STUB:$PATH" STUB_PKG_ERROR=1 bash "$BIN" info 2>&1)

@@ -162,7 +162,8 @@ function Cmd-Info {
         # separated, the first field saying which record it is: a file record
         # is kind, key, first_contact, path (the key may be empty, the path
         # C-escaped); a package record is package_missing or
-        # package_untracked, backend, id. Consume that instead of scraping
+        # package_untracked, backend, id, or package_broken, backend, the
+        # manager's exit code. Consume that instead of scraping
         # the human table. It reports drift: a file that needs a decision
         # (--overwrite or commit), a package `mox apply` would install or
         # `mox commit` would record. A manifest, plugin or manager failure
@@ -184,6 +185,10 @@ function Cmd-Info {
         foreach ($line in $drift) {
             $f = $line -split "`t"
             $kind = $f[0]
+            if ($kind -eq 'package_broken') {
+                Write-Host ('        {0}{1} (broken, exited {2}){3}' -f $Script:Dim, $f[1], $f[2], $Script:Reset)
+                continue
+            }
             if ($kind.StartsWith('package_')) {
                 Write-Host ('        {0}{1} ({2}, {3}){4}' -f $Script:Dim, $f[2], $f[1], $kind.Substring(8), $Script:Reset)
                 continue

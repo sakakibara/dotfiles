@@ -57,7 +57,8 @@ cmd_info() {
     # `mox status --porcelain` emits one drifted unit per line, tab-separated,
     # the first field saying which record it is: a file record is kind, key,
     # first_contact, path (the key may be empty); a package record is
-    # package_missing or package_untracked, backend, id. Consume that instead
+    # package_missing or package_untracked, backend, id, or package_broken,
+    # backend, the manager's exit code. Consume that instead
     # of scraping the human table. It reports drift: a file that needs a
     # decision (--overwrite or commit), a package `mox apply` would install
     # or `mox commit` would record. A manifest, plugin or manager failure
@@ -93,6 +94,10 @@ cmd_info() {
         [[ "$line" == *$'\t'* ]] || continue
         kind=${line%%$'\t'*}
         case "$kind" in
+          package_broken)
+            rest=${line#*$'\t'}
+            printf '        %s%s (broken, exited %s)%s\n' "$C_DIM" "${rest%%$'\t'*}" "${rest#*$'\t'}" "$C_RESET"
+            ;;
           package_*)
             rest=${line#*$'\t'}
             printf '        %s%s (%s, %s)%s\n' "$C_DIM" "${rest#*$'\t'}" "${rest%%$'\t'*}" "${kind#package_}" "$C_RESET"
