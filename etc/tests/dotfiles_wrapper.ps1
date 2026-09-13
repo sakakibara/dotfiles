@@ -147,8 +147,14 @@ if ($r.Out -match 'passed.*failed') {
     $fails++
 }
 
-# A stub mox on PATH answers the queries the wrapper makes, so the doctor
-# gate and the typo suggestion run against fixed data.
+# A stub mox on PATH answers the queries the wrapper makes, so the info and
+# doctor paths and the typo suggestion run against fixed data. Its porcelain
+# status carries one record of each kind, the whole_file one with an empty
+# key (two adjacent tabs); STUB_PKG_ERROR=1 makes it fail the way a broken
+# manifest does: the reason on the error stream, nothing on stdout, exit 1.
+# The stub runs in-process, so its error stream is what a native mox's
+# stderr becomes under `2>&1`, and -ErrorAction Continue keeps the wrapper's
+# Stop preference from ending the stub at that line.
 $stub = Join-Path ([IO.Path]::GetTempPath()) ("dotfiles-stub-" + [Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $stub | Out-Null
 @'
@@ -159,7 +165,21 @@ switch ($a[0]) {
         if ($env:STUB_DOCTOR_RAW) { $env:STUB_DOCTOR_RAW }
         else { "mox doctor: $(if ($env:STUB_ADVISORIES) { $env:STUB_ADVISORIES } else { 0 }) advisory item(s) need attention" }
     }
-    'status' { '  clean    ~/.zshrc'; '  clean    ~/.codex/config.toml  (own 3)'; '  ERROR    ~/.broken.toml (compose failed: TomlParseError)'; 'unbound facts: none' }
+    'status' {
+        if ($a.Count -ge 2 -and $a[1] -eq '--porcelain') {
+            if ($env:STUB_PKG_ERROR) {
+                Write-Error -Message 'mox status: packages: data/packages/x.toml: row "y": boom' -ErrorAction Continue
+                exit 1
+            }
+            $h = $HOME.Replace('\', '\\')
+            "owned_key`tfeedbackDrafts`t0`t$h/.claude/settings.json"
+            "whole_file`t`t0`t$h/.zshrc"
+            "package_missing`tbrew`tripgrep"
+            "package_untracked`tbrew`tagg"
+            exit 1
+        }
+        '  clean    ~/.zshrc'; '  clean    ~/.codex/config.toml  (own 3)'; '  ERROR    ~/.broken.toml (compose failed: TomlParseError)'; 'unbound facts: none'
+    }
     '--help' { "Commands:`n  apply      Compose and write`n  status     Report drift" }
     'help'   { if ($a[1] -in @('apply', 'status')) { exit 0 } else { exit 1 } }
     default  { "FORWARDED $($a -join ' ')" }
@@ -183,6 +203,38 @@ try {
     if ($r.Rc -ne 0) { Write-Host '  ✓ doctor exits non-zero on an unparsed report'; $passes++ }
     else             { Write-Host '  ✗ doctor should exit non-zero on an unparsed report'; $fails++ }
     Remove-Item Env:STUB_DOCTOR_RAW
+
+    Section 'info lists every porcelain record, an empty key included'
+    $r = Run-Wrapper 'info'
+    Match 'the counts cover files and packages' '2 file(s), 2 package(s)' $r.Out
+    Match 'an owned key is listed by its path' '.claude/settings.json (owned_key)' $r.Out
+    Match 'a whole file with an empty key is listed by its path' '.zshrc (whole_file)' $r.Out
+    Match 'a missing package is listed' 'ripgrep (brew, missing)' $r.Out
+    Match 'an untracked package is listed' 'agg (brew, untracked)' $r.Out
+
+    Section 'info shows a package failure instead of no drift'
+    $env:STUB_PKG_ERROR = '1'
+    $r = Run-Wrapper 'info'
+    Match 'the failure is the drift detail' 'Drift:  packages: data/packages/x.toml: row "y": boom' $r.Out
+    NoMatch 'the failure is not read as clean' 'Drift:  none' $r.Out
+    Remove-Item Env:STUB_PKG_ERROR
+
+    # The check line carries a parenthesized detail only when it fails, so
+    # pass and fail are told apart by what follows the description rather
+    # than by the glyph, which need not survive the console code page.
+    Section "doctor's manifest check reads the package failure"
+    $manifestCheck = 'package manifest loads and its managers answer'
+    $r = Run-Wrapper 'doctor'
+    if ($r.Out -match "(?m)$manifestCheck\s*$") { Write-Host '  ✓ drift alone passes the manifest check'; $passes++ }
+    else { Write-Host '  ✗ drift alone passes the manifest check'; Write-Host "      got: $($r.Out)"; $fails++ }
+    NoMatch 'drift alone leaves no manifest detail' "$manifestCheck (" $r.Out
+    $env:STUB_PKG_ERROR = '1'
+    $r = Run-Wrapper 'doctor'
+    Match 'a package failure fails the manifest check' "$manifestCheck (mox status: packages:" $r.Out
+    Match 'the failure is the check detail' 'row "y": boom' $r.Out
+    if ($r.Rc -ne 0) { Write-Host '  ✓ doctor exits non-zero on a package failure'; $passes++ }
+    else             { Write-Host '  ✗ doctor should exit non-zero on a package failure'; $fails++ }
+    Remove-Item Env:STUB_PKG_ERROR
 
     Section 'edit hands mox the path without its ownership annotation'
     $r = Run-Wrapper 'edit' 'codex'

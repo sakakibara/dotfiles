@@ -122,6 +122,26 @@ function _UnescapePorcelain([string]$s) {
     return $sb.ToString()
 }
 
+# Run `mox status --porcelain`, keeping its records apart from the first
+# `mox status: packages:` line on stderr. Merged stderr arrives as
+# ErrorRecord objects (a native line and a script's Write-Error alike), so
+# the object type tells the streams apart.
+function _MoxPorcelain {
+    $records = @()
+    $pkgErr = ''
+    $merged = @(& mox status --porcelain 2>&1)
+    $rc = $LASTEXITCODE
+    foreach ($item in $merged) {
+        if ($item -is [System.Management.Automation.ErrorRecord]) {
+            $line = $item.ToString()
+            if (-not $pkgErr -and $line.StartsWith('mox status: packages:')) { $pkgErr = $line }
+        } elseif ("$item" -ne '') {
+            $records += "$item"
+        }
+    }
+    return @{ Records = @($records); PkgErr = $pkgErr; Rc = $rc }
+}
+
 # Info
 function Cmd-Info {
     $sourceDir = _MoxRepo
@@ -140,31 +160,39 @@ function Cmd-Info {
     if (_Have mox) {
         # `mox status --porcelain` emits one drifted unit per line, tab-
         # separated, the first field saying which record it is: a file record
-        # is kind, key, first_contact, path (path C-escaped); a package record
-        # is package_missing or package_untracked, backend, id. Consume that
-        # instead of scraping the human table. It reports true drift -- a
-        # file needing a decision, a package to install or record -- not one a
-        # plain `mox apply` would just create or update.
-        $drift = @((& mox status --porcelain 2>$null) | Where-Object { $_ -ne '' })
-        if ($drift.Count -eq 0) {
+        # is kind, key, first_contact, path (the key may be empty, the path
+        # C-escaped); a package record is package_missing or
+        # package_untracked, backend, id. Consume that instead of scraping
+        # the human table. It reports drift: a file that needs a decision
+        # (--overwrite or commit), a package `mox apply` would install or
+        # `mox commit` would record. A manifest, plugin or manager failure
+        # exits 1 with the reason on stderr and no package records, so that
+        # reason is the drift detail rather than "none".
+        $status = _MoxPorcelain
+        $drift = $status.Records
+        if ($status.Rc -eq 1 -and $status.PkgErr) {
+            _Row 'Drift:' ($status.PkgErr -replace '^mox status: ', '')
+        } elseif ($status.Rc -ne 0 -and $status.Rc -ne 1) {
+            _Row 'Drift:' "unknown (mox status exited $($status.Rc))"
+        } elseif ($drift.Count -eq 0) {
             _Row 'Drift:' 'none'
         } else {
             $files = @($drift | Where-Object { -not $_.StartsWith('package_') }).Count
             $pkgs = $drift.Count - $files
             _Row 'Drift:' "$files file(s), $pkgs package(s)"
-            foreach ($line in $drift) {
-                $f = $line -split "`t"
-                $kind = $f[0]
-                if ($kind.StartsWith('package_')) {
-                    Write-Host ('        {0}{1} ({2}, {3}){4}' -f $Script:Dim, $f[2], $f[1], $kind.Substring(8), $Script:Reset)
-                    continue
-                }
-                $path = _UnescapePorcelain $f[3]
-                if ($HOME -and $path.StartsWith($HOME)) {
-                    $path = $path.Substring($HOME.Length).TrimStart('\', '/')
-                }
-                Write-Host ('        {0}{1} ({2}){3}' -f $Script:Dim, $path, $kind, $Script:Reset)
+        }
+        foreach ($line in $drift) {
+            $f = $line -split "`t"
+            $kind = $f[0]
+            if ($kind.StartsWith('package_')) {
+                Write-Host ('        {0}{1} ({2}, {3}){4}' -f $Script:Dim, $f[2], $f[1], $kind.Substring(8), $Script:Reset)
+                continue
             }
+            $path = _UnescapePorcelain $f[3]
+            if ($HOME -and $path.StartsWith($HOME)) {
+                $path = $path.Substring($HOME.Length).TrimStart('\', '/')
+            }
+            Write-Host ('        {0}{1} ({2}){3}' -f $Script:Dim, $path, $kind, $Script:Reset)
         }
     }
 
@@ -329,7 +357,8 @@ dotfiles doctor -- health check for the dotfiles + mox setup.
 
 Verifies that mox is reachable, the repo resolves, the profile
 resolves, mox doctor reports no advisory, the Windows package list
-is readable, the theme command resolves, and the Windows toolchain
+is readable, the package manifest loads and its managers answer,
+the theme command resolves, and the Windows toolchain
 (pwsh + scoop or winget + mise + holt) is installed. Exits 0 when
 all checks pass, 1 if any failed.
 "@ | Write-Host
@@ -374,6 +403,15 @@ all checks pass, 1 if any failed.
     if ($sourceDir) {
         $pkgFile = Join-Path $sourceDir 'etc/windows/packages.txt'
         Script:_Check 'package list readable' (Test-Path -LiteralPath $pkgFile) $pkgFile
+        Script:_Check 'data/packages manifest present' (Test-Path -LiteralPath (Join-Path $sourceDir 'data/packages') -PathType Container)
+    }
+
+    if (_Have mox) {
+        # Drift exits 1 too, so the exit code cannot tell a package failure
+        # from a package to install; the failure is the `mox status:
+        # packages:` line on stderr.
+        $pkgErr = (_MoxPorcelain).PkgErr
+        Script:_Check 'package manifest loads and its managers answer' (-not $pkgErr) $pkgErr
     }
 
     if (_Have theme) {
