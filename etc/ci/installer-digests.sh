@@ -35,9 +35,17 @@ if [[ "$bootstrap_rows" != 1 ]]; then
 fi
 _bootstrap_field() {
   awk -v key="$1" '
+    function value(s,   q) {
+      sub(/^[[:space:]]*[A-Za-z0-9_-]+[[:space:]]*=[[:space:]]*/, "", s)
+      q = substr(s, 1, 1)
+      if (q != "\"" && q != "\047") return ""
+      s = substr(s, 2)
+      sub(q ".*$", "", s)
+      return s
+    }
     /^[[:space:]]*\[\[bootstrap\]\]/ { in_row = 1; next }
     /^[[:space:]]*\[/ { in_row = 0 }
-    in_row && $1 == key && $2 == "=" { v = $3; gsub(/^"|"$/, "", v); print v }
+    in_row && $0 ~ ("^[[:space:]]*" key "[[:space:]]*=") { print value($0) }
   ' "$brew_manifest"
 }
 check "Homebrew install.sh" "$brew_manifest" "$(_bootstrap_field url)" "$(_bootstrap_field sha256)"

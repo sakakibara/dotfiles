@@ -8,10 +8,13 @@
 # freshly applied tree reports clean. A bug that only appears when bytes reach
 # the filesystem cannot show up in an export.
 #
-# The real tree is applied with its scripts skipped: they install Homebrew,
-# distro packages and language runtimes, which is not something a CI job
-# should do. Their dispatch is proved separately below, against a stub tree
-# whose scripts only announce themselves.
+# The real tree is applied with `--skip-scripts`, which also leaves the
+# package manifests under `data/packages/` alone: the scripts install the
+# Xcode Command Line Tools, language toolchains through mise and, on Linux,
+# binaries outside the package manager, and the manifests install Homebrew
+# and packages, none of which a CI job should do. The scripts' dispatch is
+# proved separately below, against a stub tree whose scripts only announce
+# themselves.
 
 set -uo pipefail
 
