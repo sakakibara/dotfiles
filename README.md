@@ -83,7 +83,7 @@ The same key signs commits made inside `agent-sandbox` containers:
 
 | Host | Setup | How the agent reaches the container |
 | --- | --- | --- |
-| macOS | none | a `socat` relay on `127.0.0.1:19988`, started on first launch (the macOS Unix socket can't be bind-mounted into Linux containers); socat comes from `etc/darwin/packages.txt` |
+| macOS | none | a `socat` relay on `127.0.0.1:19988`, started on first launch (the macOS Unix socket can't be bind-mounted into Linux containers); socat comes from `data/packages/darwin.toml` |
 | Linux | none | `~/.1password/agent.sock` bind-mounted directly |
 | Windows + WSL2 | 1Password app: **Settings -> Developer -> Integrate with WSL** -> on | `~/.1password/agent.sock` appears inside WSL; run agent-sandbox from inside WSL (it's a bash script) |
 | Native Windows | -- | out of scope; agent-sandbox doesn't run there |
@@ -149,7 +149,7 @@ the script, which mox reports.
 
 | Script | What it does |
 | --- | --- |
-| `pre/apps-brew.sh`, `pre/apps-linux-packages.sh` | native packages from `etc/darwin/packages.txt` / `etc/linux/packages-*.txt` (auto-detects fedora/debian/arch/suse) |
+| `pre/darwin-clt.sh` | the Xcode Command Line Tools and a sudo keepalive; packages themselves are mox's, from `data/packages/*.toml` (`mox status` reports drift, `mox apply` installs, `mox commit` records what you installed by hand) |
 | `pre/runtime-mise.sh` | language toolchains via mise (installed from a pinned release when missing) |
 | `pre/tools.sh` | Linux binaries outside the system package manager (lazygit, lazydocker, gh; starship where the distro does not package it; cargo tools through mise's rust) |
 | `post/workspace-holt.sh` | installs holt if missing, links `~/Life`/`~/Work` to the synced root, `holt sync` rebuilds project hubs; runs post so it can read the applied holt config |
@@ -176,7 +176,6 @@ typo-aware error when the subcommand isn't valid for mox either).
 | `dotfiles apply` / `status` / `diff` | mox pass-through (`apply` re-sources the shell rc on success) |
 | `dotfiles install` | interactive step menu, pre-checking steps whose inputs changed; `install all` runs every step, `install none` only the required ones, `install brew mise` only the named ones |
 | `dotfiles cd` | change the calling shell's directory to the mox repo (a shell function in zsh and fish, and in PowerShell once the profile dot-sources `~/.config/powershell/dotfiles-shell.ps1`) |
-| `dotfiles sync` | review installed-but-untracked packages |
 | `dotfiles edit <pattern>` | fuzzy-find a managed file, open its source via `mox edit` |
 | `dotfiles profile [name]` | print the active profile / switch the profile fact and re-apply |
 | `dotfiles doctor` | health-check mox, packages, theme, mise, holt |

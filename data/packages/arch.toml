@@ -1,0 +1,79 @@
+backend = "pacman"
+
+[[packages]]
+name = "bash"
+
+[[packages]]
+name = "bat"
+
+[[packages]]
+name = "fd"
+
+[[packages]]
+name = "ffmpeg"
+
+[[packages]]
+name = "fish"
+
+[[packages]]
+name = "fzf"
+
+[[packages]]
+name = "gawk"
+
+[[packages]]
+name = "github-cli"
+
+[[packages]]
+name = "git"
+
+[[packages]]
+name = "git-lfs"
+
+[[packages]]
+name = "gnupg"
+
+[[packages]]
+name = "imagemagick"
+
+[[packages]]
+name = "jq"
+
+[[packages]]
+name = "neovim"
+
+[[packages]]
+name = "nnn"
+
+[[packages]]
+name = "ollama"
+
+[[packages]]
+name = "ripgrep"
+
+[[packages]]
+name = "starship"
+
+[[packages]]
+name = "tree"
+
+[[packages]]
+name = "wget"
+
+[[packages]]
+name = "yt-dlp"
+
+[[packages]]
+name = "zoxide"
+
+[[packages]]
+name = "zsh"
+
+[[packages]]
+name = "base-devel"
+
+[[packages]]
+name = "cmake"
+
+[[packages]]
+name = "re2c"

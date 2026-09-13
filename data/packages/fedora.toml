@@ -1,0 +1,94 @@
+backend = "dnf"
+
+[[packages]]
+name = "bash"
+
+[[packages]]
+name = "bat"
+
+[[packages]]
+name = "fd-find"
+
+[[packages]]
+name = "ffmpeg-free"
+
+[[packages]]
+name = "fish"
+
+[[packages]]
+name = "fzf"
+
+[[packages]]
+name = "gawk"
+
+[[packages]]
+name = "gh"
+
+[[packages]]
+name = "git"
+
+[[packages]]
+name = "git-lfs"
+
+[[packages]]
+name = "gnupg2"
+
+[[packages]]
+name = "ImageMagick"
+
+[[packages]]
+name = "jq"
+
+[[packages]]
+name = "neovim"
+
+[[packages]]
+name = "nnn"
+
+[[packages]]
+name = "ollama"
+
+[[packages]]
+name = "ripgrep"
+
+[[packages]]
+name = "tree"
+
+[[packages]]
+name = "wget2"
+
+[[packages]]
+name = "yt-dlp"
+
+[[packages]]
+name = "zoxide"
+
+[[packages]]
+name = "zsh"
+
+[[packages]]
+name = "autoconf"
+
+[[packages]]
+name = "automake"
+
+[[packages]]
+name = "bison"
+
+[[packages]]
+name = "cmake"
+
+[[packages]]
+name = "gcc"
+
+[[packages]]
+name = "gcc-c++"
+
+[[packages]]
+name = "make"
+
+[[packages]]
+name = "pkgconf-pkg-config"
+
+[[packages]]
+name = "re2c"

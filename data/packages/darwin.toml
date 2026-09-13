@@ -1,0 +1,319 @@
+# macOS packages. A tap-qualified name (owner/tap/formula) names its own tap
+# and is the decision to trust it; mox taps and trusts that one formula.
+backend = "brew"
+
+# Homebrew's own installer at a fixed commit. mox fetches it, refuses to run
+# it unless it hashes to this digest, and only then installs Homebrew -- so a
+# fresh mac needs mox and this repo, nothing else.
+[[bootstrap]]
+url = "https://raw.githubusercontent.com/Homebrew/install/c8188c1d48d77234a458b944d1d1b750f015a1c4/install.sh"
+sha256 = "12479a24be3f5307eecac7cde670fad7118640f031229e964f544b1367b52a41"
+
+[[packages]]
+name = "autoconf"
+
+[[packages]]
+name = "automake"
+
+[[packages]]
+name = "bison"
+
+[[packages]]
+name = "cmake"
+
+[[packages]]
+name = "gettext"
+
+[[packages]]
+name = "gmp"
+
+[[packages]]
+name = "krb5"
+
+[[packages]]
+name = "libedit"
+
+[[packages]]
+name = "libiconv"
+
+[[packages]]
+name = "libpng"
+
+[[packages]]
+name = "libsodium"
+
+[[packages]]
+name = "libxml2"
+
+[[packages]]
+name = "libyaml"
+
+[[packages]]
+name = "libzip"
+
+[[packages]]
+name = "openssl@3"
+
+[[packages]]
+name = "pkgconf"
+
+[[packages]]
+name = "re2c"
+
+[[packages]]
+name = "readline"
+
+[[packages]]
+name = "zlib"
+
+[[packages]]
+name = "freetype"
+
+[[packages]]
+name = "gd"
+
+[[packages]]
+name = "imagemagick"
+
+[[packages]]
+name = "jpeg"
+
+[[packages]]
+name = "jpeg-xl"
+
+[[packages]]
+name = "librsvg"
+
+[[packages]]
+name = "bash"
+
+[[packages]]
+name = "fish"
+
+[[packages]]
+name = "go"
+
+[[packages]]
+name = "powershell"
+
+[[packages]]
+name = "zsh"
+
+[[packages]]
+name = "pnpm"
+
+[[packages]]
+name = "aspell"
+
+[[packages]]
+name = "bat"
+
+[[packages]]
+name = "cmigemo"
+
+[[packages]]
+name = "coreutils"
+
+[[packages]]
+name = "curl"
+
+[[packages]]
+name = "difftastic"
+
+[[packages]]
+name = "fd"
+
+[[packages]]
+name = "ffmpeg"
+
+[[packages]]
+name = "fzf"
+
+[[packages]]
+name = "gawk"
+
+[[packages]]
+name = "gh"
+
+[[packages]]
+name = "gibo"
+
+[[packages]]
+name = "git"
+
+[[packages]]
+name = "git-lfs"
+
+[[packages]]
+name = "gnupg"
+
+[[packages]]
+name = "herdr"
+
+[[packages]]
+name = "jq"
+
+[[packages]]
+name = "lazydocker"
+
+[[packages]]
+name = "lazygit"
+
+[[packages]]
+name = "mlx-lm"
+
+[[packages]]
+name = "neovim"
+
+[[packages]]
+name = "nnn"
+
+[[packages]]
+name = "protobuf"
+
+[[packages]]
+name = "ripgrep"
+
+[[packages]]
+name = "socat"
+
+[[packages]]
+name = "starship"
+
+[[packages]]
+name = "tealdeer"
+
+[[packages]]
+name = "tree"
+
+[[packages]]
+name = "typos-cli"
+
+[[packages]]
+name = "vivid"
+
+[[packages]]
+name = "wget"
+
+[[packages]]
+name = "yt-dlp"
+
+[[packages]]
+name = "zk"
+
+[[packages]]
+name = "zoxide"
+
+[[packages]]
+name = "d12frosted/emacs-plus/emacs-plus@30"
+when = "profile=personal"
+
+[[packages]]
+name = "1password"
+kind = "cask"
+
+[[packages]]
+name = "alfred"
+kind = "cask"
+
+[[packages]]
+name = "anytype"
+kind = "cask"
+when = "profile=personal"
+
+[[packages]]
+name = "chatgpt"
+kind = "cask"
+
+[[packages]]
+name = "discord"
+kind = "cask"
+when = "profile=personal"
+
+[[packages]]
+name = "fantastical"
+kind = "cask"
+when = "profile=personal"
+
+[[packages]]
+name = "figma"
+kind = "cask"
+
+[[packages]]
+name = "firefox"
+kind = "cask"
+
+[[packages]]
+name = "flutter"
+kind = "cask"
+
+[[packages]]
+name = "ghostty"
+kind = "cask"
+
+[[packages]]
+name = "google-chrome"
+kind = "cask"
+when = "profile=personal"
+
+[[packages]]
+name = "httpie-desktop"
+kind = "cask"
+
+[[packages]]
+name = "iterm2"
+kind = "cask"
+
+[[packages]]
+name = "karabiner-elements"
+kind = "cask"
+
+[[packages]]
+name = "licecap"
+kind = "cask"
+
+[[packages]]
+name = "logi-options+"
+kind = "cask"
+
+[[packages]]
+name = "microsoft-auto-update"
+kind = "cask"
+
+[[packages]]
+name = "microsoft-office"
+kind = "cask"
+when = "profile=personal"
+
+[[packages]]
+name = "movist-pro"
+kind = "cask"
+when = "profile=personal"
+
+[[packages]]
+name = "orbstack"
+kind = "cask"
+
+[[packages]]
+name = "scroll-reverser"
+kind = "cask"
+
+[[packages]]
+name = "steam"
+kind = "cask"
+when = "profile=personal"
+
+[[packages]]
+name = "tableplus"
+kind = "cask"
+
+[[packages]]
+name = "todoist-app"
+kind = "cask"
+
+[[packages]]
+name = "zen"
+kind = "cask"
+
+[[blacklist]]
+name = "usage"

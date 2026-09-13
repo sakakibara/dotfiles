@@ -36,12 +36,12 @@ _section() { printf '\n%s\n' "$1"; }
 
 _section "top-level help lists every custom subcommand"
 out=$(bash "$BIN" --help 2>&1)
-for cmd in info install sync edit profile doctor upgrade; do
+for cmd in info install edit profile doctor upgrade; do
   _match "help mentions $cmd" "dotfiles $cmd" "$out"
 done
 
 _section "each subcommand --help works and mentions the command name"
-for cmd in install sync edit profile doctor upgrade; do
+for cmd in install edit profile doctor upgrade; do
   out=$(bash "$BIN" "$cmd" --help 2>&1)
   _match "$cmd --help shows subject" "dotfiles $cmd" "$out"
   # Help text is non-empty (>50 bytes worth of useful prose).
@@ -176,17 +176,13 @@ _match "the report is not read as clean" "unparsed" "$out"
 # can run end to end on either OS without touching the machine.
 FIX="$(mktemp -d)"
 trap 'rm -rf "$STUB" "$FIX"' EXIT
-mkdir -p "$FIX/etc/bash/lib" "$FIX/etc/darwin" "$FIX/etc/linux" "$FIX/src/.config/mise" "$FIX/src/.config/holt" "$FIX/bin"
+mkdir -p "$FIX/etc/bash/lib" "$FIX/src/.config/mise" "$FIX/src/.config/holt" "$FIX/bin"
 cp "$REPO_DIR/etc/bash/lib/init.bash" "$FIX/etc/bash/lib/"
-printf 'x\n' > "$FIX/etc/darwin/packages.txt"
-printf 'y\n' > "$FIX/etc/darwin/packages-blacklist.txt"
-printf 'x\n' > "$FIX/etc/linux/packages-fedora.txt"
-for lib in unix darwin brew mise holt linux tools; do
+for lib in unix darwin mise holt tools; do
   printf '#!/usr/bin/env bash\n%s::setup() { :; }\n' "$lib" > "$FIX/etc/bash/lib/$lib.bash"
 done
 printf 'unix::keep_sudo() { :; }\n' >> "$FIX/etc/bash/lib/unix.bash"
 printf 'darwin::require_clt() { :; }\n' >> "$FIX/etc/bash/lib/darwin.bash"
-printf 'linux::detect_distro() { printf fedora; }\n' >> "$FIX/etc/bash/lib/linux.bash"
 printf 'tools::setup() { printf RAN=tools::setup\\n; }\n' >> "$FIX/etc/bash/lib/tools.bash"
 cat > "$FIX/etc/bash/lib/pick.bash" <<'EOF'
 pick() {
@@ -206,20 +202,16 @@ printf '#!/bin/sh\necho Darwin\n' > "$FIX/bindarwin/uname"
 chmod +x "$FIX/bindarwin/uname"
 
 _section "install maps step names to their registered items"
-out=$(MOX_REPO="$FIX" PATH="$FIX/bindarwin:$PATH" bash "$BIN" install brew mise 2>&1)
-_match "brew becomes brew::setup" "PICK=brew::setup,mise::setup" "$out"
+out=$(MOX_REPO="$FIX" PATH="$FIX/bindarwin:$PATH" bash "$BIN" install mise holt 2>&1)
+_match "mise becomes mise::setup" "PICK=mise::setup,holt::setup" "$out"
 out=$(MOX_REPO="$FIX" PATH="$FIX/bindarwin:$PATH" bash "$BIN" install all 2>&1)
 _match "all passes through" "PICK=all" "$out"
-_match "darwin lists the brew step" "ITEM=brew::setup=" "$out"
-h1=$(printf '%s\n' "$out" | sed -n 's/^ITEM=brew::setup=.*|//p' | head -n1)
-printf 'blocked\n' >> "$FIX/etc/darwin/packages-blacklist.txt"
-out=$(MOX_REPO="$FIX" PATH="$FIX/bindarwin:$PATH" bash "$BIN" install all 2>&1)
-h2=$(printf '%s\n' "$out" | sed -n 's/^ITEM=brew::setup=.*|//p' | head -n1)
-[[ -n "$h1" && -n "$h2" && "$h1" != "$h2" ]] && passes=$((passes+1)) || { printf '  ✗ the blacklist is part of the brew step hash (before=%s after=%s)\n' "$h1" "$h2"; fails=$((fails+1)); }
+_match "darwin lists the mise step" "ITEM=mise::setup=" "$out"
+_no_match "packages are mox's now, not an install step" "brew::setup" "$out"
 
 _section "install on Linux imports the tools library"
 out=$(MOX_REPO="$FIX" PATH="$FIX/bin:$PATH" bash "$BIN" install tools 2>&1); rc=$?
-_match "linux lists the distro packages" "ITEM=linux::setup=System packages (fedora)" "$out"
+_no_match "packages are mox's now, not an install step" "linux::setup" "$out"
 _match "linux lists the tools step" "ITEM=tools::setup=" "$out"
 _match "the tools step runs from the imported library" "RAN=tools::setup" "$out"
 _no_match "no picked step is missing" "MISSING=" "$out"

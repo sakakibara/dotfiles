@@ -1,7 +1,6 @@
 # Top-level subcommands the dotfiles wrapper handles itself.
 complete -c dotfiles -f -n '__fish_use_subcommand' -a info     -d 'Print info snapshot'
 complete -c dotfiles -f -n '__fish_use_subcommand' -a install  -d 'Run install steps (interactive menu by default)'
-complete -c dotfiles -f -n '__fish_use_subcommand' -a sync     -d 'Review untracked packages'
 complete -c dotfiles -f -n '__fish_use_subcommand' -a edit     -d 'Fuzzy-find a managed file and edit it'
 complete -c dotfiles -f -n '__fish_use_subcommand' -a profile  -d 'Print or switch the active profile'
 complete -c dotfiles -f -n '__fish_use_subcommand' -a doctor   -d 'Health-check the setup'
@@ -41,7 +40,7 @@ complete -c dotfiles -f -n '__fish_seen_subcommand_from upgrade' \
 # (current-directory files) into `dotfiles edit <TAB>`.
 function __dotfiles_should_wrap_mox
     set -l tokens (commandline -opc)
-    set -l owned info install sync edit profile doctor upgrade cd help
+    set -l owned info install edit profile doctor upgrade cd help
     # Skip token[1] (the command itself); look at the first non-flag arg.
     for tok in $tokens[2..-1]
         string match -q -- '-*' $tok; and continue

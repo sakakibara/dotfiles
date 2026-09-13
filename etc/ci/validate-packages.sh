@@ -1,36 +1,40 @@
 #!/usr/bin/env bash
-# Validates that every package name in packages-<distro>.txt resolves to a
-# real package in that distro's default repos. Profile annotations are
-# ignored -- every entry is checked regardless of which profile it belongs to.
+# Validates that every package name in data/packages/<distro>.toml resolves
+# to a real package in that distro's default repos. Gates (`when`) are
+# ignored -- every row is checked regardless of which machine it targets.
 # Run inside a container of that distro from CI.
 #
 # Usage: bash etc/ci/validate-packages.sh <darwin|fedora|debian|arch|suse>
 
 set -uo pipefail
 
-etc_dir="$(cd "$(dirname "$0")/.." && pwd)"
-# shellcheck disable=SC1091
-source "$etc_dir/bash/lib/init.bash"
-import packages
+repo_dir="$(cd "$(dirname "$0")/../.." && pwd)"
 
 distro="${1:?missing distro arg (darwin|fedora|debian|arch|suse)}"
-if [[ "$distro" == darwin ]]; then
-  file="$etc_dir/darwin/packages.txt"
-  default_kind=brew
-else
-  file="$etc_dir/linux/packages-${distro}.txt"
-  default_kind=pkg
-fi
+file="$repo_dir/data/packages/${distro}.toml"
+if [[ "$distro" == darwin ]]; then default_kind=brew; else default_kind=pkg; fi
 [[ -f "$file" ]] || { echo "no $file" >&2; exit 1; }
+
+# Every `[[packages]]` row of the manifest as `kind<TAB>name`: `cask` when the
+# row says `kind = "cask"`, else the default. `[[blacklist]]` and
+# `[[bootstrap]]` rows are not packages to resolve. Plain awk, no TOML
+# library: the rows this reads are flat by construction.
+_rows() {
+  awk -v dflt="$default_kind" '
+    function flush() { if (in_pkg && name != "") printf "%s\t%s\n", kind, name; in_pkg = 0; name = ""; kind = dflt }
+    /^\[\[packages\]\]/ { flush(); in_pkg = 1; next }
+    /^\[\[/               { flush(); next }
+    in_pkg && /^name = "/  { sub(/^name = "/, ""); sub(/".*$/, ""); name = $0; next }
+    in_pkg && /^kind = "cask"/ { kind = "cask"; next }
+    END { flush() }
+  ' "$file"
+}
 
 # One brew query per kind: `brew info --json=v2` resolves renamed casks to
 # their new token, so the name must come back verbatim to count.
 _brew_resolves() {
   local kind="$1" name="$2"
   case "$kind" in
-    # `brew tap-info` answers with a name for any well-formed owner/repo, so
-    # ask the repository itself. A tap `o/r` lives at github.com/o/homebrew-r.
-    tap) GIT_TERMINAL_PROMPT=0 git ls-remote --exit-code "https://github.com/${name%%/*}/homebrew-${name#*/}.git" HEAD >/dev/null 2>&1 ;;
     cask)
       local json
       json=$(brew info --cask --json=v2 "$name" 2>/dev/null) || return 1
@@ -69,7 +73,7 @@ while IFS=$'\t' read -r kind name; do
   case "$distro" in
     darwin)
       case "$kind" in
-        brew|cask|tap) ;;
+        brew|cask) ;;
         *) echo "FAIL: unsupported kind '$kind' for darwin (entry: ${kind}:${name})"; fails=$((fails + 1)); continue ;;
       esac
       if ! _brew_resolves "$kind" "$name"; then
@@ -107,10 +111,10 @@ while IFS=$'\t' read -r kind name; do
       ;;
   esac
   checked=$((checked + 1))
-done < <(packages::all "$file" "$default_kind")
+done < <(_rows)
 
 # Guard against silent zero-iteration "success" (file empty, parser broke,
-# packages::all returned nothing). The package list is large; legitimately
+# the awk reader emitted nothing). The package list is large; legitimately
 # zero entries would be a regression, not a steady state.
 if [[ $checked -eq 0 ]]; then
   echo "FAIL: 0 packages checked from $file" >&2

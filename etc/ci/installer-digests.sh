@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Fetch every installer script the setup libraries pin, by commit or by
-# release tag, from the URL each library reads, and check it against the
-# digest the library records: a mismatch means the recorded digest and the
-# pinned script no longer agree.
+# Fetch every installer script the repo pins, by commit or by release tag,
+# from the URL each declaration reads, and check it against the digest it
+# records: a mismatch means the recorded digest and the pinned script no
+# longer agree. Homebrew's pin is the `[[bootstrap]]` row mox itself
+# installs from; the rest are the setup libraries' own.
 set -uo pipefail
 if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   echo "installer-digests.sh: not inside a git work tree, so there are no setup libraries to read" >&2
@@ -23,8 +24,7 @@ check() {
   fi
 }
 
-brew_commit=$(sed -n 's/^BREW_INSTALL_COMMIT=//p' etc/bash/lib/brew.bash)
-check "Homebrew install.sh" "https://raw.githubusercontent.com/Homebrew/install/${brew_commit}/install.sh" "$(sed -n 's/^BREW_INSTALL_SHA256=//p' etc/bash/lib/brew.bash)"
+check "Homebrew install.sh" "$(sed -n 's/^url = "\(.*\)"$/\1/p' data/packages/darwin.toml)" "$(sed -n 's/^sha256 = "\(.*\)"$/\1/p' data/packages/darwin.toml)"
 check "holt install.sh" "$(sed -n 's/^HOLT_INSTALL_URL="\(.*\)"$/\1/p' etc/bash/lib/holt.bash | sed "s/\${HOLT_VERSION}/$(sed -n 's/^HOLT_VERSION=//p' etc/bash/lib/holt.bash)/")" "$(sed -n 's/^HOLT_INSTALL_SHA256=//p' etc/bash/lib/holt.bash)"
 holt_ps_version=$(sed -n "s/^\$Script:HoltVersion = '\(.*\)'$/\1/p" etc/powershell/lib/Holt.psm1)
 holt_ps_url=$(sed -n 's/^\$Script:HoltInstallUrl = "\(.*\)"$/\1/p' etc/powershell/lib/Holt.psm1 | sed "s/\$Script:HoltVersion/${holt_ps_version}/")

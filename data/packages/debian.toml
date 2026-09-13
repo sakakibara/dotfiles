@@ -1,0 +1,82 @@
+backend = "apt"
+
+[[packages]]
+name = "bash"
+
+[[packages]]
+name = "bat"
+
+[[packages]]
+name = "fd-find"
+
+[[packages]]
+name = "ffmpeg"
+
+[[packages]]
+name = "fish"
+
+[[packages]]
+name = "fzf"
+
+[[packages]]
+name = "gawk"
+
+[[packages]]
+name = "git"
+
+[[packages]]
+name = "git-lfs"
+
+[[packages]]
+name = "gnupg"
+
+[[packages]]
+name = "imagemagick"
+
+[[packages]]
+name = "jq"
+
+[[packages]]
+name = "neovim"
+
+[[packages]]
+name = "nnn"
+
+[[packages]]
+name = "ripgrep"
+
+[[packages]]
+name = "tree"
+
+[[packages]]
+name = "wget"
+
+[[packages]]
+name = "yt-dlp"
+
+[[packages]]
+name = "zoxide"
+
+[[packages]]
+name = "zsh"
+
+[[packages]]
+name = "build-essential"
+
+[[packages]]
+name = "autoconf"
+
+[[packages]]
+name = "automake"
+
+[[packages]]
+name = "bison"
+
+[[packages]]
+name = "cmake"
+
+[[packages]]
+name = "pkg-config"
+
+[[packages]]
+name = "re2c"

@@ -131,16 +131,16 @@ expect() {
   # installers before mise, tools after it
   local a b
   a=$(printf '%s\n' "$out" | grep -n 'RAN runtime-mise\.' | cut -d: -f1)
-  for m in apps-brew.sh apps-linux-packages.sh apps-scoop.ps1; do
+  for m in darwin-clt.sh apps-scoop.ps1; do
     b=$(printf '%s\n' "$out" | grep -n "RAN $m" | cut -d: -f1)
     [[ -z "$b" || -z "$a" || "$b" -lt "$a" ]] || { printf 'FAIL: %s ran after mise on %s\n' "$m" "$os" >&2; fails=$((fails + 1)); gate_fails=$((gate_fails + 1)); }
   done
   b=$(printf '%s\n' "$out" | grep -n 'RAN tools.sh' | cut -d: -f1)
   [[ -z "$b" || -z "$a" || "$b" -gt "$a" ]] || { printf 'FAIL: tools.sh ran before mise on %s\n' "$os" >&2; fails=$((fails + 1)); gate_fails=$((gate_fails + 1)); }
 }
-expect darwin apps-brew.sh runtime-mise.sh theme.sh workspace-holt.sh -- apps-linux-packages.sh tools.sh apps-scoop.ps1 runtime-mise.ps1 workspace-holt.ps1 theme.ps1 tools-path.ps1 hide-dotfiles.ps1
-expect linux apps-linux-packages.sh runtime-mise.sh tools.sh theme.sh workspace-holt.sh -- apps-brew.sh apps-scoop.ps1 runtime-mise.ps1 workspace-holt.ps1 theme.ps1 tools-path.ps1 hide-dotfiles.ps1
-expect windows apps-scoop.ps1 runtime-mise.ps1 hide-dotfiles.ps1 theme.ps1 tools-path.ps1 workspace-holt.ps1 -- apps-brew.sh apps-linux-packages.sh runtime-mise.sh tools.sh theme.sh workspace-holt.sh
+expect darwin darwin-clt.sh runtime-mise.sh theme.sh workspace-holt.sh -- tools.sh apps-scoop.ps1 runtime-mise.ps1 workspace-holt.ps1 theme.ps1 tools-path.ps1 hide-dotfiles.ps1
+expect linux runtime-mise.sh tools.sh theme.sh workspace-holt.sh -- darwin-clt.sh apps-scoop.ps1 runtime-mise.ps1 workspace-holt.ps1 theme.ps1 tools-path.ps1 hide-dotfiles.ps1
+expect windows apps-scoop.ps1 runtime-mise.ps1 hide-dotfiles.ps1 theme.ps1 tools-path.ps1 workspace-holt.ps1 -- darwin-clt.sh runtime-mise.sh tools.sh theme.sh workspace-holt.sh
 if (( gate_fails == 0 )); then printf 'the setup script gates select the right scripts per OS\n'; fi
 
 if (( fails > 0 )); then
