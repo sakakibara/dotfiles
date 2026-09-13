@@ -1,4 +1,5 @@
 backend = "zypper"
+when = "os=linux"
 
 [[packages]]
 name = "bash"

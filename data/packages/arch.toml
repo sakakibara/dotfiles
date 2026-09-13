@@ -1,4 +1,5 @@
 backend = "pacman"
+when = "os=linux"
 
 [[packages]]
 name = "bash"

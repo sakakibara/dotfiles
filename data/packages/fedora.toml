@@ -1,4 +1,5 @@
 backend = "dnf"
+when = "os=linux"
 
 [[packages]]
 name = "bash"

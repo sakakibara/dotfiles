@@ -1,6 +1,7 @@
 # macOS packages. A tap-qualified name (owner/tap/formula) names its own tap
 # and is the decision to trust it; mox taps and trusts that one formula.
 backend = "brew"
+when = "os=darwin"
 
 # Homebrew's own installer at a fixed commit. mox fetches it, refuses to run
 # it unless it hashes to this digest, and only then installs Homebrew -- so a
