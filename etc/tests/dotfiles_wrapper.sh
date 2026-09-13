@@ -4,8 +4,7 @@
 # Smoke tests for the `dotfiles` wrapper. Verifies that each subcommand
 # parses arguments correctly and emits expected boilerplate. Doesn't run
 # real mox -- that requires a full mox setup which is too heavy for
-# unit-test scope. The deeper functionality is exercised by the
-# pick/sync/packages tests.
+# unit-test scope. The deeper functionality is exercised by the pick tests.
 
 set -uo pipefail
 
@@ -63,8 +62,12 @@ out=$(bash "$BIN" edit definitely-not-a-real-managed-pattern-xxx 2>&1); rc=$?
 _match "non-match error mentions pattern" "no managed file matches" "$out"
 [[ $rc -ne 0 ]] && passes=$((passes+1)) || { printf '  ✗ edit non-match should exit non-zero (got %d)\n' "$rc"; fails=$((fails+1)); }
 
-# A stub mox on PATH answers the queries the wrapper makes, so the profile
-# and doctor paths run against fixed data instead of this machine's state.
+# A stub mox on PATH answers the queries the wrapper makes, so the profile,
+# info and doctor paths run against fixed data instead of this machine's
+# state. Its porcelain status carries one record of each kind, the whole_file
+# one with an empty key (two adjacent tabs); STUB_PKG_ERROR=1 makes it fail
+# the way a broken manifest does: the reason on stderr, nothing on stdout,
+# exit 1.
 STUB="$(mktemp -d)"
 trap 'rm -rf "$STUB"' EXIT
 cat > "$STUB/mox" <<'EOF'
@@ -72,7 +75,19 @@ cat > "$STUB/mox" <<'EOF'
 case "$1" in
   facts)  printf 'profile = "%s"\n' "${STUB_PROFILE-personal}" ;;
   doctor) printf '%s\n' "${STUB_DOCTOR_RAW:-mox doctor: ${STUB_ADVISORIES:-0} advisory item(s) need attention}" ;;
-  status) [[ "${2:-}" == --porcelain ]] || printf '  clean    ~/.zshrc\n  clean    ~/.config/git/config\n  clean    ~/.codex/config.toml  (own 3)\n  ERROR    ~/.broken.toml (compose failed: TomlParseError)\n' ;;
+  status)
+    if [[ "${2:-}" == --porcelain ]]; then
+      if [[ -n "${STUB_PKG_ERROR:-}" ]]; then
+        printf 'mox status: packages: data/packages/x.toml: row "y": boom\n' >&2
+        exit 1
+      fi
+      printf 'owned_key\tfeedbackDrafts\t0\t%s/.claude/settings.json\n' "$HOME"
+      printf 'whole_file\t\t0\t%s/.zshrc\n' "$HOME"
+      printf 'package_missing\tbrew\tripgrep\n'
+      printf 'package_untracked\tbrew\tagg\n'
+      exit 1
+    fi
+    printf '  clean    ~/.zshrc\n  clean    ~/.config/git/config\n  clean    ~/.codex/config.toml  (own 3)\n  ERROR    ~/.broken.toml (compose failed: TomlParseError)\n' ;;
   help)   [[ "$2" == apply || "$2" == status || "$2" == diff ]] ;;
   --help) printf 'Commands:\n  apply      Compose and write\n  status     Report drift\n  diff       Show differences\n' ;;
   edit)   printf 'EDIT %s\n' "$2" ;;
@@ -143,6 +158,29 @@ case "$out" in
 esac
 _match "doctor runs mox doctor" "mox doctor reports no advisory" "$out"
 
+_section "info lists every porcelain record, an empty key included"
+out=$(PATH="$STUB:$PATH" bash "$BIN" info 2>&1)
+_match "the counts cover files and packages" "2 file(s), 2 package(s)" "$out"
+_match "an owned key is listed by its path" ".claude/settings.json (owned_key)" "$out"
+_match "a whole file with an empty key is listed by its path" ".zshrc (whole_file)" "$out"
+_match "a missing package is listed" "ripgrep (brew, missing)" "$out"
+_match "an untracked package is listed" "agg (brew, untracked)" "$out"
+
+_section "info shows a package failure instead of no drift"
+out=$(PATH="$STUB:$PATH" STUB_PKG_ERROR=1 bash "$BIN" info 2>&1)
+_match "the failure is the drift detail" 'Drift:  packages: data/packages/x.toml: row "y": boom' "$out"
+_no_match "the failure is not read as clean" "Drift:  none" "$out"
+
+_section "doctor's manifest check reads the package failure"
+pass_mark="✓$(printf '\033[0m') package manifest loads and its managers answer"
+fail_mark="✖$(printf '\033[0m') package manifest loads and its managers answer"
+out=$(PATH="$STUB:$PATH" bash "$BIN" doctor 2>&1)
+_match "drift alone passes the manifest check" "$pass_mark" "$out"
+out=$(PATH="$STUB:$PATH" STUB_PKG_ERROR=1 bash "$BIN" doctor 2>&1); rc=$?
+_match "a package failure fails the manifest check" "$fail_mark" "$out"
+_match "the failure is the check detail" 'row "y": boom' "$out"
+[[ $rc -ne 0 ]] && passes=$((passes+1)) || { printf '  ✗ doctor should exit non-zero on a package failure\n'; fails=$((fails+1)); }
+
 _section "doctor fails when mox doctor reports an advisory"
 out=$(PATH="$STUB:$PATH" STUB_ADVISORIES=1 bash "$BIN" doctor 2>&1); rc=$?
 _match "advisory count shown" "1 advisory" "$out"
@@ -207,11 +245,11 @@ _match "mise becomes mise::setup" "PICK=mise::setup,holt::setup" "$out"
 out=$(MOX_REPO="$FIX" PATH="$FIX/bindarwin:$PATH" bash "$BIN" install all 2>&1)
 _match "all passes through" "PICK=all" "$out"
 _match "darwin lists the mise step" "ITEM=mise::setup=" "$out"
-_no_match "packages are mox's now, not an install step" "brew::setup" "$out"
+_no_match "darwin offers no brew step" "brew::setup" "$out"
 
 _section "install on Linux imports the tools library"
 out=$(MOX_REPO="$FIX" PATH="$FIX/bin:$PATH" bash "$BIN" install tools 2>&1); rc=$?
-_no_match "packages are mox's now, not an install step" "linux::setup" "$out"
+_no_match "linux offers no distro package step" "linux::setup" "$out"
 _match "linux lists the tools step" "ITEM=tools::setup=" "$out"
 _match "the tools step runs from the imported library" "RAN=tools::setup" "$out"
 _no_match "no picked step is missing" "MISSING=" "$out"

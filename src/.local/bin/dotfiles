@@ -53,32 +53,55 @@ cmd_info() {
   fi
 
   if command -v mox >/dev/null 2>&1; then
-    local drift
+    local drift drift_rc=0 drift_err errfile
     # `mox status --porcelain` emits one drifted unit per line, tab-separated,
     # the first field saying which record it is: a file record is kind, key,
-    # first_contact, path; a package record is package_missing or
-    # package_untracked, backend, id. Consume that instead of scraping the
-    # human table. It reports true drift -- a file that needs a decision
-    # (--overwrite or commit), a package to install or to record -- not one a
-    # plain `mox apply` would just create or update.
-    drift=$(mox status --porcelain 2>/dev/null || true)
-    if [[ -z "$drift" ]]; then
+    # first_contact, path (the key may be empty); a package record is
+    # package_missing or package_untracked, backend, id. Consume that instead
+    # of scraping the human table. It reports drift: a file that needs a
+    # decision (--overwrite or commit), a package `mox apply` would install
+    # or `mox commit` would record. A manifest, plugin or manager failure
+    # exits 1 with the reason on stderr and no package records, so that
+    # reason is the drift detail rather than "none".
+    errfile=$(mktemp)
+    drift=$(mox status --porcelain 2>"$errfile") || drift_rc=$?
+    drift_err=$(grep '^mox status: packages:' "$errfile" | head -n1) || true
+    rm -f "$errfile"
+    if [[ $drift_rc -eq 1 && -n "$drift_err" ]]; then
+      _row "Drift:" "${drift_err#mox status: }"
+    elif [[ $drift_rc -ne 0 && $drift_rc -ne 1 ]]; then
+      _row "Drift:" "unknown (mox status exited $drift_rc)"
+    elif [[ -z "$drift" ]]; then
       _row "Drift:" "none"
     else
-      local files=0 pkgs=0
-      while IFS=$'\t' read -r kind _ _ _; do
-        case "$kind" in package_*) pkgs=$((pkgs + 1)) ;; "") ;; *) files=$((files + 1)) ;; esac
+      local files=0 pkgs=0 line
+      while IFS= read -r line; do
+        [[ "$line" == *$'\t'* ]] || continue
+        case "${line%%$'\t'*}" in package_*) pkgs=$((pkgs + 1)) ;; *) files=$((files + 1)) ;; esac
       done <<<"$drift"
       _row "Drift:" "$files file(s), $pkgs package(s)"
+    fi
+    if [[ -n "$drift" ]]; then
       # Show each drifted path (home-relative) or package, tagged with its
-      # kind. Paths on this OS are '/'-separated, so the porcelain path field
-      # carries no backslash escaping to undo; 8 leading spaces align with the
-      # value column.
-      while IFS=$'\t' read -r kind f2 f3 f4; do
+      # kind. Fields are split by parameter expansion, not `read`, so an
+      # empty key (two adjacent tabs) keeps the path in its place. Paths on
+      # this OS are '/'-separated, so the porcelain path field carries no
+      # backslash escaping to undo; 8 leading spaces align with the value
+      # column.
+      local line kind rest path
+      while IFS= read -r line; do
+        [[ "$line" == *$'\t'* ]] || continue
+        kind=${line%%$'\t'*}
         case "$kind" in
-          "") continue ;;
-          package_*) printf '        %s%s (%s, %s)%s\n' "$C_DIM" "$f3" "$f2" "${kind#package_}" "$C_RESET" ;;
-          *) [[ -z "$f4" ]] && continue; printf '        %s%s (%s)%s\n' "$C_DIM" "${f4#"$HOME"/}" "$kind" "$C_RESET" ;;
+          package_*)
+            rest=${line#*$'\t'}
+            printf '        %s%s (%s, %s)%s\n' "$C_DIM" "${rest#*$'\t'}" "${rest%%$'\t'*}" "${kind#package_}" "$C_RESET"
+            ;;
+          *)
+            path=${line##*$'\t'}
+            [[ -n "$path" ]] || continue
+            printf '        %s%s (%s)%s\n' "$C_DIM" "${path#"$HOME"/}" "$kind" "$C_RESET"
+            ;;
         esac
       done <<<"$drift"
     fi
@@ -356,12 +379,14 @@ EOF
   fi
 
   if command -v mox >/dev/null 2>&1; then
-    local rc
-    mox status --porcelain >/dev/null 2>&1
-    rc=$?
-    [[ $rc -ne 2 ]]
+    # Drift exits 1 too, so the exit code cannot tell a package failure from
+    # a package to install; the failure is the `mox status: packages:` line
+    # on stderr.
+    local pkg_err
+    pkg_err=$({ mox status --porcelain >/dev/null; } 2>&1 | grep '^mox status: packages:' | head -n1)
+    [[ -z "$pkg_err" ]]
     # shellcheck disable=SC2319  # the preceding condition is the check
-    _check "package manifest loads and its managers answer" $?
+    _check "package manifest loads and its managers answer" $? "$pkg_err"
   fi
 
   # Theme command works (state file may legitimately not exist before the
