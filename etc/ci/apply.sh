@@ -63,14 +63,36 @@ fi
 # N)`) reports MISSING because mox manages only some keys inside a file the
 # program itself creates -- on a real machine that program has run, here
 # nothing has. Anything else is a genuine disagreement.
-status_out=$(mox status 2>&1)
+#
+# The file rows end where the `packages:` section starts. Package rows are
+# judged separately: `--skip-scripts` installs nothing, so MISSING there is
+# expected, and the runner's own package set makes UNTRACKED expected too.
+status_out=$(mox status 2>"$work/status.err")
 unexpected=$(printf '%s\n' "$status_out" |
+  sed '/^packages:$/,$d' |
   grep -E '^  (OUTDATED|DRIFT|MISSING|STALE|ERROR)' |
   grep -vE '^  MISSING .*\((own|disown) [0-9]+\)$')
 if [[ -n "$unexpected" ]]; then
   printf 'FAIL: mox status is not clean after a fresh apply\n' >&2
   printf '%s\n' "$unexpected" | head -20 >&2
   fails=$((fails + 1))
+fi
+
+# A repo that carries manifests must get a package section back, and the
+# section must come from a manifest that loaded and managers that answered:
+# a failure there is the `mox status: packages:` line on stderr, with the
+# section missing or cut short.
+if [[ -d "$repo/data/packages" ]]; then
+  if [[ "$status_out" != *$'\npackages:\n'* ]]; then
+    printf 'FAIL: data/packages/ exists but mox status reports no packages section\n' >&2
+    fails=$((fails + 1))
+  fi
+  pkg_err=$(grep '^mox status: packages:' "$work/status.err")
+  if [[ -n "$pkg_err" ]]; then
+    printf 'FAIL: the package manifest did not load or a manager did not answer\n' >&2
+    printf '%s\n' "$pkg_err" | head -5 >&2
+    fails=$((fails + 1))
+  fi
 fi
 
 # Applying twice must be a no-op. A file that rewrites itself every run would
