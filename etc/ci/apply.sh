@@ -12,9 +12,10 @@
 # package manifests under `data/packages/` alone: the scripts install the
 # Xcode Command Line Tools, language toolchains through mise and, on Linux,
 # binaries outside the package manager, and the manifests install Homebrew
-# and packages, none of which a CI job should do. The scripts' dispatch is
-# proved separately below, against a stub tree whose scripts only announce
-# themselves.
+# and packages, none of which a CI job should do (the status checks still
+# ask the runner's managers what is installed, which is read-only). The
+# scripts' dispatch is proved separately below, against a stub tree whose
+# scripts only announce themselves.
 
 set -uo pipefail
 
