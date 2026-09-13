@@ -53,24 +53,33 @@ cmd_info() {
   fi
 
   if command -v mox >/dev/null 2>&1; then
-    local drift count
-    # `mox status --porcelain` emits one drifted unit per line, tab-separated:
-    # kind, key, first_contact, path. Consume that instead of scraping the
+    local drift
+    # `mox status --porcelain` emits one drifted unit per line, tab-separated,
+    # the first field saying which record it is: a file record is kind, key,
+    # first_contact, path; a package record is package_missing or
+    # package_untracked, backend, id. Consume that instead of scraping the
     # human table. It reports true drift -- a file that needs a decision
-    # (--overwrite or commit) -- not one a plain `mox apply` would just create
-    # or update. Needs mox >= 0.8.0.
+    # (--overwrite or commit), a package to install or to record -- not one a
+    # plain `mox apply` would just create or update.
     drift=$(mox status --porcelain 2>/dev/null || true)
     if [[ -z "$drift" ]]; then
       _row "Drift:" "none"
     else
-      count=$(printf '%s\n' "$drift" | wc -l | tr -d ' ')
-      _row "Drift:" "$count file(s)"
-      # Show each drifted path (home-relative), tagged with its kind. Paths on
-      # this OS are '/'-separated, so the porcelain path field carries no
-      # backslash escaping to undo; 8 leading spaces align with the value column.
-      while IFS=$'\t' read -r kind _ _ path; do
-        [[ -z "$path" ]] && continue
-        printf '        %s%s (%s)%s\n' "$C_DIM" "${path#"$HOME"/}" "$kind" "$C_RESET"
+      local files=0 pkgs=0
+      while IFS=$'\t' read -r kind _ _ _; do
+        case "$kind" in package_*) pkgs=$((pkgs + 1)) ;; "") ;; *) files=$((files + 1)) ;; esac
+      done <<<"$drift"
+      _row "Drift:" "$files file(s), $pkgs package(s)"
+      # Show each drifted path (home-relative) or package, tagged with its
+      # kind. Paths on this OS are '/'-separated, so the porcelain path field
+      # carries no backslash escaping to undo; 8 leading spaces align with the
+      # value column.
+      while IFS=$'\t' read -r kind f2 f3 f4; do
+        case "$kind" in
+          "") continue ;;
+          package_*) printf '        %s%s (%s, %s)%s\n' "$C_DIM" "$f3" "$f2" "${kind#package_}" "$C_RESET" ;;
+          *) [[ -z "$f4" ]] && continue; printf '        %s%s (%s)%s\n' "$C_DIM" "${f4#"$HOME"/}" "$kind" "$C_RESET" ;;
+        esac
       done <<<"$drift"
     fi
   fi

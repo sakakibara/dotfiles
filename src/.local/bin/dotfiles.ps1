@@ -139,18 +139,26 @@ function Cmd-Info {
 
     if (_Have mox) {
         # `mox status --porcelain` emits one drifted unit per line, tab-
-        # separated: kind, key, first_contact, path (path C-escaped). Consume
-        # that instead of scraping the human table. It reports true drift -- a
-        # file needing a decision -- not one a plain `mox apply` would just
-        # create or update. Needs mox >= 0.8.0.
+        # separated, the first field saying which record it is: a file record
+        # is kind, key, first_contact, path (path C-escaped); a package record
+        # is package_missing or package_untracked, backend, id. Consume that
+        # instead of scraping the human table. It reports true drift -- a
+        # file needing a decision, a package to install or record -- not one a
+        # plain `mox apply` would just create or update.
         $drift = @((& mox status --porcelain 2>$null) | Where-Object { $_ -ne '' })
         if ($drift.Count -eq 0) {
             _Row 'Drift:' 'none'
         } else {
-            _Row 'Drift:' "$($drift.Count) file(s)"
+            $files = @($drift | Where-Object { -not $_.StartsWith('package_') }).Count
+            $pkgs = $drift.Count - $files
+            _Row 'Drift:' "$files file(s), $pkgs package(s)"
             foreach ($line in $drift) {
                 $f = $line -split "`t"
                 $kind = $f[0]
+                if ($kind.StartsWith('package_')) {
+                    Write-Host ('        {0}{1} ({2}, {3}){4}' -f $Script:Dim, $f[2], $f[1], $kind.Substring(8), $Script:Reset)
+                    continue
+                }
                 $path = _UnescapePorcelain $f[3]
                 if ($HOME -and $path.StartsWith($HOME)) {
                     $path = $path.Substring($HOME.Length).TrimStart('\', '/')
