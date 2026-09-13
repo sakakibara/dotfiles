@@ -1,10 +1,11 @@
 #!/usr/bin/env pwsh
-# sync -- interactive review of installed-but-untracked packages (PowerShell port).
+# sync -- interactive review of installed-but-untracked packages.
 #
-# Mirrors etc/bash/lib/sync.bash for native Windows. Same packages.txt
-# format, same blacklist semantics, same action set (skip/add/@profile/
-# block), same cycle order and key bindings. Reuses pick.ps1 for the
-# TUI primitives (alt screen, raw key reader, atomic redraw).
+# Windows only: on macOS and Linux the package manifest is mox's and
+# `mox commit` records what was installed by hand. Reads packages.txt and
+# its blacklist, offers skip/add/@profile/block per package, and reuses
+# pick.ps1 for the TUI primitives (alt screen, raw key reader, atomic
+# redraw).
 #
 # Windows-specific bits:
 #   - Default kind: scoop. Bare names install via scoop's main bucket;
@@ -222,7 +223,7 @@ function _SyncFetchDescriptions([array]$items) {
 # Review TUI
 
 # Returns the next action in the cycle: skip -> add -> @<current> -> @<other>
-# -> block -> skip. Mirrors sync::_cycle_action in bash.
+# -> block -> skip.
 function _SyncCycleAction([string]$current, [string]$other, [string]$action) {
     switch ($action) {
         'skip' { return 'add' }
@@ -394,7 +395,7 @@ function Sync-FormatEntry([string]$kind, [string]$name, [string]$default_kind, [
 }
 
 # Atomically append $lines (string array) to $file, ensuring trailing
-# newline before the new entries. Same shape as bash's sync::_append.
+# newline before the new entries.
 function _SyncAppend([string]$file, [string[]]$lines) {
     if (-not $file) { return }
     if (-not $lines -or $lines.Count -eq 0) { return }

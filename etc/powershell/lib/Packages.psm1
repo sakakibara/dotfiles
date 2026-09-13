@@ -1,5 +1,6 @@
-# packages -- shared parser for the per-OS package list files (analog of
-# etc/bash/lib/packages.bash). Used by sync.ps1 and the install libraries.
+# packages -- shared parser for the Windows package list
+# (etc/windows/packages.txt) and its blacklist. Used by sync.ps1 and the
+# install libraries.
 
 Import-Module (Join-Path $PSScriptRoot 'Msg.psm1') -Force
 

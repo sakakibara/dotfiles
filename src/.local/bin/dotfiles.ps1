@@ -487,10 +487,9 @@ Inside the menu:
     }
 
     # Source pick.ps1 (the picker) + the per-tool libraries from the
-    # mox repo. This mirrors the bash `import unix darwin brew
-    # mise holt pick` pattern: each library defines `Tool::Install`,
-    # `Tool::Require`, `Tool::Setup` functions; pick invokes the *Setup
-    # functions when the user selects them.
+    # mox repo. Each library defines `Tool::Install`, `Tool::Require`,
+    # `Tool::Setup` functions; pick invokes the *Setup functions when the
+    # user selects them.
     . (Join-Path $PSScriptRoot 'pick.ps1')
     Import-Module (Join-Path $lib 'Scoop.psm1') -Force
     Import-Module (Join-Path $lib 'Mise.psm1')  -Force

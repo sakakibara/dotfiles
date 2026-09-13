@@ -137,9 +137,9 @@ To add an account:
 `mox apply` runs `scripts/pre/` before writing files and `scripts/post/`
 after. mox runs a phase's top-level scripts in filename order, then its
 `os=...` subdirectories, so every shell script sits at the top level with a
-`# mox: when os=...` gate. In `pre/` the `apps-`, `runtime-`, `tools`
-prefixes sort into dependency order; the two `post/` scripts are
-independent of each other. Every binary a script downloads is version-pinned
+`# mox: when os=...` gate. The `pre/` names sort into dependency order
+(`darwin-clt`, then `runtime-mise`, then `tools`); the two `post/` scripts
+are independent of each other. Every binary a script downloads is version-pinned
 and checked against the checksum its project publishes, except where the
 project publishes none: the Homebrew, holt and scoop installer scripts are
 checked against a digest recorded in this repo, and theme assets against a sha256
@@ -149,7 +149,7 @@ the script, which mox reports.
 
 | Script | What it does |
 | --- | --- |
-| `pre/darwin-clt.sh` | the Xcode Command Line Tools and a sudo keepalive; packages themselves are mox's, from `data/packages/*.toml` (`mox status` reports drift, `mox apply` installs, `mox commit` records what you installed by hand) |
+| `pre/darwin-clt.sh` | the Xcode Command Line Tools, installed through `softwareupdate` when `xcode-select -p` finds none, with a sudo keepalive for the length of that install; packages are not a script's job -- they come from `data/packages/*.toml` (`mox status` reports drift, `mox apply` installs, `mox commit` records what you installed by hand) |
 | `pre/runtime-mise.sh` | language toolchains via mise (installed from a pinned release when missing) |
 | `pre/tools.sh` | Linux binaries outside the system package manager (lazygit, lazydocker, gh; starship where the distro does not package it; cargo tools through mise's rust) |
 | `post/workspace-holt.sh` | installs holt if missing, links `~/Life`/`~/Work` to the synced root, `holt sync` rebuilds project hubs; runs post so it can read the applied holt config |

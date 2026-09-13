@@ -4,8 +4,8 @@ import msg unix
 
 HOLT_INSTALL_DIR="${HOME}/.local/bin"
 # The installer is fetched at a release tag and checked against a digest
-# recorded here, the same shape brew.bash uses -- a tag is a moving reference
-# until something pins its content. The version is also passed THROUGH to the
+# recorded here -- a tag is a moving reference until something pins its
+# content. The version is also passed THROUGH to the
 # installer: without it the script comes from the tag while the binary it
 # installs is whatever `latest` happens to be at run time.
 #

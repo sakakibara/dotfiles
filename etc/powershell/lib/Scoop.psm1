@@ -1,4 +1,4 @@
-# scoop -- bootstrap + Windows package install (analog of etc/bash/lib/brew.bash).
+# scoop -- bootstrap + Windows package install.
 # Reads etc/windows/packages.txt, filters to the current profile, and
 # installs whatever's missing. Honors `bucket:`, `scoop` (default), and
 # `winget:` kinds.
