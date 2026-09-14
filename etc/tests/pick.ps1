@@ -34,15 +34,15 @@ function Section([string]$s) { Write-Host ""; Write-Host $s }
 # Item parsing
 Section 'item parsing'
 
-$it = _ParseItem 'brew::setup'
-Test-Eq 'bare name -> name'   'brew::setup' $it.Name
-Test-Eq 'bare name -> label'  'brew::setup' $it.Label
+$it = _ParseItem 'mise::setup'
+Test-Eq 'bare name -> name'   'mise::setup' $it.Name
+Test-Eq 'bare name -> label'  'mise::setup' $it.Label
 Test-Eq 'bare name -> state'  'normal'      $it.State
 Test-Eq 'bare name -> reason' ''            $it.Reason
 
-$it = _ParseItem 'brew::setup=Homebrew packages'
-Test-Eq 'name=label -> name'  'brew::setup'        $it.Name
-Test-Eq 'name=label -> label' 'Homebrew packages'  $it.Label
+$it = _ParseItem 'mise::setup=Language toolchains'
+Test-Eq 'name=label -> name'  'mise::setup'        $it.Name
+Test-Eq 'name=label -> label' 'Language toolchains'  $it.Label
 
 $it = _ParseItem '+dep::setup=Install CLT'
 Test-Eq '+ -> required state' 'required'   $it.State
@@ -59,10 +59,10 @@ $it = _ParseItem 'name=label-with-=-equals'
 Test-Eq '= splits first only -- name'  'name'                $it.Name
 Test-Eq '= splits first only -- label' 'label-with-=-equals' $it.Label
 
-$it = _ParseItem 'brew::setup=Brew|abc123'
+$it = _ParseItem 'mise::setup=Brew|abc123'
 Test-Eq 'hash extracted'          'abc123'      $it.Hash
 Test-Eq 'label without hash tail' 'Brew'        $it.Label
-Test-Eq 'name with hash'          'brew::setup' $it.Name
+Test-Eq 'name with hash'          'mise::setup' $it.Name
 
 $it = _ParseItem '~name=label~missing dep|deadbeef'
 Test-Eq 'hash+reason state'  'disabled'    $it.State

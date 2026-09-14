@@ -39,15 +39,15 @@ export XDG_STATE_HOME="$TMP/state"
 # Item parsing
 _section "item parsing"
 
-pick::_parse_item "brew::setup"
-_eq "bare name -> name"   "brew::setup" "$_pick_name"
-_eq "bare name -> label"  "brew::setup" "$_pick_label"
+pick::_parse_item "mise::setup"
+_eq "bare name -> name"   "mise::setup" "$_pick_name"
+_eq "bare name -> label"  "mise::setup" "$_pick_label"
 _eq "bare name -> state"  "normal"      "$_pick_state"
 _eq "bare name -> reason" ""            "$_pick_reason"
 
-pick::_parse_item "brew::setup=Homebrew packages"
-_eq "name=label -> name"  "brew::setup"        "$_pick_name"
-_eq "name=label -> label" "Homebrew packages"  "$_pick_label"
+pick::_parse_item "mise::setup=Language toolchains"
+_eq "name=label -> name"  "mise::setup"        "$_pick_name"
+_eq "name=label -> label" "Language toolchains"  "$_pick_label"
 
 pick::_parse_item "+dependency::setup=Install CLT"
 _eq "+ -> required state" "required"           "$_pick_state"
@@ -64,10 +64,10 @@ pick::_parse_item "name=label-with-=-equals"
 _eq "= splits on first only -- name"  "name"               "$_pick_name"
 _eq "= splits on first only -- label" "label-with-=-equals" "$_pick_label"
 
-pick::_parse_item "brew::setup=Brew|abc123"
+pick::_parse_item "mise::setup=Brew|abc123"
 _eq "hash extracted"          "abc123"      "$_pick_hash"
 _eq "label without hash tail" "Brew"        "$_pick_label"
-_eq "name with hash"          "brew::setup" "$_pick_name"
+_eq "name with hash"          "mise::setup" "$_pick_name"
 
 pick::_parse_item "~name=label~missing dep|deadbeef"
 _eq "hash with reason -- state"  "disabled"     "$_pick_state"
@@ -584,9 +584,9 @@ case "$out" in
 esac
 
 _section "filter: case-insensitive substring match"
-pick::_matches_filter "Homebrew packages" "brew"; _true "lowercase filter matches mixed-case label" "$?"
-pick::_matches_filter "Homebrew packages" "BREW"; _true "uppercase filter matches" "$?"
-pick::_matches_filter "Homebrew packages" "ZIG";  _false "non-matching filter" "$?"
+pick::_matches_filter "Language toolchains" "lang"; _true "lowercase filter matches mixed-case label" "$?"
+pick::_matches_filter "Language toolchains" "LANG"; _true "uppercase filter matches" "$?"
+pick::_matches_filter "Language toolchains" "ZIG";  _false "non-matching filter" "$?"
 pick::_matches_filter "Anything" "";              _true "empty filter matches all" "$?"
 
 _section "filter: recompute_visible builds index list"

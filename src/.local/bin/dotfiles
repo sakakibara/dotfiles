@@ -62,8 +62,8 @@ cmd_info() {
     # of scraping the human table. It reports drift: a file that needs a
     # decision (--overwrite or commit), a package `mox apply` would install
     # or `mox commit` would record. A manifest, plugin or manager failure
-    # exits 1 with the reason on stderr and no package records, so that
-    # reason is the drift detail rather than "none".
+    # exits 1 with the reason on stderr and an empty or partial package
+    # set, so that reason is the drift detail rather than "none".
     errfile=$(mktemp)
     drift=$(mox status --porcelain 2>"$errfile") || drift_rc=$?
     drift_err=$(grep '^mox status: packages:' "$errfile" | head -n1) || true
@@ -75,12 +75,20 @@ cmd_info() {
     elif [[ -z "$drift" ]]; then
       _row "Drift:" "none"
     else
-      local files=0 pkgs=0 line
+      local files=0 pkgs=0 broken=0 line
       while IFS= read -r line; do
         [[ "$line" == *$'\t'* ]] || continue
-        case "${line%%$'\t'*}" in package_*) pkgs=$((pkgs + 1)) ;; *) files=$((files + 1)) ;; esac
+        case "${line%%$'\t'*}" in
+          package_broken) broken=$((broken + 1)) ;;
+          package_*) pkgs=$((pkgs + 1)) ;;
+          *) files=$((files + 1)) ;;
+        esac
       done <<<"$drift"
-      _row "Drift:" "$files file(s), $pkgs package(s)"
+      if (( broken > 0 )); then
+        _row "Drift:" "$files file(s), $pkgs package(s), $broken manager(s) not answering"
+      else
+        _row "Drift:" "$files file(s), $pkgs package(s)"
+      fi
     fi
     if [[ -n "$drift" ]]; then
       # Show each drifted path (home-relative) or package, tagged with its
@@ -287,9 +295,9 @@ cmd_doctor() {
 dotfiles doctor -- health check for the dotfiles + mox setup.
 
 Verifies that the mox binary is reachable, the repo resolves, the profile
-resolves, `mox doctor` reports no advisory, `data/packages` is there and
-its manifest loads with its managers answering, the theme state file is
-intact, and the per-OS
+resolves, `mox doctor` reports no advisory, the shell library parses under
+the system bash, `data/packages` is there and its manifest loads with its
+managers answering, the theme state file is intact, and the per-OS
 toolchain (brew on macOS, sudo on Linux, mise, holt) is on PATH. Exits 0
 when all checks pass, 1 if any failed.
 EOF
@@ -386,10 +394,18 @@ EOF
 
   if command -v mox >/dev/null 2>&1; then
     # Drift exits 1 too, so the exit code cannot tell a package failure from
-    # a package to install; the failure is the `mox status: packages:` line
-    # on stderr.
-    local pkg_err
-    pkg_err=$({ mox status --porcelain >/dev/null; } 2>&1 | grep '^mox status: packages:' | head -n1)
+    # a package to install. A manifest that did not load says so on stderr;
+    # a manager that is installed but cannot answer is a `package_broken`
+    # record on stdout. Both mean the report is not a picture of this
+    # machine, so both must fail this check.
+    local pkg_err pkg_out errfile
+    errfile=$(mktemp)
+    pkg_out=$(mox status --porcelain 2>"$errfile") || true
+    pkg_err=$(grep '^mox status: packages:' "$errfile" | head -n1)
+    rm -f "$errfile"
+    if [[ -z "$pkg_err" ]]; then
+      pkg_err=$(printf '%s\n' "$pkg_out" | awk -F'\t' '$1 == "package_broken" { printf "%s cannot answer (exited %s)", $2, $3; exit }')
+    fi
     [[ -z "$pkg_err" ]]
     # shellcheck disable=SC2319  # the preceding condition is the check
     _check "package manifest loads and its managers answer" $? "$pkg_err"

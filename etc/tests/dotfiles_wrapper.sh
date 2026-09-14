@@ -65,7 +65,8 @@ _match "non-match error mentions pattern" "no managed file matches" "$out"
 # A stub mox on PATH answers the queries the wrapper makes, so the profile,
 # info and doctor paths run against fixed data instead of this machine's
 # state. Its porcelain status carries one record of each kind, the whole_file
-# one with an empty key (two adjacent tabs); STUB_PKG_ERROR=1 makes it fail
+# one with an empty key (two adjacent tabs); STUB_PKG_BROKEN=1 adds a
+# manager that cannot answer; STUB_PKG_ERROR=1 makes it fail
 # the way a broken manifest does: the reason on stderr, nothing on stdout,
 # exit 1.
 STUB="$(mktemp -d)"
@@ -85,7 +86,7 @@ case "$1" in
       printf 'whole_file\t\t0\t%s/.zshrc\n' "$HOME"
       printf 'package_missing\tbrew\tripgrep\n'
       printf 'package_untracked\tbrew\tagg\n'
-      printf 'package_broken\tdnf\t1\n'
+      [[ -n "${STUB_PKG_BROKEN:-}" ]] && printf 'package_broken\tdnf\t1\n'
       exit 1
     fi
     printf '  clean    ~/.zshrc\n  clean    ~/.config/git/config\n  clean    ~/.codex/config.toml  (own 3)\n  ERROR    ~/.broken.toml (compose failed: TomlParseError)\n' ;;
@@ -161,12 +162,14 @@ _match "doctor runs mox doctor" "mox doctor reports no advisory" "$out"
 
 _section "info lists every porcelain record, an empty key included"
 out=$(PATH="$STUB:$PATH" bash "$BIN" info 2>&1)
-_match "the counts cover files and packages" "2 file(s), 3 package(s)" "$out"
+_match "the counts cover files and packages" "2 file(s), 2 package(s)" "$out"
 _match "an owned key is listed by its path" ".claude/settings.json (owned_key)" "$out"
 _match "a whole file with an empty key is listed by its path" ".zshrc (whole_file)" "$out"
 _match "a missing package is listed" "ripgrep (brew, missing)" "$out"
 _match "an untracked package is listed" "agg (brew, untracked)" "$out"
+out=$(PATH="$STUB:$PATH" STUB_PKG_BROKEN=1 bash "$BIN" info 2>&1)
 _match "a broken manager is listed by its exit code" "dnf (broken, exited 1)" "$out"
+_match "a broken manager is counted apart from packages" "2 package(s), 1 manager(s) not answering" "$out"
 
 _section "info shows a package failure instead of no drift"
 out=$(PATH="$STUB:$PATH" STUB_PKG_ERROR=1 bash "$BIN" info 2>&1)
@@ -178,6 +181,10 @@ pass_mark="✓$(printf '\033[0m') package manifest loads and its managers answer
 fail_mark="✖$(printf '\033[0m') package manifest loads and its managers answer"
 out=$(PATH="$STUB:$PATH" bash "$BIN" doctor 2>&1)
 _match "drift alone passes the manifest check" "$pass_mark" "$out"
+out=$(PATH="$STUB:$PATH" STUB_PKG_BROKEN=1 bash "$BIN" doctor 2>&1); rc=$?
+_match "a manager that cannot answer fails the manifest check" "$fail_mark" "$out"
+_match "the broken manager is the check detail" "dnf cannot answer (exited 1)" "$out"
+[[ $rc -ne 0 ]] && passes=$((passes+1)) || { printf '  ✗ doctor should exit non-zero on a broken manager\n'; fails=$((fails+1)); }
 out=$(PATH="$STUB:$PATH" STUB_PKG_ERROR=1 bash "$BIN" doctor 2>&1); rc=$?
 _match "a package failure fails the manifest check" "$fail_mark" "$out"
 _match "the failure is the check detail" 'row "y": boom' "$out"

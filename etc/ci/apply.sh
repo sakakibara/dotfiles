@@ -97,6 +97,14 @@ if [[ -d "$repo/data/packages" ]]; then
     printf '%s\n' "$pkg_err" | head -5 >&2
     fails=$((fails + 1))
   fi
+  # A manager that is installed but cannot answer is drift in the section
+  # itself, not a line on stderr.
+  broken=$(printf '%s\n' "$status_out" | grep '^  BROKEN ' || true)
+  if [[ -n "$broken" ]]; then
+    printf 'FAIL: a package manager on this runner cannot answer\n' >&2
+    printf '%s\n' "$broken" | head -5 >&2
+    fails=$((fails + 1))
+  fi
 fi
 
 # Applying twice must be a no-op. A file that rewrites itself every run would

@@ -179,8 +179,13 @@ function Cmd-Info {
             _Row 'Drift:' 'none'
         } else {
             $files = @($drift | Where-Object { -not $_.StartsWith('package_') }).Count
-            $pkgs = $drift.Count - $files
-            _Row 'Drift:' "$files file(s), $pkgs package(s)"
+            $broken = @($drift | Where-Object { $_.StartsWith('package_broken') }).Count
+            $pkgs = $drift.Count - $files - $broken
+            if ($broken -gt 0) {
+                _Row 'Drift:' "$files file(s), $pkgs package(s), $broken manager(s) not answering"
+            } else {
+                _Row 'Drift:' "$files file(s), $pkgs package(s)"
+            }
         }
         foreach ($line in $drift) {
             $f = $line -split "`t"
