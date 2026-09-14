@@ -85,10 +85,10 @@ cmd_info() {
     if [[ -n "$drift" ]]; then
       # Show each drifted path (home-relative) or package, tagged with its
       # kind. Fields are split by parameter expansion, not `read`, so an
-      # empty key (two adjacent tabs) keeps the path in its place. Paths on
-      # this OS are '/'-separated, so the porcelain path field carries no
-      # backslash escaping to undo; 8 leading spaces align with the value
-      # column.
+      # empty key (two adjacent tabs) keeps the path in its place. A path
+      # here is printed as mox escaped it: a backslash or a control
+      # character in a filename stays escaped, which is rare enough to read
+      # as-is. 8 leading spaces align with the value column.
       local line kind rest path
       while IFS= read -r line; do
         [[ "$line" == *$'\t'* ]] || continue
@@ -287,8 +287,9 @@ cmd_doctor() {
 dotfiles doctor -- health check for the dotfiles + mox setup.
 
 Verifies that the mox binary is reachable, the repo resolves, the profile
-resolves, `mox doctor` reports no advisory, the package manifest loads and
-its managers answer, the theme state file is intact, and the per-OS
+resolves, `mox doctor` reports no advisory, `data/packages` is there and
+its manifest loads with its managers answering, the theme state file is
+intact, and the per-OS
 toolchain (brew on macOS, sudo on Linux, mise, holt) is on PATH. Exits 0
 when all checks pass, 1 if any failed.
 EOF

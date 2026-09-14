@@ -3,7 +3,7 @@
 #
 # The shared package-list parser (etc/powershell/lib/Packages.psm1): line
 # parsing, profile filtering, and the profile-blind read a blacklist uses.
-# Mirrors etc/tests/packages.sh.
+# Windows only: elsewhere the package list is mox's data/packages manifest.
 
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)

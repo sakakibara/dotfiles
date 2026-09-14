@@ -362,8 +362,8 @@ dotfiles doctor -- health check for the dotfiles + mox setup.
 
 Verifies that mox is reachable, the repo resolves, the profile
 resolves, mox doctor reports no advisory, the Windows package list
-is readable, the package manifest loads and its managers answer,
-the theme command resolves, and the Windows toolchain
+is readable, data/packages is there and its manifest loads with its
+managers answering, the theme command resolves, and the Windows toolchain
 (pwsh + scoop or winget + mise + holt) is installed. Exits 0 when
 all checks pass, 1 if any failed.
 "@ | Write-Host

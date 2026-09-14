@@ -110,7 +110,10 @@ while IFS=$'\t' read -r kind name; do
     continue
   fi
   if [[ "$distro" != darwin && "$kind" != "pkg" ]]; then
-    echo "SKIP: unsupported kind '$kind' for linux (entry: ${kind}:${name})"
+    # Unreachable while the Linux backends take no `kind`; a kind that does
+    # arrive is a row this gate cannot check, which is a failure, not a pass.
+    echo "FAIL: unsupported kind '$kind' for linux (entry: ${kind}:${name})"
+    fails=$((fails + 1))
     continue
   fi
 
