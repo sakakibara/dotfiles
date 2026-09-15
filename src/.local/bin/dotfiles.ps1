@@ -418,9 +418,19 @@ all checks pass, 1 if any failed.
 
     if (_Have mox) {
         # Drift exits 1 too, so the exit code cannot tell a package failure
-        # from a package to install; the failure is the `mox status:
-        # packages:` line on stderr.
-        $pkgErr = (_MoxPorcelain).PkgErr
+        # from a package to install. A manifest that did not load says so on
+        # stderr; a manager that is installed but cannot answer is a
+        # `package_broken` record on stdout. Both mean the report is not a
+        # picture of this machine, so both must fail this check.
+        $status = _MoxPorcelain
+        $pkgErr = $status.PkgErr
+        if (-not $pkgErr) {
+            $first = @($status.Records | Where-Object { $_.StartsWith("package_broken`t") })[0]
+            if ($first) {
+                $f = $first -split "`t"
+                $pkgErr = '{0} cannot answer (exited {1})' -f $f[1], $f[2]
+            }
+        }
         Script:_Check 'package manifest loads and its managers answer' (-not $pkgErr) $pkgErr
     }
 

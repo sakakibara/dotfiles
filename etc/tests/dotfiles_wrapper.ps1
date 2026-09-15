@@ -150,7 +150,8 @@ if ($r.Out -match 'passed.*failed') {
 # A stub mox on PATH answers the queries the wrapper makes, so the info and
 # doctor paths and the typo suggestion run against fixed data. Its porcelain
 # status carries one record of each kind, the whole_file one with an empty
-# key (two adjacent tabs); STUB_PKG_ERROR=1 makes it fail the way a broken
+# key (two adjacent tabs); STUB_PKG_BROKEN=1 adds a manager that cannot
+# answer; STUB_PKG_ERROR=1 makes it fail the way a broken
 # manifest does: the reason on the error stream, nothing on stdout, exit 1.
 # The stub runs in-process, so its error stream is what a native mox's
 # stderr becomes under `2>&1`, and -ErrorAction Continue keeps the wrapper's
@@ -176,7 +177,7 @@ switch ($a[0]) {
             "whole_file`t`t0`t$h/.zshrc"
             "package_missing`tbrew`tripgrep"
             "package_untracked`tbrew`tagg"
-            "package_broken`tdnf`t1"
+            if ($env:STUB_PKG_BROKEN) { "package_broken`tdnf`t1" }
             exit 1
         }
         '  clean    ~/.zshrc'; '  clean    ~/.codex/config.toml  (own 3)'; '  ERROR    ~/.broken.toml (compose failed: TomlParseError)'; 'unbound facts: none'
@@ -207,12 +208,16 @@ try {
 
     Section 'info lists every porcelain record, an empty key included'
     $r = Run-Wrapper 'info'
-    Match 'the counts cover files and packages' '2 file(s), 2 package(s), 1 manager(s) not answering' $r.Out
+    Match 'the counts cover files and packages' '2 file(s), 2 package(s)' $r.Out
     Match 'an owned key is listed by its path' '.claude/settings.json (owned_key)' $r.Out
     Match 'a whole file with an empty key is listed by its path' '.zshrc (whole_file)' $r.Out
     Match 'a missing package is listed' 'ripgrep (brew, missing)' $r.Out
     Match 'an untracked package is listed' 'agg (brew, untracked)' $r.Out
+    $env:STUB_PKG_BROKEN = '1'
+    $r = Run-Wrapper 'info'
     Match 'a broken manager is listed by its exit code' 'dnf (broken, exited 1)' $r.Out
+    Match 'a broken manager is counted apart from packages' '2 package(s), 1 manager(s) not answering' $r.Out
+    Remove-Item Env:STUB_PKG_BROKEN
 
     Section 'info shows a package failure instead of no drift'
     $env:STUB_PKG_ERROR = '1'
@@ -230,6 +235,13 @@ try {
     if ($r.Out -match "(?m)$manifestCheck\s*$") { Write-Host '  ✓ drift alone passes the manifest check'; $passes++ }
     else { Write-Host '  ✗ drift alone passes the manifest check'; Write-Host "      got: $($r.Out)"; $fails++ }
     NoMatch 'drift alone leaves no manifest detail' "$manifestCheck (" $r.Out
+    $env:STUB_PKG_BROKEN = '1'
+    $r = Run-Wrapper 'doctor'
+    Match 'a manager that cannot answer fails the manifest check' "$manifestCheck (dnf cannot answer (exited 1)" $r.Out
+    if ($r.Rc -ne 0) { Write-Host '  ✓ doctor exits non-zero on a broken manager'; $passes++ }
+    else             { Write-Host '  ✗ doctor should exit non-zero on a broken manager'; $fails++ }
+    Remove-Item Env:STUB_PKG_BROKEN
+
     $env:STUB_PKG_ERROR = '1'
     $r = Run-Wrapper 'doctor'
     Match 'a package failure fails the manifest check' "$manifestCheck (mox status: packages:" $r.Out
