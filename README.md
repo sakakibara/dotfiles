@@ -10,9 +10,10 @@ axis overlays -- no filename prefixes, no template language in file bodies.
 | --- | --- |
 | `src/` | Managed files, laid out exactly as they land under `$HOME`: `src/.zshrc` -> `~/.zshrc`, `src/.config/nvim/` -> `~/.config/nvim/` |
 | `data/` | Shared, committed data consumed while composing (`data/abbreviations.toml`, `data/paths.toml`, `data/signing.toml`, ...) |
+| `data/packages/` | Package manifests: one file per macOS/Linux backend, plus `shared.toml` for the blacklist that holds on every machine |
 | `scripts/pre/`, `scripts/post/` | Setup scripts run by `mox apply`, before/after files are written; each `.sh` carries a `# mox: when os=...` gate, the PowerShell ones live under `os=windows/` |
 | `scripts/check/` | Check hooks a partially owned file names with `# mox: check`, run on its composed candidate before it is written |
-| `etc/` | Support library: package lists, CI helpers, tests, the agent-sandbox image, shared bash/PowerShell libraries |
+| `etc/` | Support library: the Windows package lists, CI helpers, tests, the agent-sandbox image, shared bash/PowerShell libraries |
 
 Per-OS / per-profile variation uses mox's two idioms:
 

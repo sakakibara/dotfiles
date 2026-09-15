@@ -155,7 +155,7 @@ Usage:
   dotfiles edit <pattern>   Fuzzy-find a managed file and edit via mox
   dotfiles profile [name]   Print or switch the active mox profile
   dotfiles doctor           Health-check the dotfiles + mox setup
-  dotfiles upgrade [--all]  Upgrade managed tools (brew, mise, holt) with --all
+  dotfiles upgrade [--all]  mox self-update; --all also brew, mise, holt
   dotfiles <cmd>            Forward to mox (e.g. dotfiles apply, dotfiles diff)
   dotfiles --help           Show this help
 
@@ -297,7 +297,7 @@ dotfiles doctor -- health check for the dotfiles + mox setup.
 Verifies that the mox binary is reachable, the repo resolves, the profile
 resolves, `mox doctor` reports no advisory, the shell library parses under
 the system bash, `data/packages` is there and its manifest loads with its
-managers answering, the theme state file is intact, and the per-OS
+managers answering, the theme command resolves, and the per-OS
 toolchain (brew on macOS, sudo on Linux, mise, holt) is on PATH. Exits 0
 when all checks pass, 1 if any failed.
 EOF
@@ -665,7 +665,7 @@ case "${1:-}" in
       cmd_help
     else
       command -v mox >/dev/null 2>&1 || {
-        printf 'dotfiles: mox not on PATH; %q is forwarded to mox\n' "help" >&2
+        printf 'dotfiles: mox not on PATH; %q is forwarded to mox\n' "$1" >&2
         exit 1
       }
       exec mox "$@"

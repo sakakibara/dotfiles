@@ -171,6 +171,10 @@ function Cmd-Info {
         # reason is the drift detail rather than "none".
         $status = _MoxPorcelain
         $drift = $status.Records
+        # Only a tab-separated record names a unit to count and render: a
+        # manifest mox refused is the bare kind `package_refused`, whose
+        # reason reaches the drift line from stderr instead.
+        $rows = @($drift | Where-Object { $_.Contains("`t") })
         if ($status.Rc -eq 1 -and $status.PkgErr) {
             _Row 'Drift:' ($status.PkgErr -replace '^mox status: ', '')
         } elseif ($status.Rc -ne 0 -and $status.Rc -ne 1) {
@@ -178,16 +182,16 @@ function Cmd-Info {
         } elseif ($drift.Count -eq 0) {
             _Row 'Drift:' 'none'
         } else {
-            $files = @($drift | Where-Object { -not $_.StartsWith('package_') }).Count
-            $broken = @($drift | Where-Object { $_.StartsWith('package_broken') }).Count
-            $pkgs = $drift.Count - $files - $broken
+            $files = @($rows | Where-Object { -not $_.StartsWith('package_') }).Count
+            $broken = @($rows | Where-Object { $_.StartsWith('package_broken') }).Count
+            $pkgs = $rows.Count - $files - $broken
             if ($broken -gt 0) {
                 _Row 'Drift:' "$files file(s), $pkgs package(s), $broken manager(s) not answering"
             } else {
                 _Row 'Drift:' "$files file(s), $pkgs package(s)"
             }
         }
-        foreach ($line in $drift) {
+        foreach ($line in $rows) {
             $f = $line -split "`t"
             $kind = $f[0]
             if ($kind -eq 'package_broken') {
@@ -264,7 +268,7 @@ Usage:
 
 Pattern is a case-insensitive substring of the path (relative to `$HOME).
 Exactly-one match opens directly; multiple matches prompt to pick by number.
-Opens the source behind the managed path; run `mox apply` to write it live.
+Opens the source behind the managed path; run ``mox apply`` to write it live.
 "@ | Write-Host
         return
     }
@@ -328,6 +332,10 @@ dotfiles profile -- print or change the active mox profile.
 Usage:
   dotfiles profile           Print the current profile
   dotfiles profile <name>    Switch profile and re-apply
+
+Switching writes the ``profile`` fact (``mox facts set profile <name>``) and then
+runs ``mox apply``. All profile-gated content (package rows, holt
+config, mise settings, ...) re-renders accordingly.
 "@ | Write-Host
         return
     }
@@ -375,7 +383,7 @@ all checks pass, 1 if any failed.
         return
     }
 
-    $passes = 0; $fails = 0
+    $Script:passes = 0; $Script:fails = 0
     $passG = "$Script:Green✓$Script:Reset"
     $failG = "$Script:Red✖$Script:Reset"
 
@@ -583,8 +591,8 @@ and offers a per-row TUI to assign one of these actions to each
 untracked entry:
 
   skip   -- leave it alone
-  add    -- append plain `kind:name` to packages.txt (applies everywhere)
-  @prof  -- append `kind:name @profile` (profile-gated)
+  add    -- append plain ``kind:name`` to packages.txt (applies everywhere)
+  @prof  -- append ``kind:name @profile`` (profile-gated)
   block  -- append to packages-blacklist.txt (sync won't surface again)
 
 Inside the menu:
@@ -616,7 +624,7 @@ switch ($first) {
     'help' {
         if ($rest.Count -eq 0) { Cmd-Help }
         else {
-            if (-not (_Have mox)) { [Console]::Error.WriteLine('dotfiles: mox not on PATH'); exit 1 }
+            if (-not (_Have mox)) { [Console]::Error.WriteLine("dotfiles: mox not on PATH; $first is forwarded to mox"); exit 1 }
             & mox help @rest
             exit $LASTEXITCODE
         }
@@ -630,7 +638,7 @@ switch ($first) {
     default {
         # Forward to mox for anything we don't own, but probe first so
         # typos surface a wrapper-level error instead of routing silently.
-        if (-not (_Have mox)) { [Console]::Error.WriteLine('dotfiles: mox not on PATH'); exit 1 }
+        if (-not (_Have mox)) { [Console]::Error.WriteLine("dotfiles: mox not on PATH; $first is forwarded to mox"); exit 1 }
         if ($first.StartsWith('-')) {
             & mox @args
             exit $LASTEXITCODE

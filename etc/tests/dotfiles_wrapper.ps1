@@ -147,15 +147,50 @@ if ($r.Out -match 'passed.*failed') {
     $fails++
 }
 
+# The wrapper's own guard, not a failed lookup deeper down, is what a caller
+# sees when mox is absent. The child pwsh is started by its resolved path so
+# it can be handed a PATH that resolves nothing.
+$pwshExe = [Diagnostics.Process]::GetCurrentProcess().MainModule.FileName
+$noMox = Join-Path ([IO.Path]::GetTempPath()) ("dotfiles-nomox-" + [Guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $noMox | Out-Null
+function Run-WithoutMox {
+    param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Args)
+    $saved = $env:PATH
+    $env:PATH = $noMox
+    try {
+        $captured = & $pwshExe -NoProfile -File $bin @Args 2>&1
+        $rc = $LASTEXITCODE
+    } finally { $env:PATH = $saved }
+    return @{ Out = ($captured | Out-String).Trim(); Rc = $rc }
+}
+try {
+    Section 'a forwarded help without mox is reported, not run'
+    $r = Run-WithoutMox 'help' 'apply'
+    Match 'a forwarded help without mox is reported, not run' 'mox not on PATH; help is forwarded to mox' $r.Out
+    if ($r.Rc -eq 1) { Write-Host '  ✓ a forwarded help without mox exits 1'; $passes++ }
+    else             { Write-Host "  ✗ a forwarded help without mox exits 1, got $($r.Rc)"; $fails++ }
+
+    # A count of failed checks is not an exit status: a gate written as
+    # `rc -eq 1` must see 1 however many checks failed.
+    Section 'doctor exits 1 whatever the failure count'
+    $r = Run-WithoutMox 'doctor'
+    Match 'doctor without mox fails more than one check' 'failed' $r.Out
+    if ($r.Rc -eq 1) { Write-Host '  ✓ doctor exits 1 whatever the failure count'; $passes++ }
+    else             { Write-Host "  ✗ doctor exits 1 whatever the failure count, got $($r.Rc)"; $fails++ }
+} finally {
+    Remove-Item -LiteralPath $noMox -Recurse -Force
+}
+
 # A stub mox on PATH answers the queries the wrapper makes, so the info and
 # doctor paths and the typo suggestion run against fixed data. Its porcelain
 # status carries one record of each kind, the whole_file one with an empty
 # key (two adjacent tabs); STUB_PKG_BROKEN=1 adds a manager that cannot
 # answer; STUB_PKG_ERROR=1 makes it fail the way a broken
 # manifest does: the reason on the error stream, nothing on stdout, exit 1.
-# The stub runs in-process, so its error stream is what a native mox's
-# stderr becomes under `2>&1`, and -ErrorAction Continue keeps the wrapper's
-# Stop preference from ending the stub at that line.
+# STUB_PKG_REFUSED=1 adds the bare `package_refused` record mox writes
+# alongside that reason. The stub runs in-process, so its error stream is what
+# a native mox's stderr becomes under `2>&1`, and -ErrorAction Continue keeps
+# the wrapper's Stop preference from ending the stub at that line.
 $stub = Join-Path ([IO.Path]::GetTempPath()) ("dotfiles-stub-" + [Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $stub | Out-Null
 @'
@@ -170,6 +205,7 @@ switch ($a[0]) {
         if ($a.Count -ge 2 -and $a[1] -eq '--porcelain') {
             if ($env:STUB_PKG_ERROR) {
                 Write-Error -Message 'mox status: packages: data/packages/x.toml: row "y": boom' -ErrorAction Continue
+                if ($env:STUB_PKG_REFUSED) { 'package_refused' }
                 exit 1
             }
             $h = $HOME.Replace('\', '\\')
@@ -194,16 +230,16 @@ try {
     $env:STUB_ADVISORIES = '1'
     $r = Run-Wrapper 'doctor'
     Match 'advisory count shown' '1 advisory' $r.Out
-    if ($r.Rc -ne 0) { Write-Host '  ✓ doctor exits non-zero on an advisory'; $passes++ }
-    else             { Write-Host '  ✗ doctor should exit non-zero on an advisory'; $fails++ }
+    if ($r.Rc -eq 1) { Write-Host '  ✓ doctor exits 1 on an advisory'; $passes++ }
+    else             { Write-Host "  ✗ doctor should exit 1 on an advisory (got $($r.Rc))"; $fails++ }
     Remove-Item Env:STUB_ADVISORIES
 
     Section 'doctor fails when the mox doctor report cannot be parsed'
     $env:STUB_DOCTOR_RAW = 'mox doctor: a report shape the wrapper has never seen'
     $r = Run-Wrapper 'doctor'
     Match 'the report is not read as clean' 'unparsed' $r.Out
-    if ($r.Rc -ne 0) { Write-Host '  ✓ doctor exits non-zero on an unparsed report'; $passes++ }
-    else             { Write-Host '  ✗ doctor should exit non-zero on an unparsed report'; $fails++ }
+    if ($r.Rc -eq 1) { Write-Host '  ✓ doctor exits 1 on an unparsed report'; $passes++ }
+    else             { Write-Host "  ✗ doctor should exit 1 on an unparsed report (got $($r.Rc))"; $fails++ }
     Remove-Item Env:STUB_DOCTOR_RAW
 
     Section 'info lists every porcelain record, an empty key included'
@@ -224,6 +260,13 @@ try {
     $r = Run-Wrapper 'info'
     Match 'the failure is the drift detail' 'Drift:  packages: data/packages/x.toml: row "y": boom' $r.Out
     NoMatch 'the failure is not read as clean' 'Drift:  none' $r.Out
+
+    Section 'a refused manifest is the drift detail, not an empty package row'
+    $env:STUB_PKG_REFUSED = '1'
+    $r = Run-Wrapper 'info'
+    Match 'the reason is still the drift detail' 'Drift:  packages: data/packages/x.toml: row "y": boom' $r.Out
+    NoMatch 'the fieldless record is not rendered as a package' ', refused)' $r.Out
+    Remove-Item Env:STUB_PKG_REFUSED
     Remove-Item Env:STUB_PKG_ERROR
 
     # The check line carries a parenthesized detail only when it fails, so
@@ -238,16 +281,16 @@ try {
     $env:STUB_PKG_BROKEN = '1'
     $r = Run-Wrapper 'doctor'
     Match 'a manager that cannot answer fails the manifest check' "$manifestCheck (dnf cannot answer (exited 1)" $r.Out
-    if ($r.Rc -ne 0) { Write-Host '  ✓ doctor exits non-zero on a broken manager'; $passes++ }
-    else             { Write-Host '  ✗ doctor should exit non-zero on a broken manager'; $fails++ }
+    if ($r.Rc -eq 1) { Write-Host '  ✓ doctor exits 1 on a broken manager'; $passes++ }
+    else             { Write-Host "  ✗ doctor should exit 1 on a broken manager (got $($r.Rc))"; $fails++ }
     Remove-Item Env:STUB_PKG_BROKEN
 
     $env:STUB_PKG_ERROR = '1'
     $r = Run-Wrapper 'doctor'
     Match 'a package failure fails the manifest check' "$manifestCheck (mox status: packages:" $r.Out
     Match 'the failure is the check detail' 'row "y": boom' $r.Out
-    if ($r.Rc -ne 0) { Write-Host '  ✓ doctor exits non-zero on a package failure'; $passes++ }
-    else             { Write-Host '  ✗ doctor should exit non-zero on a package failure'; $fails++ }
+    if ($r.Rc -eq 1) { Write-Host '  ✓ doctor exits 1 on a package failure'; $passes++ }
+    else             { Write-Host "  ✗ doctor should exit 1 on a package failure (got $($r.Rc))"; $fails++ }
     Remove-Item Env:STUB_PKG_ERROR
 
     Section 'edit hands mox the path without its ownership annotation'
