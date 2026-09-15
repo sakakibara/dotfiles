@@ -117,6 +117,18 @@ out=$(PATH="$STUB:$PATH" bash "$BIN" docter 2>&1)
 _match "a wrapper typo is suggested too" "did you mean: dotfiles doctor" "$out"
 out=$(PATH="$STUB:$PATH" bash "$BIN" zzzzzzzz 2>&1)
 _no_match "a distant word gets no suggestion" "did you mean" "$out"
+
+# `cd` is documented in the help and implemented only as a shell function, so
+# reaching the binary means none is loaded. Saying "unknown subcommand" and
+# then suggesting `dotfiles cd` back sent the reader in a circle.
+_section "cd names the shell function rather than calling itself unknown"
+out=$(PATH="$STUB:$PATH" bash "$BIN" cd 2>&1); rc=$?
+_match "cd is explained as a shell function" "only works as a shell function" "$out"
+_no_match "cd is not called an unknown subcommand" "unknown subcommand" "$out"
+_no_match "cd is not suggested back to itself" "did you mean: dotfiles cd" "$out"
+_match "a shell-independent fallback is offered" 'cd "$(mox path)"' "$out"
+[[ $rc -ne 0 ]] && passes=$((passes+1)) || { printf '  ✗ cd should exit non-zero\n'; fails=$((fails+1)); }
+
 out=$(PATH="/usr/bin:/bin" bash "$BIN" apply 2>&1); rc=$?
 _match "missing mox is reported as such" "mox not on PATH" "$out"
 _no_match "missing mox is not called a typo" "unknown subcommand" "$out"

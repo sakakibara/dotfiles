@@ -405,24 +405,27 @@ command resolves, and the Windows toolchain (pwsh + scoop or winget + mise
     Write-Host ('{0}Checks{1}' -f $Script:Bold, $Script:Reset)
 
     Script:_Check 'mox on PATH' (_Have mox)
-    if (_Have mox) {
-        $report = (& mox doctor 2>&1 | Out-String)
-        # `problem(s) found` is mox's severest verdict; a report carrying it
-        # says nothing else, so it is read before the milder shapes.
-        if ($report -match '(?m)[^0-9](\d+) problem\(s\) found') { $advisories = "$($matches[1]) problem" }
-        elseif ($report -match '(?m)[^0-9](\d+) advisory item') { $advisories = $matches[1] }
-        elseif ($report -match '(?m)[^0-9](\d+) check\(s\) skipped') { $advisories = "$($matches[1]) skipped" }
-        elseif ($report -match 'mox doctor: healthy') { $advisories = '0' }
-        else { $advisories = 'unparsed' }
-        $detail = if ($advisories -eq '0') { '' } elseif ($advisories -cmatch '^\d+$') { "$advisories advisory" } else { $advisories }
-        Script:_Check 'mox doctor reports no advisory' ($advisories -eq '0') $detail
-    }
 
     $sourceDir = _MoxRepo
     Script:_Check 'mox repo resolves to a directory' ([bool]($sourceDir -and (Test-Path -LiteralPath $sourceDir)))
 
     $profile = _MoxProfile
     Script:_Check 'profile resolves' ([bool]$profile) $profile
+
+    # Ordered as the bash wrapper orders it: the local resolutions first, then
+    # the one check that spawns mox again.
+    if (_Have mox) {
+        $report = (& mox doctor 2>&1 | Out-String)
+        # `problem(s) found` is mox's severest verdict; a report carrying it
+        # says nothing else, so it is read before the milder shapes.
+        if ($report -match '(?m)(?<![0-9])(\d+) problem\(s\) found') { $advisories = "$($matches[1]) problem" }
+        elseif ($report -match '(?m)(?<![0-9])(\d+) advisory item') { $advisories = $matches[1] }
+        elseif ($report -match '(?m)(?<![0-9])(\d+) check\(s\) skipped') { $advisories = "$($matches[1]) skipped" }
+        elseif ($report -match 'mox doctor: healthy') { $advisories = '0' }
+        else { $advisories = 'unparsed' }
+        $detail = if ($advisories -eq '0') { '' } elseif ($advisories -cmatch '^\d+$') { "$advisories advisory" } else { $advisories }
+        Script:_Check 'mox doctor reports no advisory' ($advisories -eq '0') $detail
+    }
 
     $pkgFile = ''
     if ($sourceDir) {
@@ -548,7 +551,7 @@ Usage:
                                     inputs have changed since the last run)
   dotfiles install all              Run every step non-interactively
   dotfiles install none             Run only required steps (skip everything else)
-  dotfiles install <name> <name>...  Run the named steps (e.g. Install-Scoop Install-Mise)
+  dotfiles install <names>          Run the named steps (e.g. Install-Scoop Install-Mise)
 
 Inside the menu:
   up/down navigate · space toggle · a/n select all/none
@@ -651,6 +654,17 @@ switch ($first) {
             & mox help @rest
             exit $LASTEXITCODE
         }
+    }
+    'cd' {
+        # A child process cannot change its parent's location, so cd exists
+        # only as the shell function in .zfunc/, fish's functions/, and the
+        # PowerShell profile helper. Reaching the script means none is loaded.
+        [Console]::Error.WriteLine('dotfiles: cd acts on the calling shell, so it only works as a shell function')
+        [Console]::Error.WriteLine('pwsh: dot-source ~/.config/powershell/dotfiles-shell.ps1 from your $PROFILE')
+        [Console]::Error.WriteLine('zsh:  put ~/.zfunc on $fpath and `autoload -Uz dotfiles`')
+        [Console]::Error.WriteLine('fish: ~/.config/fish/functions/dotfiles.fish autoloads; start a new shell')
+        [Console]::Error.WriteLine('any:  Set-Location (mox path)')
+        exit 1
     }
     'install'  { Cmd-Install $rest }
     'sync'     { Cmd-Sync $rest }

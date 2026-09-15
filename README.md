@@ -180,7 +180,7 @@ typo-aware error when the subcommand isn't valid for mox either).
 | `dotfiles edit <pattern>` | fuzzy-find a managed file, open its source via `mox edit` |
 | `dotfiles profile [name]` | print the active profile / switch the profile fact and re-apply |
 | `dotfiles doctor` | health-check mox, packages, theme, mise, holt |
-| `dotfiles upgrade [--all]` | mox self-update; `--all` then brew (macOS) + mise + holt (Linux distro packages stay manual) |
+| `dotfiles upgrade [--all]` | mox self-update; `--all` then brew (macOS), scoop and winget (Windows), mise + holt everywhere (Linux distro packages stay manual) |
 | `dotfiles sync` | Windows only: review scoop/winget packages against `etc/windows/packages.txt`; macOS and Linux use `mox commit` instead |
 
 Per-step install output lands in `~/.local/state/dotfiles/pick/logs/`; a TSV

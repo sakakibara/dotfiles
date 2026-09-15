@@ -264,6 +264,27 @@ try {
     else             { Write-Host "  ✗ doctor should exit 1 on a problem (got $($r.Rc))"; $fails++ }
     Remove-Item Env:STUB_DOCTOR_RAW
 
+    # The ANSI helpers are emptied when [Console]::IsOutputRedirected, so a
+    # captured run must carry no escape at all -- a hardcoded one would
+    # survive the gate. `upgrade --all` is not mirrored from the bash suite:
+    # there it is confined by a stub-only PATH, and here it would reach the
+    # machine's real package managers.
+    Section 'colour escapes stay out of a run whose stdout is redirected'
+    $esc = [string][char]27
+    $r = Run-Wrapper 'doctor'
+    NoMatch "doctor's glyphs are plain" $esc $r.Out
+    $r = Run-Wrapper 'info'
+    NoMatch 'the info rows are plain' $esc $r.Out
+
+    Section 'doctor fails when mox doctor skipped a check'
+    $env:STUB_DOCTOR_RAW = 'mox doctor: 1 check(s) skipped (coverage incomplete)'
+    $r = Run-Wrapper 'doctor'
+    Match 'the skipped count is shown' '1 skipped' $r.Out
+    NoMatch 'a skipped report is not read as unparsed' 'unparsed' $r.Out
+    if ($r.Rc -eq 1) { Write-Host '  ✓ doctor exits 1 on a skipped check'; $passes++ }
+    else             { Write-Host "  ✗ doctor should exit 1 on a skipped check (got $($r.Rc))"; $fails++ }
+    Remove-Item Env:STUB_DOCTOR_RAW
+
     Section 'doctor fails when the mox doctor report cannot be parsed'
     $env:STUB_DOCTOR_RAW = 'mox doctor: a report shape the wrapper has never seen'
     $r = Run-Wrapper 'doctor'
@@ -371,6 +392,18 @@ try {
     Match 'flags pass through' 'FORWARDED --version' $r.Out
     $r = Run-Wrapper 'zzzzzzzz'
     NoMatch 'a distant word gets no suggestion' 'did you mean' $r.Out
+
+    # `cd` is documented in the help and implemented only as a shell function,
+    # so reaching the script means none is loaded. Saying "unknown subcommand"
+    # and then suggesting `dotfiles cd` back sent the reader in a circle.
+    Section 'cd names the shell function rather than calling itself unknown'
+    $r = Run-Wrapper 'cd'
+    Match 'cd is explained as a shell function' 'only works as a shell function' $r.Out
+    NoMatch 'cd is not called an unknown subcommand' 'unknown subcommand' $r.Out
+    NoMatch 'cd is not suggested back to itself' 'did you mean: dotfiles cd' $r.Out
+    Match 'a shell-independent fallback is offered' 'Set-Location (mox path)' $r.Out
+    if ($r.Rc -ne 0) { Write-Host '  ✓ cd exits non-zero'; $passes++ }
+    else             { Write-Host "  ✗ cd should exit non-zero (got $($r.Rc))"; $fails++ }
 
     Section 'upgrade forwards to mox'
     # A real `mox upgrade` would change the machine, so the forward runs only

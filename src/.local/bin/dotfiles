@@ -356,12 +356,12 @@ EOF
   if command -v mox >/dev/null 2>&1; then
     local report advisories
     report=$(mox doctor 2>&1)
-    advisories=$(printf '%s\n' "$report" | sed -nE 's/^.*[^0-9]([0-9]+) advisory item.*/\1/p' | tail -n1)
+    advisories=$(printf '%s\n' "$report" | sed -nE 's/^(.*[^0-9])?([0-9]+) advisory item.*/\2/p' | tail -n1)
     local problems skipped detail
     # `problem(s) found` is mox's severest verdict; a report carrying it says
     # nothing else, so it is read before the milder shapes.
-    problems=$(printf '%s\n' "$report" | sed -nE 's/^.*[^0-9]([0-9]+) problem\(s\) found.*/\1/p' | tail -n1)
-    skipped=$(printf '%s\n' "$report" | sed -nE 's/^.*[^0-9]([0-9]+) check\(s\) skipped.*/\1/p' | tail -n1)
+    problems=$(printf '%s\n' "$report" | sed -nE 's/^(.*[^0-9])?([0-9]+) problem\(s\) found.*/\2/p' | tail -n1)
+    skipped=$(printf '%s\n' "$report" | sed -nE 's/^(.*[^0-9])?([0-9]+) check\(s\) skipped.*/\2/p' | tail -n1)
     if [[ -n "$problems" ]]; then
       advisories="$problems problem"
     elif [[ -z "$advisories" ]]; then
@@ -528,7 +528,7 @@ Usage:
                                     inputs have changed since the last run)
   dotfiles install all              Run every step non-interactively
   dotfiles install none             Run only required steps (skip everything else)
-  dotfiles install <name> <name>...  Run the named steps (e.g. mise holt)
+  dotfiles install <names>          Run the named steps (e.g. mise holt)
 
 Inside the menu:
   up/down navigate · left/right jump column · space toggle · a/n select all/none
@@ -671,6 +671,17 @@ case "${1:-}" in
   upgrade)
     shift
     cmd_upgrade "$@"
+    ;;
+  cd)
+    # A child process cannot change its parent's directory, so cd exists only
+    # as the shell function in .zfunc/, fish's functions/, and the PowerShell
+    # profile helper. Reaching the binary means none of them is loaded.
+    printf 'dotfiles: cd acts on the calling shell, so it only works as a shell function\n' >&2
+    printf 'zsh:  put ~/.zfunc on $fpath and `autoload -Uz dotfiles`\n' >&2
+    printf 'fish: ~/.config/fish/functions/dotfiles.fish autoloads; start a new shell\n' >&2
+    printf 'pwsh: dot-source ~/.config/powershell/dotfiles-shell.ps1 from your $PROFILE\n' >&2
+    printf 'any:  cd "$(mox path)"\n' >&2
+    exit 1
     ;;
   help)
     if [[ $# -eq 1 ]]; then
