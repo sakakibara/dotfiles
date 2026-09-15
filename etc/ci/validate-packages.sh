@@ -30,18 +30,22 @@ case "$distro" in
   suse)   default_kind=pkg;  backend=zypper ;;
   *) echo "unknown distro: $distro" >&2; exit 1 ;;
 esac
-[[ -f "$file" ]] || { echo "no $file" >&2; exit 1; }
-
-# The two halves of where a row may live, checked on every distro run so a
-# misplacement fails wherever CI looks first.
+# The two halves of where a row may live, checked on every distro run -- and
+# before the per-distro file is required -- so a misplacement fails wherever
+# CI looks first.
 #
 # A blacklist holds on every machine, so mox refuses one in a file carrying a
-# top-level gate -- the whole manifest, not just that row. Checked by content,
-# not by filename, since any file may grow a gate.
+# top-level gate -- the whole manifest, not just that row. A `when` is
+# top-level only above the first table header; a row carrying its own gate is
+# what a row-level `when` is for.
 for f in "$repo_dir"/data/packages/*.toml; do
   [[ -f "$f" ]] || continue
-  grep -qE '^[[:space:]]*when[[:space:]]*=' "$f" || continue
-  grep -qE '^[[:space:]]*\[\[blacklist\]\]' "$f" || continue
+  awk '
+    /^[[:space:]]*\[/ { exit }
+    /^[[:space:]]*when[[:space:]]*=/ { top = 1; exit }
+    END { exit (top ? 0 : 1) }
+  ' "$f" || continue
+  grep -qE '^[[:space:]]*\[\[[[:space:]]*blacklist[[:space:]]*\]\]' "$f" || continue
   echo "data/packages/${f##*/} has a top-level when and a [[blacklist]] row; mox refuses the manifest" >&2
   exit 1
 done
@@ -51,10 +55,12 @@ done
 for f in "$repo_dir"/data/packages/*.toml; do
   [[ -f "$f" ]] || continue
   case "${f##*/}" in darwin.toml | fedora.toml | debian.toml | arch.toml | suse.toml) continue ;; esac
-  grep -qE '^[[:space:]]*\[\[(packages|bootstrap)\]\]' "$f" || continue
+  grep -qE '^[[:space:]]*\[\[[[:space:]]*(packages|bootstrap)[[:space:]]*\]\]' "$f" || continue
   echo "data/packages/${f##*/} holds a packages or bootstrap row; no distro gate resolves it" >&2
   exit 1
 done
+
+[[ -f "$file" ]] || { echo "no $file" >&2; exit 1; }
 
 # Every `[[packages]]` row of the manifest as `kind<TAB>name`: `cask` when the
 # row says so, else the default. `[[blacklist]]` and `[[bootstrap]]` rows are
