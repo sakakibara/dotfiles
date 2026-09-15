@@ -114,6 +114,16 @@ _no_match "a distant word gets no suggestion" "did you mean" "$out"
 out=$(PATH="/usr/bin:/bin" bash "$BIN" apply 2>&1); rc=$?
 _match "missing mox is reported as such" "mox not on PATH" "$out"
 _no_match "missing mox is not called a typo" "unknown subcommand" "$out"
+# `help <name>` forwards like any other subcommand, so it is guarded like one:
+# without the guard the exec fails and the shell reports 127.
+out=$(PATH="/usr/bin:/bin" bash "$BIN" help apply 2>&1); rc=$?
+_match "a forwarded help without mox is reported, not exec'd" "mox not on PATH" "$out"
+[[ $rc -eq 1 ]] && passes=$((passes+1)) || { printf '  ✗ a forwarded help without mox exits 1, got %d\n' "$rc"; fails=$((fails+1)); }
+# A count of failed checks is not an exit status: a gate written as `rc -eq 1`
+# must see 1 however many checks failed.
+out=$(PATH="/usr/bin:/bin" bash "$BIN" doctor 2>&1); rc=$?
+_match "doctor without mox fails more than one check" "failed" "$out"
+[[ $rc -eq 1 ]] && passes=$((passes+1)) || { printf '  ✗ doctor exits 1 whatever the failure count, got %d\n' "$rc"; fails=$((fails+1)); }
 
 _section "edit opens the single managed match"
 out=$(PATH="$STUB:$PATH" bash "$BIN" edit config/git/config 2>&1); rc=$?

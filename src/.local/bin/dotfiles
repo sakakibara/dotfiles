@@ -436,7 +436,7 @@ EOF
   _check "holt on PATH" $?
 
   printf '\n%d passed, %d failed\n' "$passes" "$fails"
-  return "$fails"
+  (( fails == 0 ))
 }
 
 cmd_upgrade() {
@@ -502,7 +502,7 @@ _upgrade_all() {
   else
     printf '%s✖%s %d step(s) failed\n' "${C_BOLD}$(printf '\033[1;31m')" "$C_RESET" "$fails"
   fi
-  return "$fails"
+  (( fails == 0 ))
 }
 
 cmd_install() {
@@ -661,7 +661,15 @@ case "${1:-}" in
     cmd_upgrade "$@"
     ;;
   help)
-    if [[ $# -eq 1 ]]; then cmd_help; else exec mox "$@"; fi
+    if [[ $# -eq 1 ]]; then
+      cmd_help
+    else
+      command -v mox >/dev/null 2>&1 || {
+        printf 'dotfiles: mox not on PATH; %q is forwarded to mox\n' "help" >&2
+        exit 1
+      }
+      exec mox "$@"
+    fi
     ;;
   *)
     # Flags pass through unchecked (e.g. mox --version). For bare

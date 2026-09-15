@@ -247,7 +247,7 @@ Usage:
 
 Shell-function overrides (source ~/.config/powershell/dotfiles-shell.ps1):
   dotfiles cd               cd this shell to the mox repo dir
-  dotfiles apply            re-source \$PROFILE on a successful apply
+  dotfiles apply            re-source `$PROFILE on a successful apply
 
 For mox-specific help: mox --help
 "@ | Write-Host
