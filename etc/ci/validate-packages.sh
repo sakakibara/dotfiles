@@ -8,9 +8,9 @@
 # of what mox does: a `[[packages]]` header (leading whitespace and an inline
 # comment allowed) followed by one `key = value` per line, where `name`,
 # `kind` and `backend` are quoted with double or single quotes and carry no
-# escape sequences; inline tables and `packages = [...]` arrays are not read.
-# A `[[packages]]` block whose name is not in that shape fails the run
-# rather than being skipped. Every row must route to the one backend this
+# escape sequences. A `[[packages]]` block whose name is not in that shape
+# fails the run rather than being skipped, and a `packages = [...]` array --
+# the key form mox reads identically -- is refused rather than passed over. Every row must route to the one backend this
 # script queries for the distro: a per-row `backend` naming another one is
 # reported, not checked.
 #
@@ -45,7 +45,7 @@ for f in "$repo_dir"/data/packages/*.toml; do
     /^[[:space:]]*when[[:space:]]*=/ { top = 1; exit }
     END { exit (top ? 0 : 1) }
   ' "$f" || continue
-  grep -qE '^[[:space:]]*\[\[[[:space:]]*blacklist[[:space:]]*\]\]' "$f" || continue
+  grep -qE '^[[:space:]]*(\[\[[[:space:]]*blacklist[[:space:]]*\]\]|blacklist[[:space:]]*=)' "$f" || continue
   echo "data/packages/${f##*/} has a top-level when and a [[blacklist]] row; mox refuses the manifest" >&2
   exit 1
 done
@@ -55,12 +55,21 @@ done
 for f in "$repo_dir"/data/packages/*.toml; do
   [[ -f "$f" ]] || continue
   case "${f##*/}" in darwin.toml | fedora.toml | debian.toml | arch.toml | suse.toml) continue ;; esac
-  grep -qE '^[[:space:]]*\[\[[[:space:]]*(packages|bootstrap)[[:space:]]*\]\]' "$f" || continue
+  grep -qE '^[[:space:]]*(\[\[[[:space:]]*(packages|bootstrap)[[:space:]]*\]\]|(packages|bootstrap)[[:space:]]*=)' "$f" || continue
   echo "data/packages/${f##*/} holds a packages or bootstrap row; no distro gate resolves it" >&2
   exit 1
 done
 
 [[ -f "$file" ]] || { echo "no $file" >&2; exit 1; }
+
+# mox reads `packages`/`bootstrap`/`blacklist` as keys, so `packages = [ {...} ]`
+# holds the same rows `[[packages]]` does. The awk reader below takes only the
+# header form, so a key-form array here would resolve no name while reading as
+# a checked file. Refuse it rather than pass over it.
+if grep -qE '^[[:space:]]*(packages|bootstrap|blacklist)[[:space:]]*=' "$file"; then
+  echo "data/packages/${file##*/} holds a key-form array (packages = [...]); use [[packages]] headers so this gate can read it" >&2
+  exit 1
+fi
 
 # Every `[[packages]]` row of the manifest as `kind<TAB>name`: `cask` when the
 # row says so, else the default. `[[blacklist]]` and `[[bootstrap]]` rows are
