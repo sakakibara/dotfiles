@@ -315,6 +315,3 @@ kind = "cask"
 [[packages]]
 name = "zen"
 kind = "cask"
-
-[[blacklist]]
-name = "usage"

@@ -1,0 +1,6 @@
+# Packages that are installed but never to be offered, whichever machine asks.
+# A blacklist holds everywhere, so this file carries no top-level "when".
+
+[[blacklist]]
+name = "usage"
+backend = "brew"
