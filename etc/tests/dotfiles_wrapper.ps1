@@ -224,7 +224,8 @@ switch ($a[0]) {
             "whole_file`t`t0`t$h/.zshrc"
             "package_missing`tbrew`tripgrep"
             "package_untracked`tbrew`tagg"
-            if ($env:STUB_PKG_BROKEN) { "package_broken`tdnf`t1" }
+            if ($env:STUB_PKG_BROKEN) { "package_broken`tdnf`t1`tdnf --version" }
+            if ($env:STUB_PKG_VERB) { "package_broken`tmacports`t255`tPluginFailed" }
             exit 1
         }
         $s = [IO.Path]::DirectorySeparatorChar
@@ -302,9 +303,16 @@ try {
     Match 'an untracked package is listed' 'agg (brew, untracked)' $r.Out
     $env:STUB_PKG_BROKEN = '1'
     $r = Run-Wrapper 'info'
-    Match 'a broken manager is listed by its exit code' 'dnf (broken, exited 1)' $r.Out
+    Match 'a broken manager is listed by its exit code' 'dnf (broken, dnf --version exited 1)' $r.Out
     Match 'a broken manager is counted apart from packages' '2 package(s), 1 manager(s) not answering' $r.Out
     Remove-Item Env:STUB_PKG_BROKEN
+    # A manager that answered its probe and then failed a query has no exit
+    # code of its own -- mox reports 255 and says what it could not answer.
+    $env:STUB_PKG_VERB = '1'
+    $r = Run-Wrapper 'info'
+    Match 'a manager that failed a query is listed by what it could not answer' 'macports (broken: PluginFailed)' $r.Out
+    NoMatch 'a verb failure shows no stand-in exit code' 'exited 255' $r.Out
+    Remove-Item Env:STUB_PKG_VERB
 
     Section 'info shows a package failure instead of no drift'
     $env:STUB_PKG_ERROR = '1'
@@ -331,7 +339,7 @@ try {
     NoMatch 'drift alone leaves no manifest detail' "$manifestCheck (" $r.Out
     $env:STUB_PKG_BROKEN = '1'
     $r = Run-Wrapper 'doctor'
-    Match 'a manager that cannot answer fails the manifest check' "$manifestCheck (dnf cannot answer (exited 1)" $r.Out
+    Match 'a manager that cannot answer fails the manifest check' "$manifestCheck (dnf cannot answer (dnf --version exited 1)" $r.Out
     if ($r.Rc -eq 1) { Write-Host '  ✓ doctor exits 1 on a broken manager'; $passes++ }
     else             { Write-Host "  ✗ doctor should exit 1 on a broken manager (got $($r.Rc))"; $fails++ }
     Remove-Item Env:STUB_PKG_BROKEN

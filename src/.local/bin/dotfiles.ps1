@@ -195,7 +195,11 @@ function Cmd-Info {
             $f = $line -split "`t"
             $kind = $f[0]
             if ($kind -eq 'package_broken') {
-                Write-Host ('        {0}{1} (broken, exited {2}){3}' -f $Script:Dim, $f[1], $f[2], $Script:Reset)
+                # backend, exit code, then what it could not answer. Code 255
+                # is mox's stand-in for a call that never reached an exit of
+                # its own, so the words are the whole story there.
+                $shown = if ($f[2] -eq '255') { "broken: $($f[3])" } else { "broken, $($f[3]) exited $($f[2])" }
+                Write-Host ('        {0}{1} ({2}){3}' -f $Script:Dim, $f[1], $shown, $Script:Reset)
                 continue
             }
             if ($kind.StartsWith('package_')) {
@@ -461,7 +465,11 @@ command resolves, and the Windows toolchain (pwsh + scoop or winget + mise
             $first = @($status.Records | Where-Object { $_.StartsWith("package_broken`t") })[0]
             if ($first) {
                 $f = $first -split "`t"
-                $pkgErr = '{0} cannot answer (exited {1})' -f $f[1], $f[2]
+                $pkgErr = if ($f[2] -eq '255') {
+                    '{0} cannot answer ({1})' -f $f[1], $f[3]
+                } else {
+                    '{0} cannot answer ({1} exited {2})' -f $f[1], $f[3], $f[2]
+                }
             }
         }
         Script:_Check 'package manifest loads and its managers answer' (-not $pkgErr) $pkgErr
