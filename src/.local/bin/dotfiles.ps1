@@ -240,7 +240,7 @@ Usage:
   dotfiles install          Interactive menu to (re)run install steps
   dotfiles install all      Run every install step non-interactively
   dotfiles install none     Run only the required steps
-  dotfiles install <names>  Run only the named steps (e.g. Install-Scoop, Install-Mise)
+  dotfiles install <names>  Run only the named steps (e.g. Install-Scoop Install-Mise)
   dotfiles sync             Review untracked packages and add/blacklist them
   dotfiles edit <pattern>   Fuzzy-find a managed file and edit via mox
   dotfiles profile [name]   Print or switch the active mox profile
@@ -249,9 +249,9 @@ Usage:
   dotfiles <cmd>            Forward to mox (e.g. dotfiles apply, dotfiles diff)
   dotfiles --help           Show this help
 
-Shell-function overrides (source ~/.config/powershell/dotfiles-shell.ps1):
-  dotfiles cd               cd this shell to the mox repo dir
-  dotfiles apply            re-source `$PROFILE on a successful apply
+Shell-function overrides (after dot-sourcing ~/.config/powershell/dotfiles-shell.ps1):
+  dotfiles cd               cd current shell to mox repo dir
+  dotfiles apply            Re-source `$PROFILE on successful apply
 
 For mox-specific help: mox --help
 "@ | Write-Host
@@ -283,11 +283,12 @@ Opens the source behind the managed path; run ``mox apply`` to write it live.
     }
 
     $pattern = $EditArgs[0]
-    # `mox status` emits `  <state>  ~/<path>`, with an ownership annotation
-    # after a partially owned file; the path relative to $HOME is what the
-    # matcher and picker expect.
+    # `mox status` emits `  <state>  ~<sep><path>`, with an ownership
+    # annotation after a partially owned file; the path relative to $HOME is
+    # what the matcher and picker expect. mox writes the separator the path
+    # had, so the managed line is backslash-separated on Windows.
     $managed = @((& mox status 2>$null) | ForEach-Object {
-        if ($_ -cmatch '^  (?!ERROR )[A-Za-z]+ +~/(.*)$') {
+        if ($_ -cmatch '^  (?!ERROR )[A-Za-z]+ +~[\\/](.*)$') {
             $matches[1] -replace ' +\((own|disown) [0-9]+\)$', ''
         }
     } | Where-Object { $_ -ne '' })
@@ -303,6 +304,7 @@ Opens the source behind the managed path; run ``mox apply`` to write it live.
         exit 1
     } elseif ($found.Count -eq 1) {
         & mox edit (Join-Path $HOME $found[0])
+        exit $LASTEXITCODE
     } else {
         Write-Host 'multiple matches:'
         for ($i = 0; $i -lt $found.Count; $i++) {
@@ -320,6 +322,7 @@ Opens the source behind the managed path; run ``mox apply`` to write it live.
             exit 1
         }
         & mox edit (Join-Path $HOME $found[$n - 1])
+        exit $LASTEXITCODE
     }
 }
 
@@ -365,6 +368,7 @@ config, mise settings, ...) re-renders accordingly.
     & mox facts set profile $target
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     & mox apply
+    exit $LASTEXITCODE
 }
 
 # Doctor
@@ -374,11 +378,11 @@ function Cmd-Doctor([string[]]$DoctorArgs) {
 dotfiles doctor -- health check for the dotfiles + mox setup.
 
 Verifies that mox is reachable, the repo resolves, the profile
-resolves, mox doctor reports no advisory, the Windows package list
-is readable, data/packages is there and its manifest loads with its
-managers answering, the theme command resolves, and the Windows toolchain
-(pwsh + scoop or winget + mise + holt) is installed. Exits 0 when
-all checks pass, 1 if any failed.
+resolves, ``mox doctor`` reports no advisory, the shell library parses under
+the PowerShell parser, the Windows package list is readable, data/packages
+is there and its manifest loads with its managers answering, the theme
+command resolves, and the Windows toolchain (pwsh + scoop or winget + mise
++ holt) is installed. Exits 0 when all checks pass, 1 if any failed.
 "@ | Write-Host
         return
     }
@@ -403,7 +407,10 @@ all checks pass, 1 if any failed.
     Script:_Check 'mox on PATH' (_Have mox)
     if (_Have mox) {
         $report = (& mox doctor 2>&1 | Out-String)
-        if ($report -match '(?m)[^0-9](\d+) advisory item') { $advisories = $matches[1] }
+        # `problem(s) found` is mox's severest verdict; a report carrying it
+        # says nothing else, so it is read before the milder shapes.
+        if ($report -match '(?m)[^0-9](\d+) problem\(s\) found') { $advisories = "$($matches[1]) problem" }
+        elseif ($report -match '(?m)[^0-9](\d+) advisory item') { $advisories = $matches[1] }
         elseif ($report -match '(?m)[^0-9](\d+) check\(s\) skipped') { $advisories = "$($matches[1]) skipped" }
         elseif ($report -match 'mox doctor: healthy') { $advisories = '0' }
         else { $advisories = 'unparsed' }
@@ -419,6 +426,21 @@ all checks pass, 1 if any failed.
 
     $pkgFile = ''
     if ($sourceDir) {
+        # The counterpart to the bash side's parse of etc/bash/lib/init.bash:
+        # a module that no longer parses breaks `dotfiles install` at import,
+        # which is too late to learn about it.
+        $libDir = Join-Path $sourceDir 'etc/powershell/lib'
+        $libOk = Test-Path -LiteralPath $libDir -PathType Container
+        if ($libOk) {
+            foreach ($module in (Get-ChildItem -LiteralPath $libDir -Filter '*.psm1' -File)) {
+                $parseErrors = $null
+                [void][System.Management.Automation.Language.Parser]::ParseFile(
+                    $module.FullName, [ref]$null, [ref]$parseErrors)
+                if ($parseErrors -and $parseErrors.Count -gt 0) { $libOk = $false }
+            }
+        }
+        Script:_Check 'etc/powershell/lib parses under the PowerShell parser' $libOk
+
         $pkgFile = Join-Path $sourceDir 'etc/windows/packages.txt'
         Script:_Check 'package list readable' (Test-Path -LiteralPath $pkgFile) $pkgFile
         Script:_Check 'data/packages manifest present' (Test-Path -LiteralPath (Join-Path $sourceDir 'data/packages') -PathType Container)
@@ -466,10 +488,11 @@ function Cmd-Upgrade([string[]]$UpgradeArgs) {
 dotfiles upgrade -- bring mox and the managed tools up to date.
 
 Usage:
-  dotfiles upgrade           mox self-update (mox upgrade)
+  dotfiles upgrade           mox self-update (``mox upgrade``)
   dotfiles upgrade --all     mox, then scoop + winget + mise + holt
 
---all runs the upgrade gestures for each managed tool.
+``--all`` runs the upgrade gestures for each managed tool in dependency
+order.
 "@ | Write-Host
             return
         }

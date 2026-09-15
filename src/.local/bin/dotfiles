@@ -14,10 +14,14 @@ set -euo pipefail
 if [[ -t 1 ]]; then
   C_DIM=$'\033[2m'
   C_BOLD=$'\033[1m'
+  C_GREEN=$'\033[1;32m'
+  C_RED=$'\033[1;31m'
   C_RESET=$'\033[0m'
 else
   C_DIM=""
   C_BOLD=""
+  C_GREEN=""
+  C_RED=""
   C_RESET=""
 fi
 
@@ -27,8 +31,13 @@ _row() {
 
 _version_of() {
   local out
-  out=$("$1" --version 2>&1 | head -n1) || return 1
-  printf '%s' "$out" | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -n1
+  # Trim and match in-shell rather than through `| head -n1`: head closing
+  # the pipe early makes a chatty tool exit on SIGPIPE, which `pipefail`
+  # reports as a failed read and loses a version that was there.
+  out=$("$1" --version 2>&1) || return 1
+  out=${out%%$'\n'*}
+  [[ "$out" =~ [0-9]+\.[0-9]+(\.[0-9]+)? ]] || return 1
+  printf '%s' "$BASH_REMATCH"
 }
 
 _mox_repo() {
@@ -217,7 +226,7 @@ EOF
 
   case ${#matches[@]} in
     0)
-      printf 'no managed file matches %q\n' "$pattern" >&2
+      printf "no managed file matches '%s'\n" "$pattern" >&2
       return 1
       ;;
     1)
@@ -278,7 +287,7 @@ EOF
   case "$target" in
     personal|work) ;;
     *)
-      printf 'unknown profile: %q (expected one of: personal, work)\n' "$target" >&2
+      printf "unknown profile: '%s' (expected one of: personal, work)\n" "$target" >&2
       return 1
       ;;
   esac
@@ -310,10 +319,8 @@ EOF
   set +e +u +o pipefail
 
   local fails=0 passes=0
-  local pass_glyph
-  pass_glyph="${C_BOLD}$(printf '\033[1;32m')✓$(printf '\033[0m')"
-  local fail_glyph
-  fail_glyph="${C_BOLD}$(printf '\033[1;31m')✖$(printf '\033[0m')"
+  local pass_glyph="${C_GREEN}✓${C_RESET}"
+  local fail_glyph="${C_RED}✖${C_RESET}"
   _check() {
     local desc="$1" rc="$2" detail="${3:-}"
     if (( rc == 0 )); then
@@ -350,9 +357,14 @@ EOF
     local report advisories
     report=$(mox doctor 2>&1)
     advisories=$(printf '%s\n' "$report" | sed -nE 's/^.*[^0-9]([0-9]+) advisory item.*/\1/p' | tail -n1)
-    local skipped detail
+    local problems skipped detail
+    # `problem(s) found` is mox's severest verdict; a report carrying it says
+    # nothing else, so it is read before the milder shapes.
+    problems=$(printf '%s\n' "$report" | sed -nE 's/^.*[^0-9]([0-9]+) problem\(s\) found.*/\1/p' | tail -n1)
     skipped=$(printf '%s\n' "$report" | sed -nE 's/^.*[^0-9]([0-9]+) check\(s\) skipped.*/\1/p' | tail -n1)
-    if [[ -z "$advisories" ]]; then
+    if [[ -n "$problems" ]]; then
+      advisories="$problems problem"
+    elif [[ -z "$advisories" ]]; then
       if [[ -n "$skipped" ]]; then
         advisories="$skipped skipped"
       elif [[ "$report" == *"mox doctor: healthy"* ]]; then
@@ -464,7 +476,7 @@ EOF
       return $?
       ;;
     *)
-      printf 'unknown flag: %q\n' "$1" >&2
+      printf "unknown flag: '%s'\n" "$1" >&2
       printf 'try: dotfiles upgrade --help\n' >&2
       return 1
       ;;
@@ -498,9 +510,9 @@ _upgrade_all() {
 
   printf '\n'
   if (( fails == 0 )); then
-    printf '%s✓%s all upgrade steps succeeded\n' "${C_BOLD}$(printf '\033[1;32m')" "$C_RESET"
+    printf '%s✓%s all upgrade steps succeeded\n' "$C_GREEN" "$C_RESET"
   else
-    printf '%s✖%s %d step(s) failed\n' "${C_BOLD}$(printf '\033[1;31m')" "$C_RESET" "$fails"
+    printf '%s✖%s %d step(s) failed\n' "$C_RED" "$C_RESET" "$fails"
   fi
   (( fails == 0 ))
 }
@@ -665,7 +677,7 @@ case "${1:-}" in
       cmd_help
     else
       command -v mox >/dev/null 2>&1 || {
-        printf 'dotfiles: mox not on PATH; %q is forwarded to mox\n' "$1" >&2
+        printf 'dotfiles: mox not on PATH; %s is forwarded to mox\n' "$1" >&2
         exit 1
       }
       exec mox "$@"
@@ -676,13 +688,13 @@ case "${1:-}" in
     # subcommands, probe `mox help <name>` first so typos surface a
     # dotfiles-aware error instead of silently routing to mox.
     command -v mox >/dev/null 2>&1 || {
-      printf 'dotfiles: mox not on PATH; %q is forwarded to mox\n' "$1" >&2
+      printf 'dotfiles: mox not on PATH; %s is forwarded to mox\n' "$1" >&2
       exit 1
     }
     if [[ "$1" == -* ]] || mox help "$1" >/dev/null 2>&1; then
       exec mox "$@"
     else
-      printf 'dotfiles: unknown subcommand %q\n' "$1" >&2
+      printf "dotfiles: unknown subcommand '%s'\n" "$1" >&2
       nearest=$(_nearest_subcommand "$1")
       [[ -n "$nearest" ]] && printf 'did you mean: dotfiles %s\n' "$nearest" >&2
       printf 'see `dotfiles --help` (wrapper) or `mox --help` (forwarded)\n' >&2

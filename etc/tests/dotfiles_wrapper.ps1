@@ -146,6 +146,8 @@ if ($r.Out -match 'passed.*failed') {
     Write-Host "  ✗ doctor missing summary, got: $($r.Out)"
     $fails++
 }
+Match 'doctor runs mox doctor' 'mox doctor reports no advisory' $r.Out
+Match 'doctor parses the shell library' 'etc/powershell/lib parses under' $r.Out
 
 # The wrapper's own guard, not a failed lookup deeper down, is what a caller
 # sees when mox is absent. The child pwsh is started by its resolved path so
@@ -177,6 +179,11 @@ try {
     Match 'doctor without mox fails more than one check' 'failed' $r.Out
     if ($r.Rc -eq 1) { Write-Host '  ✓ doctor exits 1 whatever the failure count'; $passes++ }
     else             { Write-Host "  ✗ doctor exits 1 whatever the failure count, got $($r.Rc)"; $fails++ }
+
+    Section 'a forwarded subcommand without mox is reported, not run'
+    $r = Run-WithoutMox 'apply'
+    Match 'missing mox is reported as such' 'mox not on PATH' $r.Out
+    NoMatch 'missing mox is not called a typo' 'unknown subcommand' $r.Out
 } finally {
     Remove-Item -LiteralPath $noMox -Recurse -Force
 }
@@ -188,15 +195,19 @@ try {
 # answer; STUB_PKG_ERROR=1 makes it fail the way a broken
 # manifest does: the reason on the error stream, nothing on stdout, exit 1.
 # STUB_PKG_REFUSED=1 adds the bare `package_refused` record mox writes
-# alongside that reason. The stub runs in-process, so its error stream is what
-# a native mox's stderr becomes under `2>&1`, and -ErrorAction Continue keeps
-# the wrapper's Stop preference from ending the stub at that line.
+# alongside that reason. STUB_PROFILE_UNSET=1 withholds the profile fact.
+# STUB_FAIL names the subcommand whose run exits 2, so a caller can be
+# checked for propagating mox's exit code. The stub runs in-process, so its
+# error stream is what a native mox's stderr becomes under `2>&1`, and
+# -ErrorAction Continue keeps the wrapper's Stop preference from ending the
+# stub at that line.
 $stub = Join-Path ([IO.Path]::GetTempPath()) ("dotfiles-stub-" + [Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $stub | Out-Null
 @'
 param([Parameter(ValueFromRemainingArguments = $true)][string[]]$a)
+$rc = 0
 switch ($a[0]) {
-    'facts'  { 'profile = "personal"' }
+    'facts'  { if (-not $env:STUB_PROFILE_UNSET) { 'profile = "personal"' } }
     'doctor' {
         if ($env:STUB_DOCTOR_RAW) { $env:STUB_DOCTOR_RAW }
         else { "mox doctor: $(if ($env:STUB_ADVISORIES) { $env:STUB_ADVISORIES } else { 0 }) advisory item(s) need attention" }
@@ -216,12 +227,22 @@ switch ($a[0]) {
             if ($env:STUB_PKG_BROKEN) { "package_broken`tdnf`t1" }
             exit 1
         }
-        '  clean    ~/.zshrc'; '  clean    ~/.codex/config.toml  (own 3)'; '  ERROR    ~/.broken.toml (compose failed: TomlParseError)'; 'unbound facts: none'
+        $s = [IO.Path]::DirectorySeparatorChar
+        "  clean    ~${s}.zshrc"
+        "  clean    ~${s}.codex${s}config.toml  (own 3)"
+        "  ERROR    ~${s}.broken.toml (compose failed: TomlParseError)"
+        # mox keeps the separator a path had, so a managed line on Windows is
+        # backslash-separated. Emit that shape on every host: it is the only
+        # way a run on macOS exercises the matcher the Windows wrapper needs.
+        '  clean    ~\.config\powershell\profile.ps1'
+        'unbound facts: none'
     }
     '--help' { "Commands:`n  apply      Compose and write`n  status     Report drift" }
-    'help'   { if ($a[1] -in @('apply', 'status')) { exit 0 } else { exit 1 } }
+    'help'   { if ($a[1] -notin @('apply', 'status')) { $rc = 1 } }
     default  { "FORWARDED $($a -join ' ')" }
 }
+if ($env:STUB_FAIL -and $a[0] -eq $env:STUB_FAIL) { exit 2 }
+exit $rc
 '@ | Set-Content -LiteralPath (Join-Path $stub 'mox.ps1')
 $savedPath = $env:PATH
 $env:PATH = "$stub$([IO.Path]::PathSeparator)$env:PATH"
@@ -233,6 +254,15 @@ try {
     if ($r.Rc -eq 1) { Write-Host '  ✓ doctor exits 1 on an advisory'; $passes++ }
     else             { Write-Host "  ✗ doctor should exit 1 on an advisory (got $($r.Rc))"; $fails++ }
     Remove-Item Env:STUB_ADVISORIES
+
+    Section 'doctor fails when mox doctor reports a problem'
+    $env:STUB_DOCTOR_RAW = 'mox doctor: 2 problem(s) found'
+    $r = Run-Wrapper 'doctor'
+    Match 'the problem count is shown' '2 problem' $r.Out
+    NoMatch 'a problem report is not read as unparsed' 'unparsed' $r.Out
+    if ($r.Rc -eq 1) { Write-Host '  ✓ doctor exits 1 on a problem'; $passes++ }
+    else             { Write-Host "  ✗ doctor should exit 1 on a problem (got $($r.Rc))"; $fails++ }
+    Remove-Item Env:STUB_DOCTOR_RAW
 
     Section 'doctor fails when the mox doctor report cannot be parsed'
     $env:STUB_DOCTOR_RAW = 'mox doctor: a report shape the wrapper has never seen'
@@ -295,10 +325,64 @@ try {
 
     Section 'edit hands mox the path without its ownership annotation'
     $r = Run-Wrapper 'edit' 'codex'
-    Match 'the annotated line is offered' 'FORWARDED edit ' $r.Out
+    Match 'edit hands mox the home path' ('FORWARDED edit ' + (Join-Path $HOME (Join-Path '.codex' 'config.toml'))) $r.Out
     if (-not $r.Out.Contains('(own')) { Write-Host '  ✓ the annotation is stripped'; $passes++ } else { Write-Host '  ✗ the annotation is stripped'; $fails++ }
+    if ($r.Rc -eq 0) { Write-Host '  ✓ edit exits zero'; $passes++ }
+    else             { Write-Host "  ✗ edit should exit zero (got $($r.Rc))"; $fails++ }
     $r = Run-Wrapper 'edit' 'broken'
     Match 'a status ERROR row is not offered as a path' 'no managed file matches' $r.Out
+
+    # mox writes the native separator, so every managed line is backslash-
+    # separated on Windows -- the wrapper's only target OS. A matcher that
+    # required a forward slash matched nothing there.
+    Section 'a managed line is matched whichever separator mox wrote'
+    $r = Run-Wrapper 'edit' 'powershell'
+    Match 'a backslash-separated managed line is offered' 'FORWARDED edit ' $r.Out
+    NoMatch 'a backslash-separated managed line is not missed' 'no managed file matches' $r.Out
+
+    Section "a failing mox is carried out as the wrapper's exit code"
+    $env:STUB_FAIL = 'edit'
+    $r = Run-Wrapper 'edit' 'zshrc'
+    if ($r.Rc -eq 2) { Write-Host "  ✓ edit exits with mox's code"; $passes++ }
+    else             { Write-Host "  ✗ edit should exit with mox's code, got $($r.Rc)"; $fails++ }
+    Remove-Item Env:STUB_FAIL
+    $env:STUB_FAIL = 'apply'
+    $r = Run-Wrapper 'profile' 'work'
+    if ($r.Rc -eq 2) { Write-Host '  ✓ a profile switch exits with the apply code'; $passes++ }
+    else             { Write-Host "  ✗ a profile switch should exit with the apply code, got $($r.Rc)"; $fails++ }
+    Remove-Item Env:STUB_FAIL
+
+    Section 'profile with no arg prints the profile fact'
+    $r = Run-Wrapper 'profile'
+    Match 'profile prints the fact' 'personal' $r.Out
+    if ($r.Rc -eq 0 -and $r.Out -eq 'personal') { Write-Host '  ✓ profile prints exactly the fact'; $passes++ }
+    else { Write-Host "  ✗ profile should print exactly the fact (rc $($r.Rc)): $($r.Out)"; $fails++ }
+    $env:STUB_PROFILE_UNSET = '1'
+    $r = Run-Wrapper 'profile'
+    Match 'unset profile errors' 'profile fact is unset' $r.Out
+    if ($r.Rc -ne 0) { Write-Host '  ✓ unset profile exits non-zero'; $passes++ }
+    else             { Write-Host '  ✗ unset profile should exit non-zero'; $fails++ }
+    Remove-Item Env:STUB_PROFILE_UNSET
+
+    Section 'unknown subcommands are forwarded to mox or refused'
+    $r = Run-Wrapper 'apply' '--dry-run'
+    Match 'a mox subcommand is forwarded with its arguments' 'FORWARDED apply --dry-run' $r.Out
+    $r = Run-Wrapper '--version'
+    Match 'flags pass through' 'FORWARDED --version' $r.Out
+    $r = Run-Wrapper 'zzzzzzzz'
+    NoMatch 'a distant word gets no suggestion' 'did you mean' $r.Out
+
+    Section 'upgrade forwards to mox'
+    # A real `mox upgrade` would change the machine, so the forward runs only
+    # once the stub is confirmed to shadow mox.
+    $moxSource = (Get-Command mox -ErrorAction SilentlyContinue).Source
+    $shadowed = [bool]($moxSource -and $moxSource.StartsWith($stub))
+    if ($shadowed) { Write-Host '  ✓ the stub shadows mox'; $passes++ }
+    else           { Write-Host "  ✗ the stub should shadow mox, got $moxSource"; $fails++ }
+    if ($shadowed) {
+        $r = Run-Wrapper 'upgrade'
+        Match 'bare upgrade runs mox upgrade' 'FORWARDED upgrade' $r.Out
+    }
 
     Section 'a typo is answered with the nearest subcommand'
     $r = Run-Wrapper 'doctr'

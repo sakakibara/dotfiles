@@ -68,11 +68,14 @@ _match "non-match error mentions pattern" "no managed file matches" "$out"
 # one with an empty key (two adjacent tabs); STUB_PKG_BROKEN=1 adds a
 # manager that cannot answer; STUB_PKG_ERROR=1 makes it fail
 # the way a broken manifest does: the reason on stderr, nothing on stdout,
-# exit 1.
+# exit 1. STUB_PKG_REFUSED=1 adds the bare `package_refused` record mox
+# writes alongside that reason. STUB_FAIL names the subcommand whose
+# forwarded run exits 2, so a caller can be checked for propagating it.
 STUB="$(mktemp -d)"
 trap 'rm -rf "$STUB"' EXIT
 cat > "$STUB/mox" <<'EOF'
 #!/usr/bin/env bash
+rc=0
 case "$1" in
   facts)  printf 'profile = "%s"\n' "${STUB_PROFILE-personal}" ;;
   doctor) printf '%s\n' "${STUB_DOCTOR_RAW:-mox doctor: ${STUB_ADVISORIES:-0} advisory item(s) need attention}" ;;
@@ -80,6 +83,7 @@ case "$1" in
     if [[ "${2:-}" == --porcelain ]]; then
       if [[ -n "${STUB_PKG_ERROR:-}" ]]; then
         printf 'mox status: packages: data/packages/x.toml: row "y": boom\n' >&2
+        [[ -n "${STUB_PKG_REFUSED:-}" ]] && printf 'package_refused\n'
         exit 1
       fi
       printf 'owned_key\tfeedbackDrafts\t0\t%s/.claude/settings.json\n' "$HOME"
@@ -90,11 +94,13 @@ case "$1" in
       exit 1
     fi
     printf '  clean    ~/.zshrc\n  clean    ~/.config/git/config\n  clean    ~/.codex/config.toml  (own 3)\n  ERROR    ~/.broken.toml (compose failed: TomlParseError)\n' ;;
-  help)   [[ "$2" == apply || "$2" == status || "$2" == diff ]] ;;
+  help)   [[ "$2" == apply || "$2" == status || "$2" == diff ]] || rc=1 ;;
   --help) printf 'Commands:\n  apply      Compose and write\n  status     Report drift\n  diff       Show differences\n' ;;
   edit)   printf 'EDIT %s\n' "$2" ;;
   *)      printf 'FORWARDED %s\n' "$*" ;;
 esac
+[[ -n "${STUB_FAIL:-}" && "$1" == "${STUB_FAIL}" ]] && exit 2
+exit "$rc"
 EOF
 chmod +x "$STUB/mox"
 
@@ -104,7 +110,7 @@ _match "a mox subcommand is forwarded with its arguments" "FORWARDED apply --dry
 out=$(PATH="$STUB:$PATH" bash "$BIN" --version 2>&1)
 _match "flags pass through" "FORWARDED --version" "$out"
 out=$(PATH="$STUB:$PATH" bash "$BIN" statsu 2>&1); rc=$?
-_match "a typo is refused" "unknown subcommand statsu" "$out"
+_match "a typo is refused" "unknown subcommand 'statsu'" "$out"
 _match "a typo gets the nearest subcommand" "did you mean: dotfiles status" "$out"
 [[ $rc -ne 0 ]] && passes=$((passes+1)) || { printf '  ✗ typo should exit non-zero\n'; fails=$((fails+1)); }
 out=$(PATH="$STUB:$PATH" bash "$BIN" docter 2>&1)
@@ -117,7 +123,7 @@ _no_match "missing mox is not called a typo" "unknown subcommand" "$out"
 # `help <name>` forwards like any other subcommand, so it is guarded like one:
 # without the guard the exec fails and the shell reports 127.
 out=$(PATH="/usr/bin:/bin" bash "$BIN" help apply 2>&1); rc=$?
-_match "a forwarded help without mox is reported, not exec'd" "mox not on PATH" "$out"
+_match "a forwarded help without mox is reported, not exec'd" "mox not on PATH; help is forwarded to mox" "$out"
 [[ $rc -eq 1 ]] && passes=$((passes+1)) || { printf '  ✗ a forwarded help without mox exits 1, got %d\n' "$rc"; fails=$((fails+1)); }
 # A count of failed checks is not an exit status: a gate written as `rc -eq 1`
 # must see 1 however many checks failed.
@@ -169,6 +175,7 @@ case "$out" in
   *) printf '  ✗ doctor missing summary\n      got: %q\n' "$out"; fails=$((fails+1)) ;;
 esac
 _match "doctor runs mox doctor" "mox doctor reports no advisory" "$out"
+_match "doctor parses the shell library" "etc/bash/lib/init.bash parses under" "$out"
 
 _section "info lists every porcelain record, an empty key included"
 out=$(PATH="$STUB:$PATH" bash "$BIN" info 2>&1)
@@ -187,8 +194,8 @@ _match "the failure is the drift detail" 'Drift:  packages: data/packages/x.toml
 _no_match "the failure is not read as clean" "Drift:  none" "$out"
 
 _section "doctor's manifest check reads the package failure"
-pass_mark="✓$(printf '\033[0m') package manifest loads and its managers answer"
-fail_mark="✖$(printf '\033[0m') package manifest loads and its managers answer"
+pass_mark="✓ package manifest loads and its managers answer"
+fail_mark="✖ package manifest loads and its managers answer"
 out=$(PATH="$STUB:$PATH" bash "$BIN" doctor 2>&1)
 _match "drift alone passes the manifest check" "$pass_mark" "$out"
 out=$(PATH="$STUB:$PATH" STUB_PKG_BROKEN=1 bash "$BIN" doctor 2>&1); rc=$?
@@ -199,6 +206,17 @@ out=$(PATH="$STUB:$PATH" STUB_PKG_ERROR=1 bash "$BIN" doctor 2>&1); rc=$?
 _match "a package failure fails the manifest check" "$fail_mark" "$out"
 _match "the failure is the check detail" 'row "y": boom' "$out"
 [[ $rc -ne 0 ]] && passes=$((passes+1)) || { printf '  ✗ doctor should exit non-zero on a package failure\n'; fails=$((fails+1)); }
+
+_section "a refused manifest is the drift detail, not an empty package row"
+out=$(PATH="$STUB:$PATH" STUB_PKG_ERROR=1 STUB_PKG_REFUSED=1 bash "$BIN" info 2>&1)
+_match "the reason is still the drift detail" 'Drift:  packages: data/packages/x.toml: row "y": boom' "$out"
+_no_match "the fieldless record is not rendered as a package" ", refused)" "$out"
+
+_section "doctor fails when mox doctor reports a problem"
+out=$(PATH="$STUB:$PATH" STUB_DOCTOR_RAW='mox doctor: 2 problem(s) found' bash "$BIN" doctor 2>&1); rc=$?
+_match "the problem count is shown" "2 problem" "$out"
+_no_match "a problem report is not read as unparsed" "unparsed" "$out"
+[[ $rc -ne 0 ]] && passes=$((passes+1)) || { printf '  ✗ doctor should exit non-zero on a problem\n'; fails=$((fails+1)); }
 
 _section "doctor fails when mox doctor reports an advisory"
 out=$(PATH="$STUB:$PATH" STUB_ADVISORIES=1 bash "$BIN" doctor 2>&1); rc=$?
@@ -222,6 +240,21 @@ out=$(PATH="$STUB:/usr/bin:/bin" bash "$BIN" upgrade 2>&1)
 _match "bare upgrade runs mox upgrade" "FORWARDED upgrade" "$out"
 out=$(PATH="$STUB:/usr/bin:/bin" bash "$BIN" upgrade --all 2>&1)
 _match "upgrade --all runs mox upgrade --yes" "FORWARDED upgrade --yes" "$out"
+
+_section "a failing mox is carried out as the wrapper's exit code"
+out=$(PATH="$STUB:$PATH" STUB_FAIL=edit bash "$BIN" edit zshrc 2>&1); rc=$?
+[[ $rc -eq 2 ]] && passes=$((passes+1)) || { printf "  ✗ edit should exit with mox's code, got %d\n" "$rc"; fails=$((fails+1)); }
+out=$(PATH="$STUB:$PATH" STUB_FAIL=apply bash "$BIN" profile work 2>&1); rc=$?
+[[ $rc -eq 2 ]] && passes=$((passes+1)) || { printf "  ✗ a profile switch should exit with the apply code, got %d\n" "$rc"; fails=$((fails+1)); }
+
+# The C_* helpers are gated on stdout being a TTY, so a captured run must
+# carry no escape at all -- a hardcoded one would survive the gate.
+_section "colour escapes stay out of a run whose stdout is redirected"
+esc=$'\033['
+out=$(PATH="$STUB:$PATH" bash "$BIN" doctor 2>&1)
+_no_match "doctor's glyphs are plain" "$esc" "$out"
+out=$(PATH="$STUB:/usr/bin:/bin" bash "$BIN" upgrade --all 2>&1)
+_no_match "the upgrade summary is plain" "$esc" "$out"
 
 _section "doctor fails when the mox doctor report cannot be parsed"
 out=$(PATH="$STUB:$PATH" STUB_DOCTOR_RAW='mox doctor: a report shape the wrapper has never seen' bash "$BIN" doctor 2>&1); rc=$?
