@@ -32,6 +32,15 @@ case "$distro" in
 esac
 [[ -f "$file" ]] || { echo "no $file" >&2; exit 1; }
 
+# Only a per-distro file is resolved against a distro's repos, so a package
+# row anywhere else would never be checked by anything. shared.toml exists to
+# hold what holds on every machine -- blacklist rows -- and must stay that.
+shared="$repo_dir/data/packages/shared.toml"
+if [[ -f "$shared" ]] && grep -qE '^[[:space:]]*\[\[(packages|bootstrap)\]\]' "$shared"; then
+  echo "data/packages/shared.toml holds a packages or bootstrap row; no distro gate resolves it" >&2
+  exit 1
+fi
+
 # Every `[[packages]]` row of the manifest as `kind<TAB>name`: `cask` when the
 # row says so, else the default. `[[blacklist]]` and `[[bootstrap]]` rows are
 # not packages to resolve. A block this cannot read, or one routed to a
