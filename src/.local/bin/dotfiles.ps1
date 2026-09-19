@@ -47,6 +47,49 @@ function _MoxRepo {
     return (Join-Path $base 'mox\dotfiles')
 }
 
+# The mox release that added packages: the data/packages manifest, the
+# `package_*` porcelain records and the `mox status: packages:` reason line.
+# An older mox answers `status --porcelain` with file records only, so every
+# package in this repo reads as no package at all rather than as missing.
+$Script:MoxPackagesMin = '0.12.0'
+
+# True when $a orders before $b, each dotted field compared as a number: a
+# string compare puts 0.9.0 after 0.10.0.
+function _VersionLt([string]$a, [string]$b) {
+    $x = @($a -split '\.')
+    $y = @($b -split '\.')
+    for ($i = 0; $i -lt 3; $i++) {
+        $ai = if ($i -lt $x.Count) { [int]$x[$i] } else { 0 }
+        $bi = if ($i -lt $y.Count) { [int]$y[$i] } else { 0 }
+        if ($ai -lt $bi) { return $true }
+        if ($ai -gt $bi) { return $false }
+    }
+    return $false
+}
+
+function _MoxVersion {
+    try {
+        $line = (& mox version 2>$null | Select-Object -First 1) -as [string]
+        if ($line -match '^mox\s+(\d+(\.\d+)*)') { return $matches[1] }
+    } catch { }
+    return ''
+}
+
+# Why this mox cannot be trusted with packages, empty when it can. A version
+# that does not parse is neither confirmed nor fatal: it is said rather than
+# assumed either way, so an unreadable build is reported without the wrapper
+# refusing to run against it.
+function _MoxPackagesGap {
+    $v = _MoxVersion
+    if (-not $v) {
+        return "mox does not name a version, so whether it has the $Script:MoxPackagesMin packages need is unknown"
+    }
+    if (_VersionLt $v $Script:MoxPackagesMin) {
+        return "mox $v is older than $Script:MoxPackagesMin; package management is inert until mox is upgraded"
+    }
+    return ''
+}
+
 # Read the active profile from `mox facts`, which prints one `key = "value"`
 # line per fact. Empty when mox is absent or the fact is unset.
 function _MoxProfile {
@@ -181,12 +224,19 @@ function Cmd-Info {
         } elseif ($status.Rc -ne 0 -and $status.Rc -ne 1) {
             _Row 'Drift:' "unknown (mox status exited $($status.Rc))"
         } elseif ($drift.Count -eq 0) {
-            _Row 'Drift:' 'none'
+            # A mox that reports no package cannot say the machine is clean,
+            # only that its files are, so the package half of the verdict is
+            # the reason it is missing rather than a count standing in for one.
+            $pkgGap = _MoxPackagesGap
+            if ($pkgGap) { _Row 'Drift:' "no file drift ($pkgGap)" } else { _Row 'Drift:' 'none' }
         } else {
             $files = @($rows | Where-Object { -not $_.StartsWith('package_') }).Count
             $broken = @($rows | Where-Object { $_.StartsWith('package_broken') }).Count
             $pkgs = $rows.Count - $files - $broken
-            if ($broken -gt 0) {
+            $pkgGap = _MoxPackagesGap
+            if ($pkgGap) {
+                _Row 'Drift:' "$files file(s) ($pkgGap)"
+            } elseif ($broken -gt 0) {
                 _Row 'Drift:' "$files file(s), $pkgs package(s), $broken manager(s) not answering"
             } else {
                 _Row 'Drift:' "$files file(s), $pkgs package(s)"
@@ -387,9 +437,10 @@ dotfiles doctor -- health check for the dotfiles + mox setup.
 Verifies that mox is reachable, the repo resolves, the profile
 resolves, ``mox doctor`` reports no advisory, the shell library parses under
 the PowerShell parser, the Windows package list is readable, data/packages
-is there and its manifest loads with its managers answering, the theme
-command resolves, and the Windows toolchain (pwsh + scoop or winget + mise
-+ holt) is installed. Exits 0 when all checks pass, 1 if any failed.
+is there, mox is new enough to manage packages and the manifest loads with
+its managers answering, the theme command resolves, and the Windows
+toolchain (pwsh + scoop or winget + mise + holt) is installed. Exits 0 when
+all checks pass, 1 if any failed.
 "@ | Write-Host
         return
     }
@@ -454,6 +505,14 @@ command resolves, and the Windows toolchain (pwsh + scoop or winget + mise
         $pkgFile = Join-Path $sourceDir 'etc/windows/packages.txt'
         Script:_Check 'package list readable' (Test-Path -LiteralPath $pkgFile) $pkgFile
         Script:_Check 'data/packages manifest present' (Test-Path -LiteralPath (Join-Path $sourceDir 'data/packages') -PathType Container)
+    }
+
+    if (_Have mox) {
+        # A mox without packages answers every package query with silence,
+        # which the check below cannot tell from a machine with nothing to
+        # install.
+        $pkgGap = _MoxPackagesGap
+        Script:_Check 'mox is new enough to manage packages' (-not $pkgGap) $pkgGap
     }
 
     if (_Have mox) {

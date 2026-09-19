@@ -195,9 +195,11 @@ try {
 # answer; STUB_PKG_ERROR=1 makes it fail the way a broken
 # manifest does: the reason on the error stream, nothing on stdout, exit 1.
 # STUB_PKG_REFUSED=1 adds the bare `package_refused` record mox writes
-# alongside that reason. STUB_PROFILE_UNSET=1 withholds the profile fact.
-# STUB_FAIL names the subcommand whose run exits 2, so a caller can be
-# checked for propagating mox's exit code. The stub runs in-process, so its
+# alongside that reason; STUB_CLEAN=1 reports no drift at all.
+# STUB_PROFILE_UNSET=1 withholds the profile fact. STUB_VERSION is the
+# version it names, STUB_VERSION_RAW the whole line where the shape itself
+# is under test. STUB_FAIL names the subcommand whose run exits 2, so a
+# caller can be checked for propagating mox's exit code. The stub runs in-process, so its
 # error stream is what a native mox's stderr becomes under `2>&1`, and
 # -ErrorAction Continue keeps the wrapper's Stop preference from ending the
 # stub at that line.
@@ -207,6 +209,10 @@ New-Item -ItemType Directory -Path $stub | Out-Null
 param([Parameter(ValueFromRemainingArguments = $true)][string[]]$a)
 $rc = 0
 switch ($a[0]) {
+    'version' {
+        if ($env:STUB_VERSION_RAW) { $env:STUB_VERSION_RAW }
+        else { "mox $(if ($env:STUB_VERSION) { $env:STUB_VERSION } else { '0.12.0' })" }
+    }
     'facts'  { if (-not $env:STUB_PROFILE_UNSET) { 'profile = "personal"' } }
     'doctor' {
         if ($env:STUB_DOCTOR_RAW) { $env:STUB_DOCTOR_RAW }
@@ -214,6 +220,7 @@ switch ($a[0]) {
     }
     'status' {
         if ($a.Count -ge 2 -and $a[1] -eq '--porcelain') {
+            if ($env:STUB_CLEAN) { exit 0 }
             if ($env:STUB_PKG_ERROR) {
                 Write-Error -Message 'mox status: packages: data/packages/x.toml: row "y": boom' -ErrorAction Continue
                 if ($env:STUB_PKG_REFUSED) { 'package_refused' }
@@ -351,6 +358,71 @@ try {
     if ($r.Rc -eq 1) { Write-Host '  ✓ doctor exits 1 on a package failure'; $passes++ }
     else             { Write-Host "  ✗ doctor should exit 1 on a package failure (got $($r.Rc))"; $fails++ }
     Remove-Item Env:STUB_PKG_ERROR
+
+    # A mox older than the packages subsystem answers `status --porcelain`
+    # with file records only, so a package count taken from it is a count of
+    # nothing.
+    Section 'a mox too old for packages is said, not counted as no packages'
+    $versionCheck = 'mox is new enough to manage packages'
+    $oldMark = 'mox 0.10.0 is older than 0.12.0; package management is inert until mox is upgraded'
+    $unparsedMark = 'mox does not name a version, so whether it has the 0.12.0 packages need is unknown'
+    $env:STUB_VERSION = '0.10.0'
+    $r = Run-Wrapper 'info'
+    Match 'the drift line names both versions and the cost' $oldMark $r.Out
+    NoMatch 'no package count is claimed' 'package(s)' $r.Out
+    $env:STUB_CLEAN = '1'
+    $r = Run-Wrapper 'info'
+    Match 'a clean file tree is reported as that alone' "no file drift ($oldMark)" $r.Out
+    NoMatch 'an inert package half is not called no drift' 'Drift:  none' $r.Out
+    Remove-Item Env:STUB_CLEAN
+    $r = Run-Wrapper 'doctor'
+    Match 'doctor fails the version check' "$versionCheck ($oldMark" $r.Out
+    if ($r.Rc -eq 1) { Write-Host '  ✓ doctor exits 1 on a mox too old for packages'; $passes++ }
+    else             { Write-Host "  ✗ doctor should exit 1 on a mox too old for packages (got $($r.Rc))"; $fails++ }
+    $oldFails = if ($r.Out -match '(?m)(\d+) passed, (\d+) failed') { [int]$matches[2] } else { -1 }
+    Remove-Item Env:STUB_VERSION
+
+    # Counted rather than read off the exit code: the machine running the
+    # suite may fail checks of its own, so what is asserted is that the old
+    # mox costs exactly one more failure than the new one.
+    Section 'a mox new enough for packages is not complained about'
+    $r = Run-Wrapper 'doctor'
+    if ($r.Out -match "(?m)$versionCheck\s*$") { Write-Host '  ✓ the version check passes'; $passes++ }
+    else { Write-Host '  ✗ the version check passes'; Write-Host "      got: $($r.Out)"; $fails++ }
+    $newFails = if ($r.Out -match '(?m)(\d+) passed, (\d+) failed') { [int]$matches[2] } else { -1 }
+    if ($newFails -ge 0 -and $oldFails -eq $newFails + 1) { Write-Host '  ✓ an old mox costs exactly one more failed check'; $passes++ }
+    else { Write-Host "  ✗ an old mox should cost exactly one more failed check ($newFails vs $oldFails)"; $fails++ }
+    $env:STUB_CLEAN = '1'
+    $r = Run-Wrapper 'info'
+    Match 'a clean machine is still clean' 'Drift:  none' $r.Out
+    Remove-Item Env:STUB_CLEAN
+
+    # Versions are ordered field by field as numbers: a string compare reads
+    # 0.9.0 as the newer of 0.9.0 and 0.10.0, and 0.100.0 as the older.
+    Section 'versions are compared as numbers, not as strings'
+    $env:STUB_VERSION = '0.9.0'
+    $r = Run-Wrapper 'info'
+    Match '0.9.0 is older than 0.12.0' 'mox 0.9.0 is older than 0.12.0' $r.Out
+    $env:STUB_VERSION = '0.100.0'
+    $r = Run-Wrapper 'info'
+    NoMatch '0.100.0 is not older than 0.12.0' 'is older than' $r.Out
+    Match '0.100.0 counts packages as before' '2 file(s), 2 package(s)' $r.Out
+    Remove-Item Env:STUB_VERSION
+
+    # A version the wrapper cannot read is not a confirmation, and not a
+    # reason to stop either: it is reported, and everything else still runs.
+    Section 'a version that does not parse is reported rather than assumed'
+    $env:STUB_VERSION_RAW = 'mox (unversioned dev build)'
+    $r = Run-Wrapper 'info'
+    Match 'the drift line says the version is unreadable' $unparsedMark $r.Out
+    NoMatch 'an unreadable version claims no package count' 'package(s)' $r.Out
+    Match 'the rest of the snapshot still prints' 'Repo:' $r.Out
+    $r = Run-Wrapper 'doctor'
+    Match 'doctor fails the version check' "$versionCheck ($unparsedMark" $r.Out
+    Match 'the checks after it still run' 'package manifest loads and its managers answer' $r.Out
+    if ($r.Rc -eq 1) { Write-Host '  ✓ doctor exits 1 on an unreadable mox version'; $passes++ }
+    else             { Write-Host "  ✗ doctor should exit 1 on an unreadable mox version (got $($r.Rc))"; $fails++ }
+    Remove-Item Env:STUB_VERSION_RAW
 
     Section 'edit hands mox the path without its ownership annotation'
     $r = Run-Wrapper 'edit' 'codex'

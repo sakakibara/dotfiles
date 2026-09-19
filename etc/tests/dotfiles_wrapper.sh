@@ -69,7 +69,9 @@ _match "non-match error mentions pattern" "no managed file matches" "$out"
 # manager that cannot answer; STUB_PKG_ERROR=1 makes it fail
 # the way a broken manifest does: the reason on stderr, nothing on stdout,
 # exit 1. STUB_PKG_REFUSED=1 adds the bare `package_refused` record mox
-# writes alongside that reason. STUB_FAIL names the subcommand whose
+# writes alongside that reason; STUB_CLEAN=1 reports no drift at all.
+# STUB_VERSION is the version it names, STUB_VERSION_RAW the whole line
+# where the shape itself is under test. STUB_FAIL names the subcommand whose
 # forwarded run exits 2, so a caller can be checked for propagating it.
 STUB="$(mktemp -d)"
 trap 'rm -rf "$STUB"' EXIT
@@ -77,10 +79,12 @@ cat > "$STUB/mox" <<'EOF'
 #!/usr/bin/env bash
 rc=0
 case "$1" in
+  version) printf '%s\n' "${STUB_VERSION_RAW:-mox ${STUB_VERSION:-0.12.0}}" ;;
   facts)  printf 'profile = "%s"\n' "${STUB_PROFILE-personal}" ;;
   doctor) printf '%s\n' "${STUB_DOCTOR_RAW:-mox doctor: ${STUB_ADVISORIES:-0} advisory item(s) need attention}" ;;
   status)
     if [[ "${2:-}" == --porcelain ]]; then
+      [[ -n "${STUB_CLEAN:-}" ]] && exit 0
       if [[ -n "${STUB_PKG_ERROR:-}" ]]; then
         printf 'mox status: packages: data/packages/x.toml: row "y": boom\n' >&2
         [[ -n "${STUB_PKG_REFUSED:-}" ]] && printf 'package_refused\n'
@@ -226,6 +230,58 @@ out=$(PATH="$STUB:$PATH" STUB_PKG_ERROR=1 bash "$BIN" doctor 2>&1); rc=$?
 _match "a package failure fails the manifest check" "$fail_mark" "$out"
 _match "the failure is the check detail" 'row "y": boom' "$out"
 [[ $rc -ne 0 ]] && passes=$((passes+1)) || { printf '  ✗ doctor should exit non-zero on a package failure\n'; fails=$((fails+1)); }
+
+# A mox older than the packages subsystem answers `status --porcelain` with
+# file records only, so a package count taken from it is a count of nothing.
+_section "a mox too old for packages is said, not counted as no packages"
+old_mark="mox 0.10.0 is older than 0.12.0; package management is inert until mox is upgraded"
+out=$(PATH="$STUB:$PATH" STUB_VERSION=0.10.0 bash "$BIN" info 2>&1)
+_match "the drift line names both versions and the cost" "$old_mark" "$out"
+_no_match "no package count is claimed" "package(s)" "$out"
+out=$(PATH="$STUB:$PATH" STUB_VERSION=0.10.0 STUB_CLEAN=1 bash "$BIN" info 2>&1)
+_match "a clean file tree is reported as that alone" "no file drift ($old_mark)" "$out"
+_no_match "an inert package half is not called no drift" "Drift:  none" "$out"
+out=$(PATH="$STUB:$PATH" STUB_VERSION=0.10.0 bash "$BIN" doctor 2>&1); rc=$?
+_match "doctor fails the version check" "✖ mox is new enough to manage packages" "$out"
+_match "the check detail names both versions and the cost" "$old_mark" "$out"
+[[ $rc -eq 1 ]] && passes=$((passes+1)) || { printf '  ✗ doctor should exit 1 on a mox too old for packages, got %d\n' "$rc"; fails=$((fails+1)); }
+
+# Counted rather than read off the exit code: the machine running the suite
+# may fail checks of its own, so what is asserted is that the old mox costs
+# exactly one more failure than the new one.
+_section "a mox new enough for packages is not complained about"
+_doctor_fails() { printf '%s\n' "$1" | sed -n 's/^[0-9]* passed, \([0-9]*\) failed$/\1/p' | tail -n1; }
+out=$(PATH="$STUB:$PATH" bash "$BIN" doctor 2>&1)
+_match "the version check passes" "✓ mox is new enough to manage packages" "$out"
+new_fails=$(_doctor_fails "$out")
+out=$(PATH="$STUB:$PATH" STUB_VERSION=0.10.0 bash "$BIN" doctor 2>&1)
+old_fails=$(_doctor_fails "$out")
+[[ -n "$new_fails" && "$old_fails" -eq $((new_fails + 1)) ]] && passes=$((passes+1)) || { printf '  ✗ an old mox should cost exactly one more failed check (%s vs %s)\n' "${new_fails:-?}" "${old_fails:-?}"; fails=$((fails+1)); }
+out=$(PATH="$STUB:$PATH" STUB_CLEAN=1 bash "$BIN" info 2>&1)
+_match "a clean machine is still clean" "Drift:  none" "$out"
+
+# Versions are ordered field by field as numbers: a string compare reads
+# 0.9.0 as the newer of 0.9.0 and 0.10.0, and 0.100.0 as the older.
+_section "versions are compared as numbers, not as strings"
+out=$(PATH="$STUB:$PATH" STUB_VERSION=0.9.0 bash "$BIN" info 2>&1)
+_match "0.9.0 is older than 0.12.0" "mox 0.9.0 is older than 0.12.0" "$out"
+out=$(PATH="$STUB:$PATH" STUB_VERSION=0.100.0 bash "$BIN" info 2>&1)
+_no_match "0.100.0 is not older than 0.12.0" "is older than" "$out"
+_match "0.100.0 counts packages as before" "2 file(s), 2 package(s)" "$out"
+
+# A version the wrapper cannot read is not a confirmation, and not a reason
+# to stop either: it is reported, and everything else still runs.
+_section "a version that does not parse is reported rather than assumed"
+unparsed_mark="mox does not name a version, so whether it has the 0.12.0 packages need is unknown"
+out=$(PATH="$STUB:$PATH" STUB_VERSION_RAW='mox (unversioned dev build)' bash "$BIN" info 2>&1)
+_match "the drift line says the version is unreadable" "$unparsed_mark" "$out"
+_no_match "an unreadable version claims no package count" "package(s)" "$out"
+_match "the rest of the snapshot still prints" "Repo:" "$out"
+out=$(PATH="$STUB:$PATH" STUB_VERSION_RAW='mox (unversioned dev build)' bash "$BIN" doctor 2>&1); rc=$?
+_match "doctor fails the version check" "✖ mox is new enough to manage packages" "$out"
+_match "the check detail says the version is unreadable" "$unparsed_mark" "$out"
+_match "the checks after it still run" "package manifest loads and its managers answer" "$out"
+[[ $rc -eq 1 ]] && passes=$((passes+1)) || { printf '  ✗ doctor should exit 1 on an unreadable mox version, got %d\n' "$rc"; fails=$((fails+1)); }
 
 _section "a refused manifest is the drift detail, not an empty package row"
 out=$(PATH="$STUB:$PATH" STUB_PKG_ERROR=1 STUB_PKG_REFUSED=1 bash "$BIN" info 2>&1)
