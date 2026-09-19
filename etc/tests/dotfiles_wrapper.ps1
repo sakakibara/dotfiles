@@ -224,8 +224,8 @@ switch ($a[0]) {
             "whole_file`t`t0`t$h/.zshrc"
             "package_missing`tbrew`tripgrep"
             "package_untracked`tbrew`tagg"
-            if ($env:STUB_PKG_BROKEN) { "package_broken`tdnf`t1`tdnf --version" }
-            if ($env:STUB_PKG_VERB) { "package_broken`tmacports`t255`tPluginFailed" }
+            if ($env:STUB_PKG_BROKEN) { "package_broken`tdnf`t1`tdnf --version`t" }
+            if ($env:STUB_PKG_VERB) { "package_broken`tmacports`t-`tlist`ttimed out, killed" }
             exit 1
         }
         $s = [IO.Path]::DirectorySeparatorChar
@@ -303,15 +303,15 @@ try {
     Match 'an untracked package is listed' 'agg (brew, untracked)' $r.Out
     $env:STUB_PKG_BROKEN = '1'
     $r = Run-Wrapper 'info'
-    Match 'a broken manager is listed by its exit code' 'dnf (broken, dnf --version exited 1)' $r.Out
+    Match 'a broken manager is listed by its exit code' 'dnf (broken: dnf --version exited 1)' $r.Out
     Match 'a broken manager is counted apart from packages' '2 package(s), 1 manager(s) not answering' $r.Out
     Remove-Item Env:STUB_PKG_BROKEN
-    # A manager that answered its probe and then failed a query has no exit
-    # code of its own -- mox reports 255 and says what it could not answer.
+    # A manager whose query never reached an exit of its own has `-` where
+    # the exit code goes, and says in words what stopped it.
     $env:STUB_PKG_VERB = '1'
     $r = Run-Wrapper 'info'
-    Match 'a manager that failed a query is listed by what it could not answer' 'macports (broken: PluginFailed)' $r.Out
-    NoMatch 'a verb failure shows no stand-in exit code' 'exited 255' $r.Out
+    Match 'a manager that failed a query is listed by what it could not answer' 'macports (broken: list: timed out, killed)' $r.Out
+    NoMatch 'a query that never exited shows no exit code' 'exited -' $r.Out
     Remove-Item Env:STUB_PKG_VERB
 
     Section 'info shows a package failure instead of no drift'

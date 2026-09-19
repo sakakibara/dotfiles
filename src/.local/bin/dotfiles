@@ -67,7 +67,8 @@ cmd_info() {
     # the first field saying which record it is: a file record is kind, key,
     # first_contact, path (the key may be empty); a package record is
     # package_missing or package_untracked, backend, id, or package_broken,
-    # backend, the manager's exit code, and what it could not answer. Consume that instead
+    # backend, the manager's exit code, what it could not answer, and why in
+    # words. The exit code is `-` for a call that never reached one. Consume that instead
     # of scraping the human table. It reports drift: a file that needs a
     # decision (--overwrite or commit), a package `mox apply` would install
     # or `mox commit` would record. A manifest, plugin or manager failure
@@ -106,25 +107,31 @@ cmd_info() {
       # here is printed as mox escaped it: a backslash or a control
       # character in a filename stays escaped, which is rare enough to read
       # as-is. 8 leading spaces align with the value column.
-      local line kind rest path
+      local line kind rest path b_name b_code b_probe b_why b_lead
       while IFS= read -r line; do
         [[ "$line" == *$'\t'* ]] || continue
         kind=${line%%$'\t'*}
         case "$kind" in
           package_broken)
-            # backend, exit code, then what it could not answer. Code 255 is
-            # mox's stand-in for a call that never reached an exit of its own,
-            # so the words are the whole story there.
+            # backend, exit code, what it could not answer, then why in
+            # words. A `-` code is a call that never reached an exit of its
+            # own, so the words carry it; the words are empty where the code
+            # already says everything.
             rest=${line#*$'\t'}
             b_name=${rest%%$'\t'*}
             rest=${rest#*$'\t'}
             b_code=${rest%%$'\t'*}
+            rest=${rest#*$'\t'}
+            b_probe=${rest%%$'\t'*}
             b_why=${rest#*$'\t'}
-            if [[ "$b_code" == "255" ]]; then
-              printf '        %s%s (broken: %s)%s\n' "$C_DIM" "$b_name" "$b_why" "$C_RESET"
+            [[ "$b_why" == "$rest" && "$rest" == "$b_probe" ]] && b_why=""
+            if [[ "$b_code" == "-" ]]; then
+              b_lead="$b_probe"
             else
-              printf '        %s%s (broken, %s exited %s)%s\n' "$C_DIM" "$b_name" "$b_why" "$b_code" "$C_RESET"
+              b_lead="$b_probe exited $b_code"
             fi
+            [[ -n "$b_why" ]] && b_lead="$b_lead: $b_why"
+            printf '        %s%s (broken: %s)%s\n' "$C_DIM" "$b_name" "$b_lead" "$C_RESET"
             ;;
           package_*)
             rest=${line#*$'\t'}
@@ -427,7 +434,7 @@ EOF
     pkg_err=$(grep '^mox status: packages:' "$errfile" | head -n1)
     rm -f "$errfile"
     if [[ -z "$pkg_err" ]]; then
-      pkg_err=$(printf '%s\n' "$pkg_out" | awk -F'\t' '$1 == "package_broken" { if ($3 == "255") printf "%s cannot answer (%s)", $2, $4; else printf "%s cannot answer (%s exited %s)", $2, $4, $3; exit }')
+      pkg_err=$(printf '%s\n' "$pkg_out" | awk -F'\t' '$1 == "package_broken" { lead = ($3 == "-") ? $4 : $4 " exited " $3; if (NF >= 5 && $5 != "") lead = lead ": " $5; printf "%s cannot answer (%s)", $2, lead; exit }')
     fi
     [[ -z "$pkg_err" ]]
     # shellcheck disable=SC2319  # the preceding condition is the check

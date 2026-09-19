@@ -163,7 +163,8 @@ function Cmd-Info {
         # is kind, key, first_contact, path (the key may be empty, the path
         # C-escaped); a package record is package_missing or
         # package_untracked, backend, id, or package_broken, backend, the
-        # manager's exit code. Consume that instead of scraping
+        # manager's exit code (`-` when the call never reached one), what it
+        # could not answer, and why in words. Consume that instead of scraping
         # the human table. It reports drift: a file that needs a decision
         # (--overwrite or commit), a package `mox apply` would install or
         # `mox commit` would record. A manifest, plugin or manager failure
@@ -195,11 +196,13 @@ function Cmd-Info {
             $f = $line -split "`t"
             $kind = $f[0]
             if ($kind -eq 'package_broken') {
-                # backend, exit code, then what it could not answer. Code 255
-                # is mox's stand-in for a call that never reached an exit of
-                # its own, so the words are the whole story there.
-                $shown = if ($f[2] -eq '255') { "broken: $($f[3])" } else { "broken, $($f[3]) exited $($f[2])" }
-                Write-Host ('        {0}{1} ({2}){3}' -f $Script:Dim, $f[1], $shown, $Script:Reset)
+                # backend, exit code, what it could not answer, then why in
+                # words. A `-` code is a call that never reached an exit of
+                # its own, so the words carry it; the words are empty where
+                # the code already says everything.
+                $lead = if ($f[2] -ceq '-') { $f[3] } else { "$($f[3]) exited $($f[2])" }
+                if ($f.Count -ge 5 -and $f[4]) { $lead = "${lead}: $($f[4])" }
+                Write-Host ('        {0}{1} (broken: {2}){3}' -f $Script:Dim, $f[1], $lead, $Script:Reset)
                 continue
             }
             if ($kind.StartsWith('package_')) {
@@ -465,11 +468,9 @@ command resolves, and the Windows toolchain (pwsh + scoop or winget + mise
             $first = @($status.Records | Where-Object { $_.StartsWith("package_broken`t") })[0]
             if ($first) {
                 $f = $first -split "`t"
-                $pkgErr = if ($f[2] -eq '255') {
-                    '{0} cannot answer ({1})' -f $f[1], $f[3]
-                } else {
-                    '{0} cannot answer ({1} exited {2})' -f $f[1], $f[3], $f[2]
-                }
+                $lead = if ($f[2] -ceq '-') { $f[3] } else { '{0} exited {1}' -f $f[3], $f[2] }
+                if ($f.Count -ge 5 -and $f[4]) { $lead = '{0}: {1}' -f $lead, $f[4] }
+                $pkgErr = '{0} cannot answer ({1})' -f $f[1], $lead
             }
         }
         Script:_Check 'package manifest loads and its managers answer' (-not $pkgErr) $pkgErr
