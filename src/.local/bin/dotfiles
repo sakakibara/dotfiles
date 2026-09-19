@@ -37,11 +37,55 @@ _version_of() {
   out=$("$1" --version 2>&1) || return 1
   out=${out%%$'\n'*}
   [[ "$out" =~ [0-9]+\.[0-9]+(\.[0-9]+)? ]] || return 1
-  printf '%s' "$BASH_REMATCH"
+  printf '%s' "${BASH_REMATCH[0]}"
 }
 
 _mox_repo() {
   printf '%s' "${MOX_REPO:-${XDG_DATA_HOME:-$HOME/.local/share}/mox/dotfiles}"
+}
+
+# The mox release that added packages: the data/packages manifest, the
+# `package_*` porcelain records and the `mox status: packages:` reason line.
+# An older mox answers `status --porcelain` with file records only, so every
+# package in this repo reads as no package at all rather than as missing.
+_MOX_PACKAGES_MIN=0.12.0
+
+# True when $1 orders before $2, each dotted field compared as a number: a
+# string compare puts 0.9.0 after 0.10.0.
+_version_lt() {
+  local i ai bi
+  local a=() b=()
+  IFS=. read -ra a <<<"$1"
+  IFS=. read -ra b <<<"$2"
+  for ((i = 0; i < 3; i++)); do
+    ai=${a[i]:-0}
+    bi=${b[i]:-0}
+    (( 10#$ai < 10#$bi )) && return 0
+    (( 10#$ai > 10#$bi )) && return 1
+  done
+  return 1
+}
+
+_mox_version() {
+  local out
+  out=$(mox version 2>/dev/null) || return 1
+  out=${out%%$'\n'*}
+  [[ "$out" =~ ^mox[[:space:]]+([0-9]+(\.[0-9]+)*) ]] || return 1
+  printf '%s' "${BASH_REMATCH[1]}"
+}
+
+# Why this mox cannot be trusted with packages, empty when it can. A version
+# that does not parse is neither confirmed nor fatal: it is said rather than
+# assumed either way, so an unreadable build is reported without the wrapper
+# refusing to run against it.
+_mox_packages_gap() {
+  local v
+  if ! v=$(_mox_version); then
+    printf 'mox does not name a version, so whether it has the %s packages need is unknown' "$_MOX_PACKAGES_MIN"
+    return 0
+  fi
+  _version_lt "$v" "$_MOX_PACKAGES_MIN" || return 0
+  printf 'mox %s is older than %s; package management is inert until mox is upgraded' "$v" "$_MOX_PACKAGES_MIN"
 }
 
 _profile_fact() {
@@ -62,7 +106,7 @@ cmd_info() {
   fi
 
   if command -v mox >/dev/null 2>&1; then
-    local drift drift_rc=0 drift_err errfile
+    local drift drift_rc=0 drift_err errfile pkg_gap
     # `mox status --porcelain` emits one drifted unit per line, tab-separated,
     # the first field saying which record it is: a file record is kind, key,
     # first_contact, path (the key may be empty); a package record is
@@ -83,7 +127,15 @@ cmd_info() {
     elif [[ $drift_rc -ne 0 && $drift_rc -ne 1 ]]; then
       _row "Drift:" "unknown (mox status exited $drift_rc)"
     elif [[ -z "$drift" ]]; then
-      _row "Drift:" "none"
+      # A mox that reports no package cannot say the machine is clean, only
+      # that its files are, so the package half of the verdict is the reason
+      # it is missing rather than a count standing in for one.
+      pkg_gap=$(_mox_packages_gap)
+      if [[ -n "$pkg_gap" ]]; then
+        _row "Drift:" "no file drift ($pkg_gap)"
+      else
+        _row "Drift:" "none"
+      fi
     else
       local files=0 pkgs=0 broken=0 line
       while IFS= read -r line; do
@@ -94,7 +146,10 @@ cmd_info() {
           *) files=$((files + 1)) ;;
         esac
       done <<<"$drift"
-      if (( broken > 0 )); then
+      pkg_gap=$(_mox_packages_gap)
+      if [[ -n "$pkg_gap" ]]; then
+        _row "Drift:" "$files file(s) ($pkg_gap)"
+      elif (( broken > 0 )); then
         _row "Drift:" "$files file(s), $pkgs package(s), $broken manager(s) not answering"
       else
         _row "Drift:" "$files file(s), $pkgs package(s)"
@@ -323,10 +378,10 @@ dotfiles doctor -- health check for the dotfiles + mox setup.
 
 Verifies that the mox binary is reachable, the repo resolves, the profile
 resolves, `mox doctor` reports no advisory, the shell library parses under
-the system bash, `data/packages` is there and its manifest loads with its
-managers answering, the theme command resolves, and the per-OS
-toolchain (brew on macOS, sudo on Linux, mise, holt) is on PATH. Exits 0
-when all checks pass, 1 if any failed.
+the system bash, `data/packages` is there, mox is new enough to manage
+packages and the manifest loads with its managers answering, the theme
+command resolves, and the per-OS toolchain (brew on macOS, sudo on Linux,
+mise, holt) is on PATH. Exits 0 when all checks pass, 1 if any failed.
 EOF
       return 0
       ;;
@@ -420,6 +475,16 @@ EOF
     [[ -d "$source_dir/data/packages" ]]
     # shellcheck disable=SC2319  # the preceding condition is the check
     _check "data/packages manifest present" $?
+  fi
+
+  if command -v mox >/dev/null 2>&1; then
+    # A mox without packages answers every package query with silence, which
+    # the checks below cannot tell from a machine with nothing to install.
+    local pkg_gap
+    pkg_gap=$(_mox_packages_gap)
+    [[ -z "$pkg_gap" ]]
+    # shellcheck disable=SC2319  # the preceding condition is the check
+    _check "mox is new enough to manage packages" $? "$pkg_gap"
   fi
 
   if command -v mox >/dev/null 2>&1; then
