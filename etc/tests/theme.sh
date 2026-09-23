@@ -175,6 +175,37 @@ if command -v python3 >/dev/null 2>&1; then
   kill "$srv" 2>/dev/null; wait "$srv" 2>/dev/null
 fi
 
+_section "herdr config"
+mkdir -p "$TEST_DIR/bin" "$XDG_CONFIG_HOME/herdr"
+printf '#!/bin/sh\nexit 0\n' > "$TEST_DIR/bin/herdr"
+chmod +x "$TEST_DIR/bin/herdr"
+herdr_cfg="$XDG_CONFIG_HOME/herdr/config.toml"
+
+printf 'onboarding = false\n\n[theme]\nname = "dracula"\n\n[ui]\nsort = "spaces"\n' > "$herdr_cfg"
+PATH="$TEST_DIR/bin:$PATH" "$THEME" set catppuccin/mocha >/dev/null 2>&1
+_check_lines "set rewrites an existing name in place" \
+  "$(printf 'onboarding = false\n\n[theme]\nname = "catppuccin"\n\n[ui]\nsort = "spaces"')" \
+  "$(cat "$herdr_cfg")"
+
+printf 'onboarding = false\n\n[ui]\nsort = "spaces"\n' > "$herdr_cfg"
+PATH="$TEST_DIR/bin:$PATH" "$THEME" set dracula >/dev/null 2>&1
+_check_lines "set appends a [theme] table when the file has none" \
+  "$(printf 'onboarding = false\n\n[ui]\nsort = "spaces"\n\n[theme]\nname = "dracula"')" \
+  "$(cat "$herdr_cfg")"
+
+printf '[theme]\n\n[ui]\nsort = "spaces"\n' > "$herdr_cfg"
+PATH="$TEST_DIR/bin:$PATH" "$THEME" set catppuccin/mocha >/dev/null 2>&1
+_check_lines "set fills a [theme] table that has no name" \
+  "$(printf '[theme]\nname = "catppuccin"\n\n[ui]\nsort = "spaces"')" \
+  "$(cat "$herdr_cfg")"
+
+printf 'onboarding = false\n\n[theme]\n' > "$herdr_cfg"
+PATH="$TEST_DIR/bin:$PATH" "$THEME" set dracula >/dev/null 2>&1
+_check_lines "set fills a trailing empty [theme] table" \
+  "$(printf 'onboarding = false\n\n[theme]\nname = "dracula"')" \
+  "$(cat "$herdr_cfg")"
+rm -rf "$XDG_CONFIG_HOME/herdr"
+
 _section "filtered install"
 rm -rf "$XDG_DATA_HOME/dotfiles" 2>/dev/null
 "$THEME" install catppuccin/latte >/dev/null 2>&1

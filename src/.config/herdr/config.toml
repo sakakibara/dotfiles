@@ -1,3 +1,4 @@
+# mox: disown theme.name
 # herdr - agent multiplexer. Full annotated reference: `herdr --default-config`.
 
 # Onboarding already completed; don't re-prompt on fresh machines.
@@ -102,15 +103,6 @@ navigate_workspace_down = "down"
 key = "prefix+shift+l"
 type = "pane"
 command = "lazygit"
-
-[theme]
-# Driven by the `theme` tool, which rewrites this line and reloads the server on
-# `theme set`. herdr can't shell out or include a file, so the current theme is
-# seeded here from the same state (via `theme resolve herdr`) - keeping apply and
-# runtime in sync so neither clobbers the other. The `|| echo` guard falls back
-# to catppuccin when the theme tool is not yet on PATH (fresh machine); the next
-# `theme set`/`reload` fixes it.
-name = "<secret:cmd:theme resolve herdr 2\>/dev/null || echo catppuccin>"
 
 [ui]
 agent_panel_sort = "spaces"

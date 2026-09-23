@@ -331,17 +331,25 @@ _reload() {
 
   # herdr: rewrite the [theme] name in the live config, then reload the server.
   # herdr's TOML is static (no include, no shell-out, no theme-set API), so the
-  # name is edited in place. mox composes the same value from
-  # this state, so a later `mox apply` is a no-op rather than reverting it.
+  # name is edited in place, and added when absent. mox disowns theme.name, so
+  # a later `mox apply` never reverts it.
   if command -v herdr >/dev/null 2>&1; then
     local herdr_cfg="${HERDR_CONFIG_PATH:-$_XDG_CONFIG/herdr/config.toml}" herdr_name
     herdr_name=$(_name "$family" "$variant" herdr)
     if [[ -f "$herdr_cfg" && -n "$herdr_name" ]]; then
       awk -v val="$herdr_name" '
+        BEGIN { line = "name = \"" val "\"" }
+        NR == FNR {
+          if (/^\[/) { t = ($0 == "[theme]"); if (t) seen = 1 }
+          else if (t && /^[[:space:]]*name[[:space:]]*=/) has = 1
+          next
+        }
         /^\[/ { in_theme = ($0 == "[theme]") }
-        in_theme && /^[[:space:]]*name[[:space:]]*=/ { print "name = \"" val "\""; next }
+        in_theme && /^[[:space:]]*name[[:space:]]*=/ { print line; next }
         { print }
-      ' "$herdr_cfg" > "$herdr_cfg.tmp" && mv "$herdr_cfg.tmp" "$herdr_cfg"
+        $0 == "[theme]" && !has { print line }
+        END { if (!seen) printf "\n[theme]\n%s\n", line }
+      ' "$herdr_cfg" "$herdr_cfg" > "$herdr_cfg.tmp" && mv "$herdr_cfg.tmp" "$herdr_cfg"
     fi
     herdr server reload-config >/dev/null 2>&1 || true
   fi
