@@ -50,6 +50,8 @@ jobs:
         run: brew install fish luajit lua
       - name: Install the newest mox release
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           case "$(uname -s)-$(uname -m)" in
             Linux-x86_64)  asset=mox-x86_64-linux.tar.gz ;;
@@ -59,7 +61,7 @@ jobs:
             *) echo "unsupported: $(uname -s)-$(uname -m)" >&2; exit 1 ;;
           esac
           mkdir -p "$HOME/.local/bin"
-          url=$(curl -fsSL https://api.github.com/repos/sakakibara/mox/releases/latest \
+          url=$(curl -fsSL -H "Authorization: Bearer $GH_TOKEN" https://api.github.com/repos/sakakibara/mox/releases/latest \
             | grep -o "\"browser_download_url\": *\"[^\"]*${asset//./\\.}\"" \
             | cut -d'"' -f4)
           [ -n "$url" ] || { echo "no $asset on the latest release" >&2; exit 1; }
