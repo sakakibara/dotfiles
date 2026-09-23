@@ -155,7 +155,7 @@ for f in scripts/pre/*.sh scripts/pre/*.ps1 scripts/post/*.sh scripts/post/*.ps1
   [[ -f "$f" ]] || continue
   if ! awk '
     NR == 1 && /^#!/ { next }
-    /^[[:space:]]*#[[:space:]]*mox: when [^[:space:]]/ { found = 1; exit }
+    /^[[:space:]]*#[[:space:]]*mox:[[:space:]]*when([[:space:]]*[(]|[[:space:]]+[^[:space:]])/ { found = 1; exit }
     /^[[:space:]]*#/ { next }
     /^[[:space:]]*$/ { next }
     { exit }
