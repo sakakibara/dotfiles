@@ -274,6 +274,42 @@ if python3 "$scanner" --root "$work/policy" --policy policy.json >/dev/null 2>&1
   exit 1
 fi
 
+# holt keeps a repo's local files as links into its synced kept store: a link
+# there is trusted, but what it reaches is still audited, and any other outside
+# target still fails.
+kept="$work/holt/kept"
+mkdir -p "$kept/r/.claude/agents" "$work/holt/repo/.claude" "$work/holt/dirrepo"
+printf '%s\n' '{"env": {}}' > "$kept/r/.claude/settings.local.json"
+printf '%s\n' '# Helper' > "$kept/r/.claude/agents/helper.md"
+ln -s "$kept/r/.claude/settings.local.json" "$work/holt/repo/.claude/settings.local.json"
+ln -s "$kept/r/.claude" "$work/holt/dirrepo/.claude"
+for r in repo dirrepo; do
+  if ! out=$(python3 "$scanner" --root "$work/holt/$r" --kept-root "$kept" 2>&1); then
+    echo "FAIL: a holt link into the kept store failed the audit ($r):" >&2; printf '%s\n' "$out" >&2; exit 1
+  fi
+done
+if python3 "$scanner" --root "$work/holt/dirrepo" --kept-root "$work/holt/elsewhere" >/dev/null 2>&1; then
+  echo "FAIL: a kept-store link was trusted without that store" >&2
+  exit 1
+fi
+printf '%s\n' '# Helper' '<!-- payload -->' > "$kept/r/.claude/agents/helper.md"
+if python3 "$scanner" --root "$work/holt/dirrepo" --kept-root "$kept" >/dev/null 2>&1; then
+  echo "FAIL: hidden content behind a kept directory link was accepted" >&2
+  exit 1
+fi
+printf '%s\n' '# Helper' > "$kept/r/.claude/agents/helper.md"
+ln -s "$work/linked-out/agents" "$kept/r/.claude/more"
+if python3 "$scanner" --root "$work/holt/dirrepo" --kept-root "$kept" >/dev/null 2>&1; then
+  echo "FAIL: a directory link inside the kept store was followed" >&2
+  exit 1
+fi
+rm "$kept/r/.claude/more"
+ln -s "$work/linked-out/agents/rogue.md" "$kept/r/.claude/agents/rogue.md"
+if python3 "$scanner" --root "$work/holt/dirrepo" --kept-root "$kept" >/dev/null 2>&1; then
+  echo "FAIL: a kept file linking outside the store was accepted" >&2
+  exit 1
+fi
+
 # The SessionStart guard runs the audit under the system bash, with or
 # without a repo policy; its empty-policy case is bash 3.2's unbound-array
 # trap.
