@@ -41,6 +41,30 @@ def inside(path, root):
         return False
 
 
+def holt_kept_root():
+    """The holt kept-files store (`<synced_root>/kept`), or None when holt is
+    absent or reports no synced root. Links into it are holt's own and are
+    audited through, not refused."""
+    import shutil
+    import subprocess
+    holt = shutil.which("holt")
+    if holt is None:
+        return None
+    try:
+        out = subprocess.run([holt, "config"], capture_output=True, timeout=5, check=True, text=True).stdout
+    except Exception:
+        return None
+    for line in out.splitlines():
+        key, sep, value = line.partition(" = ")
+        if sep and key == "synced_root" and value:
+            return Path(value).joinpath("kept").resolve()
+    return None
+
+
+def trusted(target, root, kept):
+    return inside(target, root) or kept is not None and inside(target, kept)
+
+
 def display_path(path):
     return json.dumps(os.fspath(path), ensure_ascii=True)
 
@@ -159,11 +183,35 @@ def discover(root):
     return sorted(set(found), key=lambda item: item.as_posix())
 
 
-def inspect_file(path, rel, root, content_rules, errors, warnings):
+def linked_kept_dir(path, kept):
+    return kept is not None and path.is_symlink() and path.is_dir() and inside(path.resolve(), kept)
+
+
+def kept_dir_entries(root, rel, errors):
+    """The instruction files and symlinks under the kept directory a link at
+    rel points to, as paths through the link, so the audit reads what the
+    agent will load. holt never links inside its store, so a directory link
+    in there is refused rather than followed."""
+    found = []
+    base = (root / rel).resolve()
+    for current, dirs, files in os.walk(base, followlinks=False):
+        here = Path(current)
+        for name in files:
+            sub = rel / (here / name).relative_to(base)
+            if (here / name).is_symlink() or instruction_path(sub):
+                found.append(sub)
+        for name in list(dirs):
+            if (here / name).is_symlink():
+                dirs.remove(name)
+                errors.append(f"{display_path((rel / (here / name).relative_to(base)).as_posix())}: symlinked agent configuration directory")
+    return found
+
+
+def inspect_file(path, rel, root, kept, content_rules, errors, warnings):
     shown = display_path(rel.as_posix())
     if path.is_symlink():
         target = path.resolve(strict=False)
-        if not inside(target, root):
+        if not trusted(target, root, kept):
             errors.append(f"{shown}: instruction symlink resolves outside repository")
             return
         path = target
@@ -204,6 +252,7 @@ def main():
     parser.add_argument("--policy")
     parser.add_argument("--strict-locations", action="store_true")
     parser.add_argument("--quiet", action="store_true")
+    parser.add_argument("--kept-root", help="holt kept store to trust links into (default: from `holt config`)")
     args = parser.parse_args()
 
     root = Path(args.root).resolve()
@@ -213,16 +262,19 @@ def main():
 
     errors = []
     warnings = []
+    kept = Path(args.kept_root).resolve() if args.kept_root else holt_kept_root()
     try:
         discovered = discover(root)
     except ListingTruncated as exc:
         print(f"ERROR: working tree has {exc.args[0]} entries, more than the {MAX_ENTRIES} this audit reads; add its build directories to the pruned set or audit a subdirectory", file=sys.stderr)
         return 1
-    files = set(discovered)
     allowed = None
-    for rel in discovered:
-        if (root / rel).is_symlink() and (root / rel).is_dir() and under_agent_config(rel):
+    for rel in list(discovered):
+        if linked_kept_dir(root / rel, kept):
+            discovered.extend(kept_dir_entries(root, rel, errors))
+        elif (root / rel).is_symlink() and (root / rel).is_dir() and under_agent_config(rel):
             errors.append(f"{display_path(rel)}: symlinked agent configuration directory")
+    files = set(discovered)
 
     if args.policy:
         try:
@@ -288,7 +340,7 @@ def main():
             continue
         if path.is_dir():
             continue
-        inspect_file(path, rel, root, rel in set(discovered) or allowed is not None and rel in allowed or mirrored_agent_config(rel), errors, warnings)
+        inspect_file(path, rel, root, kept, rel in set(discovered) or allowed is not None and rel in allowed or mirrored_agent_config(rel), errors, warnings)
 
     for message in warnings:
         print(f"WARNING: {message}")

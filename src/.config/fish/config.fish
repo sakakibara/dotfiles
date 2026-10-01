@@ -71,6 +71,7 @@ if test "$OSNAME" = macos
 end
 
 set -gx GOPATH $HOME/.go
+set -gx FVM_CACHE_PATH $XDG_DATA_HOME/fvm
 
 if test -d $XDG_DATA_HOME/pnpm
     set -gx PNPM_HOME $XDG_DATA_HOME/pnpm
