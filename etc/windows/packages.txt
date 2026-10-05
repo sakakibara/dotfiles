@@ -15,6 +15,7 @@
 # CLI
 # The gh shim (gh.cmd -> gh.ps1) hard-requires PowerShell 7.
 pwsh
+claude-code
 # neovim
 # ripgrep
 # fd

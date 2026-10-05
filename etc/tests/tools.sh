@@ -113,5 +113,39 @@ out=$(install_mise 2>&1); rc=$?
 _check "a missing listing entry exits non-zero" 1 "$rc"
 _match "and says nothing was found" "<none>" "$out"
 
+_section "claude: the binary is verified against its manifest, then installs itself"
+case "$(uname -m)" in
+  aarch64|arm64) claude_platform=linux-arm64 ;;
+  *) claude_platform=linux-x64 ;;
+esac
+crel="$work/claude-release"
+mkdir -p "$crel/$claude_platform"
+printf '#!/bin/sh\n[ "$1" = install ] && echo installed > "$HOME/claude-installed"\n' > "$crel/$claude_platform/claude"
+claude_sha=$(shasum -a 256 "$crel/$claude_platform/claude" | cut -d' ' -f1)
+claude_manifest() {
+  printf '{\n  "version": "0.0.1",\n  "platforms": {\n    "other": {\n      "checksum": "%s",\n      "size": 1\n    },\n    "%s": {\n      "checksum": "%s",\n      "size": 1\n    }\n  }\n}\n' "$decoy" "$1" "$2" > "$crel/manifest.json"
+}
+install_claude() { (cd "$REPO_DIR" && PATH="${1:-/usr/bin:/bin:/usr/sbin:/sbin}" TOOLS_CLAUDE_DOWNLOAD_BASE="file://$crel" /bin/bash -c 'source etc/bash/lib/init.bash && import msg unix tools && tools::claude'); }
+claude_manifest "$claude_platform" "$claude_sha"
+out=$(install_claude 2>&1); rc=$?
+_check "install exits 0" 0 "$rc"
+_check "the verified binary ran its own install" "installed" "$(cat "$HOME/claude-installed" 2>/dev/null)"
+rm -f "$HOME/claude-installed"
+claude_manifest "$claude_platform" "$decoy"
+out=$(install_claude 2>&1); rc=$?
+_check "a digest mismatch exits non-zero" 1 "$rc"
+_match "and is named" "checksum mismatch" "$out"
+_check "nothing was installed" "" "$(cat "$HOME/claude-installed" 2>/dev/null)"
+claude_manifest other-platform "$claude_sha"
+out=$(install_claude 2>&1); rc=$?
+_check "a platform missing from the manifest exits non-zero" 1 "$rc"
+_match "and is named, not taken from another platform" "no checksum for $claude_platform" "$out"
+mkdir -p "$work/claude-on-path"
+printf '#!/bin/sh\n' > "$work/claude-on-path/claude"
+chmod +x "$work/claude-on-path/claude"
+out=$(install_claude "$work/claude-on-path:/usr/bin:/bin:/usr/sbin:/sbin" 2>&1); rc=$?
+_check "a claude already on PATH is left alone" 0 "$rc"
+_match "and reported" "claude already installed" "$out"
+
 printf '\n%d passed, %d failed\n' "$passes" "$fails"
 exit "$((fails > 0 ? 1 : 0))"

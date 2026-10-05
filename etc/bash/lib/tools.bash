@@ -13,6 +13,7 @@ TOOLS_STARSHIP_VERSION=1.26.0
 TOOLS_LAZYGIT_VERSION=0.64.1
 TOOLS_LAZYDOCKER_VERSION=0.25.2
 TOOLS_GH_VERSION=2.99.0
+TOOLS_CLAUDE_VERSION=2.1.285
 
 # Download URL to FILE and check it against the sha256 EXPECTED; a mismatch
 # removes the file.
@@ -143,6 +144,45 @@ tools::gh() {
     "$base/${dir}.tar.gz" "$base/gh_${TOOLS_GH_VERSION}_checksums.txt" "$dir/bin/gh"
 }
 
+tools::claude() {
+  msg::heading "Installing Claude Code"
+  if command -v claude >/dev/null 2>&1; then
+    msg::success "claude already installed"
+    return 0
+  fi
+  local platform
+  case "$(uname -m)" in
+    x86_64|amd64)  platform=linux-x64 ;;
+    aarch64|arm64) platform=linux-arm64 ;;
+    *) msg::error "unsupported arch: $(uname -m)"; return 1 ;;
+  esac
+  local base="${TOOLS_CLAUDE_DOWNLOAD_BASE:-https://downloads.claude.ai/claude-code-releases/${TOOLS_CLAUDE_VERSION}}"
+  local manifest expected tmp
+  if ! manifest=$(curl -fsSL "$base/manifest.json"); then
+    msg::error "claude: manifest download failed: $base/manifest.json"
+    return 1
+  fi
+  expected=$(printf '%s' "$manifest" | tr -d ' \t\r\n' \
+    | grep -oE "\"$platform\":\{[^}]*\"checksum\":\"[0-9a-f]{64}\"" | grep -oE '[0-9a-f]{64}' | head -n1)
+  if [[ -z "$expected" ]]; then
+    msg::error "claude: no checksum for $platform in $base/manifest.json"
+    return 1
+  fi
+  tmp=$(mktemp -d)
+  if ! tools::_fetch "$base/$platform/claude" "$tmp/claude" "$expected"; then
+    rm -rf "$tmp"
+    return 1
+  fi
+  chmod +x "$tmp/claude"
+  if ! "$tmp/claude" install; then
+    msg::error "claude: install failed"
+    rm -rf "$tmp"
+    return 1
+  fi
+  rm -rf "$tmp"
+  msg::success "claude $TOOLS_CLAUDE_VERSION installed"
+}
+
 # Rust-based tools through the rust toolchain mise provides on Linux.
 tools::cargo_tools() {
   msg::heading "Installing Rust-based tools via cargo"
@@ -175,6 +215,7 @@ tools::setup() {
   tools::lazygit    || fails=$((fails + 1))
   tools::lazydocker || fails=$((fails + 1))
   tools::gh         || fails=$((fails + 1))
+  tools::claude     || fails=$((fails + 1))
   tools::cargo_tools || fails=$((fails + 1))
   (( fails == 0 ))
 }
