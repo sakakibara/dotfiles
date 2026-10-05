@@ -566,6 +566,12 @@ fi
 
 fpath+=(${HOME}/.zcomp)
 
+# mox: when os=darwin
+if [[ -r "$HOME/.orbstack/shell/init.zsh" ]]; then
+  source "$HOME/.orbstack/shell/init.zsh"
+fi
+# mox: end
+
 #
 # Compdump
 #
