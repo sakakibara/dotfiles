@@ -265,6 +265,11 @@ kind = "cask"
 when = "profile=personal"
 
 [[packages]]
+name = "google-drive"
+kind = "cask"
+when = "profile=work"
+
+[[packages]]
 name = "httpie-desktop"
 kind = "cask"
 
