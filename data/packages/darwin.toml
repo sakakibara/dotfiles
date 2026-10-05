@@ -188,6 +188,9 @@ name = "tealdeer"
 name = "tree"
 
 [[packages]]
+name = "tree-sitter-cli"
+
+[[packages]]
 name = "typos-cli"
 
 [[packages]]
