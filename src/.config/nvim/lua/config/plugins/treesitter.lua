@@ -28,10 +28,7 @@ return {
     -- below already handles install/update on every nvim launch.
     init = function()
       -- main branch compiles parsers on-demand and requires tree-sitter-cli
-      -- (>= 0.26.1) on PATH. mason's registry has it. Tag tree-sitter-cli
-      -- with every ft we have a registered parser for, so the cli
-      -- installs alongside the first parser request, never eagerly.
-      Lib.mason.add("tree-sitter-cli", { ft = Lib.parsers.fts() })
+      -- (>= 0.26.1) on PATH.
       -- Clean stale tree-sitter-<lang>-tmp dirs from interrupted prior
       -- installs. nvim-treesitter "main" doesn't clean these on startup,
       -- so a previously-interrupted install leaves EEXIST + truncated-
