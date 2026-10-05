@@ -48,5 +48,24 @@ rm -f "$work/mox-path"
 with_lib "$system_path" "unix::publish_bin '$dir'"
 _check "no MOX_PATH means nothing is written" "" "$(ls "$work/mox-path" 2>/dev/null)"
 
+_section "keep_sudo primes a timestamp, then refreshes it without prompting"
+mkdir -p "$work/sudo"
+cat > "$work/sudo/sudo" <<'EOF2'
+#!/bin/sh
+printf '%s\n' "$*" >> "$SUDO_LOG"
+[ "$1" = -v ] && exit "${SUDO_V_RC:-0}"
+exit 0
+EOF2
+printf '#!/bin/sh\n/bin/sleep 0.2\n' > "$work/sudo/sleep"
+chmod +x "$work/sudo/sudo" "$work/sudo/sleep"
+: > "$work/sudo.log"
+out=$(SUDO_LOG="$work/sudo.log" with_lib "$work/sudo:$system_path" 'unix::keep_sudo; printf "rc=%s" "$?"')
+_check "keep_sudo returns 0 once sudo -v succeeds" "rc=0" "$out"
+_check "sudo -v comes first, then sudo -n true" "-v|-n true" "$(head -2 "$work/sudo.log" | paste -sd'|' -)"
+: > "$work/sudo.log"
+out=$(SUDO_LOG="$work/sudo.log" SUDO_V_RC=1 with_lib "$work/sudo:$system_path" 'unix::keep_sudo; printf "rc=%s" "$?"')
+_check "keep_sudo fails when sudo -v fails" "rc=1" "$out"
+_check "and starts no refresh loop" "-v" "$(cat "$work/sudo.log")"
+
 printf '\n%d passed, %d failed\n' "$passes" "$fails"
 exit "$((fails > 0 ? 1 : 0))"

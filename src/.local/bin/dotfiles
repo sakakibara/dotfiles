@@ -646,8 +646,6 @@ EOF
     linux)  import unix mise tools holt pick ;;
   esac
 
-  unix::keep_sudo
-
   # Translate positional args into DOTFILES_PICK so a non-interactive call
   # (e.g. `dotfiles install mise holt`) skips the menu and runs immediately.
   if (( $# > 0 )); then

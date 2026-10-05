@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-import msg
+import msg unix
 
 # Get macos version without the micro version
 darwin::get_macos_version() {
@@ -21,6 +21,11 @@ darwin::_clt_tmp_cleanup() {
 # Install the command line tools on macos
 darwin::install_clt() {
   msg::heading "Installing command line tools"
+
+  if ! unix::keep_sudo; then
+    msg::error "Installing command line tools needs sudo, and sudo -v failed"
+    return 1
+  fi
 
   local macos_version clt_macos_version clt_sort_opt clt_label clt_tmp
 

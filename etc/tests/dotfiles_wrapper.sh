@@ -347,7 +347,6 @@ cp "$REPO_DIR/etc/bash/lib/init.bash" "$FIX/etc/bash/lib/"
 for lib in unix darwin mise holt tools; do
   printf '#!/usr/bin/env bash\n%s::setup() { :; }\n' "$lib" > "$FIX/etc/bash/lib/$lib.bash"
 done
-printf 'unix::keep_sudo() { :; }\n' >> "$FIX/etc/bash/lib/unix.bash"
 printf 'darwin::require_clt() { :; }\n' >> "$FIX/etc/bash/lib/darwin.bash"
 printf 'tools::setup() { printf RAN=tools::setup\\n; }\n' >> "$FIX/etc/bash/lib/tools.bash"
 cat > "$FIX/etc/bash/lib/pick.bash" <<'EOF'

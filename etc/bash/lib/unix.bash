@@ -26,8 +26,9 @@ unix::publish_bin() {
   fi
 }
 
-# Attempt to keep sudo timestamp refreshed
+# Obtain a sudo timestamp and keep it refreshed
 unix::keep_sudo() {
+  sudo -v || return 1
   while true; do
     sudo -n true
     sleep 10
