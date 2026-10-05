@@ -56,6 +56,9 @@ name = "ripgrep"
 name = "tree"
 
 [[packages]]
+name = "tree-sitter-cli"
+
+[[packages]]
 name = "wget2"
 
 [[packages]]

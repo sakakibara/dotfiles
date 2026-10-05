@@ -59,6 +59,9 @@ name = "starship"
 name = "tree"
 
 [[packages]]
+name = "tree-sitter-cli"
+
+[[packages]]
 name = "wget"
 
 [[packages]]
