@@ -53,36 +53,93 @@ function Set-HoltLink {
     Write-Success "Linked $Link -> $Target"
 }
 
-function Install-Holt {
-    Write-Heading 'Checking if holt is installed'
-    if (Get-Command holt -ErrorAction SilentlyContinue) {
-        Write-Success 'holt is installed'
-        return 0
-    }
+function Get-HoltManagedExe {
+    return (Join-Path $env:LOCALAPPDATA 'holt\bin\holt.exe')
+}
 
-    Write-Arrow 'holt is missing'
+function Get-HoltReportedVersion([string]$Exe) {
+    try {
+        $out = & $Exe version 2>$null
+        if ($LASTEXITCODE -ne 0) { return $null }
+        $text = (@($out) -join "`n").Trim()
+        if (-not $text) { return $null }
+        return $text
+    } catch {
+        return $null
+    }
+}
+
+function Get-HoltCoreVersion([string]$Reported) {
+    if ($Reported -match '^holt (\d+)\.(\d+)\.(\d+)') {
+        return [version]::new([int]$Matches[1], [int]$Matches[2], [int]$Matches[3])
+    }
+    return $null
+}
+
+function Invoke-HoltInstaller {
     Write-Heading 'Installing holt'
     # Out-Null so nothing the installer emits leaks into this function's return.
     $tmp = Join-Path ([IO.Path]::GetTempPath()) ("holt-install-" + [Guid]::NewGuid() + ".ps1")
     try {
-        Invoke-WebRequest -Uri $Script:HoltInstallUrl -OutFile $tmp -UseBasicParsing
+        try {
+            Invoke-WebRequest -Uri $Script:HoltInstallUrl -OutFile $tmp -UseBasicParsing
+        } catch {
+            Write-Failure "holt installer download failed: $($_.Exception.Message)"
+            return 1
+        }
         $got = (Get-FileHash -Algorithm SHA256 -Path $tmp).Hash.ToLower()
         if ($got -ne $Script:HoltInstallSha256) {
             Write-Failure "holt installer checksum mismatch: $got"
-            return $false
+            return 1
         }
         $env:HOLT_VERSION = "v$Script:HoltVersion"
-        & $tmp | Out-Null
+        $global:LASTEXITCODE = 0
+        try {
+            & $tmp | Out-Null
+        } catch {
+            Write-Failure "holt installation failed: $($_.Exception.Message)"
+            return 1
+        }
+        if ($LASTEXITCODE -ne 0) {
+            Write-Failure "holt installation failed: the installer exited $LASTEXITCODE"
+            return 1
+        }
     } finally {
         Remove-Item $tmp -Force -ErrorAction SilentlyContinue
         Remove-Item Env:HOLT_VERSION -ErrorAction SilentlyContinue
     }
 
-    if (-not (Get-HoltExe)) {
-        Write-Failure 'holt installation failed'
+    $managed = Get-HoltManagedExe
+    $reported = Get-HoltReportedVersion $managed
+    $core = Get-HoltCoreVersion $reported
+    if ($null -eq $core -or $core -ne [version]$Script:HoltVersion) {
+        Write-Failure "holt installation has failed: $managed reports '$reported', not $Script:HoltVersion"
         return 1
     }
-    Write-Success "Installed holt to $(Get-HoltExe)"
+    Write-Success "Installed holt $Script:HoltVersion to $managed"
+    return 0
+}
+
+function Install-Holt {
+    Write-Heading 'Checking if holt is installed'
+    $managed = Get-HoltManagedExe
+    if (Test-Path -LiteralPath $managed) {
+        $reported = Get-HoltReportedVersion $managed
+        $core = Get-HoltCoreVersion $reported
+        if (-not $reported) {
+            Write-Arrow "$managed does not run; reinstalling holt $Script:HoltVersion"
+            if ((Invoke-HoltInstaller) -ne 0) { return 1 }
+        } elseif ($null -eq $core) {
+            Write-Arrow "$managed reports '$reported', not a release version; leaving it as is"
+        } elseif ($core -lt [version]$Script:HoltVersion) {
+            Write-Arrow "holt $core is older than the pinned $Script:HoltVersion; upgrading"
+            if ((Invoke-HoltInstaller) -ne 0) { return 1 }
+        }
+    } elseif (-not (Get-Command holt -ErrorAction SilentlyContinue)) {
+        Write-Arrow 'holt is missing'
+        if ((Invoke-HoltInstaller) -ne 0) { return 1 }
+    }
+    Write-Success 'holt is installed'
     return 0
 }
 

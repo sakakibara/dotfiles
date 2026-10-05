@@ -43,17 +43,49 @@ holt::install() {
   fi
 }
 
+holt::_core_version() {
+  local re='^holt ([0-9]+)\.([0-9]+)\.([0-9]+)'
+  [[ "$1" =~ $re ]] || return 1
+  printf '%s.%s.%s' "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" "${BASH_REMATCH[3]}"
+}
+
+holt::_older() {
+  local a1 a2 a3 b1 b2 b3
+  IFS=. read -r a1 a2 a3 <<<"$1"
+  IFS=. read -r b1 b2 b3 <<<"$2"
+  if (( 10#$a1 != 10#$b1 )); then (( 10#$a1 < 10#$b1 )); return; fi
+  if (( 10#$a2 != 10#$b2 )); then (( 10#$a2 < 10#$b2 )); return; fi
+  (( 10#$a3 < 10#$b3 ))
+}
+
+holt::_install_pinned() {
+  holt::install || return 1
+  local reported
+  reported=$("${HOLT_INSTALL_DIR}/holt" version 2>/dev/null) || reported=""
+  if [[ "$(holt::_core_version "$reported")" != "$HOLT_VERSION" ]]; then
+    msg::error "holt installation has failed: ${HOLT_INSTALL_DIR}/holt reports '${reported}', not ${HOLT_VERSION}"
+    return 1
+  fi
+}
+
 holt::require() {
   msg::heading "Checking if holt is installed"
-  if ! command -v holt >/dev/null 2>&1; then
-    msg::arrow "holt is missing"
-    holt::install || return 1
-    if [[ ! -x "${HOLT_INSTALL_DIR}/holt" ]]; then
-      msg::error "holt installation has failed"
-      return 1
+  local managed="${HOLT_INSTALL_DIR}/holt" reported version
+  if [[ -x "$managed" ]]; then
+    if ! reported=$("$managed" version 2>/dev/null); then
+      msg::arrow "${managed} does not run; reinstalling holt ${HOLT_VERSION}"
+      holt::_install_pinned || return 1
+    elif ! version=$(holt::_core_version "$reported"); then
+      msg::arrow "${managed} reports '${reported}', not a release version; leaving it as is"
+    elif holt::_older "$version" "$HOLT_VERSION"; then
+      msg::arrow "holt ${version} is older than the pinned ${HOLT_VERSION}; upgrading"
+      holt::_install_pinned || return 1
     fi
+  elif ! command -v holt >/dev/null 2>&1; then
+    msg::arrow "holt is missing"
+    holt::_install_pinned || return 1
   fi
-  [[ -x "${HOLT_INSTALL_DIR}/holt" ]] && unix::publish_bin "${HOLT_INSTALL_DIR}"
+  [[ -x "$managed" ]] && unix::publish_bin "${HOLT_INSTALL_DIR}"
   msg::success "holt is installed"
 }
 
