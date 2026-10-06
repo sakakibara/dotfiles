@@ -3,11 +3,10 @@
 #
 # Each entry is a [[paths]] table with:
 #   dir      directory to add; captures allowed (e.g. <machine.brew_prefix>/bin)
-#   when     optional gate: an executable name or a derived-fact name
-#            (data/facts.toml); the row is included when either is present
-#            (fragments below test `tool = entry.when or bound entry.when`).
-#            A fact binds when mox applies, so a tool home created after the
-#            last apply joins PATH at the next one.
+#   when     optional gate: a derived-fact name (data/facts.toml); the row
+#            is included when that fact is bound (fragments below test
+#            `bound entry.when`). A fact binds when mox applies, so a tool
+#            home created after the last apply joins PATH at the next one.
 #   shells   optional list, default ["zsh", "fish"]
 #   prepend  optional bool; true prepends ahead of inherited PATH (default:
 #            append). Never written false -- omit the field instead.
