@@ -535,13 +535,13 @@ cmd_set() {
   _write_state "$(_state_str "$family" "$variant")"
   _reload "$family" "$variant"
   _warn_missing_assets "$family" "$variant"
-  printf '-> %s\n' "$(_state_str "$family" "$variant")"
+  printf -- '-> %s\n' "$(_state_str "$family" "$variant")"
 }
 
 cmd_reload() {
   local cur; cur=$(_current); _split_current "$cur"
   _reload "$__cur_fam" "$__cur_var"
-  printf '-> reloaded %s\n' "$cur"
+  printf -- '-> reloaded %s\n' "$cur"
 }
 
 cmd_resolve() {

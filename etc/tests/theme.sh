@@ -52,6 +52,14 @@ export XDG_DATA_HOME="$TEST_DIR/data"
 export XDG_RUNTIME_DIR="$TEST_DIR/runtime"
 export TMPDIR="$TEST_DIR/tmp"
 mkdir -p "$XDG_CONFIG_HOME/dotfiles/themes" "$XDG_RUNTIME_DIR" "$TMPDIR" "$TEST_DIR/upstream/kitty"
+export TMUX_TMPDIR="$TEST_DIR/tmux"
+unset HERDR_SOCKET_PATH KITTY_LISTEN_ON
+mkdir -p "$TEST_DIR/bin" "$TMUX_TMPDIR"
+for stub in pkill tmux herdr kitten; do
+  printf '#!/bin/sh\nexit 0\n' > "$TEST_DIR/bin/$stub"
+  chmod +x "$TEST_DIR/bin/$stub"
+done
+export PATH="$TEST_DIR/bin:$PATH"
 
 # Assets are served through file:// URLs; curl fetches them the same way it
 # fetches https, so no server process or free port is needed.
@@ -87,8 +95,13 @@ _check "list of no-variant family is empty" \
   "$("$THEME" list dracula 2>&1)"
 
 _section "set / get / shortcuts"
-"$THEME" set catppuccin/frappe >/dev/null 2>&1
+_check "set <fam>/<variant> reports the new theme and succeeds" \
+  "$(printf -- '-> catppuccin/frappe\nrc=0')" \
+  "$("$THEME" set catppuccin/frappe 2>/dev/null; printf 'rc=%s' "$?")"
 _check "set <fam>/<variant> writes that pair" "catppuccin/frappe" "$("$THEME" get)"
+_check "reload reports the current theme and succeeds" \
+  "$(printf -- '-> reloaded catppuccin/frappe\nrc=0')" \
+  "$("$THEME" reload 2>/dev/null; printf 'rc=%s' "$?")"
 
 "$THEME" set catppuccin >/dev/null 2>&1
 _check "set <variant'd family> uses default variant" "catppuccin/mocha" "$("$THEME" get)"
