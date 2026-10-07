@@ -230,6 +230,10 @@ name = "chatgpt"
 kind = "cask"
 
 [[packages]]
+name = "claude"
+kind = "cask"
+
+[[packages]]
 name = "claude-code"
 kind = "cask"
 
