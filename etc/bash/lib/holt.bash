@@ -12,7 +12,7 @@ HOLT_INSTALL_DIR="${HOME}/.local/bin"
 # holt's own installer verifies the binary against the release's SHA256SUMS,
 # but skips verification entirely if that fetch fails, so it is not a check to
 # rely on from here.
-HOLT_VERSION=0.10.0
+HOLT_VERSION=0.10.1
 HOLT_INSTALL_URL="https://raw.githubusercontent.com/sakakibara/holt/v${HOLT_VERSION}/scripts/install.sh"
 HOLT_INSTALL_SHA256=4bb31797319b0ca121d957e2208c6c407a149d2987443d2ae3f898514443ef7d
 
