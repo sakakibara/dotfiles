@@ -9,7 +9,7 @@ Import-Module (Join-Path $PSScriptRoot 'Msg.psm1') -Force
 # Fetched at a release tag and checked against a digest recorded here, and the
 # version is passed through so the binary is pinned too -- the bash path does
 # the same. A `main` URL piped straight into Invoke-Expression was neither.
-$Script:HoltVersion = '0.10.1'
+$Script:HoltVersion = '0.10.2'
 $Script:HoltInstallUrl = "https://raw.githubusercontent.com/sakakibara/holt/v$Script:HoltVersion/scripts/install.ps1"
 $Script:HoltInstallSha256 = '28f8202dc45ec4999d54b28102aaab2b788b25ec24b13740db1367b909716f6d'
 
