@@ -11,7 +11,7 @@ on:
 # what shipped most recently, and a breaking change lands here as a mystery
 # failure in an unrelated push. Bump them deliberately when adopting a release.
 env:
-  MOX_VERSION: v0.12.0
+  MOX_VERSION: v0.12.1
   NVIM_VERSION: v0.12.5
 
 jobs:
