@@ -7,8 +7,9 @@
 # because only their composed form is checkable, so this is where they get
 # their syntax gate.
 #
-# Runs in a throwaway HOME / XDG tree: the real environment and mox state
-# are never touched. Facts the sources interpolate are per-machine values
+# mox runs in a throwaway HOME / XDG tree: the real environment and mox state
+# are never touched. The syntax checkers run in the caller's environment,
+# where its tool shims resolve their own configuration. Facts the sources interpolate are per-machine values
 # kept out of the repo; CI supplies representative test values here so every
 # interpolation resolves.
 
@@ -20,16 +21,16 @@ repo="$PWD"
 work=$(mktemp -d) || exit 1
 trap 'rm -rf "$work"' EXIT
 
-export HOME="$work/home"
-# The derived facts read these before their candidates; an ambient value
-# would bake this machine's paths into the composed output.
-unset PNPM_HOME GOPATH CARGO_HOME HOMEBREW_PREFIX
-export XDG_CONFIG_HOME="$work/config"
-export XDG_DATA_HOME="$work/data"
-export XDG_STATE_HOME="$work/state"
-export XDG_CACHE_HOME="$work/cache"
-export MOX_REPO="$repo"
-mkdir -p "$HOME" "$XDG_CONFIG_HOME/mox" "$XDG_DATA_HOME" "$XDG_STATE_HOME"
+mkdir -p "$work/home" "$work/config/mox" "$work/data" "$work/state"
+
+_mox() {
+  # The derived facts read these before their candidates; an ambient value
+  # would bake this machine's paths into the composed output.
+  env -u PNPM_HOME -u GOPATH -u CARGO_HOME -u HOMEBREW_PREFIX \
+    HOME="$work/home" XDG_CONFIG_HOME="$work/config" XDG_DATA_HOME="$work/data" \
+    XDG_STATE_HOME="$work/state" XDG_CACHE_HOME="$work/cache" MOX_REPO="$repo" \
+    mox "$@"
+}
 
 # Three representative fact sets: a personal machine
 # without the 1Password agent, the same machine with it (the shape this
@@ -73,10 +74,10 @@ EOF
 
 fails=0
 for facts in personal personal_1password work; do
-  "_facts_$facts" > "$XDG_CONFIG_HOME/mox/facts.toml"
+  "_facts_$facts" > "$work/config/mox/facts.toml"
   for os in darwin linux windows; do
     out_dir="$work/export-$facts-$os"
-    out=$(MOX_OS="$os" mox export "$out_dir" 2>&1)
+    out=$(MOX_OS="$os" _mox export "$out_dir" 2>&1)
     rc=$?
     printf '%s\n%s\n' "== facts=$facts MOX_OS=$os ==" "$out"
     if (( rc != 0 )) || [[ "$out" != *", 0 failed)"* ]]; then
