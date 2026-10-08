@@ -8,6 +8,7 @@ return {
       "nui.nvim",
       "nvim-web-devicons",
       "plenary.nvim",
+      "mega.cmdparse",
     },
     keys = {
       { "<Leader>aa", "<Cmd>AvanteAsk<CR>",     desc = "Avante ask",    mode = { "n", "x" } },
@@ -35,4 +36,7 @@ return {
       },
     },
   },
+
+  { "ColinKennedy/mega.cmdparse", lazy = true, dependencies = { "mega.logging" } },
+  { "ColinKennedy/mega.logging", lazy = true },
 }
