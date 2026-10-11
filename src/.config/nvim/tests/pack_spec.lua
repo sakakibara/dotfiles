@@ -707,6 +707,36 @@ T.describe("core.pack keys -- rhs resolution", function()
     T.truthy(fired)
     unmap_all("<F24>")
   end)
+
+  T.it("a lazy ft key replacing its own stub does not warn about an override", function()
+    local pack = reset_pack()
+    unmap_all("<F26>")
+    local fired, warnings = 0, {}
+    local orig = vim.notify
+    vim.notify = function(msg, lvl)
+      if lvl == vim.log.levels.WARN then warnings[#warnings + 1] = msg end
+    end
+    pack.setup({
+      specs = {
+        { dev = true, name = "ft-lazy-keys",
+          keys = { { "<F26>", function() fired = fired + 1 end, mode = "n", ft = "lua", desc = "Same desc" } },
+          config = function() end },
+      },
+    })
+    vim.cmd("enew")
+    vim.bo.filetype = "lua"
+    vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<F26>", true, false, true), "mx", false)
+    vim.cmd("enew")
+    vim.bo.filetype = "lua"
+    local second = vim.fn.maparg("<F26>", "n", false, true)
+    vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<F26>", true, false, true), "mx", false)
+    vim.notify = orig
+    T.truthy(pack.loaded("ft-lazy-keys"))
+    T.eq(fired, 2)
+    T.eq(second.desc, "Same desc")
+    T.eq(warnings, {})
+    unmap_all("<F26>")
+  end)
 end)
 
 T.describe("core.pack keys -- <Plug> validation", function()

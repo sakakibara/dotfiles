@@ -43,6 +43,8 @@ function M.create(deps)
   local installed_global  = {}  -- [mode..":"..lhs] = spec.name -- global maps we set
   local warned_external   = {}  -- [mode..":"..lhs] = true -- already-warned externals
   local warned_external_ft = {} -- [mode..":"..lhs..":"..bufnr] = true -- ft-scoped per-buffer dedup
+  local installed_ft      = {}
+  local real_installed    = {}
 
   -- Copy `existing` (a maparg(...,true) table) to `target_lhs` in `mode`.
   -- buf=nil installs globally; buf=<bufnr> installs buffer-locally (ft-scoped).
@@ -107,6 +109,7 @@ function M.create(deps)
   local function apply_collision_for_buf(spec, k, mode, lhs, buf)
     local key = mode .. ":" .. lhs .. ":" .. tostring(buf)
     if warned_external_ft[key] then return end
+    if installed_ft[key] == spec.name then return end
     -- Run the entire dispatch inside buf's context so maparg sees its local
     -- mappings. maparg returns buffer=1 (not the actual bufnr) when the
     -- mapping is buffer-local.
@@ -242,6 +245,7 @@ function M.create(deps)
         apply_collision_for_buf(spec, k, m, lhs, args.buf)
         local bopts = vim.tbl_extend("force", opts, { buffer = args.buf })
         vim.keymap.set(m, lhs, rhs, bopts)
+        installed_ft[m .. ":" .. lhs .. ":" .. tostring(args.buf)] = spec.name
       end
       vim.api.nvim_create_autocmd("FileType", { pattern = fts, callback = install_on_buf })
       -- Cover the buffer that triggered the lazy load: its FileType already
@@ -281,6 +285,7 @@ function M.create(deps)
 
   local function install_spec_keys(spec)
     if not spec.keys then return end
+    real_installed[spec.name] = true
     for _, k in ipairs(spec.keys) do
       for_each_mode(k, function(m)
         set_real_keymap(spec, k, m)
@@ -315,9 +320,11 @@ function M.create(deps)
       vim.api.nvim_create_autocmd("FileType", {
         pattern = fts,
         callback = function(args)
+          if real_installed[spec.name] then return true end
           apply_collision_for_buf(spec, k, m, lhs, args.buf)
           local bopts = vim.tbl_extend("force", opts, { buffer = args.buf })
           vim.keymap.set(m, lhs, stub, bopts)
+          installed_ft[m .. ":" .. lhs .. ":" .. tostring(args.buf)] = spec.name
         end,
       })
     else
