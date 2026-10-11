@@ -263,6 +263,15 @@ T.describe("core.pack.spec.normalize: version", function()
     T.eq(v:has("2.0.0"), false)
   end)
 
+  T.it("a v-prefixed wildcard parses as a range", function()
+    local Spec = reset_spec()
+    local v = Spec.normalize(F.with_version("p", "v1.*")).version
+    T.eq(type(v), "table")
+    T.truthy(v:has("1.4.0"))
+    T.eq(v:has("2.0.0"), false)
+    T.eq(Spec.normalize(F.with_version("p", "v1")).version, "v1")
+  end)
+
   T.it("a sha or exact tag stays a string", function()
     local Spec = reset_spec()
     T.eq(Spec.normalize(F.with_version("p", "abc1234")).version, "abc1234")

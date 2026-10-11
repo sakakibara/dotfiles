@@ -56,6 +56,20 @@ T.describe("lib.statuscolumn", function()
     cleanup()
   end)
 
+  T.it("draws each window's fold glyph from its own window-local fillchars", function()
+    local current, other = two_windows({ "a", "b", "c", "d", "e" })
+    vim.wo[current].fillchars = "foldclose:C"
+    vim.wo[other].fillchars = "foldclose:O"
+    for _, w in ipairs({ current, other }) do
+      vim.api.nvim_win_call(w, function() vim.cmd("2,4fold") end)
+    end
+    T.truthy(column(current, 2):find("C", 1, true), "current window uses its own glyph")
+    T.truthy(column(other, 2):find("O", 1, true), "other window uses its own glyph")
+    vim.wo[other].fillchars = "foldclose:Z"
+    T.truthy(column(other, 2):find("Z", 1, true), "a changed window-local value is picked up")
+    cleanup()
+  end)
+
   T.it("relative numbers follow a fold closed or opened without a buffer change", function()
     local current = two_windows({ "a", "b", "c", "d", "e", "f" })
     vim.wo[current].number, vim.wo[current].relativenumber = false, true

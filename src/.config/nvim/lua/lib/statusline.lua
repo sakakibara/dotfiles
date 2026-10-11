@@ -185,8 +185,8 @@ local function buf_path_name(buf) return Lib.path.buf_get_name(buf) end
 -- their trailing slash on the basename so the user can see it's a dir.
 -- Edge case: if abs IS cwd (or a trailing-slashed variant -- oil on cwd),
 -- we break cwd into parent + name so the three zones don't duplicate.
-local function split_path_zones(abs)
-  local cwd  = vim.uv.cwd() or ""
+local function split_path_zones(abs, cwd)
+  cwd = cwd or vim.uv.cwd() or ""
   local tilde = Lib.path.replace_home
 
   local is_dir = abs:sub(-1) == "/"
@@ -230,7 +230,7 @@ end
 --   2: pathshorten(rel_zone) + basename (cwd dropped)
 --   3: basename only
 --   4: truncated basename with ellipsis
-local function build_path(buf, budget)
+local function build_path(buf, budget, cwd)
   local name = buf_path_name(buf)
   if name == "" then return "%#StslDim# [No Name] " end
 
@@ -251,7 +251,7 @@ local function build_path(buf, budget)
   end
 
   local abs = vim.fn.fnamemodify(name, ":p")
-  local cwd_zone, rel_zone, base = split_path_zones(abs)
+  local cwd_zone, rel_zone, base = split_path_zones(abs, cwd)
 
   local base_hl = "StslPathFile"
   if vim.bo[buf].modified then base_hl = "StslPathMod"
@@ -554,8 +554,9 @@ function M.render()
   local right = table.concat(right_parts)
 
   local path_budget = win_w - left_w - strwidth(right) - 1
-  if c.path == nil or c.path_budget ~= path_budget then
-    c.path, c.path_budget = build_path(buf, path_budget), path_budget
+  local cwd = vim.fn.getcwd(winid)
+  if c.path == nil or c.path_budget ~= path_budget or c.path_cwd ~= cwd then
+    c.path, c.path_budget, c.path_cwd = build_path(buf, path_budget, cwd), path_budget, cwd
   end
 
   vim.b[buf]._sl_cache = c  -- write-back

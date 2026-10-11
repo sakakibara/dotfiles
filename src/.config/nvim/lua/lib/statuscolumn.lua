@@ -1,19 +1,20 @@
 local M = {}
 
-local fold_glyphs
+local glyph_cache = {}
 
-vim.api.nvim_create_autocmd("OptionSet", {
-  group = vim.api.nvim_create_augroup("Lib.statuscolumn", { clear = true }),
-  pattern = "fillchars",
-  callback = function() fold_glyphs = nil end,
-})
-
-local function glyphs()
-  if not fold_glyphs then
-    local fillchars = vim.opt.fillchars:get()
-    fold_glyphs = { open = fillchars.foldopen or "v", close = fillchars.foldclose or ">" }
+local function glyphs(win)
+  local fc = vim.wo[win].fillchars
+  local g = glyph_cache[fc]
+  if not g then
+    local open, close = "v", ">"
+    for item in vim.gsplit(fc, ",", { plain = true }) do
+      local k, v = item:match("^(%w+):(.+)$")
+      if k == "foldopen" then open = v elseif k == "foldclose" then close = v end
+    end
+    g = { open = open, close = close }
+    glyph_cache[fc] = g
   end
-  return fold_glyphs
+  return g
 end
 
 local function number_for(win, lnum, relnum, virtnum)
@@ -32,13 +33,13 @@ local function number_for(win, lnum, relnum, virtnum)
   return string.format("%4d", n)
 end
 
-local function fold_for(lnum)
+local function fold_for(win, lnum)
   local level = vim.fn.foldlevel(lnum)
   if level == 0 then return " " end
   if vim.fn.foldclosed(lnum) > 0 then
-    return "%#FoldColumn#" .. glyphs().close .. "%*"
+    return "%#FoldColumn#" .. glyphs(win).close .. "%*"
   elseif level > vim.fn.foldlevel(lnum - 1) then
-    return "%#FoldColumn#" .. glyphs().open .. "%*"
+    return "%#FoldColumn#" .. glyphs(win).open .. "%*"
   end
   return " "
 end
@@ -51,7 +52,7 @@ function M.render()
     "%s",  -- signs column (neovim handles this)
     number_for(win, lnum, vim.v.relnum, vim.v.virtnum),
     " ",
-    vim.api.nvim_win_call(win, function() return fold_for(lnum) end),
+    vim.api.nvim_win_call(win, function() return fold_for(win, lnum) end),
     " ",
   })
 end

@@ -12,7 +12,7 @@ local function is_range(s)
   s = vim.trim(s)
   if s == "*" or s:match("^[%^~<>=]") or s:match("%s%-%s") then return true end
   local wildcard = false
-  for _, seg in ipairs(vim.split(s, ".", { plain = true })) do
+  for _, seg in ipairs(vim.split((s:gsub("^[vV]", "")), ".", { plain = true })) do
     if seg:match("^[xX%*]$") then
       wildcard = true
     elseif not seg:match("^%d+$") then
