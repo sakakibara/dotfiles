@@ -107,7 +107,9 @@ local function parse(raw)
   if not method then return nil end
   local headers = {}
   for name, value in raw:gmatch("\n([%w%-]+):[ \t]*([^\r\n]*)") do
-    headers[name:lower()] = value
+    name = name:lower()
+    if name == "host" and headers.host ~= nil then return nil end
+    headers[name] = value
   end
   local path = target:match("^[^?#]*")
   return { method = method, target = target, path = path, decoded = decode(path), headers = headers }

@@ -451,6 +451,18 @@ T.describe("lib.preview hardening", function()
     cleanup(buf)
   end)
 
+  T.it("answers 400 to a request with more than one Host header", function()
+    local buf = fixture()
+    local port, token = open(buf)
+    local path = ("/%s/b/%d"):format(token, buf)
+    local ok = "127.0.0.1:" .. port
+    for _, hosts in ipairs({ { ok, ok }, { "evil.example", ok }, { ok, "evil.example" } }) do
+      local req = "GET " .. path .. " HTTP/1.1\r\nHost: " .. hosts[1] .. "\r\nhost: " .. hosts[2] .. "\r\n\r\n"
+      T.eq(raw(port, req).status, 400, table.concat(hosts, " "))
+    end
+    cleanup(buf)
+  end)
+
   T.it("parses a request with no headers instead of answering 400", function()
     local buf = fixture()
     local port, token = open(buf)
