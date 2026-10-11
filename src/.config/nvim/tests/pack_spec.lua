@@ -522,45 +522,68 @@ T.describe("core.pack re-fires triggering event", function()
     T.eq(nesting_error, false, "E218 autocommand nesting was reported")
   end)
 
-  T.it("re-entrancy guard blocks same-key refire while one is active", function()
-    -- Direct test of the belt-and-suspenders guard: with dedup alone, the
-    -- E218 regression couldn't trigger in practice, so the guard would rot
-    -- untested. Here we drive it via the exposed schedule_refire helper and
-    -- force a re-entrancy: a handler, during its nested vim.wait, schedules
-    -- another re-fire for the SAME key. The guard must block the nested run
-    -- (runs=1), not let it recurse (runs>=2).
+  T.it("a re-fire requested during a dispatch runs after it, and only once", function()
     local pack = reset_pack()
     pack.setup({ specs = {} })
 
-    local runs = 0
+    local inner_runs, inner_during_outer, outer_active = 0, false, false
     local aug = vim.api.nvim_create_augroup("PackReentryTest", { clear = true })
     vim.api.nvim_create_autocmd("User", {
-      group = aug, pattern = "ReentryTest",
+      group = aug, pattern = "ReentryInner",
       callback = function()
-        runs = runs + 1
-        if runs == 1 then
-          -- Queue a second refire for the same key, then pump the loop to
-          -- give the scheduled callback a chance to fire. If the guard
-          -- works, this nested callback short-circuits (runs stays at 1
-          -- until we exit); if it doesn't, runs becomes 2 mid-wait.
-          pack._schedule_refire("User", { pattern = "ReentryTest" })
-          vim.wait(50, function() return runs >= 2 end)
-        end
+        inner_runs = inner_runs + 1
+        if outer_active then inner_during_outer = true end
+      end,
+    })
+    vim.api.nvim_create_autocmd("User", {
+      group = aug, pattern = "ReentryOuter",
+      callback = function()
+        outer_active = true
+        pack._schedule_refire("User", { pattern = "ReentryInner" })
+        pack._schedule_refire("User", { pattern = "ReentryInner" })
+        vim.wait(60, function() return false end)
+        outer_active = false
       end,
     })
 
-    pack._schedule_refire("User", { pattern = "ReentryTest" })
-    vim.wait(200, function() return runs >= 1 end)
-    -- One handler run from the first scheduled refire. The second refire
-    -- queued mid-handler must wait for active=false to clear, but by then
-    -- the pending flag is clear and it runs -- so we expect exactly 2 total.
-    -- The key assertion: runs did NOT reach 2 *during* the first's vim.wait
-    -- (that would be nesting). Verify by checking that between the vim.wait
-    -- and now, runs advanced from 1 to 2 (second runs after first returns).
-    vim.wait(200, function() return runs >= 2 end)
-    T.eq(runs, 2, "expected exactly 2 non-nested handler runs")
+    vim.api.nvim_exec_autocmds("User", { pattern = "ReentryOuter" })
+    vim.wait(300, function() return inner_runs >= 1 end)
+    pack._schedule_refire("User", { pattern = "ReentryInner" })
+    vim.wait(60, function() return false end)
+    T.eq(inner_during_outer, false, "re-fire must not run inside the outer dispatch")
+    T.eq(inner_runs, 1, "a key re-fires at most once")
 
     vim.api.nvim_del_augroup_by_id(aug)
+  end)
+
+  T.it("a lazy BufWritePre load never re-enters a pumping BufWritePre handler", function()
+    local pack = reset_pack()
+    local depth, max_depth, runs = 0, 0, 0
+    local loaded = false
+    pack.setup({ specs = {
+      { dev = true, name = "write-lazy", event = "BufWritePre", config = function() loaded = true end },
+    } })
+    local aug = vim.api.nvim_create_augroup("PackWritePump", { clear = true })
+    vim.api.nvim_create_autocmd("BufWritePre", {
+      group = aug,
+      callback = function()
+        runs = runs + 1
+        depth = depth + 1
+        if depth > max_depth then max_depth = depth end
+        vim.wait(60, function() return false end)
+        depth = depth - 1
+      end,
+    })
+    local f = vim.fn.tempname()
+    vim.cmd("silent edit " .. vim.fn.fnameescape(f))
+    vim.cmd("silent write")
+    vim.wait(400, function() return false end)
+    T.truthy(loaded)
+    T.eq(max_depth, 1, "BufWritePre handler ran nested")
+    T.eq(runs, 2, "one original dispatch plus one re-fire")
+    vim.api.nvim_del_augroup_by_id(aug)
+    vim.cmd("silent bwipe!")
+    os.remove(f)
   end)
 
   T.it("different buffers re-fire independently (no cross-key blocking)", function()

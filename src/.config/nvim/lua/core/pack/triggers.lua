@@ -1,26 +1,17 @@
 -- Lazy-load trigger registration and event re-firing.
 --
--- The re-fire scheduler tracks three states per (event, buffer, pattern) key:
---
--- - pending: scheduled via vim.schedule, not yet run
--- - active:  currently running its nvim_exec_autocmds
--- - retry:   request made while active; latest opts replayed after active
---
 -- Grouping at registration time (one autocmd per event, not per spec) prevents
 -- fan-out at the source: N specs sharing BufWritePre produce 1 re-fire, not N.
--- The dedup/guard/retry below are defense-in-depth for edge cases:
 --
--- - Dedup: two different trigger sites (e.g. cascaded BufReadPre->BufReadPost)
---   scheduling the same-key refire in one tick collapse to one.
--- - Re-entrancy guard: `vim.schedule` alone does NOT break autocmd nesting
---   when a handler pumps the event loop (BufWritePre -> conform.format ->
---   vim.wait(1000) -- libuv runs pending schedule callbacks during that
---   wait). Guard short-circuits any same-key recursion.
--- - Retry slot: a schedule arriving while active must not be dropped --
---   park it and replay after active clears.
+-- Each (event, buffer, pattern, filetype) key re-fires at most once, and only
+-- once no autocmd dispatch is in progress: `vim.schedule` alone does NOT
+-- break autocmd nesting when a handler pumps the event loop (BufWritePre ->
+-- conform.format -> vim.wait(1000) -- libuv runs pending schedule callbacks
+-- during that wait), so a re-fire that finds itself inside a dispatch waits
+-- for it to finish.
 --
--- Keyed by (event, buffer, pattern): different buffers/patterns are
--- independent work and must not block each other.
+-- Different buffers/patterns are independent work and must not block each
+-- other.
 
 local M = {}
 
@@ -32,37 +23,30 @@ function M.create(deps)
   local load_spec          = assert(deps.load_spec)
   local install_spec_stubs = assert(deps.install_spec_stubs)
 
-  local pending = {}  -- scheduled, not yet run
-  local active  = {}  -- currently running
-  local retry   = {}  -- request made while active: latest opts to replay
+  local requested = {}
 
-  local schedule_refire
-  schedule_refire = function(event, opts)
-    local key = event .. "\0" .. (opts.buffer or 0) .. "\0" .. (opts.pattern or "")
-    if active[key] then
-      -- Park the request -- we'll replay once active clears. Latest-wins is
-      -- correct for lazy-load: each call carries opts from one original
-      -- event fire, and the re-fire just needs to give handlers a chance
-      -- to catch up on the current state.
-      retry[key] = { event = event, opts = opts }
-      return
-    end
-    if pending[key] then return end
-    pending[key] = true
-    vim.schedule(function()
-      pending[key] = nil
-      active[key]  = true
+  local function in_autocmd()
+    return (pcall(vim.fn.expand, "<amatch>"))
+  end
+
+  local function schedule_refire(event, opts)
+    local ft = event == "FileType" and opts.buffer and vim.api.nvim_buf_is_valid(opts.buffer)
+      and vim.bo[opts.buffer].filetype or ""
+    local key = table.concat({ event, opts.buffer or 0, opts.pattern or "", ft }, "\0")
+    if requested[key] then return end
+    requested[key] = true
+    local function run()
+      if in_autocmd() then
+        vim.defer_fn(run, 10)
+        return
+      end
+      if opts.buffer and not vim.api.nvim_buf_is_valid(opts.buffer) then return end
       local ok, err = pcall(vim.api.nvim_exec_autocmds, event, opts)
-      active[key]  = nil
       if not ok then
         vim.notify(("core.pack refire(%s): %s"):format(event, err), vim.log.levels.ERROR)
       end
-      local r = retry[key]
-      if r then
-        retry[key] = nil
-        schedule_refire(r.event, r.opts)
-      end
-    end)
+    end
+    vim.schedule(run)
   end
 
   local function register(specs)
