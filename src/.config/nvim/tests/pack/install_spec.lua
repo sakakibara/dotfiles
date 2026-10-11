@@ -129,6 +129,49 @@ T.describe("core.pack.install", function()
     T.eq(vim.fn.isdirectory(I.install_dir("b")), 0)
   end)
 
+  local function with_failing_rm(fn)
+    local orig_system, orig_notify = vim.system, vim.notify
+    local errors = {}
+    vim.system = function(cmd, o, cb)
+      if cmd[1] == "rm" then
+        vim.schedule(function() cb({ code = 1, stdout = "", stderr = "denied" }) end)
+        return { wait = function() return { code = 1 } end }
+      end
+      return orig_system(cmd, o, cb)
+    end
+    vim.notify = function(m, l) if l == vim.log.levels.ERROR then errors[#errors + 1] = m end end
+    local ok, err = pcall(fn)
+    vim.system, vim.notify = orig_system, orig_notify
+    if not ok then error(err) end
+    return errors
+  end
+
+  T.it("uninstall keeps the lock entry when removal fails", function()
+    local I, L = fresh()
+    local remote = make_remote()
+    async(function(cb) I.install_missing({ { name = "demo", src = "file://" .. remote } }, { on_complete = cb }) end)
+    local removed
+    local errors = with_failing_rm(function()
+      async(function(cb) I.uninstall({ "demo" }, { on_complete = function(r) removed = r; cb() end }) end)
+    end)
+    T.eq(removed, {})
+    T.truthy(L.get("demo"), "lock entry must survive a failed removal")
+    T.eq(#errors, 1)
+    T.truthy(errors[1]:match("failed to remove demo"))
+  end)
+
+  T.it("clean keeps the lock entry when removal fails", function()
+    local I, L = fresh()
+    local r1 = make_remote()
+    async(function(cb) I.install_missing({ { name = "b", src = "file://" .. r1 } }, { on_complete = cb }) end)
+    local errors = with_failing_rm(function()
+      async(function(cb) I.clean({}, { on_complete = cb }) end)
+    end)
+    T.truthy(L.get("b"), "lock entry must survive a failed removal")
+    T.eq(#errors, 1)
+    T.truthy(errors[1]:match("failed to remove b"))
+  end)
+
   T.it("install_missing snapshots before writing lockfile", function()
     package.loaded["core.pack.history"] = nil
     local I, L = fresh()

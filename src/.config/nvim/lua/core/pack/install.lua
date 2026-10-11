@@ -924,18 +924,25 @@ function M.uninstall(names, opts)
   async(function()
     local removed = {}
     local missing = {}
+    local failed = {}
     for _, name in ipairs(names) do
       local dir = M.install_dir(name)
       if vim.fn.isdirectory(dir) == 1 then
-        await(rm_rf, dir)
-        Lock.delete(name)
-        removed[#removed + 1] = name
+        if await(rm_rf, dir) then
+          Lock.delete(name)
+          removed[#removed + 1] = name
+        else
+          failed[#failed + 1] = name
+        end
       else
         missing[#missing + 1] = name
       end
     end
     if #removed > 0 then
       vim.notify("core.pack: uninstalled " .. table.concat(removed, ", "))
+    end
+    if #failed > 0 then
+      vim.notify("core.pack: failed to remove " .. table.concat(failed, ", "), vim.log.levels.ERROR)
     end
     if #missing > 0 then
       vim.notify("core.pack: not installed: " .. table.concat(missing, ", "), vim.log.levels.WARN)
@@ -955,13 +962,19 @@ function M.clean(specs, opts)
   end
 
   local do_remove = async(function(items)
-    local removed = {}
+    local removed, failed = {}, {}
     for _, item in ipairs(items) do
-      await(rm_rf, item.dir)
-      Lock.delete(item.name)
-      removed[#removed + 1] = item.name
+      if await(rm_rf, item.dir) then
+        Lock.delete(item.name)
+        removed[#removed + 1] = item.name
+      else
+        failed[#failed + 1] = item.name
+      end
     end
     if #removed > 0 then vim.notify("core.pack: removed " .. table.concat(removed, ", ")) end
+    if #failed > 0 then
+      vim.notify("core.pack: failed to remove " .. table.concat(failed, ", "), vim.log.levels.ERROR)
+    end
     if opts.on_complete then opts.on_complete() end
     return removed
   end)
