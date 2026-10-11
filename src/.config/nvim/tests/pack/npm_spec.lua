@@ -198,6 +198,30 @@ T.describe("core.pack.npm install", function()
     return r
   end
 
+  T.it("hashes with every available tool, whatever the path contains", function()
+    local dir = vim.fn.tempname()
+    vim.fn.mkdir(dir, "p")
+    local path = dir .. "/we\\ird\n -name.tgz"
+    local f = assert(io.open(path, "wb")); f:write("abc"); f:close()
+    local want = "sha512-" .. vim.base64.encode((("ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a"
+      .. "2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f"):gsub("%x%x", function(x)
+        return string.char(tonumber(x, 16))
+      end)))
+    local all = Npm._hashers
+    local tried = 0
+    for _, h in ipairs(all) do
+      if vim.fn.executable(h.cmd[1]) == 1 then
+        tried = tried + 1
+        Npm._hashers = { h }
+        local got, err = wait(function(cb) Npm.sha512(path, cb) end)
+        T.eq({ got, err }, { want, nil }, h.cmd[1])
+      end
+    end
+    Npm._hashers = all
+    T.truthy(tried > 0, "no sha512 tool available")
+    vim.fn.delete(dir, "rf")
+  end)
+
   T.it("refuses a tarball whose sha512 does not match the integrity", function()
     local tgz = fixture_tgz("1.0.0")
     local base = root()

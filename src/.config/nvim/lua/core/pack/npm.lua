@@ -185,30 +185,40 @@ function M.resolve(spec, cb)
   end)
 end
 
-local function hex_to_base64(hex)
-  return vim.base64.encode((hex:gsub("%x%x", function(h) return string.char(tonumber(h, 16)) end)))
-end
-
-local HASHERS = {
-  { "sha512sum" },
-  { "shasum", "-a", "512" },
-  { "openssl", "dgst", "-sha512", "-r" },
+M._hashers = {
+  { cmd = { "shasum", "-a", "512" } },
+  { cmd = { "sha512sum" } },
+  { cmd = { "openssl", "dgst", "-sha512", "-binary" }, binary = true },
 }
 
-function M.sha512(path, cb)
-  for _, h in ipairs(HASHERS) do
-    if vim.fn.executable(h[1]) == 1 then
-      local cmd = vim.list_extend(vim.deepcopy(h), { path })
-      return vim.system(cmd, { text = true }, function(r)
-        vim.schedule(function()
-          local hex = r.code == 0 and (r.stdout or ""):match("^(%x+)")
-          if not hex or #hex ~= 128 then return cb(nil, "sha512 failed: " .. vim.trim(r.stderr or "")) end
-          cb("sha512-" .. hex_to_base64(hex))
-        end)
-      end)
-    end
+local function digest_of(h, out)
+  if h.binary then
+    return #out == 64 and out or nil
   end
-  vim.schedule(function() cb(nil, "no sha512 tool (sha512sum, shasum or openssl) on PATH") end)
+  local hex = out:match("^(%x+) [ %*]%-\n$")
+  if not hex or #hex ~= 128 then return nil end
+  return (hex:gsub("%x%x", function(x) return string.char(tonumber(x, 16)) end))
+end
+
+function M.sha512(path, cb)
+  local h
+  for _, cand in ipairs(M._hashers) do
+    if vim.fn.executable(cand.cmd[1]) == 1 then h = cand; break end
+  end
+  if not h then
+    return vim.schedule(function() cb(nil, "no sha512 tool (shasum, sha512sum or openssl) on PATH") end)
+  end
+  local f = io.open(path, "rb")
+  if not f then return vim.schedule(function() cb(nil, "sha512: cannot read " .. path) end) end
+  local data = f:read("*a")
+  f:close()
+  vim.system(h.cmd, { stdin = data }, function(r)
+    vim.schedule(function()
+      local raw = r.code == 0 and digest_of(h, r.stdout or "") or nil
+      if not raw then return cb(nil, ("sha512 failed (%s): %s"):format(h.cmd[1], vim.trim(r.stderr or ""))) end
+      cb("sha512-" .. vim.base64.encode(raw))
+    end)
+  end)
 end
 
 function M.expected_sha512(integrity)
