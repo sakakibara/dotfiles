@@ -18,6 +18,7 @@ return {
           require("conform").format({ bufnr = buf, timeout_ms = 1000 })
         end,
         sources  = function(buf)
+          if not Lib.plugin.loaded("conform.nvim") then Lib.plugin.load("conform.nvim") end
           local ok, conform = pcall(require, "conform")
           if not ok then return {} end
           local names = {}

@@ -260,3 +260,33 @@ T.describe("lib.format -- built-in LSP source", function()
     end)
   end)
 end)
+
+T.describe("conform format source", function()
+  T.it("loads conform itself when asked for sources before anything loaded it", function()
+    local registered
+    local saved = { format = Lib.format, mason = Lib.mason, plugin = Lib.plugin, conform = package.loaded.conform }
+    rawset(Lib, "format", { register = function(f) registered = f end })
+    rawset(Lib, "mason", { add = function() end })
+    local loaded = false
+    rawset(Lib, "plugin", {
+      loaded = function() return loaded end,
+      load = function(name)
+        T.eq(name, "conform.nvim")
+        loaded = true
+        package.loaded.conform = { list_formatters = function() return { { name = "stylua" } } end }
+      end,
+    })
+    package.loaded.conform = nil
+    local ok, err = pcall(function()
+      package.loaded["config.plugins.formatting"] = nil
+      require("config.plugins.formatting")[1].init()
+      T.eq(registered.sources(0), { "stylua" })
+    end)
+    rawset(Lib, "format", saved.format)
+    rawset(Lib, "mason", saved.mason)
+    rawset(Lib, "plugin", saved.plugin)
+    package.loaded.conform = saved.conform
+    package.loaded["config.plugins.formatting"] = nil
+    if not ok then error(err, 0) end
+  end)
+end)
