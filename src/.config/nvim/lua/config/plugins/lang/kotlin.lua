@@ -29,7 +29,10 @@ if vim.fn.executable("kotlin") == 1 then
         mainClass = function()
           local root = vim.fs.find("src", { path = vim.uv.cwd(), upward = true, stop = vim.env.HOME })[1] or ""
           local fname = vim.api.nvim_buf_get_name(0)
-          return fname:gsub(root, ""):gsub("main/kotlin/", ""):gsub(".kt", "Kt"):gsub("/", "."):sub(2, -1)
+          if root ~= "" and vim.startswith(fname, root) then fname = fname:sub(#root + 1) end
+          fname = fname:gsub("main/kotlin/", "", 1)
+          if vim.endswith(fname, ".kt") then fname = fname:sub(1, -4) .. "Kt" end
+          return (fname:gsub("/", ".")):sub(2)
         end,
         projectRoot = "${workspaceFolder}",
         jsonLogFile = "",
