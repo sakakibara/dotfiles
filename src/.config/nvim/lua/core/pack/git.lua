@@ -34,21 +34,6 @@ function M.current_rev(dir, cb)
   end)
 end
 
-function M.clone(url, dest, cb)
-  vim.fn.mkdir(vim.fn.fnamemodify(dest, ":h"), "p")
-  run({ "clone", "--filter=blob:none", url, dest }, nil, function(r)
-    if not r.ok then return cb({ ok = false, err = r.stderr }) end
-    cb({ ok = true })
-  end)
-end
-
-function M.fetch(dir, cb)
-  run({ "fetch", "--tags", "--prune", "origin" }, dir, function(r)
-    if not r.ok then return cb({ ok = false, err = r.stderr }) end
-    cb({ ok = true })
-  end)
-end
-
 function M.checkout_sha(dir, sha, cb)
   -- SHA is hex; cannot be misinterpreted as a flag. Detached so we don't
   -- accumulate local branches.
