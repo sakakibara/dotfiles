@@ -85,6 +85,8 @@ function M.toggle(buf)
   M.enable(not M.enabled(), buf)
 end
 
+local formatting = {}
+
 -- Run all active formatters. opts.force bypasses the enabled check.
 -- When force=true and nothing was formatted, warns.
 function M.format(opts)
@@ -92,7 +94,9 @@ function M.format(opts)
   local buf = opts.buf or vim.api.nvim_get_current_buf()
   if buf == 0 then buf = vim.api.nvim_get_current_buf() end
   if not (opts.force or M.enabled(buf)) then return end
+  if formatting[buf] then return end
 
+  formatting[buf] = true
   local done = false
   for _, f in ipairs(M.resolve(buf)) do
     if f.active then
@@ -103,6 +107,7 @@ function M.format(opts)
       end
     end
   end
+  formatting[buf] = nil
 
   if not done and opts.force then
     vim.notify("No formatters available for this buffer", vim.log.levels.WARN)

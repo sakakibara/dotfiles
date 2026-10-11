@@ -184,6 +184,23 @@ T.describe("lib.format -- format() semantics", function()
     fmt.format({ buf = 0 })
     T.eq(ran, 1)
   end)
+
+  T.it("a format() call made while the buffer is formatting is a no-op", function()
+    local fmt = reset_format()
+    local ran = 0
+    fmt.register({
+      name = "nested", primary = true, priority = 100,
+      format = function()
+        ran = ran + 1
+        fmt.format({ buf = 0 })
+      end,
+      sources = function() return { "nested-src" } end,
+    })
+    fmt.format({ buf = 0 })
+    T.eq(ran, 1)
+    fmt.format({ buf = 0 })
+    T.eq(ran, 2)
+  end)
 end)
 
 T.describe("lib.format -- built-in LSP source", function()
