@@ -1,9 +1,13 @@
+Lib.parsers.add("ninja", { ft = "ninja" })
+Lib.parsers.add("rst", { ft = "rst" })
+
 return Lib.lang.setup({
   cmd = "python3",
-  ft = { "python", "ninja", "rst" },
-  mason = { "ruff", "debugpy" },
-  parsers = { "python", "ninja", "rst" },
+  ft = "python",
+  mason = { "basedpyright", "ruff", "debugpy" },
+  parsers = { "python" },
   servers = {
+    basedpyright = {},
     ruff = {
       cmd_env = { RUFF_TRACE = "messages" },
       init_options = {
@@ -21,7 +25,6 @@ return Lib.lang.setup({
   plugins = {
     {
       "linux-cultist/venv-selector.nvim",
-      branch = "regexp",
       cmd = "VenvSelect",
       ft = "python",
       keys = { { "<Leader>cv", "<Cmd>VenvSelect<CR>", desc = "Select virtualenv", ft = "python" } },
