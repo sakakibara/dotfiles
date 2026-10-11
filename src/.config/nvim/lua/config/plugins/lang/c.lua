@@ -73,19 +73,6 @@ return Lib.lang.setup({
         completeUnimported = true,
         clangdFileStatus = true,
       },
-      root_dir = function(bufnr, on_dir)
-        local fname = vim.api.nvim_buf_get_name(bufnr)
-        local root = vim.fs.root(fname, {
-          "Makefile",
-          "configure.ac",
-          "configure.in",
-          "config.h.in",
-          "meson.build",
-          "meson_options.txt",
-          "build.ninja",
-        }) or vim.fs.root(fname, { "compile_commands.json", "compile_flags.txt" }) or vim.fs.root(fname, { ".git" })
-        if root then on_dir(root) end
-      end,
     },
   },
   plugins = {
