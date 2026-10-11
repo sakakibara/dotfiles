@@ -6,6 +6,7 @@ local ALLOWED_FIELDS = {
   dependencies = true, event = true, ft = true, cmd = true, keys = true,
   priority = true, enabled = true, cond = true, dev = true, lazy = true,
   init = true, opts = true, config = true, main = true, build = true,
+  npm = true, files = true, min_age = true,
 }
 
 local function is_range(s)
@@ -27,7 +28,21 @@ function M.normalize(spec)
   if type(spec) ~= "table" then error("spec must be a table, got " .. type(spec)) end
 
   local src, name = spec.src, spec.name
-  if spec[1] and not src then
+  if spec.npm ~= nil then
+    local Npm = require("core.pack.npm")
+    if not Npm.valid_name(spec.npm) then error("invalid npm package name: " .. vim.inspect(spec.npm)) end
+    if type(spec.files) ~= "table" or #spec.files == 0 then
+      error("npm spec needs a non-empty files list: " .. spec.npm)
+    end
+    for _, f in ipairs(spec.files) do
+      if not Npm.valid_file(f) then error(("npm spec %s: invalid file path %s"):format(spec.npm, vim.inspect(f))) end
+    end
+    if spec.min_age ~= nil and (type(spec.min_age) ~= "number" or spec.min_age < 0) then
+      error("npm spec min_age must be a non-negative number of days: " .. spec.npm)
+    end
+    src = src or ("https://www.npmjs.com/package/" .. spec.npm)
+    name = name or Npm.default_name(spec.npm)
+  elseif spec[1] and not src then
     local shorthand = spec[1]
     if shorthand:match("^https?://") then
       src = shorthand
@@ -48,6 +63,7 @@ function M.normalize(spec)
   local has_trigger = spec.event or spec.ft or spec.cmd or spec.keys
   local lazy = spec.lazy
   if lazy == nil then lazy = has_trigger ~= nil end
+  if spec.npm ~= nil then lazy = true end
 
   local version = spec.version
   if type(version) == "string" and is_range(version) then
@@ -77,6 +93,10 @@ function M.normalize(spec)
     config = spec.config,
     main = spec.main,
     build = spec.build,
+    npm = spec.npm,
+    npm_version = spec.npm ~= nil and spec.version or nil,
+    files = spec.files,
+    min_age = spec.min_age,
   }
 end
 
@@ -125,6 +145,7 @@ function M._merge(a, b)
   local warnings = {}
   local CONFLICT_FIELDS = {
     "src", "version", "branch", "build", "init", "config", "main", "cond",
+    "npm", "npm_version", "files", "min_age",
   }
   local function fmt_value(v)
     if type(v) == "function" then return "<function>" end

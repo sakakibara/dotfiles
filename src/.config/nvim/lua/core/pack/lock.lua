@@ -54,7 +54,9 @@ local function encode_entry(entry)
   local keys = vim.tbl_keys(entry); table.sort(keys)
   local parts = {}
   for _, k in ipairs(keys) do
-    parts[#parts + 1] = ("%s:%s"):format(vim.json.encode(k), vim.json.encode(entry[k]))
+    local v = entry[k]
+    local enc = (type(v) == "table" and next(v) ~= nil and not vim.islist(v)) and encode_entry(v) or vim.json.encode(v)
+    parts[#parts + 1] = ("%s:%s"):format(vim.json.encode(k), enc)
   end
   return "{" .. table.concat(parts, ",") .. "}"
 end

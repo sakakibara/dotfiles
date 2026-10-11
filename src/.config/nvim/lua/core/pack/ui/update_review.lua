@@ -1,7 +1,7 @@
 local C = require("core.pack.ui._common")
 local M = {}
 
-local function render(buf, win, pending, marked, expanded)
+local function render(buf, win, pending, marked, expanded, notices)
   local lines = {}
   local marked_count = 0
   for i = 1, #pending do if marked[i] then marked_count = marked_count + 1 end end
@@ -33,8 +33,10 @@ local function render(buf, win, pending, marked, expanded)
     local name_truncated = p.name
     if #name_truncated > name_max then name_truncated = name_truncated:sub(1, name_max - 1) .. "…" end
     local name = ("%-" .. name_max .. "s"):format(name_truncated)
-    local range = ("%s..%s"):format(p.from:sub(1, 7), p.to:sub(1, 7))
-    local count_str = (p.count == 1) and "1 commit " or (("%d commits"):format(p.count))
+    local from_s = p.npm and p.from or p.from:sub(1, 7)
+    local to_s = p.npm and p.to or p.to:sub(1, 7)
+    local range = ("%s..%s"):format(from_s, to_s)
+    local count_str = p.npm and "npm      " or (p.count == 1) and "1 commit " or (("%d commits"):format(p.count))
     local subj_full = p.subject or ""
     if p.ago and p.ago ~= "" then subj_full = subj_full .. " (" .. p.ago .. ")" end
     local subject = C.format_subject(subj_full, subject_max)
@@ -47,8 +49,8 @@ local function render(buf, win, pending, marked, expanded)
     table.insert(highlights, { row - 1, col, col + #glyph, hl_glyph }); col = col + #glyph + 2
     table.insert(highlights, { row - 1, col, col + #name, "Identifier" }); col = col + #name + 2
     -- range halves
-    table.insert(highlights, { row - 1, col, col + 7, "DiffRemoved" })
-    table.insert(highlights, { row - 1, col + 9, col + 9 + 7, "DiffAdded" })
+    table.insert(highlights, { row - 1, col, col + #from_s, "DiffRemoved" })
+    table.insert(highlights, { row - 1, col + #from_s + 2, col + #range, "DiffAdded" })
     col = col + #range + 2
     table.insert(highlights, { row - 1, col, col + #count_str, "Number" }); col = col + #count_str + 2
     table.insert(highlights, { row - 1, col, col + #subject, "Comment" })
@@ -68,6 +70,19 @@ local function render(buf, win, pending, marked, expanded)
         end
         row = row + 1
       end
+    end
+  end
+
+  if notices and #notices > 0 then
+    lines[#lines + 1] = ""
+    row = row + 1
+    for _, n in ipairs(notices) do
+      local kind = ("%-8s"):format(n.kind)
+      local name = ("%-" .. name_max .. "s"):format(n.name)
+      lines[#lines + 1] = ("  %s  %s  %s"):format(kind, name, n.text)
+      table.insert(highlights, { row - 1, 2, 2 + #kind, n.kind == "held" and "DiagnosticWarn" or "DiagnosticError" })
+      table.insert(highlights, { row - 1, 4 + #kind, 4 + #kind + #name, "Identifier" })
+      row = row + 1
     end
   end
 
@@ -108,7 +123,7 @@ function M.update_review(pending, opts)
 
   local win  -- declared early so render closures can read its width
 
-  local row_to_index, header = render(buf, win, pending, marked, expanded)
+  local row_to_index, header = render(buf, win, pending, marked, expanded, opts.notices)
 
   if opts.open_window ~= false then
     vim.cmd("topleft 18split")
@@ -125,7 +140,7 @@ function M.update_review(pending, opts)
       callback = function() vim.cmd("stopinsert") end,
     })
     -- Re-render now that we have the real window width for subject truncation.
-    row_to_index, header = render(buf, win, pending, marked, expanded)
+    row_to_index, header = render(buf, win, pending, marked, expanded, opts.notices)
   end
 
   local view = { buf = buf, win = win, header = header }
@@ -134,12 +149,12 @@ function M.update_review(pending, opts)
     local i = row_to_index[row]
     if not i then return end
     marked[i] = not marked[i]
-    row_to_index, self.header = render(buf, win, pending, marked, expanded)
+    row_to_index, self.header = render(buf, win, pending, marked, expanded, opts.notices)
   end
 
   function view:set_all(value)
     for i = 1, #pending do marked[i] = value end
-    row_to_index, self.header = render(buf, win, pending, marked, expanded)
+    row_to_index, self.header = render(buf, win, pending, marked, expanded, opts.notices)
   end
 
   function view:toggle_expand(row)
@@ -150,12 +165,12 @@ function M.update_review(pending, opts)
       opts.on_expand(pending[i].name, function(log)
         pending[i]._log = log or {}
         expanded[i] = true
-        row_to_index, self.header = render(buf, win, pending, marked, expanded)
+        row_to_index, self.header = render(buf, win, pending, marked, expanded, opts.notices)
       end)
       return
     end
     expanded[i] = not expanded[i]
-    row_to_index, self.header = render(buf, win, pending, marked, expanded)
+    row_to_index, self.header = render(buf, win, pending, marked, expanded, opts.notices)
   end
 
   function view:apply()

@@ -2,6 +2,7 @@ local M = {}
 
 function M.has(name)   return require("core.pack").has(name) end
 function M.loaded(name) return require("core.pack").loaded(name) end
+function M.dir(name)    return require("core.pack").dir(name) end
 function M.opts(name)  return require("core.pack").opts(name) end
 function M.load(name)   require("core.pack").load(name) end
 function M.on_load(name, fn) require("core.pack").on_load(name, fn) end

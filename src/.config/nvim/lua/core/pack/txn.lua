@@ -29,6 +29,7 @@ function M.begin(pending)
       checkout_ref = p.checkout_ref,
       tag_name     = p.tag_name,
       tag_sha      = p.tag_sha,
+      npm_entry    = p.npm_entry,
     }
   end
   -- Preserve any existing attempts count so the resumer's bump survives

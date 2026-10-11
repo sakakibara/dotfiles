@@ -33,7 +33,7 @@ local function structured_status(Pack, filter_pattern)
   local lazy_count = 0
   for _, n in ipairs(names) do
     if Pack._loaded[n] then loaded_count = loaded_count + 1
-    elseif Pack._specs[n].lazy then lazy_count = lazy_count + 1 end
+    elseif Pack._specs[n].lazy and not Pack._specs[n].npm then lazy_count = lazy_count + 1 end
   end
 
   -- Name column: longest actual name, floor 16, cap 50.
@@ -62,7 +62,9 @@ local function structured_status(Pack, filter_pattern)
   for _, n in ipairs(names) do
     local s = Pack._specs[n]
     local state, glyph, glyph_hl
-    if Pack._loaded[n] then
+    if s.npm then
+      state, glyph, glyph_hl = "npm", "#", "Constant"
+    elseif Pack._loaded[n] then
       state, glyph, glyph_hl = "loaded", "*", "Special"
     elseif s.lazy then
       state, glyph, glyph_hl = "lazy", "~", "Identifier"
@@ -70,7 +72,9 @@ local function structured_status(Pack, filter_pattern)
       state, glyph, glyph_hl = "pending", ".", "Comment"
     end
 
-    local trigger = s.event and ("event=" .. vim.inspect(s.event):gsub("\n%s*", ""))
+    local npm_version = s.npm and require("core.pack.npm").installed_version(require("core.pack.install").install_dir(n))
+    local trigger = s.npm and ("npm=" .. s.npm .. "@" .. (npm_version or "not installed"))
+        or s.event and ("event=" .. vim.inspect(s.event):gsub("\n%s*", ""))
         or s.ft and ("ft=" .. vim.inspect(s.ft))
         or s.cmd and ("cmd=" .. vim.inspect(s.cmd))
         or s.keys and "keys"
@@ -432,6 +436,14 @@ local function subcommands(Pack)
       if not name then vim.notify("core.pack: usage :Pack why <name>", vim.log.levels.WARN); return end
       if not Pack.has(name) then
         vim.notify(("core.pack: unknown plugin '%s'"):format(name), vim.log.levels.WARN); return
+      end
+      local spec = Pack._specs[name]
+      if spec.npm then
+        local dir = Pack.dir(name)
+        local v = dir and require("core.pack.npm").installed_version(dir)
+        vim.notify(("core.pack: %s is npm package %s %s; it is data and never goes on the runtimepath (%s)")
+          :format(name, spec.npm, v or "(not installed)", dir or "run :Pack install"))
+        return
       end
       if not Pack._loaded[name] then
         vim.notify(("core.pack: %s is not loaded"):format(name)); return

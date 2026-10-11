@@ -115,7 +115,7 @@ local Keymaps = require("core.pack.keymaps").create({
 local _loading = {}  -- cycle-detection guard: names currently mid-load
 
 load_spec = function(spec, reason)
-  if M._loaded[spec.name] then return end
+  if M._loaded[spec.name] or spec.npm then return end
   if _loading[spec.name] then
     vim.notify(("core.pack: dependency cycle detected at '%s'"):format(spec.name), vim.log.levels.ERROR)
     return
@@ -218,6 +218,7 @@ end
 function M.setup(cfg)
   cfg = cfg or {}
   local specs = cfg.specs or {}
+  require("core.pack.npm").min_age = cfg.npm and cfg.npm.min_age or nil
 
   M._specs = {}
   M._inactive = {}
@@ -339,7 +340,7 @@ function M.setup(cfg)
               resumable[#resumable + 1] = {
                 spec = spec, dir = p.dir, from = p.from, to = p.to,
                 target_rev = p.target_rev, ref = p.ref, checkout_ref = p.checkout_ref,
-                tag_name = p.tag_name, tag_sha = p.tag_sha,
+                tag_name = p.tag_name, tag_sha = p.tag_sha, npm_entry = p.npm_entry,
               }
             end
           end
@@ -419,6 +420,15 @@ function M.load(name)
 end
 
 function M.has(name)    return M._specs[name] ~= nil end
+
+function M.dir(name)
+  local spec = M._specs[name]
+  if not spec then return nil end
+  local dir = require("core.pack.install").install_dir(name)
+  if spec.npm and not require("core.pack.npm").installed_version(dir) then return nil end
+  if vim.fn.isdirectory(dir) == 0 then return nil end
+  return dir
+end
 function M.loaded(name) return M._loaded[name] == true end
 function M.opts(name)   return M._opts[name] or {} end
 

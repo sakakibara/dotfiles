@@ -10,6 +10,7 @@ local UI         = require("core.pack.ui")
 local Log        = require("core.pack.log")
 local BuildCache = require("core.pack.build_cache")
 local Txn        = require("core.pack.txn")
+local Npm        = require("core.pack.npm")
 
 local async, await = Jobs.async, Jobs.await
 
@@ -252,10 +253,35 @@ local function run_batched(body, arg, opts)
   end)
 end
 
+local function install_npm(p, opts, done)
+  local name = p.spec.name
+  local function failed(msg)
+    vim.notify(("core.pack: %s: %s"):format(name, msg), vim.log.levels.ERROR)
+    if opts.on_failed then opts.on_failed(name, msg) end
+    done()
+  end
+  local function go(entry)
+    Npm.install(p.spec, entry, p.dir, function(ok, err)
+      if not ok then return failed(err) end
+      Lock.set(name, entry)
+      done()
+    end)
+  end
+  local locked = Lock.get(name)
+  if Npm.usable_lock(p.spec, locked) then return go(locked) end
+  Npm.resolve(p.spec, function(res, err)
+    if not res then return failed(err) end
+    go(res.entry)
+  end)
+end
+
 local function install_missing(specs, opts)
-  local pending = {}
+  local pending, npm_pending = {}, {}
   for _, spec in ipairs(specs) do
-    if not spec.dev then
+    if spec.npm then
+      local dir = M.install_dir(spec.name)
+      if not Npm.installed_version(dir) then npm_pending[#npm_pending + 1] = { spec = spec, dir = dir } end
+    elseif not spec.dev then
       local dir = M.install_dir(spec.name)
       if vim.fn.isdirectory(dir) == 1 and Git.is_repo(dir) then
         -- already installed; nothing to do
@@ -270,7 +296,7 @@ local function install_missing(specs, opts)
     end
   end
 
-  if #pending == 0 then
+  if #pending == 0 and #npm_pending == 0 then
     if opts.on_complete then opts.on_complete() end
     return
   end
@@ -279,9 +305,9 @@ local function install_missing(specs, opts)
   local view
   if opts.open_window then
     view = UI.fidget({ open_window = true })
-    view:set_status("core.pack", ("installing 0/%d"):format(#pending))
+    view:set_status("core.pack", ("installing 0/%d"):format(#pending + #npm_pending))
   end
-  local total = #pending
+  local total = #pending + #npm_pending
   local fully_done = 0
   Lock.batch_begin()
   await(function(cb)
@@ -347,7 +373,10 @@ local function install_missing(specs, opts)
         end,
       })
     end
-    pool:run({})
+    for _, p in ipairs(npm_pending) do
+      install_npm(p, opts, function() complete_one(p.spec, { code = 0 }) end)
+    end
+    if #pending > 0 then pool:run({}) end
   end)
   Lock.batch_commit()
   if view then view:done("core.pack") end
@@ -422,46 +451,63 @@ local function apply_pending_body(pending, opts)
     end
 
     local pool = Jobs.pool({ concurrency = opts.concurrency })
+    local git_count = 0
     for _, p in ipairs(pending) do
-      pool:add({
-        cmd = { "git", "-C", p.dir, "checkout", "--detach", "--quiet",
-                p.target_rev or p.checkout_ref or p.ref },
-        tag = p.spec.name,
-        async_done = true,
-        on_done = function(r, release)
-          if r.code ~= 0 then
-            vim.notify(("core.pack: %s: update failed: %s"):format(p.spec.name, r.stderr),
-              vim.log.levels.ERROR)
-            complete_one(); release(); return
-          end
-          -- HEAD is now p.target_rev. Skip a sync rev-parse; reuse the
-          -- value we already resolved.
-          local entry = {
-            src = p.spec.src,
-            rev = p.target_rev,
-            version = type(p.spec.version) == "string" and p.spec.version or nil,
-          }
-          entry.tag_name = p.tag_name
-          entry.tag_sha  = p.tag_sha
-          Lock.set(p.spec.name, entry)
-          M.run_build(p.spec, p.dir, { fidget = opts.fidget }, function()
-            M.generate_helptags(p.dir)
+      if p.npm_entry then
+        Npm.install(p.spec, p.npm_entry, p.dir, function(ok, err)
+          if not ok then
+            vim.notify(("core.pack: %s: update failed: %s"):format(p.spec.name, err), vim.log.levels.ERROR)
+          else
+            Lock.set(p.spec.name, p.npm_entry)
             Log.append({
-              ts = os.time(),
-              kind = "update",
-              name = p.spec.name,
-              from = p.from,
-              to = p.to,
-              count = p.count or 0,
-              subject = p.subject or "",
+              ts = os.time(), kind = "update", name = p.spec.name,
+              from = p.from, to = p.to, count = 0, subject = "npm " .. p.npm_entry.npm .. "@" .. p.to,
             })
-            complete_one()
-            release()
-          end)
-        end,
-      })
+          end
+          complete_one()
+        end)
+      else
+        git_count = git_count + 1
+        pool:add({
+          cmd = { "git", "-C", p.dir, "checkout", "--detach", "--quiet",
+                  p.target_rev or p.checkout_ref or p.ref },
+          tag = p.spec.name,
+          async_done = true,
+          on_done = function(r, release)
+            if r.code ~= 0 then
+              vim.notify(("core.pack: %s: update failed: %s"):format(p.spec.name, r.stderr),
+                vim.log.levels.ERROR)
+              complete_one(); release(); return
+            end
+            -- HEAD is now p.target_rev. Skip a sync rev-parse; reuse the
+            -- value we already resolved.
+            local entry = {
+              src = p.spec.src,
+              rev = p.target_rev,
+              version = type(p.spec.version) == "string" and p.spec.version or nil,
+            }
+            entry.tag_name = p.tag_name
+            entry.tag_sha  = p.tag_sha
+            Lock.set(p.spec.name, entry)
+            M.run_build(p.spec, p.dir, { fidget = opts.fidget }, function()
+              M.generate_helptags(p.dir)
+              Log.append({
+                ts = os.time(),
+                kind = "update",
+                name = p.spec.name,
+                from = p.from,
+                to = p.to,
+                count = p.count or 0,
+                subject = p.subject or "",
+              })
+              complete_one()
+              release()
+            end)
+          end,
+        })
+      end
     end
-    pool:run({})
+    if git_count > 0 then pool:run({}) end
   end)
 
   -- Smoke pass: in clean nvim subprocesses (parallel via Jobs.pool),
@@ -551,7 +597,13 @@ M.apply_pending = apply_pending
 M.reconcile = async(function(specs)
   local drifts = {}
   for _, spec in ipairs(specs) do
-    if not spec.dev then
+    if spec.npm then
+      local entry = Lock.get(spec.name)
+      local installed = Npm.installed_version(M.install_dir(spec.name))
+      if entry and type(entry.version) == "string" and installed and installed ~= entry.version then
+        drifts[#drifts + 1] = { name = spec.name, expected = entry.version, actual = installed }
+      end
+    elseif not spec.dev then
       local entry = Lock.get(spec.name)
       if entry and type(entry.rev) == "string" and #entry.rev >= 7 then
         local dir = M.install_dir(spec.name)
@@ -618,16 +670,19 @@ M.update = function(specs, names, opts)
   for _, s in ipairs(specs) do by_name[s.name] = s end
   if names == nil or #names == 0 then names = vim.tbl_keys(by_name) end
 
-  local targets = {}
+  local targets, npm_targets = {}, {}
   for _, name in ipairs(names) do
     local spec = by_name[name]
-    if spec and not spec.dev then
+    if spec and spec.npm then
+      local dir = M.install_dir(name)
+      if vim.fn.isdirectory(dir) == 1 then npm_targets[#npm_targets + 1] = { name = name, spec = spec, dir = dir } end
+    elseif spec and not spec.dev then
       local dir = M.install_dir(name)
       if Git.is_repo(dir) then targets[#targets + 1] = { name = name, spec = spec, dir = dir } end
     end
   end
 
-  if #targets == 0 then
+  if #targets == 0 and #npm_targets == 0 then
     vim.notify("core.pack: nothing to update")
     vim.schedule(function() if opts.on_complete then opts.on_complete() end end)
     return
@@ -856,6 +911,40 @@ M.update = function(specs, names, opts)
       end
     end
 
+    local notices, npm_pending = {}, {}
+    for _, t in ipairs(npm_targets) do
+      local installed = Npm.installed_version(t.dir)
+      local locked = Lock.get(t.name)
+      local function add(entry)
+        npm_pending[#npm_pending + 1] = {
+          spec = t.spec, dir = t.dir, from = installed or "none", to = entry.version, npm_entry = entry,
+        }
+      end
+      if opts.target == "lockfile" then
+        if Npm.usable_lock(t.spec, locked) and locked.version ~= installed then add(locked) end
+      else
+        local res, err, held = await(Npm.resolve, t.spec)
+        local h = res and res.held or held
+        if h then notices[#notices + 1] = { name = t.name, kind = "held", text = Npm.held_text(h) } end
+        if not res then
+          if not held then notices[#notices + 1] = { name = t.name, kind = "error", text = err } end
+        elseif res.entry.version ~= installed then
+          local blocked = Npm.provenance_change(locked, res.entry.provenance)
+          if blocked then
+            notices[#notices + 1] = { name = t.name, kind = "blocked", text = res.entry.version .. ": " .. blocked }
+          else
+            add(res.entry)
+          end
+        end
+      end
+    end
+    local function notify_notices()
+      if #notices == 0 then return end
+      local lines = {}
+      for _, n in ipairs(notices) do lines[#lines + 1] = ("  %s: %s"):format(n.name, n.text) end
+      vim.notify("core.pack: npm updates not applied:\n" .. table.concat(lines, "\n"), vim.log.levels.WARN)
+    end
+
     -- Build pending list (pure Lua).
     local pending = {}
     for _, t in ipairs(targets) do
@@ -874,42 +963,56 @@ M.update = function(specs, names, opts)
       end
     end
 
+    vim.list_extend(pending, npm_pending)
+
     if #pending == 0 then
+      notify_notices()
       vim.notify("core.pack: nothing to update")
       if fidget then fidget:close() end
       if opts.on_complete then opts.on_complete() end
       return
     end
     if opts.confirm == false then
+      notify_notices()
       apply_pending(pending, { on_complete = opts.on_complete, fidget = fidget })
       return
     end
 
     -- Phase 4: per-plugin commit count + latest subject for the review
     -- buffer. Run in parallel; the review only opens once all logs land.
-    if fidget then fidget:set_status("core.pack", ("logging 0/%d"):format(#pending)) end
-    await(function(cb)
+    local git_pending = vim.tbl_filter(function(p) return p.npm_entry == nil end, pending)
+    if fidget then fidget:set_status("core.pack", ("logging 0/%d"):format(#git_pending)) end
+    if #git_pending > 0 then await(function(cb)
       local log_done = 0
-      for _, p in ipairs(pending) do
+      for _, p in ipairs(git_pending) do
         Git.log_between(p.dir, p.from, p.to, function(commits)
           commits = commits or {}
           p.count = #commits
           p.subject = commits[1] and commits[1].subject or ""
           p.ago = commits[1] and commits[1].ago or ""
           log_done = log_done + 1
-          if fidget then fidget:set_status("core.pack", ("logging %d/%d"):format(log_done, #pending)) end
-          if log_done == #pending then cb() end
+          if fidget then fidget:set_status("core.pack", ("logging %d/%d"):format(log_done, #git_pending)) end
+          if log_done == #git_pending then cb() end
         end)
       end
-    end)
+    end) end
 
     local items = {}
     for _, p in ipairs(pending) do
-      items[#items + 1] = {
-        name = p.spec.name, from = p.from, to = p.to,
-        count = p.count, subject = p.subject, ago = p.ago, dir = p.dir,
-        _orig = p,
-      }
+      if p.npm_entry then
+        local prov = p.npm_entry.provenance
+        items[#items + 1] = {
+          name = p.spec.name, from = p.from, to = p.to, npm = true, dir = p.dir,
+          subject = "npm " .. p.npm_entry.npm .. (prov and (" (provenance " .. prov.repository .. ")") or ""),
+          _orig = p,
+        }
+      else
+        items[#items + 1] = {
+          name = p.spec.name, from = p.from, to = p.to,
+          count = p.count, subject = p.subject, ago = p.ago, dir = p.dir,
+          _orig = p,
+        }
+      end
     end
 
     if fidget then fidget:close(); fidget = nil end
@@ -922,6 +1025,7 @@ M.update = function(specs, names, opts)
     end
     local apply_started = false
     UI.update_review(items, {
+      notices = notices,
       open_window = opts.open_window ~= false,
       on_apply = function(list)
         apply_started = true
@@ -935,6 +1039,7 @@ M.update = function(specs, names, opts)
       end,
       on_expand = function(name, cb)
         for _, p in ipairs(pending) do
+          if p.spec.name == name and p.npm_entry then return cb({}) end
           if p.spec.name == name then
             Git.run({ "log", "--pretty=%H%x09%an%x09%ar%x09%s", p.from .. ".." .. p.to },
               p.dir, function(r)
