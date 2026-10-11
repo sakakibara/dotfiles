@@ -217,6 +217,10 @@ Distinguish "verification wasn't run" from "no runnable verification exists": a 
 
 Check the target repo's convention with `git log -10 --format='%B'` BEFORE composing a message, and adopt it. Never judge style from `--oneline` or `%s`: `--oneline` strips bodies and trailers, and `%s` collapses a wrapped subject onto one line, so every repo looks subject-only and the check cannot fail. `%B` is the complete raw message. Match body-vs-subject-only from what it actually shows. Common: conventional commits (`feat:`, `fix(scope):`, `chore:`) on most public projects; terse one-liner imperative (no body/trailers); or mixed - inspect before assuming. Boilerplate commits aren't exempt: the first commit in a conventional-commit project is `chore: initial commit`, not `Initial commit`. A cross-reference to a real git object (`Companion to cb1c4c4.`) is fine; a reference to a spec/plan FILE is not (it lives outside the repo and won't survive a fresh clone).
 
+### Run `gh` from inside the target repo
+
+`gh` is a PATH shim that picks the GitHub account from the repo at `$PWD` (remote-URL routing to `github.account`); outside a repo it falls back to gh's active account. Create the local repo and its `origin` remote first, then run gh there. Never "fix" an account mismatch with `gh auth switch`.
+
 ## Public / published repos
 
 ### No LICENSE section in README
