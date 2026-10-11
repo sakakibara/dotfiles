@@ -359,6 +359,25 @@ T.describe("core.pack.npm install", function()
     T.eq(Npm.installed_version(base .. "/pkg"), "1.0.0")
   end)
 
+  T.it("an install that throws reports the error and lets the next queued install run", function()
+    local base = root()
+    local blocker = base .. "/file"
+    vim.fn.writefile({ "x" }, blocker)
+    local dir = blocker .. "/pkg"
+    local entry = { npm = "pkg", version = "1.0.0", tarball = "https://registry.npmjs.org/pkg/-/pkg-1.0.0.tgz",
+      integrity = "sha512-" .. vim.base64.encode(("x"):rep(64)) }
+    local results = {}
+    local ok = pcall(function()
+      for i = 1, 2 do
+        Npm.install({ npm = "pkg", files = { "dist" } }, entry, dir, function(r, err) results[i] = { r, err } end)
+      end
+    end)
+    T.truthy(ok, "install must not throw")
+    vim.wait(5000, function() return results[1] ~= nil and results[2] ~= nil end, 10)
+    T.eq({ results[1] and results[1][1], results[2] and results[2][1] }, { false, false })
+    T.truthy(type(results[1][2]) == "string" and results[1][2] ~= "", vim.inspect(results))
+  end)
+
   T.it("refuses a listed path the tarball does not have", function()
     local tgz, integrity = fixture_tgz("1.0.0")
     local base = root()

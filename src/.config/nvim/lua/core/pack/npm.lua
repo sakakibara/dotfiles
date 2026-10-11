@@ -444,17 +444,29 @@ function M.install(spec, entry, dir, cb)
     return
   end
   queues[dir] = {}
-  local function step(s, e, c)
-    install_one(s, e, dir, function(...)
-      local nxt = table.remove(queues[dir], 1)
-      while nxt and installed_as(nxt[1], nxt[2], dir) do
-        local done = nxt[3]
-        vim.schedule(function() done(true) end)
-        nxt = table.remove(queues[dir], 1)
-      end
-      if nxt then step(nxt[1], nxt[2], nxt[3]) else queues[dir] = nil end
+  local step
+  local function advance()
+    local nxt = table.remove(queues[dir], 1)
+    while nxt and installed_as(nxt[1], nxt[2], dir) do
+      local done = nxt[3]
+      vim.schedule(function() done(true) end)
+      nxt = table.remove(queues[dir], 1)
+    end
+    if nxt then step(nxt[1], nxt[2], nxt[3]) else queues[dir] = nil end
+  end
+  step = function(s, e, c)
+    local finished = false
+    local function finish(...)
+      if finished then return end
+      finished = true
+      advance()
       c(...)
-    end)
+    end
+    local ok, err = pcall(install_one, s, e, dir, finish)
+    if not ok then
+      local msg = tostring(err)
+      vim.schedule(function() finish(false, msg) end)
+    end
   end
   step(spec, entry, cb)
 end
