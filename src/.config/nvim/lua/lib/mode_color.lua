@@ -3,32 +3,17 @@
 -- Colors are derived from the current colorscheme's standard HL groups --
 -- works with any theme.
 
+local palette = require("lib.palette")
+
 local M = {}
 
-local function get(name, attr, fallback)
-  local h = vim.api.nvim_get_hl(0, { name = name, link = false })
-  local v = h[attr]
-  if type(v) == "number" then return string.format("#%06x", v) end
-  return fallback
+function M.lookup(tbl, mode)
+  return tbl[mode] or tbl[mode:sub(1, 2)] or tbl[mode:sub(1, 1)]
 end
 
-local P = {}  -- derived palette cache
+local colors
 
-local function derive()
-  P.bg_end  = get("Normal", "bg", "#000000")
-  -- Must match lib.statusline's derive_palette() chain exactly so the slant
-  -- separator's bg matches the path segment's bg.
-  P.bg_mid  = get("StatusLine", "bg", nil) or get("Folded", "bg", nil) or P.bg_end
-  P.red     = get("DiagnosticError", "fg", nil) or get("Error", "fg", "#ff5555")
-  P.green   = get("String",   "fg", "#50fa7b")
-  P.teal    = get("Type",     "fg", nil) or get("Special", "fg", "#8be9fd")
-  P.peach   = get("Number",   "fg", nil) or get("Constant", "fg", "#ffb86c")
-  P.mauve   = get("Keyword",  "fg", nil) or get("Statement", "fg", "#ff79c6")
-  P.blue    = get("Function", "fg", "#8be9fd")
-end
-
-local function COLORS()
-  derive()
+local function build(P)
   return {
     n = P.red, no = P.red,
     i = P.green, ic = P.green, ix = P.green,
@@ -47,27 +32,12 @@ local current_hex
 local timer
 
 function M.target(mode)
-  local c = COLORS()
-  return c[mode] or c.n
-end
-
-function M.current() return current_hex or P.red or "#ff5555" end
-
-local function hex_to_rgb(hex)
-  return tonumber(hex:sub(2, 3), 16), tonumber(hex:sub(4, 5), 16), tonumber(hex:sub(6, 7), 16)
-end
-
-local function rgb_to_hex(r, g, b)
-  return string.format("#%02x%02x%02x", math.floor(r + 0.5), math.floor(g + 0.5), math.floor(b + 0.5))
-end
-
-function M._interpolate(from, to, t)
-  local fr, fg, fb = hex_to_rgb(from)
-  local tr, tg, tb = hex_to_rgb(to)
-  return rgb_to_hex(fr + (tr - fr) * t, fg + (tg - fg) * t, fb + (tb - fb) * t)
+  colors = colors or build(palette.get())
+  return M.lookup(colors, mode) or colors.n
 end
 
 local function set_hl(hex)
+  local P = palette.get()
   current_hex = hex
   -- Mode block: dark fg on mode-colored bg (powerline style)
   vim.api.nvim_set_hl(0, "StslMode",    { fg = P.bg_end, bg = hex, bold = true })
@@ -77,12 +47,20 @@ local function set_hl(hex)
   vim.api.nvim_set_hl(0, "StslCapL",    { fg = hex, bg = P.bg_end })
 end
 
+local function stop_timer()
+  if timer then
+    timer:stop()
+    if not timer:is_closing() then timer:close() end
+    timer = nil
+  end
+end
+
 function M.animate(target_mode)
   local target_hex = M.target(target_mode)
   if target_hex == current_hex then return end
   if not vim.g.status_animate then set_hl(target_hex); return end
 
-  if timer then timer:stop(); if not timer:is_closing() then timer:close() end; timer = nil end
+  stop_timer()
   local from = current_hex or target_hex
   local frame = 0
   -- Capture THIS animation's timer in the closure instead of referencing
@@ -92,35 +70,34 @@ function M.animate(target_mode)
   local my_timer = assert(vim.uv.new_timer())
   timer = my_timer
   my_timer:start(FRAME_MS, FRAME_MS, vim.schedule_wrap(function()
+    if my_timer:is_closing() then return end
     frame = frame + 1
     local t = frame / FRAMES
     if t >= 1 then
       set_hl(target_hex)
-      if not my_timer:is_closing() then
-        my_timer:stop(); my_timer:close()
-      end
+      my_timer:stop(); my_timer:close()
       if timer == my_timer then timer = nil end
     else
-      set_hl(M._interpolate(from, target_hex, t))
+      set_hl(palette.mix(from, target_hex, t))
     end
     pcall(vim.cmd, "redrawstatus")
   end))
 end
 
+function M.refresh()
+  colors = nil
+  stop_timer()
+  set_hl(M.target(vim.fn.mode(1)))
+end
+
 function M.setup()
   if vim.g.status_animate == nil then vim.g.status_animate = true end
-  derive()
   -- Initial color = actual mode's target (not a placeholder red). Prevents
   -- a brief red flash on startup before the first ModeChanged animates.
-  set_hl(M.target(vim.fn.mode()))
+  M.refresh()
   vim.api.nvim_create_autocmd("ModeChanged", {
     group = vim.api.nvim_create_augroup("Lib.mode_color", { clear = true }),
-    callback = function() M.animate(vim.fn.mode()) end,
-  })
-  -- Re-derive on theme change
-  vim.api.nvim_create_autocmd("ColorScheme", {
-    group = vim.api.nvim_create_augroup("Lib.mode_color.theme", { clear = true }),
-    callback = function() derive(); set_hl(M.target(vim.fn.mode())) end,
+    callback = function() M.animate(vim.fn.mode(1)) end,
   })
 end
 

@@ -15,11 +15,7 @@ local menus = {}
 local ns = vim.api.nvim_create_namespace("Lib.winbar_menu")
 
 local function set_hl()
-  local function get(n, a)
-    local h = vim.api.nvim_get_hl(0, { name = n, link = false })
-    local v = h[a]
-    return type(v) == "number" and string.format("#%06x", v) or nil
-  end
+  local get = require("lib.palette").hl_hex
   local normal_bg  = get("NormalFloat", "bg") or get("Pmenu",   "bg") or get("Normal", "bg")
   local normal_fg  = get("NormalFloat", "fg") or get("Normal",  "fg")
   local dim_fg     = get("Comment",     "fg") or get("NonText", "fg")

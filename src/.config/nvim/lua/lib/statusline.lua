@@ -8,37 +8,15 @@ local M = {}
 
 -- Palette + highlights
 
--- Derive palette from CURRENT colorscheme's standard highlight groups.
--- Works with any theme (catppuccin, tokyonight, gruvbox, kanagawa, etc.)
--- because we reference semantic groups every colorscheme defines.
-
-local palette  -- filled by derive_palette()
+local palette = require("lib.palette")
+local mode_color = require("lib.mode_color")
 
 local function hl(name, opts)
   vim.api.nvim_set_hl(0, name, opts)
 end
 
-local function get(name, attr, fallback)
-  local h = vim.api.nvim_get_hl(0, { name = name, link = false })
-  local v = h[attr]
-  if type(v) == "number" then return string.format("#%06x", v) end
-  return fallback
-end
-
--- Small helper to compute a slightly-different bg tint for group alternation.
-local function shade(hex, delta)
-  if not hex or hex == "NONE" then return hex end
-  local r = tonumber(hex:sub(2,3), 16)
-  local g = tonumber(hex:sub(4,5), 16)
-  local b = tonumber(hex:sub(6,7), 16)
-  r = math.max(0, math.min(255, r + delta))
-  g = math.max(0, math.min(255, g + delta))
-  b = math.max(0, math.min(255, b + delta))
-  return string.format("#%02x%02x%02x", r, g, b)
-end
-
--- Powerline glyphs -- declared up here (before derive_palette) so the
--- function captures these locals as upvalues. derive_palette() rewrites
+-- Powerline glyphs -- declared up here (before define_highlights) so the
+-- function captures these locals as upvalues. define_highlights() rewrites
 -- SEP from the real glyphs to "" on a fresh boot when the bar bg matches
 -- Normal.bg (default colorscheme), and back to glyphs once a colorscheme
 -- gives StatusLine.bg a distinct value.
@@ -55,62 +33,17 @@ local SEP_GLYPHS = {
   slant_l = "\u{e0ba}",  -- slant-left  (mid->mode on right side, unused)
 }
 
-local function derive_palette()
-  local bg_end   = get("Normal", "bg", "#000000")
-  -- Recessed (darker than Normal.bg) bar -- modern minimal look. Catppuccin
-  -- mocha sets StatusLine.bg to mantle (#181825), which is darker than
-  -- Normal.bg (base #1e1e2e) and gives crisp contrast for all fg colors.
-  local bg_a     = get("StatusLine", "bg", nil) or get("Folded", "bg", nil) or bg_end
-  -- Slightly different tint for alternating groups (lighter by 12 rgb units)
-  local bg_b     = shade(bg_a, 12)
-  -- Main fg comes from Normal, not StatusLine (StatusLine.fg is often dimmed)
-  local fg       = get("Normal", "fg", "#ffffff")
-  local fg_bold  = get("Normal", "fg", "#ffffff")
-  -- fg_dim must clear WCAG AA (4.5:1) on bg_a. LineNr (#45475a / surface1)
-  -- and NonText (#6c7086 / overlay0) both fail on mantle (~1.9:1 and ~4.0:1).
-  -- Conceal.fg is overlay1 (#7f849c) which gives ~5.3:1 on mantle -- PASS.
-  local fg_dim   = get("Conceal", "fg", nil) or get("Comment", "fg", nil) or get("NonText", "fg", fg)
-  -- Path cwd specifically: bumped further for clear legibility (was the
-  -- "current dir hard to see" complaint). Pmenu.fg is overlay2 in mocha
-  -- (#9399b2); Conceal.fg is overlay1 (#7f849c) -- use Pmenu first.
-  local fg_path_cwd = get("Pmenu", "fg", nil) or get("Conceal", "fg", nil) or fg_dim
-
-  -- Semantic source groups -- every theme defines these
-  local red      = get("DiagnosticError", "fg", nil) or get("Error",       "fg", "#ff5555")
-  local yellow   = get("DiagnosticWarn",  "fg", nil) or get("WarningMsg",  "fg", "#f1fa8c")
-  local info     = get("DiagnosticInfo",  "fg", nil) or get("Function",    "fg", "#8be9fd")
-  local hint     = get("DiagnosticHint",  "fg", nil) or get("Special",     "fg", "#50fa7b")
-  local green    = get("String",          "fg", nil) or "#50fa7b"
-  local blue     = get("Function",        "fg", nil) or "#8be9fd"
-  local purple   = get("Statement",       "fg", nil) or get("Keyword",     "fg", "#bd93f9")
-  local orange   = get("Constant",        "fg", nil) or get("Number",      "fg", "#ffb86c")
-  local cyan     = get("Special",         "fg", nil) or get("Type",        "fg", "#8be9fd")
-  local git_add  = get("diffAdded",       "fg", nil) or green
-  local git_del  = get("diffRemoved",     "fg", nil) or get("diffDeleted", "fg", red)
-  local git_chg  = get("diffChanged",     "fg", nil) or yellow
-
-  palette = {
-    bg_end = bg_end, bg_mid = bg_a, fg = fg, fg_bold = fg_bold, fg_dim = fg_dim,
-    fg_path_cwd = fg_path_cwd,
-    red = red, yellow = yellow, green = green, blue = blue,
-    purple = purple, orange = orange, cyan = cyan,
-    info = info, hint = hint,
-    git_add = git_add, git_del = git_del, git_chg = git_chg,
-  }
+local function define_highlights()
+  local p = palette.get()
 
   -- Wire (or unwire) the powerline separators based on whether the bar bg
   -- is actually distinct from Normal.bg. Same colors on both sides -> ugly
   -- gray triangle, so we blank the separators in that case. Themes like
   -- catppuccin set StatusLine.bg = mantle (≠ base), and pass.
-  local has_distinct_bg = bg_a ~= bg_end
+  local has_distinct_bg = p.bg_mid ~= p.bg_end
   for k, glyph in pairs(SEP_GLYPHS) do
     SEP[k] = has_distinct_bg and glyph or ""
   end
-end
-
-local function define_highlights()
-  derive_palette()
-  local p = palette
 
   -- fg_dim (#7f849c / overlay1) is 4.44:1 on bg_end -- just below WCAG AA.
   -- Use fg_path_cwd (#9399b2 / overlay2) for the inactive bar to clear 4.5:1.
@@ -119,10 +52,6 @@ local function define_highlights()
   hl("StslDim",       { fg = p.fg_dim, bg = p.bg_mid })
   hl("StslBold",      { fg = p.fg, bg = p.bg_mid, bold = true })
 
-  -- Mode block (fg/bg + caps driven by lib/mode_color on ModeChanged)
-  hl("StslMode",      { fg = p.bg_end, bg = p.red, bold = true })
-  hl("StslModeSep",   { fg = p.red, bg = p.bg_mid })
-  hl("StslCapL",      { fg = p.red, bg = p.bg_end })
   hl("StslCapR",      { fg = p.bg_mid, bg = p.bg_end })
 
   hl("StslGit",       { fg = p.purple,   bg = p.bg_mid })
@@ -183,15 +112,8 @@ local MODE_NAMES = {
 M._segments = {}
 
 function M._segments.mode(mode)
-  mode = mode or vim.fn.mode()
-  return "%#StslCapL#" .. SEP.cap_l .. "%#StslMode# " .. (MODE_NAMES[mode] or "??") .. " %#StslModeSep#" .. SEP.slant_r
-end
-
-function M._segments._short_path(path, maxlen)
-  if Lib.unicode.width(path) <= maxlen then return path end
-  local parts = vim.split(path, "/", { plain = true })
-  if #parts <= 2 then return path end
-  return parts[1] .. "/…/" .. parts[#parts]
+  mode = mode or vim.fn.mode(1)
+  return "%#StslCapL#" .. SEP.cap_l .. "%#StslMode# " .. (mode_color.lookup(MODE_NAMES, mode) or "??") .. " %#StslModeSep#" .. SEP.slant_r
 end
 
 function M._segments.scrollbar(lnum, total)
@@ -646,15 +568,20 @@ end
 -- Setup
 
 function M.setup()
+  palette.refresh()
   define_highlights()
-  require("lib.mode_color").setup()
+  mode_color.setup()
 
   -- Re-define highlights on colorscheme change
   vim.api.nvim_create_autocmd("ColorScheme", {
     group = vim.api.nvim_create_augroup("Lib.statusline.hl", { clear = true }),
     callback = function()
       -- Catppuccin may not be loaded yet during early colorscheme events; protect.
-      pcall(define_highlights)
+      pcall(function()
+        palette.refresh()
+        define_highlights()
+        mode_color.refresh()
+      end)
     end,
   })
 

@@ -536,11 +536,7 @@ end
 
 -- Setup
 function M.setup()
-  local function hex(n, a)
-    local h = vim.api.nvim_get_hl(0, { name = n, link = false })
-    local v = h[a]
-    return type(v) == "number" and string.format("#%06x", v) or nil
-  end
+  local hex = require("lib.palette").hl_hex
 
   local function apply_hl()
     local scope_fg = hex("Function",  "fg") or hex("Normal",   "fg")
