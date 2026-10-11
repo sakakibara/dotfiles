@@ -633,6 +633,52 @@ T.describe("core.pack.install", function()
       "main thread should tick during ex-command build (got " .. ticks .. ", expected >=30)")
   end)
 
+  T.it("update to the lockfile rev works offline and reports the fetch failure", function()
+    local I, L = fresh()
+    local remote = make_remote()
+    local spec = { name = "demo", src = "file://" .. remote }
+    async(function(cb) I.install_missing({ spec }, { on_complete = cb }) end)
+    local rev_a = L.get("demo").rev
+    sh({ "git", "-C", remote, "commit", "--allow-empty", "-q", "-m", "second" })
+    async(function(cb) I.update({ spec }, { "demo" }, { confirm = false, on_complete = cb }) end)
+    T.truthy(L.get("demo").rev ~= rev_a)
+    vim.fn.delete(remote, "rf")
+    L.set("demo", { src = spec.src, rev = rev_a })
+    local warned
+    local orig = vim.notify
+    vim.notify = function(msg, lvl)
+      if lvl == vim.log.levels.WARN and msg:match("fetch failed") then warned = msg end
+    end
+    async(function(cb)
+      I.update({ spec }, { "demo" }, { confirm = false, target = "lockfile", on_complete = cb })
+    end)
+    vim.notify = orig
+    local Git = require("core.pack.git")
+    T.eq(stubs.await(Git.current_rev, I.install_dir("demo")), rev_a)
+    T.truthy(warned and warned:match("demo"), "fetch failure should name the plugin")
+  end)
+
+  T.it("update to a lockfile rev missing locally is skipped with a warning", function()
+    local I, L = fresh()
+    local remote = make_remote()
+    local spec = { name = "demo", src = "file://" .. remote }
+    async(function(cb) I.install_missing({ spec }, { on_complete = cb }) end)
+    local rev_a = L.get("demo").rev
+    L.set("demo", { src = spec.src, rev = string.rep("1", 40) })
+    local warned
+    local orig = vim.notify
+    vim.notify = function(msg, lvl)
+      if lvl == vim.log.levels.WARN and msg:match("not available locally") then warned = msg end
+    end
+    async(function(cb)
+      I.update({ spec }, { "demo" }, { confirm = false, target = "lockfile", on_complete = cb })
+    end)
+    vim.notify = orig
+    local Git = require("core.pack.git")
+    T.eq(stubs.await(Git.current_rev, I.install_dir("demo")), rev_a)
+    T.truthy(warned, "expected a warning about the missing locked rev")
+  end)
+
   T.it("install_missing completes and closes the lock batch when git cannot start", function()
     local I, L = fresh()
     local orig_system, orig_notify = vim.system, vim.notify

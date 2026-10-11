@@ -665,7 +665,13 @@ M.update = function(specs, names, opts)
       fetch_pool:add({
         cmd = { "git", "-C", t.dir, "fetch", "--tags", "--prune", "--force", "origin" },
         tag = t.name,
-        on_done = function(r) t.fetch_ok = (r.code == 0) end,
+        on_done = function(r)
+          t.fetch_ok = (r.code == 0)
+          if not t.fetch_ok then
+            t.fetch_err = vim.trim(r.stderr or ""):match("[^\n]*$")
+            if t.fetch_err == "" then t.fetch_err = "exit " .. tostring(r.code) end
+          end
+        end,
       })
     end
     await(Jobs.await_pool, fetch_pool, {
@@ -673,11 +679,24 @@ M.update = function(specs, names, opts)
         if fidget then fidget:set_status("core.pack", ("fetching %d/%d"):format(done, total)) end
       end,
     })
+    do
+      local failed = {}
+      for _, t in ipairs(targets) do
+        if not t.fetch_ok then failed[#failed + 1] = ("%s: %s"):format(t.name, t.fetch_err) end
+      end
+      if #failed > 0 then
+        table.sort(failed)
+        vim.notify(("core.pack: fetch failed for %d plugin(s)%s:\n  %s"):format(
+          #failed,
+          opts.target == "lockfile" and " (using local objects)" or "",
+          table.concat(failed, "\n  ")), vim.log.levels.WARN)
+      end
+    end
 
     -- Phase 2: resolve refs + HEAD via bundled script.
     local resolve_pool = Jobs.pool({ concurrency = opts.concurrency })
     for _, t in ipairs(targets) do
-      if t.fetch_ok then
+      if t.fetch_ok or opts.target == "lockfile" then
         resolve_pool:add({
           cmd = { "sh", "-c", RESOLVE_SCRIPT, "_", t.dir },
           tag = t.name,
@@ -723,30 +742,43 @@ M.update = function(specs, names, opts)
       end
     end
 
-    -- Phase 3: rev-parse target_ref^{commit}.
+    -- Phase 3: rev-parse target_ref^{commit}, or for a lockfile target
+    -- check that the locked commit is present locally.
     local rp_pool = Jobs.pool({ concurrency = opts.concurrency })
     for _, t in ipairs(targets) do
-      if t.target_ref then
-        if opts.target == "lockfile" then
+      if opts.target == "lockfile" then
+        if t.refs then
           local entry = Lock.get(t.name)
-          if not entry then
+          if not entry or type(entry.rev) ~= "string" or not Refs.validate(entry.rev) then
             vim.notify(("core.pack: %s not in lockfile -- skipping"):format(t.name), vim.log.levels.WARN)
           else
-            t.target_rev = entry.rev
-            t.checkout_ref = entry.rev
+            rp_pool:add({
+              cmd = { "git", "-C", t.dir, "cat-file", "-e", entry.rev .. "^{commit}" },
+              tag = t.name,
+              on_done = function(r)
+                if r.code == 0 then
+                  t.target_rev = entry.rev
+                  t.checkout_ref = entry.rev
+                else
+                  t.target_rev = nil
+                  vim.notify(("core.pack: %s: locked rev %s is not available locally -- skipping"):format(
+                    t.name, entry.rev:sub(1, 8)), vim.log.levels.WARN)
+                end
+              end,
+            })
           end
-        else
-          rp_pool:add({
-            cmd = { "git", "-C", t.dir, "rev-parse", t.target_ref .. "^{commit}" },
-            tag = t.name,
-            on_done = function(r)
-              if r.code == 0 then
-                t.target_rev = (r.stdout or ""):gsub("%s+", "")
-                t.checkout_ref = t.target_ref
-              end
-            end,
-          })
         end
+      elseif t.target_ref then
+        rp_pool:add({
+          cmd = { "git", "-C", t.dir, "rev-parse", t.target_ref .. "^{commit}" },
+          tag = t.name,
+          on_done = function(r)
+            if r.code == 0 then
+              t.target_rev = (r.stdout or ""):gsub("%s+", "")
+              t.checkout_ref = t.target_ref
+            end
+          end,
+        })
       end
     end
     await(Jobs.await_pool, rp_pool, {
