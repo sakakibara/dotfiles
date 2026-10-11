@@ -42,16 +42,26 @@ local function build_keep(line)
   return keep
 end
 
--- Pick the most specific (innermost) non-private capture at this byte.
-local function hl_at(bufnr, lnum, col)
-  local caps = vim.treesitter.get_captures_at_pos(bufnr, lnum, col)
-  for i = #caps, 1, -1 do
-    local name = caps[i].capture
-    if name and not name:find("^_") then
-      return "@" .. name
+local function line_highlights(parser, bufnr, row, len)
+  local hls = {}
+  parser:for_each_tree(function(tstree, tree)
+    if not tstree then return end
+    local root = tstree:root()
+    local root_start, _, root_end = root:range()
+    if root_start > row or root_end < row then return end
+    local query = vim.treesitter.query.get(tree:lang(), "highlights")
+    if not query then return end
+    for id, node in query:iter_captures(root, bufnr, row, row + 1) do
+      local name = query.captures[id]
+      if name and not name:find("^_") then
+        local sr, sc, er, ec = node:range()
+        local first = sr < row and 0 or sc
+        local last = er > row and len or math.min(ec, len)
+        for col = first + 1, last do hls[col] = "@" .. name end
+      end
     end
-  end
-  return "Folded"
+  end)
+  return hls
 end
 
 local function push(segments, text, hl)
@@ -75,11 +85,12 @@ function M.foldtext()
 
   if #line > 0 then
     local keep = build_keep(line)
-    local has_ts = pcall(vim.treesitter.get_parser, bufnr)
-    if has_ts then
+    local parser = vim.treesitter.get_parser(bufnr, nil, { error = false })
+    if parser then
+      local hls = line_highlights(parser, bufnr, lnum, #line)
       for col = 1, #line do
         if keep[col] then
-          push(segments, line:sub(col, col), hl_at(bufnr, lnum, col - 1))
+          push(segments, line:sub(col, col), hls[col] or "Folded")
         end
       end
     else
