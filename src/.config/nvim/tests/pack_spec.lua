@@ -622,6 +622,123 @@ T.describe("core.pack re-fires triggering event", function()
     vim.api.nvim_del_augroup_by_name("FtRefirePlugin")
     vim.api.nvim_buf_delete(buf, { force = true })
   end)
+
+  local function ft_fixture(name, ft)
+    local Install = require("core.pack.install")
+    local tmp = vim.fn.tempname()
+    local root = tmp .. "/pack/coretest/opt"
+    local dir = root .. "/" .. name
+    vim.fn.mkdir(dir .. "/ftplugin", "p")
+    vim.fn.mkdir(dir .. "/indent", "p")
+    vim.fn.writefile({
+      "vim.b.fx_ftplugin = (vim.b.fx_ftplugin or 0) + 1",
+      "vim.g.fx_ftplugin_runs = (vim.g.fx_ftplugin_runs or 0) + 1",
+    }, dir .. "/ftplugin/" .. ft .. ".lua")
+    vim.fn.writefile({ "vim.b.fx_indent = (vim.b.fx_indent or 0) + 1" }, dir .. "/indent/" .. ft .. ".lua")
+    vim.cmd("filetype plugin indent on")
+    local prev_root, prev_pp = Install._install_root_override, vim.o.packpath
+    Install._install_root_override = root
+    vim.opt.packpath:prepend(tmp)
+    vim.g.fx_ftplugin_runs = 0
+    return function()
+      Install._install_root_override = prev_root
+      vim.o.packpath = prev_pp
+      vim.opt.rtp:remove(dir)
+      vim.fn.delete(tmp, "rf")
+    end
+  end
+
+  T.it("an ft-triggered packadd sources the plugin's ftplugin and indent for the first buffer once", function()
+    local pack = reset_pack()
+    local cleanup = ft_fixture("ftfix", "packftx")
+    pack.setup({ specs = { { "test/ftfix", ft = "packftx" } } })
+    local buf = vim.api.nvim_create_buf(true, false)
+    vim.api.nvim_set_current_buf(buf)
+    vim.bo[buf].filetype = "packftx"
+    T.truthy(pack.loaded("ftfix"))
+    T.eq(vim.b[buf].fx_ftplugin, 1)
+    T.eq(vim.b[buf].fx_indent, 1)
+    T.eq(vim.g.fx_ftplugin_runs, 1)
+    local buf2 = vim.api.nvim_create_buf(true, false)
+    vim.api.nvim_set_current_buf(buf2)
+    vim.bo[buf2].filetype = "packftx"
+    T.eq(vim.b[buf2].fx_ftplugin, 1)
+    T.eq(vim.g.fx_ftplugin_runs, 2)
+    vim.api.nvim_buf_delete(buf, { force = true })
+    vim.api.nvim_buf_delete(buf2, { force = true })
+    cleanup()
+  end)
+
+  T.it("an event-triggered packadd sources ftplugin and indent for a buffer whose filetype is already set", function()
+    local pack = reset_pack()
+    local cleanup = ft_fixture("evfix", "packfty")
+    pack.setup({ specs = { { "test/evfix", event = "User EvFixLoad" } } })
+    local buf = vim.api.nvim_create_buf(true, false)
+    vim.api.nvim_set_current_buf(buf)
+    vim.bo[buf].filetype = "packfty"
+    T.eq(vim.b[buf].fx_ftplugin, nil)
+    vim.api.nvim_exec_autocmds("User", { pattern = "EvFixLoad" })
+    T.eq(vim.b[buf].fx_ftplugin, 1)
+    T.eq(vim.b[buf].fx_indent, 1)
+    T.eq(vim.g.fx_ftplugin_runs, 1)
+    vim.api.nvim_buf_delete(buf, { force = true })
+    cleanup()
+  end)
+
+  T.it("a Vimscript ++once autocmd added by a load runs exactly once", function()
+    local pack = reset_pack()
+    vim.g.pack_vim_once = 0
+    pack.setup({ specs = {
+      { dev = true, name = "vim-once", event = "User VimOnceTest", config = function()
+          vim.cmd("autocmd User VimOnceTest ++once let g:pack_vim_once += 1")
+        end },
+    } })
+    vim.api.nvim_exec_autocmds("User", { pattern = "VimOnceTest" })
+    T.eq(vim.g.pack_vim_once, 1)
+    vim.api.nvim_exec_autocmds("User", { pattern = "VimOnceTest" })
+    T.eq(vim.g.pack_vim_once, 1)
+    T.eq(#vim.api.nvim_get_autocmds({ event = "User", pattern = "VimOnceTest" }), 0)
+  end)
+
+  T.it("a Vimscript ++once autocmd sharing its slot with others still runs only once", function()
+    local pack = reset_pack()
+    vim.g.pack_vim_once2, vim.g.pack_vim_keep = 0, 0
+    vim.cmd("autocmd User VimOnceSlot let g:pack_vim_keep += 1")
+    pack.setup({ specs = {
+      { dev = true, name = "vim-once-slot", event = "User VimOnceSlot", config = function()
+          vim.cmd("autocmd User VimOnceSlot ++once let g:pack_vim_once2 += 1")
+        end },
+    } })
+    for _ = 1, 3 do vim.api.nvim_exec_autocmds("User", { pattern = "VimOnceSlot" }) end
+    T.eq(vim.g.pack_vim_once2, 1)
+    T.eq(vim.g.pack_vim_keep, 3)
+    vim.api.nvim_clear_autocmds({ event = "User", pattern = "VimOnceSlot" })
+  end)
+
+  T.it("autocmds added by a load re-fire in definition order", function()
+    local pack = reset_pack()
+    local order = {}
+    _G.PackOrder = order
+    local function push(tag) return function() order[#order + 1] = tag end end
+    pack.setup({ specs = {
+      { dev = true, name = "orderer", event = "User OrderTest", config = function()
+          local c = vim.api.nvim_create_augroup("OrderC", { clear = true })
+          local a = vim.api.nvim_create_augroup("OrderA", { clear = true })
+          local b = vim.api.nvim_create_augroup("OrderB", { clear = true })
+          local function au(group, tag)
+            vim.api.nvim_create_autocmd("User", { group = group, pattern = "OrderTest", callback = push(tag) })
+          end
+          au(c, "c1"); au(c, "c2"); au(nil, "u1"); au(a, "a1"); au(nil, "u2"); au(a, "a2"); au(b, "b")
+          vim.cmd("autocmd User OrderTest lua table.insert(_G.PackOrder, 'vim')")
+          au(nil, "u3")
+        end },
+    } })
+    vim.api.nvim_exec_autocmds("User", { pattern = "OrderTest" })
+    T.eq(order, { "c1", "c2", "u1", "a1", "u2", "a2", "b", "vim", "u3" })
+    _G.PackOrder = nil
+    for _, g in ipairs({ "OrderA", "OrderB", "OrderC" }) do vim.api.nvim_del_augroup_by_name(g) end
+    vim.api.nvim_clear_autocmds({ event = "User", pattern = "OrderTest" })
+  end)
 end)
 
 -- Helper: unmap an lhs across all tested modes, swallowing "no such mapping".

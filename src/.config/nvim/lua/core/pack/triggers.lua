@@ -6,11 +6,13 @@
 -- A trigger loads its specs synchronously inside the dispatch that fired it,
 -- then re-fires the event for the autocmds that load added, and only those:
 -- handlers that already ran for this dispatch never run twice, and a newly
--- loaded BufWritePre handler still runs before the write. Groups whose
--- autocmds for the event are all new fire as groups; the remaining new
--- autocmds (ungrouped, or added to a group that already had some) fire
--- through temporary copies. Copies of Vimscript commands that use
--- script-local names cannot run outside their script and are skipped.
+-- loaded BufWritePre handler still runs before the write. New autocmds fire
+-- in definition order: a run of them that is a whole, all-new group fires as
+-- that group; the rest fire through temporary copies. Copies of Vimscript
+-- commands that use script-local names cannot run outside their script and
+-- are skipped. When the buffer's ftplugin, indent or syntax loaders already
+-- ran for its filetype and the load added runtime dirs carrying files for
+-- it, those loaders run again for the buffer.
 
 local M = {}
 
@@ -40,37 +42,75 @@ function M.create(deps)
   end
 
   local function added_since(event, before)
-    local seen, groups, loose = {}, {}, {}
-    for _, a in ipairs(vim.api.nvim_get_autocmds({ event = event })) do
+    local list = vim.api.nvim_get_autocmds({ event = event })
+    local seen, new, has_old = {}, {}, {}
+    for _, a in ipairs(list) do
       local k = autocmd_key(a)
       seen[k] = (seen[k] or 0) + 1
-      local is_new = seen[k] > (before[k] or 0)
+      if seen[k] > (before[k] or 0) then
+        new[#new + 1] = a
+      elseif a.group then
+        has_old[a.group] = true
+      end
+    end
+    local first, last = {}, {}
+    for i, a in ipairs(new) do
       if a.group then
-        local g = groups[a.group] or { old = false, new = {} }
-        groups[a.group] = g
-        if is_new then g.new[#g.new + 1] = a else g.old = true end
-      elseif is_new then
-        loose[#loose + 1] = a
+        first[a.group] = first[a.group] or i
+        last[a.group] = i
       end
     end
-    local whole = {}
-    for id, g in pairs(groups) do
-      if g.old then
-        vim.list_extend(loose, g.new)
-      elseif #g.new > 0 then
-        whole[#whole + 1] = id
+    local function contiguous(g)
+      for j = first[g], last[g] do
+        if new[j].group ~= g then return false end
+      end
+      return true
+    end
+    local units, i = {}, 1
+    while i <= #new do
+      local g = new[i].group
+      if g and not has_old[g] and first[g] == i and contiguous(g) then
+        units[#units + 1] = { group = g }
+        i = last[g] + 1
+      else
+        local u = units[#units]
+        if not (u and u.copies) then
+          u = { copies = {} }
+          units[#units + 1] = u
+        end
+        u.copies[#u.copies + 1] = new[i]
+        i = i + 1
       end
     end
-    table.sort(whole)
-    return whole, loose
+    return units, list
   end
 
-  local function copy_autocmd(event, a, group)
+  local function same_slot(a, b)
+    return a.group == b.group and a.buflocal == b.buflocal
+      and (a.buflocal and a.buffer == b.buffer or (not a.buflocal and a.pattern == b.pattern))
+  end
+
+  local function copy_autocmd(event, a, group, list)
     local opts = { group = group, desc = a.desc, once = a.once }
     if a.buflocal then opts.buffer = a.buffer else opts.pattern = a.pattern end
     if a.callback == nil then
       if a.command:lower():find("<sid>", 1, true) or a.command:find("%f[%w_:]s:[%w_]") then return end
-      opts.command = a.command
+      if a.once then
+        local n = 0
+        for _, b in ipairs(list) do
+          if same_slot(a, b) then n = n + 1 end
+        end
+        if n ~= 1 then return end
+        local slot = { event = event, group = a.group }
+        if a.buflocal then slot.buf = a.buffer else slot.pattern = a.pattern end
+        local command = a.command
+        opts.callback = function()
+          pcall(vim.api.nvim_clear_autocmds, slot)
+          vim.cmd(command)
+        end
+      else
+        opts.command = a.command
+      end
     else
       local cb = a.callback
       opts.callback = function(ev)
@@ -83,36 +123,110 @@ function M.create(deps)
     vim.api.nvim_create_autocmd(event, opts)
   end
 
+  local function in_buf(buf, fn)
+    if buf and vim.api.nvim_buf_is_valid(buf) then
+      vim.api.nvim_buf_call(buf, fn)
+    else
+      fn()
+    end
+  end
+
+  local function exec_event(event, opts)
+    local ok, err = pcall(vim.api.nvim_exec_autocmds, event, opts)
+    if not ok then
+      vim.notify(("core.pack refire(%s): %s"):format(event, err), vim.log.levels.ERROR)
+    end
+  end
+
   local function fire_added(event, args, before)
-    local whole, loose = added_since(event, before)
-    if #whole == 0 and #loose == 0 then return end
+    local units, list = added_since(event, before)
+    if #units == 0 then return end
     local base = {
       pattern = (args.match and args.match ~= "") and args.match or nil,
       data = args.data,
       modeline = false,
     }
-    local function exec(group)
-      local ok, err = pcall(vim.api.nvim_exec_autocmds, event,
-        vim.tbl_extend("force", base, { group = group }))
-      if not ok then
-        vim.notify(("core.pack refire(%s): %s"):format(event, err), vim.log.levels.ERROR)
+    in_buf(args.buf, function()
+      for _, u in ipairs(units) do
+        if u.group then
+          exec_event(event, vim.tbl_extend("force", base, { group = u.group }))
+        else
+          copies = copies + 1
+          local tmp = vim.api.nvim_create_augroup("core.pack.refire." .. copies, { clear = true })
+          for _, a in ipairs(u.copies) do copy_autocmd(event, a, tmp, list) end
+          exec_event(event, vim.tbl_extend("force", base, { group = tmp }))
+          pcall(vim.api.nvim_del_augroup_by_id, tmp)
+        end
+      end
+    end)
+  end
+
+  local function rtp_set()
+    local set = {}
+    for _, d in ipairs(vim.api.nvim_list_runtime_paths()) do set[d] = true end
+    return set
+  end
+
+  local function added_dirs(before)
+    local out = {}
+    for _, d in ipairs(vim.api.nvim_list_runtime_paths()) do
+      if not before[d] then out[#out + 1] = d end
+    end
+    return out
+  end
+
+  local KINDS = {
+    ftplugin = { "%s.vim", "%s.lua", "%s_*.vim", "%s_*.lua", "%s/*.vim", "%s/*.lua" },
+    indent   = { "%s.vim", "%s.lua" },
+    syntax   = { "%s.vim", "%s.lua", "%s/*.vim", "%s/*.lua" },
+  }
+
+  local function carries(dirs, kind, value)
+    local path = table.concat(vim.tbl_map(function(d) return (d:gsub(",", "\\,")) end, dirs), ",")
+    for _, name in ipairs(vim.split(value, ".", { plain = true, trimempty = true })) do
+      for _, pat in ipairs(KINDS[kind]) do
+        if #vim.fn.globpath(path, kind .. "/" .. pat:format(name), false, true) > 0 then return true end
       end
     end
-    local function run()
-      for _, g in ipairs(whole) do exec(g) end
-      if #loose > 0 then
-        copies = copies + 1
-        local tmp = vim.api.nvim_create_augroup("core.pack.refire." .. copies, { clear = true })
-        for _, a in ipairs(loose) do copy_autocmd(event, a, tmp) end
-        exec(tmp)
-        pcall(vim.api.nvim_del_augroup_by_id, tmp)
+    return false
+  end
+
+  local function ran_before(group, loader_id)
+    local ok, list = pcall(vim.api.nvim_get_autocmds, { event = "FileType" })
+    if not ok then return false end
+    local gpos, mine
+    for i, a in ipairs(list) do
+      if a.group_name == group and not gpos then gpos = i end
+      if a.id == loader_id then mine = i end
+    end
+    return gpos ~= nil and (mine == nil or gpos < mine)
+  end
+
+  local function group_exists(name)
+    return (pcall(vim.api.nvim_get_autocmds, { group = name }))
+  end
+
+  local function refresh_filetype(event, args, loader_id, dirs)
+    if #dirs == 0 then return end
+    local buf = (args.buf and vim.api.nvim_buf_is_valid(args.buf)) and args.buf or vim.api.nvim_get_current_buf()
+    local ft = vim.bo[buf].filetype
+    if ft == "" then return end
+    local function already(group)
+      if not group_exists(group) then return false end
+      return event ~= "FileType" or ran_before(group, loader_id)
+    end
+    in_buf(buf, function()
+      for _, pair in ipairs({ { "filetypeplugin", "ftplugin" }, { "filetypeindent", "indent" } }) do
+        if already(pair[1]) and carries(dirs, pair[2], ft) then
+          exec_event("FileType", { group = pair[1], pattern = ft, modeline = false })
+        end
       end
-    end
-    if args.buf and vim.api.nvim_buf_is_valid(args.buf) then
-      vim.api.nvim_buf_call(args.buf, run)
-    else
-      run()
-    end
+      local syn = vim.bo[buf].syntax
+      local names = syn:upper() == "ON" and ft or syn
+      if syn ~= "" and syn:upper() ~= "OFF" and already("syntaxset") and carries(dirs, "syntax", names) then
+        exec_event("Syntax", { group = "syntaxset", pattern = syn, modeline = false })
+      end
+    end)
   end
 
   local function register(specs)
@@ -190,33 +304,34 @@ function M.create(deps)
       return "lazy: " .. table.concat(names, ", ")
     end
 
-    local function loader(group, reason)
-      return function(args)
+    local function add_loader(event, opts, group, reason)
+      local id, done
+      opts.group = vim.api.nvim_create_augroup("core.pack.triggers", { clear = false })
+      opts.nested = true
+      opts.desc = group_desc(group)
+      opts.callback = function(args)
+        if done then return true end
+        done = true
         local before = snapshot(args.event)
+        local rtp_before = rtp_set()
         for _, s in ipairs(group.specs) do load_spec(s, reason) end
+        refresh_filetype(args.event, args, id, added_dirs(rtp_before))
         fire_added(args.event, args, before)
+        return true
       end
+      id = vim.api.nvim_create_autocmd(event, opts)
     end
 
     for pat, group in pairs(user_groups) do
-      vim.api.nvim_create_autocmd("User", {
-        once = true, nested = true, pattern = pat, desc = group_desc(group),
-        callback = loader(group, "event:User " .. pat),
-      })
+      add_loader("User", { pattern = pat }, group, "event:User " .. pat)
     end
 
     for e, group in pairs(event_groups) do
-      vim.api.nvim_create_autocmd(e, {
-        once = true, nested = true, desc = group_desc(group),
-        callback = loader(group, "event:" .. e),
-      })
+      add_loader(e, {}, group, "event:" .. e)
     end
 
     for ft, group in pairs(ft_groups) do
-      vim.api.nvim_create_autocmd("FileType", {
-        once = true, nested = true, pattern = ft, desc = group_desc(group),
-        callback = loader(group, "ft:" .. ft),
-      })
+      add_loader("FileType", { pattern = ft }, group, "ft:" .. ft)
     end
   end
 
