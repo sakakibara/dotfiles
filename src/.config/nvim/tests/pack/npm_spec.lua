@@ -146,6 +146,18 @@ T.describe("core.pack.npm resolution", function()
     T.truthy(not pcall(normalize, { npm = "x", files = { "/abs" } }))
     T.truthy(not pcall(normalize, { npm = "x", files = {} }))
   end)
+
+  T.it("rejects npm version ranges the resolver would misread", function()
+    for _, v in ipairs({ ">=12 <13", "^11 || ^12", "1.0.0 - 2.0.0", "^11||^12", ">=1.2.3  <2" }) do
+      local ok, err = pcall(normalize, { npm = "pkg", version = v, files = { "dist" } })
+      T.eq(ok, false, v)
+      T.truthy(err:find("npm spec pkg: unsupported version", 1, true), err)
+      T.truthy(err:find("single comparator", 1, true), err)
+    end
+    for _, v in ipairs({ "1.2.3", "^1.2", "~1.2.3", "1.x", "*", ">=12", ">= 12", " ^1 " }) do
+      T.truthy(pcall(normalize, { npm = "pkg", version = v, files = { "dist" } }), v)
+    end
+  end)
 end)
 
 T.describe("core.pack.npm install", function()

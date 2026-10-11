@@ -37,6 +37,11 @@ function M.normalize(spec)
     for _, f in ipairs(spec.files) do
       if not Npm.valid_file(f) then error(("npm spec %s: invalid file path %s"):format(spec.npm, vim.inspect(f))) end
     end
+    local v = spec.version
+    if type(v) == "string" and (v:find("||", 1, true) or vim.trim(v):gsub("^[<>=~%^]+%s*", ""):find("%s")) then
+      error(("npm spec %s: unsupported version %q; use an exact version, ^, ~, x or *, or a single comparator")
+        :format(spec.npm, v))
+    end
     if spec.min_age ~= nil and (type(spec.min_age) ~= "number" or spec.min_age < 0) then
       error("npm spec min_age must be a non-negative number of days: " .. spec.npm)
     end
