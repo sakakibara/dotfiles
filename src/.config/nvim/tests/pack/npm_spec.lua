@@ -617,6 +617,49 @@ T.describe("core.pack npm plugins", function()
     T.eq(marker(I).files, { "dist", "lib" })
   end)
 
+  T.it("adopts a marker written without files when it matches the lock and the files exist", function()
+    local I = fresh()
+    stub(routes({ ["1.0.0"] = {} }, { ["1.0.0"] = tgz("1.0.0") }))
+    async(function(cb) I.install_missing({ normalize(SPEC) }, { on_complete = cb }) end)
+    unstub()
+    local m = marker(I)
+    m.files = nil
+    local f = assert(io.open(I.install_dir("pkg") .. "/" .. Npm.MARKER, "w")); f:write(vim.json.encode(m)); f:close()
+    package.loaded["core.pack"] = nil
+    local calls = stub({})
+    require("core.pack").setup({ specs = { SPEC } })
+    unstub()
+    T.eq(calls, {})
+    T.eq(marker(I).files, { "dist" })
+    local drifts
+    I.reconcile({ normalize(SPEC) }, function(d) drifts = d end)
+    vim.wait(5000, function() return drifts ~= nil end, 10)
+    T.eq(drifts, {})
+  end)
+
+  T.it("keeps an installed npm plugin usable when its reinstall fails offline", function()
+    local I = fresh()
+    stub(routes({ ["1.0.0"] = {} }, { ["1.0.0"] = tgz("1.0.0") }))
+    async(function(cb) I.install_missing({ normalize(SPEC) }, { on_complete = cb }) end)
+    unstub()
+    package.loaded["core.pack"] = nil
+    local wider = { npm = "pkg", version = "^1", files = { "dist", "lib" } }
+    stub({})
+    local orig = vim.notify
+    vim.notify = function() end
+    local pack = require("core.pack")
+    pack.setup({ specs = { wider } })
+    vim.notify = orig
+    unstub()
+    T.truthy(pack.has("pkg"), "spec kept")
+    T.eq(pack.dir("pkg"), I.install_dir("pkg"))
+    T.eq(vim.fn.filereadable(I.install_dir("pkg") .. "/dist/a.js"), 1)
+    local drifts
+    I.reconcile({ normalize(wider) }, function(d) drifts = d end)
+    vim.wait(5000, function() return drifts ~= nil end, 10)
+    T.eq(drifts, { { name = "pkg", reason = "installed files differ from the spec" } })
+  end)
+
   T.it("update never offers a downgrade and reports a newer locked version as held", function()
     local I, L = fresh()
     local spec = normalize(SPEC)

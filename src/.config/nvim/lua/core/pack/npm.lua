@@ -345,10 +345,30 @@ function M.installed_version(dir)
   return m and type(m.version) == "string" and m.version or nil
 end
 
+local function write_marker(dir, m)
+  local f = io.open(dir .. "/" .. M.MARKER, "w")
+  if not f then return false end
+  f:write(vim.json.encode(m))
+  f:close()
+  return true
+end
+
+local function adopt_legacy(spec, dir, m, locked)
+  if m.files ~= nil or not M.usable_lock(spec, locked) then return false end
+  if m.version ~= locked.version or m.integrity ~= locked.integrity then return false end
+  local files = M.norm_files(spec.files)
+  for _, f in ipairs(files) do
+    if not vim.uv.fs_lstat(dir .. "/" .. f) then return false end
+  end
+  m.files = files
+  return write_marker(dir, m)
+end
+
 function M.mismatch(spec, dir, locked)
   local m = M.read_marker(dir)
   if not m or type(m.version) ~= "string" then return "not installed" end
   if m.npm ~= spec.npm then return ("installed package %s, spec %s"):format(tostring(m.npm), spec.npm) end
+  if m.files == nil then adopt_legacy(spec, dir, m, locked) end
   if not vim.deep_equal(m.files, M.norm_files(spec.files)) then return "installed files differ from the spec" end
   if M.usable_lock(spec, locked) then
     if m.version ~= locked.version then return ("installed %s, lockfile %s"):format(m.version, locked.version) end

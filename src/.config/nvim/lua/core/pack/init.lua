@@ -263,8 +263,13 @@ function M.setup(cfg)
   local failed = {}
   for _, name in ipairs(failed_names) do failed[name] = true end
   for name in pairs(failed) do
-    M._specs[name] = nil
-    M._opts[name] = nil
+    local s = M._specs[name]
+    if s and s.npm and require("core.pack.npm").read_marker(require("core.pack.install").install_dir(name)) then
+      failed[name] = nil
+    else
+      M._specs[name] = nil
+      M._opts[name] = nil
+    end
   end
   local pruned = {}
   for _, s in ipairs(ordered) do
