@@ -3,50 +3,116 @@
 -- Grouping at registration time (one autocmd per event, not per spec) prevents
 -- fan-out at the source: N specs sharing BufWritePre produce 1 re-fire, not N.
 --
--- Each (event, buffer, pattern, filetype) key re-fires at most once, and only
--- once no autocmd dispatch is in progress: `vim.schedule` alone does NOT
--- break autocmd nesting when a handler pumps the event loop (BufWritePre ->
--- conform.format -> vim.wait(1000) -- libuv runs pending schedule callbacks
--- during that wait), so a re-fire that finds itself inside a dispatch waits
--- for it to finish.
---
--- Different buffers/patterns are independent work and must not block each
--- other.
+-- A trigger loads its specs synchronously inside the dispatch that fired it,
+-- then re-fires the event for the autocmds that load added, and only those:
+-- handlers that already ran for this dispatch never run twice, and a newly
+-- loaded BufWritePre handler still runs before the write. Groups whose
+-- autocmds for the event are all new fire as groups; the remaining new
+-- autocmds (ungrouped, or added to a group that already had some) fire
+-- through temporary copies. Copies of Vimscript commands that use
+-- script-local names cannot run outside their script and are skipped.
 
 local M = {}
 
 -- Build a trigger registrar bound to dependencies (load_spec,
--- install_spec_stubs) from core.pack.init. Returns the schedule_refire
--- closure (so init.lua can expose it as M._schedule_refire for tests) and
--- the register function that walks specs and installs autocmds.
+-- install_spec_stubs) from core.pack.init. Returns the register function
+-- that walks specs and installs autocmds.
 function M.create(deps)
   local load_spec          = assert(deps.load_spec)
   local install_spec_stubs = assert(deps.install_spec_stubs)
 
-  local requested = {}
+  local copies = 0
 
-  local function in_autocmd()
-    return (pcall(vim.fn.expand, "<amatch>"))
+  local function autocmd_key(a)
+    if a.id then return a.id end
+    return table.concat({
+      tostring(a.group), a.pattern or "", tostring(a.buffer), a.command or "", tostring(a.once),
+    }, "\0")
   end
 
-  local function schedule_refire(event, opts)
-    local ft = event == "FileType" and opts.buffer and vim.api.nvim_buf_is_valid(opts.buffer)
-      and vim.bo[opts.buffer].filetype or ""
-    local key = table.concat({ event, opts.buffer or 0, opts.pattern or "", ft }, "\0")
-    if requested[key] then return end
-    requested[key] = true
-    local function run()
-      if in_autocmd() then
-        vim.defer_fn(run, 10)
-        return
+  local function snapshot(event)
+    local counts = {}
+    for _, a in ipairs(vim.api.nvim_get_autocmds({ event = event })) do
+      local k = autocmd_key(a)
+      counts[k] = (counts[k] or 0) + 1
+    end
+    return counts
+  end
+
+  local function added_since(event, before)
+    local seen, groups, loose = {}, {}, {}
+    for _, a in ipairs(vim.api.nvim_get_autocmds({ event = event })) do
+      local k = autocmd_key(a)
+      seen[k] = (seen[k] or 0) + 1
+      local is_new = seen[k] > (before[k] or 0)
+      if a.group then
+        local g = groups[a.group] or { old = false, new = {} }
+        groups[a.group] = g
+        if is_new then g.new[#g.new + 1] = a else g.old = true end
+      elseif is_new then
+        loose[#loose + 1] = a
       end
-      if opts.buffer and not vim.api.nvim_buf_is_valid(opts.buffer) then return end
-      local ok, err = pcall(vim.api.nvim_exec_autocmds, event, opts)
+    end
+    local whole = {}
+    for id, g in pairs(groups) do
+      if g.old then
+        vim.list_extend(loose, g.new)
+      elseif #g.new > 0 then
+        whole[#whole + 1] = id
+      end
+    end
+    table.sort(whole)
+    return whole, loose
+  end
+
+  local function copy_autocmd(event, a, group)
+    local opts = { group = group, desc = a.desc, once = a.once }
+    if a.buflocal then opts.buffer = a.buffer else opts.pattern = a.pattern end
+    if a.callback == nil then
+      if a.command:lower():find("<sid>", 1, true) or a.command:find("%f[%w_:]s:[%w_]") then return end
+      opts.command = a.command
+    else
+      local cb = a.callback
+      opts.callback = function(ev)
+        local r
+        if type(cb) == "function" then r = cb(ev) else r = vim.fn.call(cb, { ev }) end
+        if a.id and (a.once or r == true) then pcall(vim.api.nvim_del_autocmd, a.id) end
+        return r
+      end
+    end
+    vim.api.nvim_create_autocmd(event, opts)
+  end
+
+  local function fire_added(event, args, before)
+    local whole, loose = added_since(event, before)
+    if #whole == 0 and #loose == 0 then return end
+    local base = {
+      pattern = (args.match and args.match ~= "") and args.match or nil,
+      data = args.data,
+      modeline = false,
+    }
+    local function exec(group)
+      local ok, err = pcall(vim.api.nvim_exec_autocmds, event,
+        vim.tbl_extend("force", base, { group = group }))
       if not ok then
         vim.notify(("core.pack refire(%s): %s"):format(event, err), vim.log.levels.ERROR)
       end
     end
-    vim.schedule(run)
+    local function run()
+      for _, g in ipairs(whole) do exec(g) end
+      if #loose > 0 then
+        copies = copies + 1
+        local tmp = vim.api.nvim_create_augroup("core.pack.refire." .. copies, { clear = true })
+        for _, a in ipairs(loose) do copy_autocmd(event, a, tmp) end
+        exec(tmp)
+        pcall(vim.api.nvim_del_augroup_by_id, tmp)
+      end
+    end
+    if args.buf and vim.api.nvim_buf_is_valid(args.buf) then
+      vim.api.nvim_buf_call(args.buf, run)
+    else
+      run()
+    end
   end
 
   local function register(specs)
@@ -124,50 +190,37 @@ function M.create(deps)
       return "lazy: " .. table.concat(names, ", ")
     end
 
-    local function load_group(group, reason)
-      for _, s in ipairs(group.specs) do load_spec(s, reason) end
+    local function loader(group, reason)
+      return function(args)
+        local before = snapshot(args.event)
+        for _, s in ipairs(group.specs) do load_spec(s, reason) end
+        fire_added(args.event, args, before)
+      end
     end
 
     for pat, group in pairs(user_groups) do
       vim.api.nvim_create_autocmd("User", {
-        once = true, pattern = pat, desc = group_desc(group),
-        callback = function(args)
-          vim.schedule(function()
-            load_group(group, "event:User " .. pat)
-            schedule_refire("User", { pattern = pat, data = args.data, modeline = false })
-          end)
-        end,
+        once = true, nested = true, pattern = pat, desc = group_desc(group),
+        callback = loader(group, "event:User " .. pat),
       })
     end
 
     for e, group in pairs(event_groups) do
       vim.api.nvim_create_autocmd(e, {
-        once = true, desc = group_desc(group),
-        callback = function(args)
-          vim.schedule(function()
-            load_group(group, "event:" .. args.event)
-            schedule_refire(args.event, {
-              buffer = args.buf, data = args.data, modeline = false,
-            })
-          end)
-        end,
+        once = true, nested = true, desc = group_desc(group),
+        callback = loader(group, "event:" .. e),
       })
     end
 
     for ft, group in pairs(ft_groups) do
       vim.api.nvim_create_autocmd("FileType", {
-        once = true, pattern = ft, desc = group_desc(group),
-        callback = function(args)
-          vim.schedule(function()
-            load_group(group, "ft:" .. ft)
-            schedule_refire("FileType", { buffer = args.buf, modeline = false })
-          end)
-        end,
+        once = true, nested = true, pattern = ft, desc = group_desc(group),
+        callback = loader(group, "ft:" .. ft),
       })
     end
   end
 
-  return { schedule_refire = schedule_refire, register = register }
+  return { register = register }
 end
 
 return M

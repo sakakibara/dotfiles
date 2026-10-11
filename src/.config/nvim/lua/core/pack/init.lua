@@ -149,7 +149,6 @@ local triggers = require("core.pack.triggers").create({
   load_spec = load_spec,
   install_spec_stubs = Keymaps.install_spec_stubs,
 })
-M._schedule_refire = triggers.schedule_refire  -- exposed for tests
 
 local function install_all(specs)
   local Install = require("core.pack.install")

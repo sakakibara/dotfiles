@@ -444,8 +444,8 @@ T.describe("core.pack re-fires triggering event", function()
       specs = {
         { dev = true, name = "refirer", event = "User RefireTest",
           config = function()
-            -- Plugin registers its own autocmd for the SAME event
             vim.api.nvim_create_autocmd("User", {
+              group = vim.api.nvim_create_augroup("RefirerPlugin", { clear = true }),
               once = true, pattern = "RefireTest",
               callback = function() plugin_saw_event = true end,
             })
@@ -453,44 +453,40 @@ T.describe("core.pack re-fires triggering event", function()
       },
     })
     vim.api.nvim_exec_autocmds("User", { pattern = "RefireTest" })
-    -- Re-fire is deferred via vim.schedule to break autocmd nesting;
-    -- wait briefly for the scheduled callback to run.
-    vim.wait(100, function() return plugin_saw_event end)
-    T.truthy(plugin_saw_event)
+    T.truthy(plugin_saw_event, "re-fire must run within the triggering dispatch")
   end)
 
-  T.it("dedupes re-fires when multiple specs share an event", function()
+  T.it("handlers that already ran for the dispatch are not run again", function()
     local pack = reset_pack()
-    local handler_calls = 0
-    -- Handler registered BEFORE setup so the re-fire reaches it.
+    local handler_calls, plugin_calls = 0, 0
     local aug = vim.api.nvim_create_augroup("PackDedupTest", { clear = true })
     vim.api.nvim_create_autocmd("User", {
       group = aug, pattern = "DedupTest",
       callback = function() handler_calls = handler_calls + 1 end,
     })
+    local function plugin_config()
+      vim.api.nvim_create_autocmd("User", {
+        group = vim.api.nvim_create_augroup("DedupPlugin", { clear = false }),
+        pattern = "DedupTest",
+        callback = function() plugin_calls = plugin_calls + 1 end,
+      })
+    end
     pack.setup({
       specs = {
-        { dev = true, name = "dedup-a", event = "User DedupTest", config = function() end },
+        { dev = true, name = "dedup-a", event = "User DedupTest", config = plugin_config },
         { dev = true, name = "dedup-b", event = "User DedupTest", config = function() end },
         { dev = true, name = "dedup-c", event = "User DedupTest", config = function() end },
       },
     })
-    -- Original fire: handler runs once synchronously, all three specs load, and
-    -- each once-handler asks for a re-fire. Dedup collapses those to a single
-    -- scheduled re-fire, so the handler runs exactly one more time after drain.
     vim.api.nvim_exec_autocmds("User", { pattern = "DedupTest" })
+    vim.wait(50, function() return false end)
     T.eq(handler_calls, 1)
-    vim.wait(100, function() return handler_calls >= 2 end)
-    T.eq(handler_calls, 2)
+    T.eq(plugin_calls, 1)
     vim.api.nvim_del_augroup_by_id(aug)
+    vim.api.nvim_del_augroup_by_name("DedupPlugin")
   end)
 
   T.it("does not nest past E218 when handler pumps the event loop", function()
-    -- Regression: conform.format's internal vim.wait() drains pending schedule
-    -- callbacks during a handler run. Without dedup, 15 pending re-fires for
-    -- BufWritePre stacked into the call stack (each invoking Lib.format ->
-    -- conform.format -> vim.wait -> next pending) until nvim's nesting limit
-    -- (10) tripped E218.
     local pack = reset_pack()
     local nesting_error = false
     local orig_notify = vim.notify
@@ -504,7 +500,6 @@ T.describe("core.pack re-fires triggering event", function()
       specs[i] = { dev = true, name = "pump-" .. i, event = "User PumpTest",
                    config = function() end }
     end
-    -- Handler that pumps the event loop (simulates conform.format + vim.wait)
     local aug = vim.api.nvim_create_augroup("PackPumpTest", { clear = true })
     vim.api.nvim_create_autocmd("User", {
       group = aug, pattern = "PumpTest",
@@ -513,8 +508,6 @@ T.describe("core.pack re-fires triggering event", function()
     pack.setup({ specs = specs })
 
     vim.api.nvim_exec_autocmds("User", { pattern = "PumpTest" })
-    -- Drain all scheduled callbacks. vim.wait with always-false predicate
-    -- gives the event loop time to run them.
     vim.wait(500, function() return false end)
 
     vim.notify = orig_notify
@@ -522,41 +515,14 @@ T.describe("core.pack re-fires triggering event", function()
     T.eq(nesting_error, false, "E218 autocommand nesting was reported")
   end)
 
-  T.it("a re-fire requested during a dispatch runs after it, and only once", function()
-    local pack = reset_pack()
-    pack.setup({ specs = {} })
+  local function write_fixture()
+    local f = vim.fn.tempname()
+    vim.fn.writefile({ "a" }, f)
+    vim.cmd("silent edit " .. vim.fn.fnameescape(f))
+    return f
+  end
 
-    local inner_runs, inner_during_outer, outer_active = 0, false, false
-    local aug = vim.api.nvim_create_augroup("PackReentryTest", { clear = true })
-    vim.api.nvim_create_autocmd("User", {
-      group = aug, pattern = "ReentryInner",
-      callback = function()
-        inner_runs = inner_runs + 1
-        if outer_active then inner_during_outer = true end
-      end,
-    })
-    vim.api.nvim_create_autocmd("User", {
-      group = aug, pattern = "ReentryOuter",
-      callback = function()
-        outer_active = true
-        pack._schedule_refire("User", { pattern = "ReentryInner" })
-        pack._schedule_refire("User", { pattern = "ReentryInner" })
-        vim.wait(60, function() return false end)
-        outer_active = false
-      end,
-    })
-
-    vim.api.nvim_exec_autocmds("User", { pattern = "ReentryOuter" })
-    vim.wait(300, function() return inner_runs >= 1 end)
-    pack._schedule_refire("User", { pattern = "ReentryInner" })
-    vim.wait(60, function() return false end)
-    T.eq(inner_during_outer, false, "re-fire must not run inside the outer dispatch")
-    T.eq(inner_runs, 1, "a key re-fires at most once")
-
-    vim.api.nvim_del_augroup_by_id(aug)
-  end)
-
-  T.it("a lazy BufWritePre load never re-enters a pumping BufWritePre handler", function()
+  T.it("a pumping BufWritePre handler is neither nested nor re-run by a lazy load", function()
     local pack = reset_pack()
     local depth, max_depth, runs = 0, 0, 0
     local loaded = false
@@ -574,47 +540,87 @@ T.describe("core.pack re-fires triggering event", function()
         depth = depth - 1
       end,
     })
-    local f = vim.fn.tempname()
-    vim.cmd("silent edit " .. vim.fn.fnameescape(f))
+    local f = write_fixture()
     vim.cmd("silent write")
-    vim.wait(400, function() return false end)
+    vim.wait(200, function() return false end)
     T.truthy(loaded)
     T.eq(max_depth, 1, "BufWritePre handler ran nested")
-    T.eq(runs, 2, "one original dispatch plus one re-fire")
+    T.eq(runs, 1, "BufWritePre handler ran twice for one write")
     vim.api.nvim_del_augroup_by_id(aug)
     vim.cmd("silent bwipe!")
     os.remove(f)
   end)
 
-  T.it("different buffers re-fire independently (no cross-key blocking)", function()
-    -- Per-key (not per-event) active guard: a refire for buf A must not
-    -- block a concurrent refire for buf B. Regression against collapsing
-    -- the guard to a per-event flag. This mirrors the real production
-    -- scenario (BufWritePre across multiple buffers) that triggered E218.
+  T.it("a BufWritePre handler added by the load runs before the write", function()
     local pack = reset_pack()
-    pack.setup({ specs = {} })
+    pack.setup({ specs = {
+      { dev = true, name = "write-formatter", event = "BufWritePre", config = function()
+          vim.api.nvim_create_autocmd("BufWritePre", {
+            group = vim.api.nvim_create_augroup("WriteFormatter", { clear = true }),
+            callback = function(args) vim.api.nvim_buf_set_lines(args.buf, 0, -1, false, { "formatted" }) end,
+          })
+        end },
+    } })
+    local f = write_fixture()
+    vim.cmd("silent write")
+    T.eq(vim.fn.readfile(f), { "formatted" })
+    T.eq(vim.bo.modified, false)
+    vim.api.nvim_del_augroup_by_name("WriteFormatter")
+    vim.cmd("silent bwipe!")
+    os.remove(f)
+  end)
 
-    local buf_a = vim.api.nvim_create_buf(false, true)
-    local buf_b = vim.api.nvim_create_buf(false, true)
-    local seen = {}  -- { [buf] = count }
-    local aug = vim.api.nvim_create_augroup("PackKeyIndepTest", { clear = true })
-    vim.api.nvim_create_autocmd("BufWritePre", {
-      group = aug,
-      callback = function(args)
-        seen[args.buf] = (seen[args.buf] or 0) + 1
-      end,
+  T.it("new ungrouped and mixed-group autocmds run once; their old neighbours do not", function()
+    local pack = reset_pack()
+    local calls = { old = 0, ungrouped = 0, mixed = 0, once = 0, other = 0 }
+    local shared = vim.api.nvim_create_augroup("PackSharedGroup", { clear = true })
+    vim.api.nvim_create_autocmd("User", {
+      group = shared, pattern = "MixTest", callback = function() calls.old = calls.old + 1 end,
     })
+    pack.setup({ specs = {
+      { dev = true, name = "mixer", event = "User MixTest", config = function()
+          vim.api.nvim_create_autocmd("User", {
+            pattern = "MixTest", callback = function() calls.ungrouped = calls.ungrouped + 1 end,
+          })
+          vim.api.nvim_create_autocmd("User", {
+            pattern = "MixTest", once = true, callback = function() calls.once = calls.once + 1 end,
+          })
+          vim.api.nvim_create_autocmd("User", {
+            pattern = "OtherPattern", callback = function() calls.other = calls.other + 1 end,
+          })
+          vim.api.nvim_create_autocmd("User", {
+            group = shared, pattern = "MixTest", callback = function() calls.mixed = calls.mixed + 1 end,
+          })
+        end },
+    } })
+    vim.api.nvim_exec_autocmds("User", { pattern = "MixTest" })
+    T.eq(calls, { old = 1, ungrouped = 1, mixed = 1, once = 1, other = 0 })
+    vim.api.nvim_exec_autocmds("User", { pattern = "MixTest" })
+    T.eq(calls, { old = 2, ungrouped = 2, mixed = 2, once = 1, other = 0 },
+      "a once autocmd consumed by its copy must not run again")
+    vim.api.nvim_del_augroup_by_id(shared)
+    for _, a in ipairs(vim.api.nvim_get_autocmds({ event = "User", pattern = { "MixTest", "OtherPattern" } })) do
+      pcall(vim.api.nvim_del_autocmd, a.id)
+    end
+  end)
 
-    -- Two schedules for different buffer keys -- both must run.
-    pack._schedule_refire("BufWritePre", { buffer = buf_a, modeline = false })
-    pack._schedule_refire("BufWritePre", { buffer = buf_b, modeline = false })
-    vim.wait(200, function() return seen[buf_a] and seen[buf_b] end)
-    T.eq(seen[buf_a], 1)
-    T.eq(seen[buf_b], 1)
-
-    vim.api.nvim_del_augroup_by_id(aug)
-    vim.api.nvim_buf_delete(buf_a, { force = true })
-    vim.api.nvim_buf_delete(buf_b, { force = true })
+  T.it("ft trigger re-fires FileType for the triggering buffer only through new autocmds", function()
+    local pack = reset_pack()
+    local seen = {}
+    pack.setup({ specs = {
+      { dev = true, name = "ft-refire", ft = "packrefire", config = function()
+          vim.api.nvim_create_autocmd("FileType", {
+            group = vim.api.nvim_create_augroup("FtRefirePlugin", { clear = true }),
+            pattern = "packrefire",
+            callback = function(args) seen[#seen + 1] = args.buf end,
+          })
+        end },
+    } })
+    local buf = vim.api.nvim_create_buf(true, false)
+    vim.bo[buf].filetype = "packrefire"
+    T.eq(seen, { buf })
+    vim.api.nvim_del_augroup_by_name("FtRefirePlugin")
+    vim.api.nvim_buf_delete(buf, { force = true })
   end)
 end)
 
