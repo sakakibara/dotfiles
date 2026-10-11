@@ -38,4 +38,59 @@ T.describe("core.pack.lock", function()
     T.eq(L.read().plugins.a, nil)
   end)
 
+  local function corrupt(L)
+    local raw = '{ "plugins": { "a": { "rev": "1" }, "b": '
+    local fd = assert(io.open(L.path(), "w")); fd:write(raw); fd:close()
+    return raw
+  end
+
+  local function slurp(p)
+    local fd = assert(io.open(p, "r")); local s = fd:read("*a"); fd:close(); return s
+  end
+
+  local function quiet(fn)
+    local msgs = {}
+    local orig = vim.notify
+    vim.notify = function(m, l) msgs[#msgs + 1] = { m, l } end
+    local ok, err = pcall(fn)
+    vim.notify = orig
+    if not ok then error(err) end
+    return msgs
+  end
+
+  T.it("read() on corrupt JSON returns nil + error and notifies", function()
+    local L = fresh_lock()
+    corrupt(L)
+    local data, err
+    local msgs = quiet(function() data, err = L.read() end)
+    T.eq(data, nil)
+    T.truthy(err and err:match("unreadable"))
+    T.eq(#msgs, 1)
+    T.eq(msgs[1][2], vim.log.levels.ERROR)
+  end)
+
+  T.it("set() and delete() refuse to overwrite a corrupt lockfile", function()
+    local L = fresh_lock()
+    local raw = corrupt(L)
+    local ok_set, ok_del
+    quiet(function()
+      ok_set = L.set("c", { src = "u/c", rev = "3" })
+      ok_del = L.delete("a")
+    end)
+    T.eq(ok_set, false)
+    T.eq(ok_del, false)
+    T.eq(slurp(L.path()), raw)
+  end)
+
+  T.it("a batch over a corrupt lockfile never commits", function()
+    local L = fresh_lock()
+    local raw = corrupt(L)
+    quiet(function()
+      L.batch_begin()
+      L.set("c", { src = "u/c", rev = "3" })
+      L.batch_commit()
+    end)
+    T.eq(L._batch, nil)
+    T.eq(slurp(L.path()), raw)
+  end)
 end)

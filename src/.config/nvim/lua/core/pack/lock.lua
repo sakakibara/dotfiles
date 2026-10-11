@@ -14,15 +14,28 @@ local function empty()
   return { version = 1, plugins = {} }
 end
 
+local last_err
+
 function M.read()
   local p = M.path()
   local fd = io.open(p, "r")
-  if not fd then return empty() end
+  if not fd then last_err = nil; return empty() end
   local raw = fd:read("*a")
   fd:close()
-  if raw == "" then return empty() end
+  if raw == "" then last_err = nil; return empty() end
   local ok, data = pcall(vim.json.decode, raw)
-  if not ok or type(data) ~= "table" then return empty() end
+  if not ok or type(data) ~= "table"
+    or (data.plugins ~= nil and type(data.plugins) ~= "table")
+  then
+    local err = ("core.pack.lock: %s is unreadable (%s); not writing to it until it is fixed or removed")
+      :format(p, ok and "not a lockfile object" or tostring(data))
+    if err ~= last_err then
+      last_err = err
+      vim.notify(err, vim.log.levels.ERROR)
+    end
+    return nil, err
+  end
+  last_err = nil
   data.version = data.version or 1
   data.plugins = data.plugins or {}
   return data
@@ -97,45 +110,56 @@ end
 -- disk once at the end. Begin/commit are explicit (rather than wrapping
 -- a function) so the buffered region can span async work.
 M._batch = nil
+M._batch_unreadable = false
 
 function M.batch_begin()
   if M._batch then return end
-  M._batch = M.read()
+  local data = M.read()
+  M._batch = data or empty()
+  M._batch_unreadable = data == nil
 end
 
 function M.batch_commit()
   if not M._batch then return end
-  M.write(M._batch)
+  local data, unreadable = M._batch, M._batch_unreadable
   M._batch = nil
+  M._batch_unreadable = false
+  if not unreadable then M.write(data) end
 end
 
 function M.batch_abort()
   M._batch = nil
+  M._batch_unreadable = false
 end
 
 function M.get(name)
   if M._batch then return M._batch.plugins[name] end
-  return M.read().plugins[name]
+  local data = M.read()
+  return data and data.plugins[name]
 end
 
 function M.set(name, entry)
   if M._batch then
     M._batch.plugins[name] = entry
-    return
+    return true
   end
-  local data = M.read()
+  local data, err = M.read()
+  if not data then return false, err end
   data.plugins[name] = entry
   M.write(data)
+  return true
 end
 
 function M.delete(name)
   if M._batch then
     M._batch.plugins[name] = nil
-    return
+    return true
   end
-  local data = M.read()
+  local data, err = M.read()
+  if not data then return false, err end
   data.plugins[name] = nil
   M.write(data)
+  return true
 end
 
 return M

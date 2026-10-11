@@ -19,8 +19,12 @@ local function gather()
   -- Lockfile
   local lock_path = Lock.path()
   if vim.fn.filereadable(lock_path) == 1 then
-    local data = Lock.read()
-    add("ok", ("lockfile readable (%s, %d plugins)"):format(lock_path, vim.tbl_count(data.plugins)))
+    local data, err = Lock.read()
+    if data then
+      add("ok", ("lockfile readable (%s, %d plugins)"):format(lock_path, vim.tbl_count(data.plugins)))
+    else
+      add("error", err)
+    end
   else
     add("warn", "lockfile missing at " .. lock_path)
   end
