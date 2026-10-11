@@ -277,3 +277,34 @@ T.describe("lib.preview.render robustness", function()
     T.truthy(ms < 200, string.format("took %.1f ms", ms))
   end)
 end)
+
+T.describe("lib.preview.render passthrough and references", function()
+  T.it("neutralizes document-level referrer overrides in raw HTML", function()
+    local html = render({
+      '<meta name="referrer" content="unsafe-url">', "",
+      'text <META http-equiv="refresh" content="0;url=https://e.example"> more', "",
+      '<img src="https://e.example/a.png" referrerpolicy="unsafe-url">', "",
+      'x <a href="https://e.example" ReferrerPolicy=origin>y</a>', "",
+      "<meta", "",
+      "<metadata>ok</metadata>",
+    })
+    lacks(html, "<meta ")
+    lacks(html, "<META ")
+    has(html, '&lt;meta name="referrer" content="unsafe-url">')
+    has(html, '&lt;META http-equiv="refresh"')
+    has(html, '<img src="https://e.example/a.png" referrerpolicy="no-referrer" data-mdp-referrerpolicy="unsafe-url">')
+    has(html, '<a href="https://e.example" referrerpolicy="no-referrer" data-mdp-ReferrerPolicy=origin>')
+    has(html, "<metadata>ok</metadata>")
+    T.eq(R.passthrough("<p>"), "<p>")
+  end)
+
+  T.it("resolves one-character link reference definitions", function()
+    local html = render({ "see [x] and [ab] and [y][x]", "", "[x]: https://a.example \"T\"", "[ab]: <https://b.example>" })
+    has(html, '<a href="https://a.example" title="T">x</a>')
+    has(html, '<a href="https://b.example">ab</a>')
+    has(html, '<a href="https://a.example" title="T">y</a>')
+    lacks(html, "[x]:")
+    has(render({ "[x]: https://a.example", "rest [x]" }), '<p data-line="1">rest <a href="https://a.example">x</a></p>')
+    has(render({ "- [x] task" }), 'type="checkbox"')
+  end)
+end)

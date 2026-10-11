@@ -22,6 +22,14 @@ local IMAGE_TYPES = {
   bmp = "image/bmp",
 }
 
+local VENDOR_TYPES = {
+  js = "text/javascript; charset=utf-8",
+  css = "text/css; charset=utf-8",
+  woff2 = "font/woff2",
+  woff = "font/woff",
+  ttf = "font/ttf",
+}
+
 local state = { previews = {} }
 
 local function hex(bytes)
@@ -72,10 +80,24 @@ function M.open_url(url)
   return vim.ui.open(url)
 end
 
+local function rendered(buf, p)
+  local key = vim.api.nvim_buf_get_changedtick(buf) .. "\0" .. vim.bo[buf].filetype
+  if p.html and p.html_key == key then return p.html end
+  local t0 = uv.hrtime()
+  p.html = Render.render(buf, p.cache)
+  p.html_key = key
+  p.render_ms = (uv.hrtime() - t0) / 1e6
+  return p.html
+end
+
+function M.debounce_ms(p)
+  return math.max(M.DEBOUNCE, math.ceil(2 * (p and p.render_ms or 0)))
+end
+
 local function flush(buf)
   local p = state.previews[buf]
   if not p or next(p.clients) == nil or not vim.api.nvim_buf_is_valid(buf) then return end
-  broadcast(p, event("render", { html = Render.render(buf, p.cache) }))
+  broadcast(p, event("render", { html = rendered(buf, p) }))
 end
 
 local function schedule_render(buf)
@@ -83,7 +105,7 @@ local function schedule_render(buf)
   if not p or next(p.clients) == nil then return end
   p.timer = p.timer or uv.new_timer()
   p.timer:stop()
-  p.timer:start(M.DEBOUNCE, 0, vim.schedule_wrap(function() flush(buf) end))
+  p.timer:start(M.debounce_ms(p), 0, vim.schedule_wrap(function() flush(buf) end))
 end
 
 local function send_cursor(p, line)
@@ -114,25 +136,89 @@ local function on_cursor(buf)
   end))
 end
 
+local function read_file(path, cb)
+  uv.fs_open(path, "r", 438, function(oerr, fd)
+    if oerr or not fd then return vim.schedule(function() cb(nil) end) end
+    uv.fs_fstat(fd, function(serr, stat)
+      if serr or not stat or stat.type ~= "file" then
+        uv.fs_close(fd)
+        return vim.schedule(function() cb(nil) end)
+      end
+      uv.fs_read(fd, stat.size, 0, function(rerr, data)
+        uv.fs_close(fd)
+        vim.schedule(function() cb((not rerr and data and #data == stat.size) and data or nil) end)
+      end)
+    end)
+  end)
+end
+
+local function inside(base, rel)
+  if not base or rel == "" or rel:find("%z") then return nil end
+  local full = uv.fs_realpath(base .. "/" .. rel)
+  if not full or full:sub(1, #base + 1) ~= base .. "/" then return nil end
+  return full
+end
+
+local function send_file(res, full, headers)
+  read_file(full, function(body)
+    if not body then return res.fail(404) end
+    res.send(200, headers, body)
+  end)
+end
+
 local function asset(buf, rel, res)
   local name = vim.api.nvim_buf_get_name(buf)
-  if name == "" or rel == "" or rel:find("%z") then return res.fail(404) end
-  local base = uv.fs_realpath(vim.fs.dirname(name))
-  local full = base and uv.fs_realpath(base .. "/" .. rel)
-  if not full or full:sub(1, #base + 1) ~= base .. "/" then return res.fail(404) end
-  local ctype = IMAGE_TYPES[(full:match("%.([^./]+)$") or ""):lower()]
-  local stat = uv.fs_stat(full)
-  if not ctype or not stat or stat.type ~= "file" then return res.fail(404) end
-  local f = io.open(full, "rb")
-  if not f then return res.fail(404) end
-  local body = f:read("*a")
-  f:close()
-  res.send(200, {
+  if name == "" then return res.fail(404) end
+  local full = inside(uv.fs_realpath(vim.fs.dirname(name)), rel)
+  local ctype = full and IMAGE_TYPES[(full:match("%.([^./]+)$") or ""):lower()]
+  if not ctype then return res.fail(404) end
+  send_file(res, full, {
     { "Content-Type", ctype },
     { "Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; sandbox" },
     { "X-Content-Type-Options", "nosniff" },
     { "Cache-Control", "no-store" },
-  }, body)
+  })
+end
+
+function M.vendor_dir(name)
+  if not Page.VENDOR[name] then return nil end
+  local ok, dir = pcall(function() return Lib.plugin.dir(name) end)
+  return ok and dir or nil
+end
+
+local function vendor(name, rel, res)
+  local dir = M.vendor_dir(name)
+  local full = dir and inside(uv.fs_realpath(dir), rel)
+  local ctype = full and VENDOR_TYPES[(full:match("%.([^./]+)$") or ""):lower()]
+  if not ctype then return res.fail(404) end
+  send_file(res, full, {
+    { "Content-Type", ctype },
+    { "X-Content-Type-Options", "nosniff" },
+    { "Cache-Control", "private, max-age=300" },
+  })
+end
+
+local function vendor_cfg()
+  local out = {}
+  for name, files in pairs(Page.VENDOR) do
+    local dir = M.vendor_dir(name)
+    if dir then
+      local entry = {}
+      for kind, rel in pairs(files) do
+        if uv.fs_stat(dir .. "/" .. rel) then entry[kind] = ("/%s/vendor/%s/%s"):format(state.token, name, rel) end
+      end
+      if entry.js then out[name] = entry end
+    end
+  end
+  return out
+end
+
+local function script(res)
+  res.send(200, {
+    { "Content-Type", "text/javascript; charset=utf-8" },
+    { "X-Content-Type-Options", "nosniff" },
+    { "Cache-Control", "no-store" },
+  }, Page.JS)
 end
 
 local function page(buf, res)
@@ -145,8 +231,10 @@ local function page(buf, res)
     nonce = nonce,
     events = prefix .. "/events",
     base = prefix .. "/asset/",
+    script = "/" .. state.token .. "/page.js",
+    vendor = vendor_cfg(),
     theme = Page.theme(),
-    content = Render.render(buf, p.cache),
+    content = rendered(buf, p),
     escape = Render.escape,
   })
   res.send(200, {
@@ -169,10 +257,13 @@ local function events(buf, res)
     local cur = state.previews[buf]
     if cur then cur.clients[stream] = nil end
   end)
-  stream.write(event("render", { html = Render.render(buf, p.cache) }))
+  stream.write(event("render", { html = rendered(buf, p) }))
 end
 
 local function handle(req, res)
+  local vtoken, vname, vrel = req.decoded:match("^/(%x+)/vendor/([%w%-%._]+)/(.+)$")
+  if vtoken and vtoken == state.token then return vendor(vname, vrel, res) end
+  if req.decoded == "/" .. tostring(state.token) .. "/page.js" then return script(res) end
   local token, buf, rest = req.decoded:match("^/(%x+)/b/(%d+)(.*)$")
   buf = tonumber(buf)
   if token ~= state.token or not buf or not state.previews[buf] or not vim.api.nvim_buf_is_valid(buf) then
@@ -211,9 +302,23 @@ local function ensure_server()
   return true
 end
 
+local function check_vendor()
+  if state.vendor_checked then return end
+  state.vendor_checked = true
+  local missing = {}
+  for name in pairs(Page.VENDOR) do
+    if not M.vendor_dir(name) then missing[#missing + 1] = name end
+  end
+  if #missing == 0 then return end
+  table.sort(missing)
+  vim.notify(("markdown preview: math and diagrams show as source until %s %s installed (:Pack install)")
+    :format(table.concat(missing, " and "), #missing == 1 and "is" or "are"), vim.log.levels.INFO)
+end
+
 function M.open(buf)
   buf = resolve_buf(buf)
   if not vim.api.nvim_buf_is_valid(buf) then return nil end
+  check_vendor()
   if not state.previews[buf] then
     if not ensure_server() then return nil end
     state.previews[buf] = { clients = {}, cache = {} }

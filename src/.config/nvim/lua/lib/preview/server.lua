@@ -4,12 +4,15 @@ local M = {}
 
 M.MAX_HEADER = 16 * 1024
 M.HEADER_TIMEOUT = 10000
+M.MAX_CONNS = 64
+M.MAX_QUEUE = 8 * 1024 * 1024
 
 local REASONS = {
   [200] = "OK",
   [400] = "Bad Request",
   [404] = "Not Found",
   [405] = "Method Not Allowed",
+  [421] = "Misdirected Request",
   [431] = "Request Header Fields Too Large",
   [500] = "Internal Server Error",
 }
@@ -28,6 +31,7 @@ end
 function Server:drop(conn)
   if conn.closed then return end
   conn.closed = true
+  if self.conns[conn] then self.nconns = self.nconns - 1 end
   self.conns[conn] = nil
   if conn.timer then
     pcall(conn.timer.stop, conn.timer)
@@ -65,6 +69,7 @@ end
 local function head(status, headers)
   local out = { "HTTP/1.1 " .. status .. " " .. (REASONS[status] or "Unknown") }
   for _, h in ipairs(headers or {}) do out[#out + 1] = h[1] .. ": " .. h[2] end
+  out[#out + 1] = "Referrer-Policy: no-referrer"
   out[#out + 1] = ""
   out[#out + 1] = ""
   return table.concat(out, "\r\n")
@@ -120,7 +125,14 @@ function Server:dispatch(conn, req)
     local hs = vim.list_extend({}, headers or {})
     hs[#hs + 1] = { "Connection", "keep-alive" }
     local stream = {}
-    function stream.write(data) return self:write(conn, data) end
+    function stream.write(data)
+      if conn.closed then return false end
+      if conn.tcp:get_write_queue_size() > M.MAX_QUEUE then
+        self:drop(conn)
+        return false
+      end
+      return self:write(conn, data)
+    end
     function stream.close() self:drop(conn) end
     function stream.closed() return conn.closed end
     function stream.on_close(cb) conn.on_close = cb end
@@ -138,7 +150,7 @@ end
 function Server:on_data(conn, chunk)
   if conn.parsed then return end
   conn.buf = conn.buf .. chunk
-  local stop = conn.buf:find("\r?\n\r?\n")
+  local stop, stop_end = conn.buf:find("\r?\n\r?\n")
   if not stop then
     if #conn.buf > M.MAX_HEADER then
       conn.parsed = true
@@ -153,9 +165,10 @@ function Server:on_data(conn, chunk)
     conn.timer:close()
     conn.timer = nil
   end
-  local req = parse(conn.buf:sub(1, stop))
+  local req = parse(conn.buf:sub(1, stop_end))
   conn.buf = ""
   if not req then return self:fail(conn, 400) end
+  if not self.hosts[(req.headers.host or ""):lower()] then return self:fail(conn, 421) end
   if req.method ~= "GET" then return self:fail(conn, 405) end
   vim.schedule(function()
     if not conn.closed then self:dispatch(conn, req) end
@@ -170,8 +183,13 @@ function Server:accept()
     tcp:close()
     return
   end
+  if self.nconns >= M.MAX_CONNS then
+    tcp:close()
+    return
+  end
   local conn = { tcp = tcp, buf = "" }
   self.conns[conn] = true
+  self.nconns = self.nconns + 1
   conn.timer = uv.new_timer()
   conn.timer:start(M.HEADER_TIMEOUT, 0, function()
     vim.schedule(function()
@@ -207,7 +225,7 @@ function M.start(opts)
     tcp:close()
     return nil, err
   end
-  local self = setmetatable({ tcp = tcp, conns = {}, handler = opts.handler }, Server)
+  local self = setmetatable({ tcp = tcp, conns = {}, nconns = 0, handler = opts.handler }, Server)
   local lok, lerr = tcp:listen(128, function(e)
     if e then return self:warn(e) end
     local aok, aerr = pcall(self.accept, self)
@@ -218,6 +236,7 @@ function M.start(opts)
     return nil, lerr
   end
   self.port = tcp:getsockname().port
+  self.hosts = { ["127.0.0.1:" .. self.port] = true, ["localhost:" .. self.port] = true }
   return self
 end
 

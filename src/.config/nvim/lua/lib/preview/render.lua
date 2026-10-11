@@ -61,6 +61,21 @@ local function url_attr(u)
   return esc(enc)
 end
 
+local function ci(word)
+  return (word:gsub("%a", function(c) return "[" .. c:lower() .. c:upper() .. "]" end))
+end
+
+local META = "<(" .. ci("meta") .. ")([%s/>])"
+local META_END = "<(" .. ci("meta") .. ")$"
+local REFPOL = "([%s\"'/])(" .. ci("referrerpolicy") .. ")%f[^%w%-]"
+
+local function passthrough(html)
+  html = html:gsub(META, "&lt;%1%2"):gsub(META_END, "&lt;%1")
+  html = html:gsub(REFPOL, '%1referrerpolicy="no-referrer" data-mdp-%2')
+  return html
+end
+M.passthrough = passthrough
+
 local function norm_label(s)
   return (s:gsub("%s+", " "):match("^ ?(.-) ?$"):lower())
 end
@@ -308,7 +323,7 @@ end
 INLINE.hard_line_break = function() return "<br>\n" end
 
 local function raw_inline(C, node) return slice(C, sbyte(node), ebyte(node)) end
-INLINE.html_tag = raw_inline
+INLINE.html_tag = function(C, node) return passthrough(raw_inline(C, node)) end
 INLINE.entity_reference = raw_inline
 INLINE.numeric_character_reference = raw_inline
 
@@ -487,6 +502,14 @@ BLOCK.paragraph = function(C, node, tight, prefix)
   if C.fn_paras[node:id()] then return "" end
   local inl = child_of_type(node, "inline")
   if not inl then return "" end
+  local rp = C.ref_paras[node:id()]
+  if rp then
+    local s = inline_entry(C, inl).s
+    if rp.offset >= #s then return "" end
+    local html = (prefix or "") .. render_inline(C, inl, rp.offset, #s)
+    if tight then return html end
+    return '<p data-line="' .. (srow(node) + rp.rows) .. '">' .. html .. "</p>"
+  end
   if not prefix then
     local tex = display_math(C, inl)
     if tex then return '<div class="math-display"' .. dl(node) .. ">" .. esc(tex) .. "</div>" end
@@ -682,7 +705,7 @@ BLOCK.indented_code_block = function(C, node)
 end
 
 BLOCK.html_block = function(C, node)
-  return block_text(C, node)
+  return passthrough(block_text(C, node))
 end
 
 BLOCK.thematic_break = function(_, node)
@@ -795,6 +818,36 @@ end
 
 local CONTAINERS = { document = true, section = true, block_quote = true, list = true, list_item = true }
 local FN_DEF = "^%[%^([^%]%s]+)%]:[ \t]*"
+local REF_DEF = "^ ? ? ?%[([^%]%^][^%]]*)%]:[ \t]*(%S+)[ \t]*(.-)[ \t]*$"
+
+local function ref_def_line(line)
+  local label, dest, rest = line:match(REF_DEF)
+  if not label or not label:find("%S") then return nil end
+  if dest:sub(1, 1) == "<" then
+    if dest:sub(-1) ~= ">" then return nil end
+    dest = dest:sub(2, -2)
+  end
+  local title
+  if rest ~= "" then
+    title = rest:match('^"(.*)"$') or rest:match("^'(.*)'$") or rest:match("^%((.*)%)$")
+    if not title then return nil end
+  end
+  return label, unescape(dest), title and unescape(title)
+end
+
+local function leading_refs(C, para, inl)
+  local str = inline_entry(C, inl).s
+  local pos, rows = 0, 0
+  while pos < #str do
+    local nl = str:find("\n", pos + 1, true) or (#str + 1)
+    local label, dest, title = ref_def_line(str:sub(pos + 1, nl - 1))
+    if not label then break end
+    local key = norm_label(label)
+    if not C.refs[key] then C.refs[key] = { dest = dest, title = title } end
+    pos, rows = nl, rows + 1
+  end
+  if rows > 0 then C.ref_paras[para:id()] = { offset = pos, rows = rows } end
+end
 
 local function collect(C, node)
   for _, child in ipairs(node:named_children()) do
@@ -827,6 +880,7 @@ local function collect(C, node)
       end
     elseif t == "paragraph" then
       local inl = child_of_type(child, "inline")
+      if inl and C.src:match("^%[[^%]%^][^%]]*%]:", sbyte(inl) + 1) then pcall(leading_refs, C, child, inl) end
       if inl and C.src:match(FN_DEF, sbyte(inl) + 1) then
         C.fn_paras[child:id()] = true
         local str = inline_entry(C, inl).s
@@ -899,6 +953,7 @@ function M.render_lines(lines, opts)
     refs = {},
     fn_defs = {},
     fn_paras = {},
+    ref_paras = {},
     fn_order = {},
     fn_num = {},
     fn_refs = {},

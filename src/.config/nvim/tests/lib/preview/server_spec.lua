@@ -45,7 +45,7 @@ local function parse(data)
 end
 
 local function get(port, path, extra)
-  local c = connect(port, "GET " .. path .. " HTTP/1.1\r\nHost: 127.0.0.1\r\n" .. (extra or "") .. "\r\n")
+  local c = connect(port, "GET " .. path .. " HTTP/1.1\r\nHost: 127.0.0.1:" .. port .. "\r\n" .. (extra or "") .. "\r\n")
   T.truthy(wait(function() return c.eof end), "response to " .. path)
   shut(c)
   return parse(c.data) or { status = nil, raw = c.data }
@@ -98,7 +98,7 @@ local function cleanup(buf)
 end
 
 local function sse(port, token, buf)
-  local c = connect(port, ("GET /%s/b/%d/events HTTP/1.1\r\nHost: x\r\nAccept: text/event-stream\r\n\r\n"):format(token, buf))
+  local c = connect(port, ("GET /%s/b/%d/events HTTP/1.1\r\nHost: localhost:%d\r\nAccept: text/event-stream\r\n\r\n"):format(token, buf, port))
   T.truthy(wait(function() return count(events_of(c.data), "render") >= 1 end), "initial render event")
   return c
 end
@@ -140,7 +140,11 @@ T.describe("lib.preview server", function()
     T.truthy(nonce, csp)
     T.truthy(csp:find("default-src 'none'", 1, true), csp)
     T.truthy(csp:find("connect-src 'self'", 1, true), csp)
-    T.truthy(a.body:find('<script nonce="' .. nonce .. '">', 1, true))
+    local tag = ('<script defer nonce="%s" src="/%s/page.js"></script>'):format(nonce, token)
+    local at = a.body:find(tag, 1, true)
+    T.truthy(at, "deferred page script")
+    T.truthy(at < a.body:find("</head>", 1, true), "page script sits in head")
+    T.truthy(a.body:find('<script type="application/json" id="mdp-cfg">', 1, true) < at, "config precedes the script")
     T.truthy(a.body:find("<title>README.md</title>", 1, true))
     T.truthy(a.body:find('<h1 id="title" data-line="0">', 1, true))
     T.truthy(a.body:find(('<base href="/%s/b/%d/asset/">'):format(token, buf), 1, true))
@@ -153,7 +157,7 @@ T.describe("lib.preview server", function()
   T.it("rejects methods other than GET", function()
     local buf = fixture()
     local port, token = open(buf)
-    local c = connect(port, ("POST /%s/b/%d HTTP/1.1\r\nHost: x\r\nContent-Length: 3\r\n\r\nabc"):format(token, buf))
+    local c = connect(port, ("POST /%s/b/%d HTTP/1.1\r\nHost: 127.0.0.1:%d\r\nContent-Length: 3\r\n\r\nabc"):format(token, buf, port))
     T.truthy(wait(function() return c.eof end))
     shut(c)
     local res = parse(c.data)
@@ -198,7 +202,7 @@ T.describe("lib.preview server", function()
     T.truthy(wait(function() return c.connected end))
     c.tcp:write(("T /%s/b/%d HTTP/1.1\r\n"):format(token, buf))
     vim.wait(20)
-    c.tcp:write("Host: x\r\n\r\n")
+    c.tcp:write("Host: 127.0.0.1:" .. port .. "\r\n\r\n")
     T.truthy(wait(function() return c.eof end))
     shut(c)
     T.eq(parse(c.data).status, 200)
@@ -349,6 +353,241 @@ T.describe("lib.preview server", function()
     T.eq(next(srv.conns), nil)
     local ok, cmds = pcall(vim.api.nvim_get_autocmds, { group = "LibPreview" })
     T.truthy(not ok or #cmds == 0, "autocmds left behind")
+    cleanup(buf)
+  end)
+end)
+
+local Server = require("lib.preview.server")
+local Page = require("lib.preview.page")
+local Render = require("lib.preview.render")
+
+local function raw(port, req)
+  local c = connect(port, req)
+  T.truthy(wait(function() return c.eof end), "response")
+  shut(c)
+  return parse(c.data) or { raw = c.data }
+end
+
+local function vendor_fixture()
+  local root = vim.fn.tempname()
+  local k = root .. "/katex"
+  vim.fn.mkdir(k .. "/dist/fonts", "p")
+  vim.fn.writefile({ "window.katex={render:function(){}};" }, k .. "/dist/katex.min.js")
+  vim.fn.writefile({ ".katex{}" }, k .. "/dist/katex.min.css")
+  vim.fn.writefile({ "WOFF2" }, k .. "/dist/fonts/a.woff2", "b")
+  vim.fn.writefile({ "{}" }, k .. "/dist/katex.min.js.map")
+  vim.fn.writefile({ "SECRET" }, root .. "/secret.js")
+  uv.fs_symlink(root .. "/secret.js", k .. "/dist/link.js")
+  local m = root .. "/mermaid"
+  vim.fn.mkdir(m .. "/dist", "p")
+  vim.fn.writefile({ "window.mermaid={};" }, m .. "/dist/mermaid.min.js")
+  local orig = P.vendor_dir
+  P.vendor_dir = function(name)
+    if name == "katex" then return k end
+    if name == "mermaid" then return m end
+    return nil
+  end
+  return function() P.vendor_dir = orig end
+end
+
+T.describe("lib.preview hardening", function()
+  T.it("sends a CSP with no external origins and a strict-dynamic nonce", function()
+    local buf = fixture()
+    local port, token = open(buf)
+    local res = get(port, ("/%s/b/%d"):format(token, buf))
+    local csp = res.headers["content-security-policy"]
+    local nonce = csp:match("'nonce%-(%x+)'")
+    T.eq(csp, ("default-src 'none'; script-src 'nonce-%s' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; "
+      .. "font-src 'self'; img-src 'self' data: https:; connect-src 'self'"):format(nonce))
+    T.eq(csp:gsub("img%-src [^;]*", ""):find("https?:"), nil)
+    cleanup(buf)
+  end)
+
+  T.it("leaves a document's own script tags without the nonce", function()
+    local buf = fixture()
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, {
+      "<script src=\"/x/vendor/katex/dist/katex.min.js\"></script>", "", "<script>alert(1)</script>",
+    })
+    local port, token = open(buf)
+    local res = get(port, ("/%s/b/%d"):format(token, buf))
+    local nonce = res.headers["content-security-policy"]:match("'nonce%-(%x+)'")
+    local _, n = res.body:gsub(vim.pesc(nonce), "")
+    T.eq(n, 1, "only the page script carries the nonce")
+    T.truthy(res.body:find('<script src="/x/vendor/katex/dist/katex.min.js"></script>', 1, true))
+    cleanup(buf)
+  end)
+
+  T.it("sends Referrer-Policy: no-referrer on every response", function()
+    local restore = vendor_fixture()
+    local buf = fixture()
+    local port, token = open(buf)
+    for _, path in ipairs({
+      ("/%s/b/%d"):format(token, buf), ("/%s/b/%d/asset/img/p.png"):format(token, buf),
+      ("/%s/page.js"):format(token), ("/%s/vendor/katex/dist/katex.min.js"):format(token), "/nope",
+    }) do
+      T.eq(get(port, path).headers["referrer-policy"], "no-referrer", path)
+    end
+    local c = sse(port, token, buf)
+    T.eq(parse(c.data).headers["referrer-policy"], "no-referrer")
+    shut(c)
+    restore()
+    cleanup(buf)
+  end)
+
+  T.it("rejects requests whose Host is not the loopback origin", function()
+    local buf = fixture()
+    local port, token = open(buf)
+    local path = ("/%s/b/%d"):format(token, buf)
+    local function with_host(h)
+      return raw(port, "GET " .. path .. " HTTP/1.1\r\n" .. (h and ("Host: " .. h .. "\r\n") or "") .. "\r\n").status
+    end
+    T.eq(with_host("127.0.0.1:" .. port), 200)
+    T.eq(with_host("localhost:" .. port), 200)
+    T.eq(with_host("LOCALHOST:" .. port), 200)
+    T.eq(with_host("evil.example:" .. port), 421)
+    T.eq(with_host("127.0.0.1:" .. (port + 1)), 421)
+    T.eq(with_host("127.0.0.1"), 421)
+    T.eq(with_host(nil), 421)
+    cleanup(buf)
+  end)
+
+  T.it("parses a request with no headers instead of answering 400", function()
+    local buf = fixture()
+    local port, token = open(buf)
+    T.eq(raw(port, ("GET /%s/b/%d HTTP/1.1\r\n\r\n"):format(token, buf)).status, 421)
+    T.eq(raw(port, ("GET /%s/b/%d HTTP/1.1\n\n"):format(token, buf)).status, 421)
+    cleanup(buf)
+  end)
+
+  T.it("closes connections beyond the cap at once", function()
+    local prev = Server.MAX_CONNS
+    Server.MAX_CONNS = 3
+    local buf = fixture()
+    local port, token = open(buf)
+    local idle = {}
+    for i = 1, 3 do
+      idle[i] = connect(port)
+      T.truthy(wait(function() return idle[i].connected end))
+    end
+    T.truthy(wait(function() return P._state().server.nconns == 3 end), "three accepted")
+    local extra = connect(port)
+    T.truthy(wait(function() return extra.eof end), "extra connection closed")
+    T.eq(extra.data, "")
+    for _, c in ipairs(idle) do shut(c) end
+    T.truthy(wait(function() return P._state().server.nconns == 0 end), "slots released")
+    T.eq(get(port, ("/%s/b/%d"):format(token, buf)).status, 200)
+    Server.MAX_CONNS = prev
+    cleanup(buf)
+  end)
+
+  T.it("drops an event stream whose client stops reading", function()
+    local prev = Server.MAX_QUEUE
+    Server.MAX_QUEUE = 256 * 1024
+    local buf = fixture()
+    local port, token = open(buf)
+    local tcp = uv.new_tcp()
+    local connected = false
+    tcp:connect("127.0.0.1", port, function()
+      connected = true
+      tcp:write(("GET /%s/b/%d/events HTTP/1.1\r\nHost: 127.0.0.1:%d\r\n\r\n"):format(token, buf, port))
+    end)
+    T.truthy(wait(function() return connected and next(P._state().previews[buf].clients) ~= nil end), "stream open")
+    local stream = next(P._state().previews[buf].clients)
+    local chunk = "data: " .. string.rep("x", 1024 * 1024) .. "\n\n"
+    local dropped
+    for i = 1, 200 do
+      if not stream.write(chunk) then dropped = i break end
+      vim.wait(1)
+    end
+    T.truthy(dropped, "stream was never dropped")
+    T.truthy(stream.closed())
+    T.truthy(wait(function() return next(P._state().previews[buf].clients) == nil end), "client removed")
+    tcp:close()
+    Server.MAX_QUEUE = prev
+    cleanup(buf)
+  end)
+
+  T.it("puts the page script in head so an unclosed comment cannot swallow it", function()
+    local buf = fixture()
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "# T", "", "<!--" })
+    local port, token = open(buf)
+    local body = get(port, ("/%s/b/%d"):format(token, buf)).body
+    local head_end = body:find("</head>", 1, true)
+    local cfg = body:match('<script type="application/json" id="mdp%-cfg">(.-)</script>')
+    T.eq(vim.json.decode(cfg).events, ("/%s/b/%d/events"):format(token, buf))
+    T.truthy(body:find('id="mdp-cfg"', 1, true) < head_end)
+    T.truthy(body:find("page.js", 1, true) < head_end)
+    T.truthy(body:find("<!--", head_end, true))
+    T.truthy(Page.JS:find('document.getElementById("mdp-cfg")', 1, true))
+    cleanup(buf)
+  end)
+
+  T.it("serves vendor files only from inside the plugin dir, with their types", function()
+    local restore = vendor_fixture()
+    local buf = fixture()
+    local port, token = open(buf)
+    local v = ("/%s/vendor/"):format(token)
+    local js = get(port, v .. "katex/dist/katex.min.js")
+    T.eq(js.status, 200)
+    T.eq(js.headers["content-type"], "text/javascript; charset=utf-8")
+    T.eq(js.body, "window.katex={render:function(){}};\n")
+    T.eq(get(port, v .. "katex/dist/katex.min.css").headers["content-type"], "text/css; charset=utf-8")
+    T.eq(get(port, v .. "katex/dist/fonts/a.woff2").headers["content-type"], "font/woff2")
+    T.eq(get(port, v .. "mermaid/dist/mermaid.min.js").status, 200)
+    for _, bad in ipairs({
+      "katex/../secret.js", "katex/dist/%2e%2e/%2e%2e/secret.js", "katex/%2e%2e/secret.js", "katex/dist/link.js",
+      "katex/dist/katex.min.js.map", "katex/dist", "katex/dist/missing.js", "other/dist/katex.min.js",
+      "..%2fsecret.js", "katex/dist/katex.min.js%00.css",
+    }) do
+      T.eq(get(port, v .. bad).status, 404, bad)
+    end
+    T.eq(get(port, ("/%s/vendor/katex/dist/katex.min.js"):format(string.rep("0", 32))).status, 404)
+    local page = get(port, ("/%s/b/%d"):format(token, buf)).body
+    local cfg = vim.json.decode(page:match('id="mdp%-cfg">(.-)</script>'))
+    T.eq(cfg.katex, { js = v .. "katex/dist/katex.min.js", css = v .. "katex/dist/katex.min.css" })
+    T.eq(cfg.mermaid, { js = v .. "mermaid/dist/mermaid.min.js" })
+    T.eq(page:find("https?://[%w%.]*jsdelivr"), nil)
+    restore()
+    cleanup(buf)
+  end)
+
+  T.it("leaves math and diagrams as source and says :Pack install once when vendor files are missing", function()
+    local orig = P.vendor_dir
+    P.vendor_dir = function() return nil end
+    P._state().vendor_checked = nil
+    local notes = {}
+    local orig_notify = vim.notify
+    vim.notify = function(msg) notes[#notes + 1] = msg end
+    local buf = fixture()
+    local port, token = open(buf)
+    local cfg = vim.json.decode(get(port, ("/%s/b/%d"):format(token, buf)).body:match('id="mdp%-cfg">(.-)</script>'))
+    P.close(buf)
+    open(buf)
+    vim.notify = orig_notify
+    P.vendor_dir = orig
+    T.eq(cfg.katex, vim.NIL)
+    T.eq(cfg.mermaid, vim.NIL)
+    T.eq(#notes, 1)
+    T.truthy(notes[1]:find(":Pack install", 1, true), notes[1])
+    cleanup(buf)
+  end)
+
+  T.it("reuses the last render while the buffer is unchanged and stretches the debounce for slow renders", function()
+    local buf = fixture()
+    local port, token = open(buf)
+    local orig = Render.render
+    local calls = 0
+    Render.render = function(...) calls = calls + 1; return orig(...) end
+    local path = ("/%s/b/%d"):format(token, buf)
+    get(port, path)
+    get(port, path)
+    T.eq(calls, 1)
+    vim.api.nvim_buf_set_lines(buf, 0, 1, false, { "# Changed" })
+    T.truthy(get(port, path).body:find("Changed", 1, true))
+    T.eq(calls, 2)
+    Render.render = orig
+    T.eq(P.debounce_ms({ render_ms = 5 }), P.DEBOUNCE)
+    T.eq(P.debounce_ms({ render_ms = 400 }), 800)
     cleanup(buf)
   end)
 end)

@@ -1,15 +1,8 @@
 local M = {}
 
-M.KATEX = {
-  js = "https://cdn.jsdelivr.net/npm/katex@0.16.47/dist/katex.min.js",
-  js_sri = "sha384-CwjPRVHTvLiMBFjEoij+QZViMV5rhTOIp7CJzl24JEqpRDA1sJFHVXXLURktbYYp",
-  css = "https://cdn.jsdelivr.net/npm/katex@0.16.47/dist/katex.min.css",
-  css_sri = "sha384-nH0MfJ44wi1dd7w6jinlyBgljjS8EJAh2JBoRad8a3VDw2K69vfaaqm4WnR+gXtA",
-}
-
-M.MERMAID = {
-  js = "https://cdn.jsdelivr.net/npm/mermaid@11.17.2/dist/mermaid.min.js",
-  js_sri = "sha384-EOXBFmc3gx5mb+vn0vPvvGqACToJD24hhacX5Yx+8NUUQrHIle/Qi5Bg9o3zKwW2",
+M.VENDOR = {
+  katex = { js = "dist/katex.min.js", css = "dist/katex.min.css" },
+  mermaid = { js = "dist/mermaid.min.js" },
 }
 
 local CSS = [[
@@ -115,10 +108,12 @@ html, body { margin: 0; background: var(--bg); color: var(--fg); }
 #mdp-badge[hidden] { display: none; }
 ]]
 
-local JS = [[
+M.JS = [[
 (function () {
   "use strict";
-  var cfg = __CFG__;
+  var me = document.currentScript;
+  var nonce = me ? me.nonce : "";
+  var cfg = JSON.parse(document.getElementById("mdp-cfg").textContent);
   var content = document.getElementById("mdp-content");
   var badge = document.getElementById("mdp-badge");
   var dark = cfg.dark;
@@ -127,12 +122,12 @@ local JS = [[
   var diagramTheme = null;
   var seq = 0;
 
-  function load(kind, url, sri) {
+  function load(kind, url) {
+    if (!url) return Promise.reject(new Error("not installed"));
     if (loads[url]) return loads[url];
     loads[url] = new Promise(function (resolve, reject) {
       var el = document.createElement(kind);
-      el.crossOrigin = "anonymous";
-      el.integrity = sri;
+      if (kind === "script") el.nonce = nonce;
       el.onload = resolve;
       el.onerror = function () { delete loads[url]; reject(new Error("failed to load " + url)); };
       if (kind === "script") { el.src = url; } else { el.rel = "stylesheet"; el.href = url; }
@@ -144,8 +139,9 @@ local JS = [[
   function math() {
     var nodes = content.querySelectorAll(".math-inline, .math-display");
     if (!nodes.length) return;
-    load("link", cfg.katex.css, cfg.katex.css_sri).catch(function () {});
-    load("script", cfg.katex.js, cfg.katex.js_sri).then(function () {
+    if (!cfg.katex) return;
+    load("link", cfg.katex.css).catch(function () {});
+    load("script", cfg.katex.js).then(function () {
       nodes.forEach(function (el) {
         if (!el.isConnected || el.getAttribute("data-tex") !== null) return;
         var tex = el.textContent;
@@ -162,7 +158,8 @@ local JS = [[
   function diagrams() {
     var nodes = content.querySelectorAll("pre.mermaid");
     if (!nodes.length) return;
-    load("script", cfg.mermaid.js, cfg.mermaid.js_sri).then(function () {
+    if (!cfg.mermaid) return;
+    load("script", cfg.mermaid.js).then(function () {
       var m = window.mermaid;
       if (diagramTheme !== dark) {
         m.initialize({ startOnLoad: false, securityLevel: "strict", theme: dark ? "dark" : "default" });
@@ -301,8 +298,10 @@ local function json_script(v)
 end
 
 function M.html(o)
-  local cfg = json_script({ events = o.events, dark = o.theme.dark, katex = M.KATEX, mermaid = M.MERMAID })
-  local js = JS:gsub("__CFG__", function() return cfg end)
+  local vendor = o.vendor or {}
+  local cfg = json_script({
+    events = o.events, dark = o.theme.dark, katex = vendor.katex or vim.NIL, mermaid = vendor.mermaid or vim.NIL,
+  })
   local css = o.theme.css:gsub("</", "<\\/")
   return table.concat({
     "<!doctype html>",
@@ -315,13 +314,14 @@ function M.html(o)
     '<link rel="icon" href="data:,">',
     "<style>" .. CSS .. "</style>",
     '<style id="mdp-hl">' .. css .. "</style>",
+    '<script type="application/json" id="mdp-cfg">' .. cfg .. "</script>",
+    '<script defer nonce="' .. o.nonce .. '" src="' .. o.escape(o.script) .. '"></script>',
     "</head>",
     "<body>",
     '<div id="mdp-badge" hidden>disconnected</div>',
     '<article id="mdp-content" class="markdown-body">',
     o.content,
     "</article>",
-    '<script nonce="' .. o.nonce .. '">' .. js .. "</script>",
     "</body>",
     "</html>",
     "",
@@ -329,8 +329,8 @@ function M.html(o)
 end
 
 function M.csp(nonce)
-  return "default-src 'none'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-    .. "script-src 'nonce-" .. nonce .. "' https://cdn.jsdelivr.net; font-src https://cdn.jsdelivr.net data:; connect-src 'self'"
+  return "default-src 'none'; script-src 'nonce-" .. nonce .. "' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; "
+    .. "font-src 'self'; img-src 'self' data: https:; connect-src 'self'"
 end
 
 return M
