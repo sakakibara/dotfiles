@@ -332,6 +332,11 @@ local function plain_tree(root)
   return nil
 end
 
+function M.valid_marker(spec, dir)
+  local m = M.read_marker(dir)
+  return m ~= nil and m.npm == spec.npm and type(m.version) == "string"
+end
+
 function M.read_marker(dir)
   local f = io.open(dir .. "/" .. M.MARKER, "r")
   if not f then return nil end
@@ -353,7 +358,9 @@ local function write_marker(dir, m)
   return true
 end
 
-local function adopt_legacy(spec, dir, m, locked)
+function M.adopt_legacy(spec, dir, locked)
+  local m = M.read_marker(dir)
+  if not m or m.npm ~= spec.npm or type(m.version) ~= "string" then return false end
   if m.files ~= nil or not M.usable_lock(spec, locked) then return false end
   if m.version ~= locked.version or m.integrity ~= locked.integrity then return false end
   local files = M.norm_files(spec.files)
@@ -368,7 +375,6 @@ function M.mismatch(spec, dir, locked)
   local m = M.read_marker(dir)
   if not m or type(m.version) ~= "string" then return "not installed" end
   if m.npm ~= spec.npm then return ("installed package %s, spec %s"):format(tostring(m.npm), spec.npm) end
-  if m.files == nil then adopt_legacy(spec, dir, m, locked) end
   if not vim.deep_equal(m.files, M.norm_files(spec.files)) then return "installed files differ from the spec" end
   if M.usable_lock(spec, locked) then
     if m.version ~= locked.version then return ("installed %s, lockfile %s"):format(m.version, locked.version) end

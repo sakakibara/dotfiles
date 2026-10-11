@@ -693,6 +693,39 @@ T.describe("core.pack npm plugins", function()
     T.eq(vim.fn.readdir(base), {})
   end)
 
+  T.it("a failed reinstall prunes a spec whose marker is unusable or names another package", function()
+    for _, m in ipairs({ {}, { npm = "other", version = "1.0.0" } }) do
+      local I = fresh()
+      local dir = I.install_dir("pkg")
+      vim.fn.mkdir(dir .. "/dist", "p")
+      vim.fn.writefile({ vim.json.encode(m) }, dir .. "/" .. Npm.MARKER)
+      stub({})
+      local orig = vim.notify
+      vim.notify = function() end
+      local pack = require("core.pack")
+      pack.setup({ specs = { SPEC } })
+      vim.notify = orig
+      unstub()
+      T.eq(pack.has("pkg"), false, vim.inspect(m))
+    end
+  end)
+
+  T.it("mismatch does not rewrite a legacy marker", function()
+    local I, L = fresh()
+    stub(routes({ ["1.0.0"] = {} }, { ["1.0.0"] = tgz("1.0.0") }))
+    async(function(cb) I.install_missing({ normalize(SPEC) }, { on_complete = cb }) end)
+    unstub()
+    local path = I.install_dir("pkg") .. "/" .. Npm.MARKER
+    local m = marker(I)
+    m.files = nil
+    vim.fn.writefile({ vim.json.encode(m) }, path)
+    local before = vim.fn.readfile(path)
+    T.eq(Npm.mismatch(normalize(SPEC), I.install_dir("pkg"), L.get("pkg")), "installed files differ from the spec")
+    T.eq(vim.fn.readfile(path), before)
+    T.eq(Npm.adopt_legacy(normalize(SPEC), I.install_dir("pkg"), L.get("pkg")), true)
+    T.eq(Npm.mismatch(normalize(SPEC), I.install_dir("pkg"), L.get("pkg")), nil)
+  end)
+
   T.it("update never offers a downgrade and reports a newer locked version as held", function()
     local I, L = fresh()
     local spec = normalize(SPEC)

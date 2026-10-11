@@ -280,7 +280,9 @@ local function install_missing(specs, opts)
   for _, spec in ipairs(specs) do
     if spec.npm then
       local dir = M.install_dir(spec.name)
-      if Npm.mismatch(spec, dir, Lock.get(spec.name)) then npm_pending[#npm_pending + 1] = { spec = spec, dir = dir } end
+      local locked = Lock.get(spec.name)
+      Npm.adopt_legacy(spec, dir, locked)
+      if Npm.mismatch(spec, dir, locked) then npm_pending[#npm_pending + 1] = { spec = spec, dir = dir } end
     elseif not spec.dev then
       local dir = M.install_dir(spec.name)
       if vim.fn.isdirectory(dir) == 1 and Git.is_repo(dir) then
@@ -919,6 +921,7 @@ M.update = function(specs, names, opts)
         }
       end
       if opts.target == "lockfile" then
+        Npm.adopt_legacy(t.spec, t.dir, locked)
         if Npm.usable_lock(t.spec, locked) and Npm.mismatch(t.spec, t.dir, locked) then add(locked) end
       else
         local res, err, held = await(Npm.resolve, t.spec)

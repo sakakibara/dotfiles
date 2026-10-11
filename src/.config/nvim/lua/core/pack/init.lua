@@ -159,7 +159,9 @@ local function install_all(specs)
     local dir = Install.install_dir(s.name)
     local missing
     if s.npm then
-      missing = require("core.pack.npm").mismatch(s, dir, require("core.pack.lock").get(s.name)) ~= nil
+      local Npm, locked = require("core.pack.npm"), require("core.pack.lock").get(s.name)
+      Npm.adopt_legacy(s, dir, locked)
+      missing = Npm.mismatch(s, dir, locked) ~= nil
     else
       missing = not s.dev and vim.fn.isdirectory(dir) == 0
     end
@@ -264,7 +266,7 @@ function M.setup(cfg)
   for _, name in ipairs(failed_names) do failed[name] = true end
   for name in pairs(failed) do
     local s = M._specs[name]
-    if s and s.npm and require("core.pack.npm").read_marker(require("core.pack.install").install_dir(name)) then
+    if s and s.npm and require("core.pack.npm").valid_marker(s, require("core.pack.install").install_dir(name)) then
       failed[name] = nil
     else
       M._specs[name] = nil
