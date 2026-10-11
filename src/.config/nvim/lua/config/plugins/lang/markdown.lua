@@ -57,5 +57,8 @@ return Lib.lang.setup({
       ft   = "markdown",
       opts = {},
     },
+
+    { npm = "katex", version = "^0.19", files = { "dist" } },
+    { npm = "mermaid", version = "^12", files = { "dist/mermaid.min.js" } },
   },
 })
