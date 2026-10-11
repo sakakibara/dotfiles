@@ -5,8 +5,10 @@ M._dir_override = nil      -- tests
 M._max_snapshots = 20      -- override in tests
 
 local function dir()
-  return M._dir_override or (vim.fn.stdpath("config") .. "/pack-lock-history")
+  return M._dir_override or (vim.fn.stdpath("state") .. "/pack-lock-history")
 end
+
+M.dir = dir
 
 local function ensure_dir()
   vim.fn.mkdir(dir(), "p")

@@ -44,9 +44,12 @@ end
 
 T.describe("core.pack.install", function()
   T.it("installs into its own pack namespace, not vim.pack's", function()
-    package.loaded["core.pack.install"] = nil
     local I = require("core.pack.install")
-    T.eq(I.install_dir("x"), vim.fn.stdpath("data") .. "/site/pack/managed/opt/x")
+    local saved = I._install_root_override
+    I._install_root_override = nil
+    local got = I.install_dir("x")
+    I._install_root_override = saved
+    T.eq(got, vim.fn.stdpath("data") .. "/site/pack/managed/opt/x")
   end)
 
   T.it("install_missing skips already-installed plugins", function()

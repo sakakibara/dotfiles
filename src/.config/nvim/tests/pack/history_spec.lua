@@ -13,6 +13,15 @@ local function fresh()
 end
 
 T.describe("core.pack.history", function()
+  T.it("snapshots live in the state dir by default", function()
+    local H = require("core.pack.history")
+    local saved = H._dir_override
+    H._dir_override = nil
+    local got = H.dir()
+    H._dir_override = saved
+    T.eq(got, vim.fn.stdpath("state") .. "/pack-lock-history")
+  end)
+
   T.it("snapshot copies current lockfile and lists itself", function()
     local H, L = fresh()
     L.set("a", { src = "u/a", rev = "1" })
