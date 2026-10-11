@@ -26,7 +26,7 @@ return {
     "saghen/blink.cmp",
     version = "1.*",  -- uses released prebuilt Rust binary
     event = { "InsertEnter", "CmdlineEnter" },
-    dependencies = { "friendly-snippets", "lazydev.nvim" },
+    dependencies = { "friendly-snippets" },
     init = function()
       -- Pre-download blink's Rust binary during the cold-install splash
       -- window so it's ready by the time the user starts typing.
@@ -90,7 +90,8 @@ return {
         ghost_text = { enabled = false },
       },
       sources = {
-        default = { "lsp", "path", "snippets", "buffer", "lazydev", "mox" },
+        default = { "lsp", "path", "snippets", "buffer", "mox" },
+        per_filetype = { lua = { "lazydev", inherit_defaults = true } },
         providers = {
           lazydev = {
             name = "LazyDev",

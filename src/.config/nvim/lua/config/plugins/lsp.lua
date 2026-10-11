@@ -4,9 +4,7 @@ return {
     event = { "BufReadPre", "BufNewFile", "BufWritePre" },
     -- lazydev.nvim is NOT a dependency: nvim-lspconfig is the
     -- LazyFile gate (any file), which would force lazydev to load on
-    -- every file type. lazydev has its own `ft = "lua"` trigger; we
-    -- pull it in explicitly only when lua_ls actually attaches via
-    -- the LspAttach hook below.
+    -- every file type. lazydev loads through its own `ft = "lua"` trigger.
     init = function()
       Lib.mason.add("lua-language-server", { ft = "lua" })
     end,
@@ -41,7 +39,6 @@ return {
       library = {
         { path = "${3rd}/luv/library", words = { "vim%.uv" } },
         { path = "snacks.nvim", words = { "Snacks" } },
-        { path = "lazy.nvim",    words = { "LazyVim" } },
       },
     },
   },
