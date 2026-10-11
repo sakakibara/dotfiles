@@ -9,15 +9,12 @@ return Lib.lang.setup({
   plugins = {
     {
       "mrcjkb/haskell-tools.nvim",
-      version = "^3",
+      version = "^11",
       ft = { "haskell", "lhaskell", "cabal", "cabalproject" },
       init = function()
         vim.g.haskell_tools = {
           hls = {
             capabilities = Lib.lsp.capabilities(),
-          },
-          dap = {
-            cmd = { "haskell-debug-adapter" },
           },
         }
       end,
