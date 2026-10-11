@@ -33,5 +33,6 @@ return Lib.lang.setup({
   },
   plugins = {
     { "b0o/SchemaStore.nvim", lazy = true },
+    { "neovim/nvim-lspconfig", lazy = true, dependencies = { "SchemaStore.nvim" } },
   },
 })

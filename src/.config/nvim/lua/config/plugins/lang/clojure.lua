@@ -13,12 +13,13 @@ return Lib.lang.setup({
   parsers = { "clojure" },
   servers = { clojure_lsp = {} },
   plugins = {
-      {
+    {
       "m00qek/baleia.nvim",
       lazy = true,
       config = function()
         local opts = { line_starts_at = 3 }
         vim.g.conjure_baleia = require("baleia").setup(opts)
+        vim.g["conjure#log#strip_ansi_escape_sequences_line_limit"] = 0
 
         vim.api.nvim_create_user_command("BaleiaColorize", function()
           vim.g.conjure_baleia.once(vim.api.nvim_get_current_buf())
@@ -31,18 +32,13 @@ return Lib.lang.setup({
     {
       "Olical/conjure",
       ft = { "clojure", "fennel", "scheme", "janet", "lisp", "racket" },
+      dependencies = { "baleia.nvim" },
       config = function()
         require("conjure.main").main()
         require("conjure.mapping")["on-filetype"]()
       end,
       init = function()
-        -- baleia is lazy-loaded on demand; trigger it so conjure can colorize.
-        local ok_baleia = pcall(function() require("baleia") end)
-        if ok_baleia then
-          vim.g["conjure#log#strip_ansi_escape_sequences_line_limit"] = 0
-        else
-          vim.g["conjure#log#strip_ansi_escape_sequences_line_limit"] = 1
-        end
+        vim.g["conjure#log#strip_ansi_escape_sequences_line_limit"] = 1
 
         vim.api.nvim_create_autocmd({ "BufWinEnter" }, {
           pattern = "conjure-log-*",
@@ -50,7 +46,7 @@ return Lib.lang.setup({
             local buffer = vim.api.nvim_get_current_buf()
             vim.diagnostic.enable(false, { bufnr = buffer })
 
-            if ok_baleia and vim.g.conjure_baleia then
+            if vim.g.conjure_baleia then
               vim.g.conjure_baleia.automatically(buffer)
             end
 
