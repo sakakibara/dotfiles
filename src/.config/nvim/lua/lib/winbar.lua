@@ -133,12 +133,37 @@ local function types_for(ft) return T[ft] end
 -- Click dispatcher -- winbar `%@` callbacks look up actions by id.
 -- Each handler carries its rendered screen column so menu.open can
 -- anchor under the clicked segment.
-local handlers, next_id = {}, 100
+local SLOTS = 1000
+local handlers = {}
+local win_index, slot_count, free_index, next_index = {}, {}, {}, 1
 
-local function register(action)
-  local id = next_id
-  next_id = next_id + 1
-  if next_id > 9999 then next_id = 100 end
+local function begin_handlers(win)
+  local idx = win_index[win]
+  if not idx then
+    idx = table.remove(free_index)
+    if not idx then
+      idx = next_index
+      next_index = next_index + 1
+    end
+    win_index[win] = idx
+  end
+  for s = 1, slot_count[win] or 0 do handlers[idx * SLOTS + s] = nil end
+  slot_count[win] = 0
+end
+
+local function forget_handlers(win)
+  local idx = win_index[win]
+  if not idx then return end
+  for s = 1, slot_count[win] or 0 do handlers[idx * SLOTS + s] = nil end
+  win_index[win], slot_count[win] = nil, nil
+  free_index[#free_index + 1] = idx
+end
+
+local function register(win, action)
+  local n = slot_count[win] + 1
+  if n >= SLOTS then return nil end
+  slot_count[win] = n
+  local id = win_index[win] * SLOTS + n
   handlers[id] = { action = action, col = 0 }
   return id
 end
@@ -159,6 +184,7 @@ function M.click(minwid, _, button, _)
 end
 
 local function clickable(id, content)
+  if not id then return content end
   return ("%%%d@v:lua.Lib.winbar.click@%s%%X"):format(id, content)
 end
 
@@ -252,6 +278,10 @@ local function sibling_symbols(bufnr, node, types)
 end
 
 -- Filesystem helpers
+local function join(dir, name)
+  return dir:sub(-1) == "/" and dir .. name or dir .. "/" .. name
+end
+
 local function list_dir(path)
   local fd = vim.uv.fs_scandir(path)
   if not fd then return {} end
@@ -273,7 +303,7 @@ end
 local function dir_items(path)
   local items = {}
   for _, e in ipairs(list_dir(path)) do
-    local full = path .. "/" .. e.name
+    local full = join(path, e.name)
     items[#items + 1] = {
       label  = e.name .. (e.type == "directory" and "/" or ""),
       icon   = Lib.icons.status.Directory and (e.type == "directory" and Lib.icons.status.Directory or "") or "",
@@ -296,8 +326,8 @@ end
 -- Each segment builder returns { content, width, id } so render() can
 -- track the rendered screen column and patch handlers[id].col.
 
-local function segment_scope(bufnr, entry, types)
-  local id = register(function(_, col, src_win)
+local function segment_scope(win, bufnr, entry, types)
+  local id = register(win, function(_, col, src_win)
     local siblings = sibling_symbols(bufnr, entry.node, types)
     menu.open(siblings, {
       title        = entry.kind or "symbols",
@@ -317,8 +347,8 @@ local function segment_scope(bufnr, entry, types)
   }
 end
 
-local function segment_path_dir(abs_path, label)
-  local id = register(function(_, col, src_win)
+local function segment_path_dir(win, abs_path, label)
+  local id = register(win, function(_, col, src_win)
     local items = dir_items(abs_path)
     if #items == 0 then return end
     menu.open(items, {
@@ -341,9 +371,9 @@ local function segment_path_dir(abs_path, label)
   }
 end
 
-local function segment_path_file(abs_path, label, modified)
+local function segment_path_file(win, abs_path, label, modified)
   local parent = vim.fn.fnamemodify(abs_path, ":h")
-  local id = register(function(_, col, src_win)
+  local id = register(win, function(_, col, src_win)
     local items = dir_items(parent)
     if #items == 0 then return end
     for _, item in ipairs(items) do
@@ -385,6 +415,7 @@ function M.render()
   local winid      = vim.g.statusline_winid or vim.api.nvim_get_current_win()
   local bufnr      = vim.api.nvim_win_get_buf(winid)
   local is_current = winid == vim.api.nvim_get_current_win()
+  begin_handlers(winid)
 
   -- Skip winbar for special buffers
   local bt = vim.bo[bufnr].buftype
@@ -396,9 +427,6 @@ function M.render()
   if name == "" then
     return "%#WinBarDim#[No Name]"
   end
-
-  -- Bound memory growth on the handlers map.
-  if next_id > 500 then handlers, next_id = {}, 100 end
 
   -- Each zone is built as a list of { content, width, id? }. After
   -- concatenation, we walk them to patch handlers[id].col with the
@@ -414,7 +442,7 @@ function M.render()
     if trail and types and #trail > 0 then
       for i, entry in ipairs(trail) do
         if i > 1 then scope_out[#scope_out + 1] = sep_item end
-        scope_out[#scope_out + 1] = segment_scope(bufnr, entry, types)
+        scope_out[#scope_out + 1] = segment_scope(winid, bufnr, entry, types)
       end
     end
   end
@@ -426,17 +454,21 @@ function M.render()
   local abs     = vim.fn.fnamemodify(name, ":p"):gsub("/$", "")
   local parts   = vim.split(rel, "/", { plain = true })
   local path_out = {}
-  local walked  = rel:sub(1, 1) == "~" and vim.fn.expand("~") or ""
+  local walked
+  if parts[1] == "~" then walked = vim.fn.expand("~")
+  elseif parts[1] == "" then walked = "/"
+  else walked = vim.uv.cwd() or "" end
 
   for i, p in ipairs(parts) do
-    if i == 1 and p == "~" then
-      walked = vim.fn.expand("~")
-    elseif i < #parts then
-      walked = walked == "" and p or (walked .. "/" .. p)
-      path_out[#path_out + 1] = segment_path_dir(walked, p)
+    if i == #parts then
+      path_out[#path_out + 1] = segment_path_file(winid, abs ~= "" and abs or "/", p ~= "" and p or "/", vim.bo[bufnr].modified)
+    elseif i == 1 and p == "" then
+      path_out[#path_out + 1] = segment_path_dir(winid, "/", "/")
       path_out[#path_out + 1] = sep_item
-    else
-      path_out[#path_out + 1] = segment_path_file(abs, p, vim.bo[bufnr].modified)
+    elseif not (i == 1 and p == "~") then
+      walked = join(walked, p)
+      path_out[#path_out + 1] = segment_path_dir(winid, walked, p)
+      path_out[#path_out + 1] = sep_item
     end
   end
 
@@ -560,9 +592,14 @@ function M.setup()
   })
 
   -- Invalidate cache when buffer is unloaded/wiped
+  local cache_group = vim.api.nvim_create_augroup("Lib.winbar.cache", { clear = true })
   vim.api.nvim_create_autocmd({ "BufWipeout", "BufUnload" }, {
-    group = vim.api.nvim_create_augroup("Lib.winbar.cache", { clear = true }),
+    group = cache_group,
     callback = function(args) scope_cache[args.buf] = nil end,
+  })
+  vim.api.nvim_create_autocmd("WinClosed", {
+    group = cache_group,
+    callback = function(args) forget_handlers(tonumber(args.match)) end,
   })
 
   -- Disable the winbar entirely (no line allocated) for special-purpose
