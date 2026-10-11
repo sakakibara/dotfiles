@@ -110,9 +110,9 @@ return Lib.lang.setup({
                 require("jdtls.dap").setup_dap_main_class_configs()
               end)
               if ok_dap then
-                map("n", "<Leader>tt", function() require("jdtls.dap").test_class() end, "Run All Test (jdtls)")
-                map("n", "<Leader>tr", function() require("jdtls.dap").test_nearest_method() end, "Run Nearest Test (jdtls)")
-                map("n", "<Leader>tT", function() require("jdtls.dap").pick_test() end, "Pick Test (jdtls)")
+                map("n", "<Leader>tt", function() require("jdtls.dap").test_nearest_method() end, "Run Nearest Test (jdtls)")
+                map("n", "<Leader>tT", function() require("jdtls.dap").test_class() end, "Run Class Tests (jdtls)")
+                map("n", "<Leader>tp", function() require("jdtls.dap").pick_test() end, "Pick Test (jdtls)")
               end
             end
           end,

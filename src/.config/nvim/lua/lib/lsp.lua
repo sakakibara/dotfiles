@@ -163,6 +163,10 @@ end
 
 function M.keymaps(bufnr)
   local function bmap(mode, lhs, rhs, opts)
+    local existing = vim.api.nvim_buf_call(bufnr, function()
+      return vim.fn.maparg(lhs, mode, false, true)
+    end)
+    if existing.buffer == 1 then return end
     opts = opts or {}
     opts.buffer = bufnr
     opts.silent = opts.silent ~= false
