@@ -266,6 +266,37 @@ T.describe("core.pack.install", function()
     T.truthy(notified:match("demo.nvim"), "notification should name the reverted plugin")
   end)
 
+  T.it("a failed smoke revert keeps the new rev in the lockfile and reports it", function()
+    local I, L = fresh()
+    local remote = make_remote()
+    vim.fn.mkdir(remote .. "/lua/demo", "p")
+    vim.fn.writefile({ "return {}" }, remote .. "/lua/demo/init.lua")
+    sh({ "git", "-C", remote, "add", "." })
+    sh({ "git", "-C", remote, "commit", "-q", "-m", "valid module" })
+    local spec = { name = "demo.nvim", src = "file://" .. remote }
+    async(function(cb) I.install_missing({ spec }, { on_complete = cb }) end)
+    local rev_a = L.get("demo.nvim").rev
+    vim.fn.writefile({ "return { broken syntax" }, remote .. "/lua/demo/init.lua")
+    sh({ "git", "-C", remote, "commit", "-aq", "-m", "broken" })
+    local rev_b = vim.trim(sh({ "git", "-C", remote, "rev-parse", "HEAD" }))
+
+    local Git = require("core.pack.git")
+    local orig_checkout = Git.checkout_sha
+    Git.checkout_sha = function(_dir, _sha, cb) vim.schedule(function() cb({ ok = false, err = "simulated" }) end) end
+    local errors = {}
+    local orig = vim.notify
+    vim.notify = function(msg, lvl) if lvl == vim.log.levels.ERROR then errors[#errors + 1] = msg end end
+    async(function(cb) I.update({ spec }, { "demo.nvim" }, { confirm = false, on_complete = cb }) end)
+    vim.notify = orig
+    Git.checkout_sha = orig_checkout
+
+    T.truthy(rev_a ~= rev_b)
+    T.eq(L.get("demo.nvim").rev, rev_b, "lockfile must match the tree that stayed on the new rev")
+    T.eq(stubs.await(Git.current_rev, I.install_dir("demo.nvim")), rev_b)
+    T.eq(#errors, 1)
+    T.truthy(errors[1]:match("revert failed") and errors[1]:match("demo.nvim"))
+  end)
+
   T.it("update writes a txn marker during apply and clears it on success", function()
     package.loaded["core.pack.txn"] = nil
     local Txn = require("core.pack.txn")

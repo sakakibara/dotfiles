@@ -491,18 +491,29 @@ local function apply_pending_body(pending, opts)
     end
     await(Jobs.await_pool, smoke_pool, {})
 
-    local reverted = {}
+    local reverted, revert_failed = {}, {}
     for i, p in ipairs(pending) do
       if not results[i].ok then
-        await(Git.checkout_sha, p.dir, p.from)
-        Lock.set(p.spec.name, {
-          src = p.spec.src,
-          rev = p.from,
-          version = type(p.spec.version) == "string" and p.spec.version or nil,
-        })
-        await(M.run_build, p.spec, p.dir, { fidget = opts.fidget })
-        reverted[#reverted + 1] = { name = p.spec.name, err = results[i].err }
+        local co = await(Git.checkout_sha, p.dir, p.from)
+        if co.ok then
+          Lock.set(p.spec.name, {
+            src = p.spec.src,
+            rev = p.from,
+            version = type(p.spec.version) == "string" and p.spec.version or nil,
+          })
+          await(M.run_build, p.spec, p.dir, { fidget = opts.fidget })
+          reverted[#reverted + 1] = { name = p.spec.name, err = results[i].err }
+        else
+          revert_failed[#revert_failed + 1] = ("%s: %s"):format(
+            p.spec.name, vim.trim(co.err or ""):match("^[^\n]*"))
+        end
       end
+    end
+    if #revert_failed > 0 then
+      vim.notify(
+        ("core.pack: smoke check failed and revert failed for %d plugin(s); they stay on the new rev:\n  %s"):format(
+          #revert_failed, table.concat(revert_failed, "\n  ")),
+        vim.log.levels.ERROR)
     end
     if #reverted > 0 then
       local names = {}
