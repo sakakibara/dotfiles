@@ -46,23 +46,26 @@ function M.cycle_sibling(direction)
   while true do
     local name, t = vim.uv.fs_scandir_next(fs)
     if not name then break end
-    if name:sub(1, 1) ~= "." and (t == "file" or t == "link") then
+    if t == "link" then
+      local stat = vim.uv.fs_stat(dir .. "/" .. name)
+      t = stat and stat.type
+    end
+    if name:sub(1, 1) ~= "." and t == "file" then
       files[#files + 1] = name
     end
   end
   if #files <= 1 then return end
   table.sort(files, function(a, b) return a:lower() < b:lower() end)
 
-  local idx
+  -- Current file isn't in the listing (filtered out by hidden/etc.): land
+  -- on the first sibling so the user gets *some* movement.
+  local next_idx = 1
   for i, f in ipairs(files) do
-    if f == basename then idx = i; break end
+    if f == basename then
+      next_idx = ((i - 1 + direction) % #files) + 1
+      break
+    end
   end
-  if not idx then
-    -- Current file isn't in the listing (filtered out by hidden/etc.). Land
-    -- on the first sibling so the user gets *some* movement.
-    idx = 0
-  end
-  local next_idx = ((idx - 1 + direction) % #files) + 1
   vim.cmd("edit " .. vim.fn.fnameescape(dir .. "/" .. files[next_idx]))
 end
 
