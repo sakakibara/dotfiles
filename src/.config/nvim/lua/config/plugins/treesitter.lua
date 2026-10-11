@@ -61,9 +61,7 @@ return {
         end
       end
 
-      require("nvim-treesitter").setup({
-        install_dir = vim.fn.stdpath("data") .. "/site",
-      })
+      require("nvim-treesitter").setup()
 
       -- Track which fts have already had their parser-install attempted
       -- so we don't re-fire on every buffer of the same filetype.
