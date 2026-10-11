@@ -339,6 +339,7 @@ function M.setup(cfg)
               resumable[#resumable + 1] = {
                 spec = spec, dir = p.dir, from = p.from, to = p.to,
                 target_rev = p.target_rev, ref = p.ref, checkout_ref = p.checkout_ref,
+                tag_name = p.tag_name, tag_sha = p.tag_sha,
               }
             end
           end

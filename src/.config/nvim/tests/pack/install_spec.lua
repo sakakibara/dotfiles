@@ -454,6 +454,70 @@ T.describe("core.pack.install", function()
     T.eq(L.get("demo").rev, rev_orig, "lockfile rev should not change on force-tag")
   end)
 
+  local function two_tag_remote()
+    local remote = make_remote()
+    sh({ "git", "-C", remote, "tag", "v1.0.0" })
+    local rev_a = vim.trim(sh({ "git", "-C", remote, "rev-parse", "HEAD" }))
+    sh({ "git", "-C", remote, "commit", "--allow-empty", "-q", "-m", "second" })
+    sh({ "git", "-C", remote, "tag", "v2.0.0" })
+    local rev_b = vim.trim(sh({ "git", "-C", remote, "rev-parse", "HEAD" }))
+    return remote, rev_a, rev_b
+  end
+
+  local function warnings_during(fn)
+    local warns = {}
+    local orig = vim.notify
+    vim.notify = function(msg, lvl) if lvl == vim.log.levels.WARN then warns[#warns + 1] = msg end end
+    local ok, err = pcall(fn)
+    vim.notify = orig
+    if not ok then error(err) end
+    return table.concat(warns, "\n")
+  end
+
+  T.it("lockfile update keeps the locked tag record instead of the newest matching tag", function()
+    local I, L = fresh()
+    local remote, rev_a, rev_b = two_tag_remote()
+    local spec = { name = "demo", src = "file://" .. remote, version = vim.version.range(">=1.0.0") }
+    async(function(cb) I.install_missing({ spec }, { on_complete = cb }) end)
+    T.eq(L.get("demo").tag_name, "v2.0.0")
+    L.set("demo", { src = spec.src, rev = rev_a, tag_name = "v1.0.0", tag_sha = rev_a })
+
+    local warns = warnings_during(function()
+      async(function(cb)
+        I.update({ spec }, { "demo" }, { confirm = false, target = "lockfile", on_complete = cb })
+      end)
+    end)
+    local entry = L.get("demo")
+    T.eq({ entry.rev, entry.tag_name, entry.tag_sha }, { rev_a, "v1.0.0", rev_a })
+    T.eq(warns, "")
+
+    warns = warnings_during(function()
+      async(function(cb) I.update({ spec }, { "demo" }, { confirm = false, on_complete = cb }) end)
+    end)
+    T.eq(L.get("demo").rev, rev_b, "a later remote update must not see a false force-tag")
+    T.eq(warns:match("tag SHA mismatch"), nil)
+  end)
+
+  T.it("lockfile update warns when the locked tag moved but still checks out the locked rev", function()
+    local I, L = fresh()
+    local remote, rev_a = two_tag_remote()
+    local spec = { name = "demo", src = "file://" .. remote, version = vim.version.range(">=1.0.0") }
+    async(function(cb) I.install_missing({ spec }, { on_complete = cb }) end)
+    L.set("demo", { src = spec.src, rev = rev_a, tag_name = "v1.0.0", tag_sha = rev_a })
+    sh({ "git", "-C", remote, "commit", "--allow-empty", "-q", "-m", "third" })
+    sh({ "git", "-C", remote, "tag", "-f", "v1.0.0" })
+
+    local warns = warnings_during(function()
+      async(function(cb)
+        I.update({ spec }, { "demo" }, { confirm = false, target = "lockfile", on_complete = cb })
+      end)
+    end)
+    local Git = require("core.pack.git")
+    T.eq(stubs.await(Git.current_rev, I.install_dir("demo")), rev_a)
+    T.truthy(warns:match("tag moved since it was locked") and warns:match("v1%.0%.0"), warns)
+    T.eq(warns:match("refusing"), nil)
+  end)
+
   T.it("update reverts when the new rev's require chain errors at runtime", function()
     local I, L = fresh()
     local remote = make_remote()

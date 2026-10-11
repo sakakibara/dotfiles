@@ -439,10 +439,8 @@ local function apply_pending_body(pending, opts)
             rev = p.target_rev,
             version = type(p.spec.version) == "string" and p.spec.version or nil,
           }
-          if p.resolved and p.resolved.kind == "tag" then
-            entry.tag_name = p.resolved.name
-            entry.tag_sha  = p.target_rev
-          end
+          entry.tag_name = p.tag_name
+          entry.tag_sha  = p.tag_sha
           Lock.set(p.spec.name, entry)
           M.run_build(p.spec, p.dir, { fidget = opts.fidget }, function()
             M.generate_helptags(p.dir)
@@ -733,6 +731,7 @@ M.update = function(specs, names, opts)
                 if r.code == 0 then
                   t.target_rev = entry.rev
                   t.checkout_ref = entry.rev
+                  t.locked = entry
                 else
                   t.target_rev = nil
                   vim.notify(("core.pack: %s: locked rev %s is not available locally -- skipping"):format(
@@ -768,7 +767,7 @@ M.update = function(specs, names, opts)
     -- and act intentionally.
     local tag_skipped = {}
     for _, t in ipairs(targets) do
-      if t.target_rev and t.resolved and t.resolved.kind == "tag" then
+      if opts.target ~= "lockfile" and t.target_rev and t.resolved and t.resolved.kind == "tag" then
         local entry = Lock.get(t.name)
         if entry and entry.tag_name == t.resolved.name
            and entry.tag_sha and entry.tag_sha ~= t.target_rev then
@@ -784,6 +783,35 @@ M.update = function(specs, names, opts)
         ("core.pack: tag SHA mismatch (force-tagged?) -- refusing %d update(s):\n  %s\n  Run :Pack uninstall && :Pack install <name> to accept the new SHA."):format(
           #tag_skipped, table.concat(tag_skipped, "\n  ")),
         vim.log.levels.WARN)
+    end
+    if opts.target == "lockfile" then
+      local moved = {}
+      local pool = Jobs.pool({ concurrency = opts.concurrency })
+      for _, t in ipairs(targets) do
+        local tag = t.locked and t.locked.tag_name
+        if t.target_rev and type(tag) == "string" and Refs.validate(tag)
+           and type(t.locked.tag_sha) == "string" then
+          pool:add({
+            cmd = { "git", "-C", t.dir, "rev-parse", "--verify", "--quiet", "refs/tags/" .. tag .. "^{commit}" },
+            tag = t.name,
+            on_done = function(r)
+              local sha = vim.trim(r.stdout or "")
+              if r.code == 0 and sha ~= t.locked.tag_sha then
+                moved[#moved + 1] = ("%s (%s: %s -> %s)"):format(
+                  t.name, tag, t.locked.tag_sha:sub(1, 8), sha:sub(1, 8))
+              end
+            end,
+          })
+        end
+      end
+      await(Jobs.await_pool, pool, {})
+      if #moved > 0 then
+        table.sort(moved)
+        vim.notify(
+          ("core.pack: tag moved since it was locked (force-tagged?); checking out the locked rev anyway:\n  %s"):format(
+            table.concat(moved, "\n  ")),
+          vim.log.levels.WARN)
+      end
     end
 
     -- Branch force-push detection (opt-in via vim.g.core_pack_warn_branch_rewrite).
@@ -824,10 +852,16 @@ M.update = function(specs, names, opts)
     local pending = {}
     for _, t in ipairs(targets) do
       if t.target_rev and t.refs and t.target_rev ~= t.refs.head_rev then
+        local tag_name, tag_sha
+        if t.locked then
+          tag_name, tag_sha = t.locked.tag_name, t.locked.tag_sha
+        elseif t.resolved and t.resolved.kind == "tag" then
+          tag_name, tag_sha = t.resolved.name, t.target_rev
+        end
         pending[#pending + 1] = {
           spec = t.spec, dir = t.dir, from = t.refs.head_rev, to = t.target_rev,
           ref = t.resolved and t.resolved.name or nil, checkout_ref = t.checkout_ref,
-          target_rev = t.target_rev, resolved = t.resolved,
+          target_rev = t.target_rev, tag_name = tag_name, tag_sha = tag_sha,
         }
       end
     end

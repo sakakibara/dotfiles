@@ -27,6 +27,8 @@ function M.begin(pending)
       target_rev   = p.target_rev,
       ref          = p.ref,
       checkout_ref = p.checkout_ref,
+      tag_name     = p.tag_name,
+      tag_sha      = p.tag_sha,
     }
   end
   -- Preserve any existing attempts count so the resumer's bump survives
