@@ -6,7 +6,6 @@ local ALLOWED_FIELDS = {
   dependencies = true, event = true, ft = true, cmd = true, keys = true,
   priority = true, enabled = true, cond = true, dev = true, lazy = true,
   init = true, opts = true, config = true, main = true, build = true,
-  auto = true,
 }
 
 local function is_range(s)
@@ -78,7 +77,6 @@ function M.normalize(spec)
     config = spec.config,
     main = spec.main,
     build = spec.build,
-    auto = spec.auto == true,
   }
 end
 
