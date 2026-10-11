@@ -89,10 +89,14 @@ function M.select(doc, spec)
   local range = range_of(spec)
   if not range then return nil, "invalid version range" end
   local allow_pre = names_prerelease(spec)
+  local tags = type(doc["dist-tags"]) == "table" and doc["dist-tags"] or {}
+  local latest = type(tags.latest) == "string" and vim.version.parse(tags.latest, { strict = true }) or nil
+  if latest and not range:has(latest) then latest = nil end
   local cands = {}
   for v in pairs(doc.versions) do
     local parsed = vim.version.parse(v, { strict = true })
-    if parsed and (allow_pre or parsed.prerelease == nil) and range:has(parsed) then
+    if parsed and (allow_pre or parsed.prerelease == nil) and range:has(parsed)
+      and not (latest and parsed > latest) then
       cands[#cands + 1] = { v = v, parsed = parsed }
     end
   end

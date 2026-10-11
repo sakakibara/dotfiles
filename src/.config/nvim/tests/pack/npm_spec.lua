@@ -98,6 +98,22 @@ T.describe("core.pack.npm resolution", function()
     Npm._now = nil
   end)
 
+  T.it("does not pick a version above dist-tags.latest when the range admits latest", function()
+    local d = doc({ ["10.9.0"] = {}, ["11.4.0"] = {}, ["11.5.0"] = {}, ["12.0.0"] = {} })
+    d["dist-tags"] = { latest = "11.4.0", next = "12.0.0" }
+    Npm._now = function() return NOW end
+    local function pick(v)
+      return Npm.select(d, normalize({ npm = "pkg", version = v, files = { "dist" }, min_age = 0 })).version
+    end
+    T.eq(pick(nil), "11.4.0")
+    T.eq(pick("*"), "11.4.0")
+    T.eq(pick(">=10"), "11.4.0")
+    T.eq(pick("^11"), "11.4.0")
+    T.eq(pick("^12"), "12.0.0")
+    T.eq(pick("~10.9"), "10.9.0")
+    Npm._now = nil
+  end)
+
   T.it("holds back versions younger than min_age and reports them", function()
     local d = doc({ ["0.19.0"] = { age = 30 }, ["0.19.2"] = { age = 2.5 } })
     Npm._now = function() return NOW end
