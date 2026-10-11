@@ -185,3 +185,48 @@ T.describe("lib.format -- format() semantics", function()
     T.eq(ran, 1)
   end)
 end)
+
+T.describe("lib.format -- built-in LSP source", function()
+  local function with_lsp_formatter(fn)
+    local real_get_clients = vim.lsp.get_clients
+    vim.lsp.get_clients = function() return { { name = "fake_ls" } } end
+    local ok, err = pcall(fn)
+    vim.lsp.get_clients = real_get_clients
+    pcall(vim.api.nvim_del_augroup_by_name, "Lib.format")
+    if not ok then error(err) end
+  end
+
+  local function active_names(fmt)
+    local names = {}
+    for _, f in ipairs(fmt.resolve(0)) do
+      if f.active then names[#names + 1] = f.name end
+    end
+    return names
+  end
+
+  T.it("is shadowed by a primary formatter that has sources", function()
+    with_lsp_formatter(function()
+      local fmt = reset_format()
+      fmt.setup()
+      fmt.register({
+        name = "conform", primary = true, priority = 100,
+        format = function() end,
+        sources = function() return { "stylua" } end,
+      })
+      T.eq(active_names(fmt), { "conform" })
+    end)
+  end)
+
+  T.it("runs when no primary formatter has sources", function()
+    with_lsp_formatter(function()
+      local fmt = reset_format()
+      fmt.setup()
+      fmt.register({
+        name = "conform", primary = true, priority = 100,
+        format = function() end,
+        sources = function() return {} end,
+      })
+      T.eq(active_names(fmt), { "LSP" })
+    end)
+  end)
+end)

@@ -163,12 +163,11 @@ function M.formatexpr()
 end
 
 function M.setup()
-  -- Built-in LSP source -- non-primary so it runs alongside a primary
-  -- formatter (e.g. conform) when both have sources; takes over fully if
-  -- no primary has anything configured.
+  -- Built-in LSP source -- the lowest-priority primary, so it runs only
+  -- when no other primary (e.g. conform) has a formatter for the buffer.
   M.register({
     name = "LSP",
-    primary = false,
+    primary = true,
     priority = 1,
     format = function(buf)
       vim.lsp.buf.format({ bufnr = buf, timeout_ms = 1000 })
