@@ -632,4 +632,26 @@ T.describe("core.pack.install", function()
     T.truthy(ticks >= 30,
       "main thread should tick during ex-command build (got " .. ticks .. ", expected >=30)")
   end)
+
+  T.it("install_missing completes and closes the lock batch when git cannot start", function()
+    local I, L = fresh()
+    local orig_system, orig_notify = vim.system, vim.notify
+    vim.system = function(cmd, ...)
+      if cmd[1] == "git" then error("ENOENT: no such file or directory (cmd): 'git'") end
+      return orig_system(cmd, ...)
+    end
+    local failed, errors = {}, {}
+    vim.notify = function(m, l) if l == vim.log.levels.ERROR then errors[#errors + 1] = m end end
+    local done = false
+    I.install_missing({ { name = "demo", src = "file:///nonexistent" } }, {
+      on_failed = function(name) failed[#failed + 1] = name end,
+      on_complete = function() done = true end,
+    })
+    vim.wait(3000, function() return done end, 10)
+    vim.system, vim.notify = orig_system, orig_notify
+    T.eq(done, true, "on_complete must fire")
+    T.eq(L._batch, nil, "lock batch must be closed")
+    T.eq(failed, { "demo" })
+    T.truthy(#errors >= 1)
+  end)
 end)

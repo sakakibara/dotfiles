@@ -235,107 +235,127 @@ if not ok then io.stderr:write(tostring(err) .. "\n") os.exit(1) end
   if ok then await(BuildCache.mark_built, path, b) end
 end)
 
-function M.install_missing(specs, opts)
-  opts = opts or {}
-  async(function()
-    local pending = {}
-    for _, spec in ipairs(specs) do
-      if not spec.dev then
-        local dir = M.install_dir(spec.name)
-        if vim.fn.isdirectory(dir) == 1 and Git.is_repo(dir) then
-          -- already installed; nothing to do
-        else
-          -- Clean up any pre-existing non-repo dir (e.g., interrupted prior clone)
-          -- so `git clone` doesn't refuse a non-empty target.
-          if vim.fn.isdirectory(dir) == 1 then
-            await(rm_rf, dir)
+local function run_batched(body, arg, opts)
+  opts = vim.tbl_extend("force", {}, opts or {})
+  local user_complete = opts.on_complete
+  local completed = false
+  opts.on_complete = function(...)
+    if completed then return end
+    completed = true
+    if user_complete then user_complete(...) end
+  end
+  async(body)(arg, opts, function(_, err)
+    if err == nil then return end
+    Lock.batch_commit()
+    if opts.fidget then pcall(opts.fidget.done, opts.fidget, "core.pack") end
+    opts.on_complete()
+  end)
+end
+
+local function install_missing(specs, opts)
+  local pending = {}
+  for _, spec in ipairs(specs) do
+    if not spec.dev then
+      local dir = M.install_dir(spec.name)
+      if vim.fn.isdirectory(dir) == 1 and Git.is_repo(dir) then
+        -- already installed; nothing to do
+      else
+        -- Clean up any pre-existing non-repo dir (e.g., interrupted prior clone)
+        -- so `git clone` doesn't refuse a non-empty target.
+        if vim.fn.isdirectory(dir) == 1 then
+          await(rm_rf, dir)
+        end
+        pending[#pending + 1] = { spec = spec, dir = dir }
+      end
+    end
+  end
+
+  if #pending == 0 then
+    if opts.on_complete then opts.on_complete() end
+    return
+  end
+  History.snapshot()
+
+  local view
+  if opts.open_window then
+    view = UI.fidget({ open_window = true })
+    view:set_status("core.pack", ("installing 0/%d"):format(#pending))
+  end
+  local total = #pending
+  local fully_done = 0
+  Lock.batch_begin()
+  await(function(cb)
+    local function complete_one(spec, last_result)
+      fully_done = fully_done + 1
+      if view then
+        view:set_status("core.pack", ("installing %d/%d"):format(fully_done, total))
+      end
+      if opts.on_progress then opts.on_progress(fully_done, total, last_result) end
+      if fully_done == total then cb() end
+    end
+
+    local pool = Jobs.pool({ concurrency = opts.concurrency })
+    for _, p in ipairs(pending) do
+      pool:add({
+        cmd = { "git", "clone", "--filter=blob:none", p.spec.src, p.dir },
+        tag = p.spec.name,
+        async_done = true,
+        on_done = function(r, release)
+          if r.code ~= 0 then
+            vim.notify(("core.pack: %s: clone failed: %s"):format(p.spec.name, r.stderr),
+              vim.log.levels.ERROR)
+            if opts.on_failed then opts.on_failed(p.spec.name, "clone failed: " .. r.stderr) end
+            complete_one(p.spec, r); release(); return
           end
-          pending[#pending + 1] = { spec = spec, dir = dir }
-        end
-      end
-    end
-
-    if #pending == 0 then
-      if opts.on_complete then opts.on_complete() end
-      return
-    end
-    History.snapshot()
-
-    local view
-    if opts.open_window then
-      view = UI.fidget({ open_window = true })
-      view:set_status("core.pack", ("installing 0/%d"):format(#pending))
-    end
-    local total = #pending
-    local fully_done = 0
-    Lock.batch_begin()
-    await(function(cb)
-      local function complete_one(spec, last_result)
-        fully_done = fully_done + 1
-        if view then
-          view:set_status("core.pack", ("installing %d/%d"):format(fully_done, total))
-        end
-        if opts.on_progress then opts.on_progress(fully_done, total, last_result) end
-        if fully_done == total then cb() end
-      end
-
-      local pool = Jobs.pool({ concurrency = opts.concurrency })
-      for _, p in ipairs(pending) do
-        pool:add({
-          cmd = { "git", "clone", "--filter=blob:none", p.spec.src, p.dir },
-          tag = p.spec.name,
-          async_done = true,
-          on_done = function(r, release)
-            if r.code ~= 0 then
-              vim.notify(("core.pack: %s: clone failed: %s"):format(p.spec.name, r.stderr),
-                vim.log.levels.ERROR)
-              if opts.on_failed then opts.on_failed(p.spec.name, "clone failed: " .. r.stderr) end
+          async(function()
+            local rev, err, resolved = await(pin_to_version, p.spec, p.dir)
+            if not rev then
+              await(rm_rf, p.dir)
+              vim.notify(("core.pack: %s"):format(err), vim.log.levels.ERROR)
+              if opts.on_failed then
+                local clean_msg = err:gsub("^" .. vim.pesc(p.spec.name) .. ":%s*", "")
+                opts.on_failed(p.spec.name, clean_msg)
+              end
               complete_one(p.spec, r); release(); return
             end
-            async(function()
-              local rev, err, resolved = await(pin_to_version, p.spec, p.dir)
-              if not rev then
-                await(rm_rf, p.dir)
-                vim.notify(("core.pack: %s"):format(err), vim.log.levels.ERROR)
-                if opts.on_failed then
-                  local clean_msg = err:gsub("^" .. vim.pesc(p.spec.name) .. ":%s*", "")
-                  opts.on_failed(p.spec.name, clean_msg)
-                end
-                complete_one(p.spec, r); release(); return
-              end
-              local existing = Lock.get(p.spec.name) or {}
-              -- Preserve the human-readable version field. spec.version may
-              -- be a vim.version.range (table) after normalize; in that case
-              -- type(...) == "string" is false and we'd write nil, dropping
-              -- the field on round-trip. Keep the previously-locked string
-              -- instead so the lockfile stays stable.
-              local entry = {
-                src = p.spec.src,
-                rev = rev,
-                version = (type(p.spec.version) == "string" and p.spec.version)
-                  or existing.version,
-              }
-              -- Record the resolved tag's name + SHA so we can detect
-              -- force-tagging on later updates ("supply chain" check).
-              if resolved and resolved.kind == "tag" then
-                entry.tag_name = resolved.name
-                entry.tag_sha  = resolved.sha
-              end
-              Lock.set(p.spec.name, entry)
-              await(M.run_build, p.spec, p.dir, { fidget = view, on_failed = opts.on_failed })
-              M.generate_helptags(p.dir)
-              complete_one(p.spec, r)
-              release()
-            end)()
-          end,
-        })
-      end
-      pool:run({})
-    end)
-    Lock.batch_commit()
-    if view then view:done("core.pack") end
-    if opts.on_complete then opts.on_complete() end
-  end)()
+            local existing = Lock.get(p.spec.name) or {}
+            -- Preserve the human-readable version field. spec.version may
+            -- be a vim.version.range (table) after normalize; in that case
+            -- type(...) == "string" is false and we'd write nil, dropping
+            -- the field on round-trip. Keep the previously-locked string
+            -- instead so the lockfile stays stable.
+            local entry = {
+              src = p.spec.src,
+              rev = rev,
+              version = (type(p.spec.version) == "string" and p.spec.version)
+                or existing.version,
+            }
+            -- Record the resolved tag's name + SHA so we can detect
+            -- force-tagging on later updates ("supply chain" check).
+            if resolved and resolved.kind == "tag" then
+              entry.tag_name = resolved.name
+              entry.tag_sha  = resolved.sha
+            end
+            Lock.set(p.spec.name, entry)
+            await(M.run_build, p.spec, p.dir, { fidget = view, on_failed = opts.on_failed })
+            M.generate_helptags(p.dir)
+            complete_one(p.spec, r)
+            release()
+          end)(function(_, err)
+            if err ~= nil then complete_one(p.spec, r); release() end
+          end)
+        end,
+      })
+    end
+    pool:run({})
+  end)
+  Lock.batch_commit()
+  if view then view:done("core.pack") end
+  if opts.on_complete then opts.on_complete() end
+end
+
+function M.install_missing(specs, opts)
+  run_batched(install_missing, specs, opts)
 end
 
 -- Best-effort guess at a plugin's main lua module name, mirroring
@@ -377,7 +397,7 @@ end
 
 -- Apply already-resolved pending updates: parallel checkouts, then
 -- per-plugin lockfile + build + helptags + log.
-local apply_pending = async(function(pending, opts)
+local function apply_pending_body(pending, opts)
   opts = opts or {}
   if #pending == 0 then
     if opts.on_complete then opts.on_complete() end
@@ -535,7 +555,11 @@ local apply_pending = async(function(pending, opts)
   Txn.clear()
   if opts.fidget then opts.fidget:done("core.pack") end
   if opts.on_complete then opts.on_complete() end
-end)
+end
+
+local function apply_pending(pending, opts)
+  run_batched(apply_pending_body, pending, opts)
+end
 
 M.apply_pending = apply_pending
 

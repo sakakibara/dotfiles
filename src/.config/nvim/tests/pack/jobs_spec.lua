@@ -106,4 +106,40 @@ T.describe("core.pack.jobs", function()
     vim.wait(1000, function() return completed end, 10)
     T.eq(completed, true)
   end)
+
+  T.it("a command that cannot start is a failed job, not a hang", function()
+    local J = fresh()
+    local pool = J.pool({ concurrency = 1 })
+    local results, completed, errors = {}, false, {}
+    pool:add({ cmd = { "core-pack-no-such-binary" }, tag = "missing",
+               on_done = function(r) results[#results + 1] = r end })
+    pool:add({ cmd = { "true" }, tag = "after",
+               on_done = function(r) results[#results + 1] = r end })
+    local orig = vim.notify
+    vim.notify = function(m, l) if l == vim.log.levels.ERROR then errors[#errors + 1] = m end end
+    pool:run({ on_complete = function() completed = true end })
+    vim.wait(2000, function() return completed end, 10)
+    vim.notify = orig
+    T.eq(completed, true, "on_complete must fire")
+    T.eq(pool.inflight, 0)
+    T.eq(#results, 2)
+    T.eq(results[1].tag, "missing")
+    T.truthy(results[1].code ~= 0)
+    T.truthy(results[1].stderr:match("core%-pack%-no%-such%-binary"))
+    T.eq(results[2].code, 0)
+    T.eq(#errors, 1)
+  end)
+
+  T.it("an async_done job whose on_done raises still releases its slot", function()
+    local J = fresh()
+    local pool = J.pool({ concurrency = 1 })
+    local completed = false
+    pool:add({ cmd = { "true" }, async_done = true, on_done = function() error("boom") end })
+    local orig = vim.notify
+    vim.notify = function() end
+    pool:run({ on_complete = function() completed = true end })
+    vim.wait(2000, function() return completed end, 10)
+    vim.notify = orig
+    T.eq(completed, true)
+  end)
 end)

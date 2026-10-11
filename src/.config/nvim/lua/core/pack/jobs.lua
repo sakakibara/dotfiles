@@ -9,6 +9,7 @@ local function safe_call(label, fn, ...)
   if not ok then
     vim.notify("core.pack.jobs: " .. label .. ": " .. tostring(err), vim.log.levels.ERROR)
   end
+  return ok
 end
 
 local function default_concurrency()
@@ -36,32 +37,39 @@ end
 local function start_job(self, job, on_progress, total, on_all_done)
   if job.on_start then safe_call("on_start", job.on_start, job) end
   self.inflight = self.inflight + 1
-  vim.system(job.cmd, { cwd = job.cwd, text = true }, function(result)
-    -- vim.system callback runs in libuv thread; schedule for main loop.
-    vim.schedule(function()
-      result.tag = job.tag
-      local released = false
-      local function release()
-        if released then return end
-        released = true
-        self.inflight = self.inflight - 1
-        self.done = self.done + 1
-        if on_progress then safe_call("on_progress", on_progress, self.done, total, result) end
-        if #self.queue > 0 then
-          local next_job = table.remove(self.queue, 1)
-          start_job(self, next_job, on_progress, total, on_all_done)
-        elseif self.inflight == 0 then
-          on_all_done()
-        end
+  local function finish(result)
+    result.tag = job.tag
+    local released = false
+    local function release()
+      if released then return end
+      released = true
+      self.inflight = self.inflight - 1
+      self.done = self.done + 1
+      if on_progress then safe_call("on_progress", on_progress, self.done, total, result) end
+      if #self.queue > 0 then
+        local next_job = table.remove(self.queue, 1)
+        start_job(self, next_job, on_progress, total, on_all_done)
+      elseif self.inflight == 0 then
+        on_all_done()
       end
-      if job.on_done then safe_call("on_done", job.on_done, result, release) end
-      -- Default behavior: release the slot as soon as on_done returns.
-      -- async_done = true keeps the slot held until on_done's chained
-      -- work explicitly calls `release` (its 2nd arg), so concurrency
-      -- caps cover the full async pipeline, not just the subprocess.
-      if not job.async_done then release() end
-    end)
+    end
+    local ok = true
+    if job.on_done then ok = safe_call("on_done", job.on_done, result, release) end
+    -- Default behavior: release the slot as soon as on_done returns.
+    -- async_done = true keeps the slot held until on_done's chained
+    -- work explicitly calls `release` (its 2nd arg), so concurrency
+    -- caps cover the full async pipeline, not just the subprocess.
+    if not job.async_done or not ok then release() end
+  end
+  local ok, err = pcall(vim.system, job.cmd, { cwd = job.cwd, text = true }, function(result)
+    -- vim.system callback runs in libuv thread; schedule for main loop.
+    vim.schedule(function() finish(result) end)
   end)
+  if not ok then
+    local msg = ("failed to start %s: %s"):format(tostring(job.cmd[1]), tostring(err))
+    vim.notify("core.pack.jobs: " .. msg, vim.log.levels.ERROR)
+    vim.schedule(function() finish({ code = -1, signal = 0, stdout = "", stderr = msg }) end)
+  end
 end
 
 -- Non-blocking. Returns immediately. on_complete fires once when all jobs settle.
