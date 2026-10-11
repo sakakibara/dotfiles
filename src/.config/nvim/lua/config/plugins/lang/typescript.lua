@@ -52,17 +52,6 @@ local plugins = Lib.lang.setup({
     javascript = { "prettier" },
     javascriptreact = { "prettier" },
   },
-  plugins = {
-    {
-      "mxsdev/nvim-dap-vscode-js",
-      ft = { "javascript", "typescript", "typescriptreact", "javascriptreact" },
-      dependencies = { "nvim-dap" },
-      opts = {
-        adapters = { "pwa-node", "pwa-chrome", "pwa-msedge", "node-terminal", "pwa-extensionHost", "node", "chrome" },
-        debugger_path = vim.fn.stdpath("data") .. "/mason/packages/js-debug-adapter/js-debug",
-      },
-    },
-  },
 })
 
 if vim.fn.executable("node") == 1 then
