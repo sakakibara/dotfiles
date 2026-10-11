@@ -6,8 +6,11 @@ local root = vim.fn.stdpath("config") .. "/lua/config/plugins"
 local specs = {}
 
 local function append(name)
-  local ok, list = pcall(require, "config.plugins." .. name)
-  if ok and type(list) == "table" then
+  local module = "config.plugins." .. name
+  local ok, list = pcall(require, module)
+  if not ok then
+    vim.notify(("%s: %s"):format(module, list), vim.log.levels.ERROR)
+  elseif type(list) == "table" then
     for _, s in ipairs(list) do specs[#specs + 1] = s end
   end
 end
