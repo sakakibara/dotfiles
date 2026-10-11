@@ -389,65 +389,82 @@ local function random_suffix()
 end
 
 local function install_one(spec, entry, dir, cb)
-  local files = spec.files or {}
-  if #files == 0 then return vim.schedule(function() cb(false, "spec lists no files") end) end
-  for _, f in ipairs(files) do
-    if not M.valid_file(f) then return vim.schedule(function() cb(false, "invalid file path: " .. tostring(f)) end) end
+  local finished, work = false, nil
+  local function finish(ok, msg)
+    if finished then return end
+    finished = true
+    vim.schedule(function() cb(ok, msg) end)
   end
-  local want = M.expected_sha512(entry.integrity)
-  if not want then return vim.schedule(function() cb(false, "lock entry has no sha512 integrity") end) end
-  if type(entry.tarball) ~= "string" or not entry.tarball:match("^https://") then
-    return vim.schedule(function() cb(false, "tarball URL is not https") end)
-  end
-  local parent = vim.fs.dirname(dir)
-  vim.fn.mkdir(parent, "p")
-  local work = ("%s/.core-pack-tmp-%s-%s"):format(parent, vim.fs.basename(dir), random_suffix())
-  vim.fn.mkdir(work .. "/stage", "p")
-  local tgz = work .. "/package.tgz"
   local function fail(msg)
-    local ok, err = remove_tree(work)
-    cb(false, ok and msg or ("%s; could not remove %s: %s"):format(msg, work, err))
+    if finished then return end
+    if work then
+      local ok, err = remove_tree(work)
+      if not ok then msg = ("%s; could not remove %s: %s"):format(msg, work, err) end
+    end
+    finish(false, msg)
   end
-  request(entry.tarball, { outpath = tgz }, function(err)
-    if err then return fail("download: " .. vim.trim(tostring(err))) end
-    M.sha512(tgz, function(got, herr)
-      if not got then return fail(herr) end
-      if got ~= want then return fail(("integrity mismatch: expected %s, got %s"):format(want, got)) end
-      local cmd = { "tar", "-xzf", tgz, "-C", work .. "/stage" }
-      vim.list_extend(cmd, members(files))
-      run(cmd, function(r)
-        if r.code ~= 0 then return fail("extract: " .. vim.trim(r.stderr or ("exit " .. r.code))) end
-        local pkgdir = work .. "/stage/package"
-        local odd = plain_tree(work .. "/stage")
-        if odd then return fail(odd) end
-        for _, f in ipairs(files) do
-          if not vim.uv.fs_lstat(pkgdir .. "/" .. f:gsub("/+$", "")) then return fail("missing in tarball: " .. f) end
-        end
-        local mf = io.open(pkgdir .. "/" .. M.MARKER, "w")
-        if not mf then return fail("cannot write marker") end
-        mf:write(vim.json.encode({
-          npm = entry.npm, version = entry.version, integrity = entry.integrity, files = M.norm_files(files),
-        }))
-        mf:close()
-        local old
-        if vim.uv.fs_lstat(dir) then
-          old = work .. "/old"
-          local ok, rerr = vim.uv.fs_rename(dir, old)
-          if not ok then return fail("move old install: " .. tostring(rerr)) end
-        end
-        local ok, rerr = vim.uv.fs_rename(pkgdir, dir)
-        if not ok then
-          if old then vim.uv.fs_rename(old, dir) end
-          return fail("move new install: " .. tostring(rerr))
-        end
-        local cok, cerr = remove_tree(work)
-        if not cok then
-          vim.notify(("core.pack: could not remove %s: %s"):format(work, cerr), vim.log.levels.WARN)
-        end
-        cb(true)
-      end)
-    end)
-  end)
+  local function guard(fn)
+    return function(...)
+      local ok, err = pcall(fn, ...)
+      if not ok then fail(tostring(err)) end
+    end
+  end
+  guard(function()
+    local files = spec.files or {}
+    if #files == 0 then return fail("spec lists no files") end
+    for _, f in ipairs(files) do
+      if not M.valid_file(f) then return fail("invalid file path: " .. tostring(f)) end
+    end
+    local want = M.expected_sha512(entry.integrity)
+    if not want then return fail("lock entry has no sha512 integrity") end
+    if type(entry.tarball) ~= "string" or not entry.tarball:match("^https://") then
+      return fail("tarball URL is not https")
+    end
+    local parent = vim.fs.dirname(dir)
+    vim.fn.mkdir(parent, "p")
+    work = ("%s/.core-pack-tmp-%s-%s"):format(parent, vim.fs.basename(dir), random_suffix())
+    vim.fn.mkdir(work .. "/stage", "p")
+    local tgz = work .. "/package.tgz"
+    request(entry.tarball, { outpath = tgz }, guard(function(err)
+      if err then return fail("download: " .. vim.trim(tostring(err))) end
+      M.sha512(tgz, guard(function(got, herr)
+        if not got then return fail(herr) end
+        if got ~= want then return fail(("integrity mismatch: expected %s, got %s"):format(want, got)) end
+        local cmd = { "tar", "-xzf", tgz, "-C", work .. "/stage" }
+        vim.list_extend(cmd, members(files))
+        run(cmd, guard(function(r)
+          if r.code ~= 0 then return fail("extract: " .. vim.trim(r.stderr or ("exit " .. r.code))) end
+          local pkgdir = work .. "/stage/package"
+          local odd = plain_tree(work .. "/stage")
+          if odd then return fail(odd) end
+          for _, f in ipairs(files) do
+            if not vim.uv.fs_lstat(pkgdir .. "/" .. f:gsub("/+$", "")) then return fail("missing in tarball: " .. f) end
+          end
+          if not write_marker(pkgdir, {
+            npm = entry.npm, version = entry.version, integrity = entry.integrity, files = M.norm_files(files),
+          }) then
+            return fail("cannot write marker")
+          end
+          local old
+          if vim.uv.fs_lstat(dir) then
+            old = work .. "/old"
+            local ok, rerr = vim.uv.fs_rename(dir, old)
+            if not ok then return fail("move old install: " .. tostring(rerr)) end
+          end
+          local ok, rerr = vim.uv.fs_rename(pkgdir, dir)
+          if not ok then
+            if old then vim.uv.fs_rename(old, dir) end
+            return fail("move new install: " .. tostring(rerr))
+          end
+          local cok, cerr = remove_tree(work)
+          if not cok then
+            vim.notify(("core.pack: could not remove %s: %s"):format(work, cerr), vim.log.levels.WARN)
+          end
+          finish(true)
+        end))
+      end))
+    end))
+  end)()
 end
 
 local queues = {}

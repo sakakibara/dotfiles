@@ -660,6 +660,39 @@ T.describe("core.pack npm plugins", function()
     T.eq(drifts, { { name = "pkg", reason = "installed files differ from the spec" } })
   end)
 
+  T.it("an install that fails in a later stage cleans up and finishes, with tar missing from PATH", function()
+    local I, L = fresh()
+    local t = tgz("1.0.0")
+    local url = "https://registry.npmjs.org/pkg/-/pkg-1.0.0.tgz"
+    L.set("pkg", { npm = "pkg", version = "1.0.0", tarball = url, integrity = t.integrity })
+    stub({ [url] = t.tgz })
+    local orig_sha, orig_path, orig_notify = Npm.sha512, vim.env.PATH, vim.notify
+    Npm.sha512 = function(_, cb) vim.schedule(function() cb(t.integrity) end) end
+    vim.notify = function() end
+    vim.env.PATH = "/nonexistent"
+    local results = {}
+    local base = I._install_root_override
+    for i = 1, 2 do
+      Npm.install(normalize(SPEC), L.get("pkg"), base .. "/direct", function(r, err) results[i] = { r, err } end)
+    end
+    vim.wait(5000, function() return results[1] ~= nil and results[2] ~= nil end, 10)
+    local failed, done = {}, false
+    local t0 = vim.uv.hrtime()
+    I.install_missing({ normalize(SPEC) }, {
+      on_failed = function(name) failed[#failed + 1] = name end,
+      on_complete = function() done = true end,
+    })
+    vim.wait(5000, function() return done end, 10)
+    local ms = (vim.uv.hrtime() - t0) / 1e6
+    vim.env.PATH, Npm.sha512, vim.notify = orig_path, orig_sha, orig_notify
+    unstub()
+    T.eq({ results[1] and results[1][1], results[2] and results[2][1] }, { false, false })
+    T.truthy(tostring(results[1][2]):find("ENOENT", 1, true), vim.inspect(results))
+    T.truthy(done and ms < 5000, "install_missing finished in " .. ms .. " ms")
+    T.eq(failed, { "pkg" })
+    T.eq(vim.fn.readdir(base), {})
+  end)
+
   T.it("update never offers a downgrade and reports a newer locked version as held", function()
     local I, L = fresh()
     local spec = normalize(SPEC)
