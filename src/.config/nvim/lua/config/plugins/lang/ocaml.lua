@@ -5,16 +5,6 @@ return Lib.lang.setup({
   mason = { "ocaml-lsp" },
   parsers = { "ocaml" },
   servers = {
-    ocamllsp = {
-      filetypes = { "ocaml", "dune" },
-      root_markers = {
-        "*.opam",
-        "esy.json",
-        "package.json",
-        "dune-project",
-        "dune-workspace",
-        ".git",
-      },
-    },
+    ocamllsp = {},
   },
 })
