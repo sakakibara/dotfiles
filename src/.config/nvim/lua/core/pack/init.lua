@@ -157,7 +157,14 @@ local function install_all(specs)
   -- For specs already on disk, packadd; for those not, install in parallel.
   local to_install = {}
   for _, s in ipairs(specs) do
-    if not s.dev and vim.fn.isdirectory(Install.install_dir(s.name)) == 0 then
+    local dir = Install.install_dir(s.name)
+    local missing
+    if s.npm then
+      missing = require("core.pack.npm").mismatch(s, dir, require("core.pack.lock").get(s.name)) ~= nil
+    else
+      missing = not s.dev and vim.fn.isdirectory(dir) == 0
+    end
+    if missing then
       to_install[#to_install + 1] = s
     end
   end
@@ -374,8 +381,12 @@ function M.setup(cfg)
           if not drifts or #drifts == 0 then return end
           local lines = {}
           for _, d in ipairs(drifts) do
-            lines[#lines + 1] = ("  %s (lockfile %s, working tree %s)"):format(
-              d.name, d.expected:sub(1, 8), d.actual:sub(1, 8))
+            if d.reason then
+              lines[#lines + 1] = ("  %s (%s)"):format(d.name, d.reason)
+            else
+              lines[#lines + 1] = ("  %s (lockfile %s, working tree %s)"):format(
+                d.name, d.expected:sub(1, 8), d.actual:sub(1, 8))
+            end
           end
           vim.notify(
             ("core.pack: %d plugin(s) drifted from lockfile (run :Pack! update to resync):\n%s"):format(

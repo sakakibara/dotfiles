@@ -280,7 +280,7 @@ local function install_missing(specs, opts)
   for _, spec in ipairs(specs) do
     if spec.npm then
       local dir = M.install_dir(spec.name)
-      if not Npm.installed_version(dir) then npm_pending[#npm_pending + 1] = { spec = spec, dir = dir } end
+      if Npm.mismatch(spec, dir, Lock.get(spec.name)) then npm_pending[#npm_pending + 1] = { spec = spec, dir = dir } end
     elseif not spec.dev then
       local dir = M.install_dir(spec.name)
       if vim.fn.isdirectory(dir) == 1 and Git.is_repo(dir) then
@@ -598,11 +598,9 @@ M.reconcile = async(function(specs)
   local drifts = {}
   for _, spec in ipairs(specs) do
     if spec.npm then
-      local entry = Lock.get(spec.name)
-      local installed = Npm.installed_version(M.install_dir(spec.name))
-      if entry and type(entry.version) == "string" and installed and installed ~= entry.version then
-        drifts[#drifts + 1] = { name = spec.name, expected = entry.version, actual = installed }
-      end
+      local dir = M.install_dir(spec.name)
+      local why = Npm.read_marker(dir) and Npm.mismatch(spec, dir, Lock.get(spec.name))
+      if why then drifts[#drifts + 1] = { name = spec.name, reason = why } end
     elseif not spec.dev then
       local entry = Lock.get(spec.name)
       if entry and type(entry.rev) == "string" and #entry.rev >= 7 then
@@ -921,7 +919,7 @@ M.update = function(specs, names, opts)
         }
       end
       if opts.target == "lockfile" then
-        if Npm.usable_lock(t.spec, locked) and locked.version ~= installed then add(locked) end
+        if Npm.usable_lock(t.spec, locked) and Npm.mismatch(t.spec, t.dir, locked) then add(locked) end
       else
         local res, err, held = await(Npm.resolve, t.spec)
         local h = res and res.held or held

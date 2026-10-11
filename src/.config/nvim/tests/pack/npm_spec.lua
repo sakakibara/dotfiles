@@ -341,6 +341,24 @@ T.describe("core.pack.npm install", function()
     T.eq(vim.uv.fs_lstat(base), nil)
   end)
 
+  T.it("concurrent installs into one directory run one at a time and all succeed", function()
+    local tgz, integrity = fixture_tgz("1.0.0")
+    local base = root()
+    local url = "https://registry.npmjs.org/pkg/-/pkg-1.0.0.tgz"
+    local calls = stub({ [url] = tgz })
+    local entry = { npm = "pkg", version = "1.0.0", tarball = url, integrity = integrity }
+    local results = {}
+    for i = 1, 3 do
+      Npm.install({ npm = "pkg", files = { "dist" } }, entry, base .. "/pkg", function(ok, err) results[i] = { ok, err } end)
+    end
+    vim.wait(20000, function() return #results == 3 and results[1] and results[2] and results[3] end, 10)
+    unstub()
+    T.eq(results, { { true, nil }, { true, nil }, { true, nil } })
+    T.eq(calls, { url }, "a queued install of what is already in place does not download again")
+    T.eq(vim.fn.readdir(base), { "pkg" })
+    T.eq(Npm.installed_version(base .. "/pkg"), "1.0.0")
+  end)
+
   T.it("refuses a listed path the tarball does not have", function()
     local tgz, integrity = fixture_tgz("1.0.0")
     local base = root()
@@ -509,8 +527,77 @@ T.describe("core.pack npm plugins", function()
     local drifts
     I.reconcile({ spec }, function(d) drifts = d end)
     vim.wait(5000, function() return drifts ~= nil end, 10)
-    T.eq(drifts, { { name = "pkg", expected = "1.0.1", actual = "1.0.0" } })
+    T.eq(drifts, { { name = "pkg", reason = "installed 1.0.0, lockfile 1.0.1" } })
   end)
+
+  local function marker(I)
+    return require("core.pack.npm").read_marker(I.install_dir("pkg"))
+  end
+
+  T.it("reinstalls when the spec's files change, and reconcile reports the mismatch", function()
+    local I, L = fresh()
+    local t = tgz("1.0.0")
+    stub(routes({ ["1.0.0"] = {} }, { ["1.0.0"] = t }))
+    async(function(cb) I.install_missing({ normalize(SPEC) }, { on_complete = cb }) end)
+    unstub()
+    local m = marker(I)
+    T.eq({ m.npm, m.version, m.integrity, m.files }, { "pkg", "1.0.0", t.integrity, { "dist" } })
+    local wider = normalize({ npm = "pkg", version = "^1", files = { "lib/x.js", "dist/" } })
+    local drifts
+    I.reconcile({ wider }, function(d) drifts = d end)
+    vim.wait(5000, function() return drifts ~= nil end, 10)
+    T.eq(drifts, { { name = "pkg", reason = "installed files differ from the spec" } })
+    local calls = stub(routes({ ["1.0.0"] = {} }, { ["1.0.0"] = t }))
+    async(function(cb) I.install_missing({ wider }, { on_complete = cb }) end)
+    unstub()
+    T.eq(calls, { "https://registry.npmjs.org/pkg/-/pkg-1.0.0.tgz" })
+    T.eq(marker(I).files, { "dist", "lib/x.js" })
+    T.eq(vim.fn.filereadable(I.install_dir("pkg") .. "/lib/x.js"), 1)
+    calls = stub({})
+    async(function(cb) I.install_missing({ normalize({ npm = "pkg", version = "^1", files = { "dist", "lib/x.js", "dist" } }) },
+      { on_complete = cb }) end)
+    unstub()
+    T.eq(calls, {}, "an equivalent files list is not a change")
+    T.eq(L.get("pkg").version, "1.0.0")
+  end)
+
+  T.it("reinstalls when the npm package changes under an explicit name", function()
+    local I, L = fresh()
+    stub(routes({ ["1.0.0"] = {} }, { ["1.0.0"] = tgz("1.0.0") }))
+    async(function(cb) I.install_missing({ normalize({ npm = "pkg", name = "pkg", files = { "dist" } }) }, { on_complete = cb }) end)
+    unstub()
+    local other = normalize({ npm = "other", name = "pkg", files = { "dist" } })
+    local drifts
+    I.reconcile({ other }, function(d) drifts = d end)
+    vim.wait(5000, function() return drifts ~= nil end, 10)
+    T.eq(drifts, { { name = "pkg", reason = "installed package pkg, spec other" } })
+    local t = tgz("2.0.0")
+    local d = doc({ ["2.0.0"] = {} })
+    d.versions["2.0.0"].dist = { tarball = "https://registry.npmjs.org/other/-/other-2.0.0.tgz", integrity = t.integrity }
+    stub({ ["https://registry.npmjs.org/other"] = d, ["https://registry.npmjs.org/other/-/other-2.0.0.tgz"] = t.tgz })
+    async(function(cb) I.install_missing({ other }, { on_complete = cb }) end)
+    unstub()
+    T.eq({ marker(I).npm, marker(I).version }, { "other", "2.0.0" })
+    T.eq({ L.get("pkg").npm, L.get("pkg").version }, { "other", "2.0.0" })
+  end)
+
+  T.it("startup reinstalls an npm plugin whose installed files differ from the spec", function()
+    local I = fresh()
+    local t = tgz("1.0.0")
+    stub(routes({ ["1.0.0"] = {} }, { ["1.0.0"] = t }))
+    require("core.pack").setup({ specs = { SPEC } })
+    unstub()
+    T.eq(marker(I).files, { "dist" })
+    package.loaded["core.pack"] = nil
+    stub(routes({ ["1.0.0"] = {} }, { ["1.0.0"] = t }))
+    local orig = vim.notify
+    vim.notify = function() end
+    require("core.pack").setup({ specs = { { npm = "pkg", version = "^1", files = { "dist", "lib" } } } })
+    vim.notify = orig
+    unstub()
+    T.eq(marker(I).files, { "dist", "lib" })
+  end)
+
 end)
 
 T.describe("core.pack.lock nested entries", function()

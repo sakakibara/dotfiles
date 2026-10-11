@@ -233,11 +233,22 @@ function M.valid_file(f)
     and not f:find("[%*%?%[%]\\%z]") and not vim.tbl_contains(vim.split(f, "/", { plain = true }), "..")
 end
 
+function M.norm_files(files)
+  local seen, out = {}, {}
+  for _, f in ipairs(files or {}) do
+    local n = (f:gsub("/+$", ""))
+    if not seen[n] then
+      seen[n] = true
+      out[#out + 1] = n
+    end
+  end
+  table.sort(out)
+  return out
+end
+
 local function members(files)
   local out = {}
-  for _, f in ipairs(files) do
-    out[#out + 1] = "package/" .. f:gsub("/+$", "")
-  end
+  for _, f in ipairs(M.norm_files(files)) do out[#out + 1] = "package/" .. f end
   return out
 end
 
@@ -325,12 +336,30 @@ function M.installed_version(dir)
   return m and type(m.version) == "string" and m.version or nil
 end
 
+function M.mismatch(spec, dir, locked)
+  local m = M.read_marker(dir)
+  if not m or type(m.version) ~= "string" then return "not installed" end
+  if m.npm ~= spec.npm then return ("installed package %s, spec %s"):format(tostring(m.npm), spec.npm) end
+  if not vim.deep_equal(m.files, M.norm_files(spec.files)) then return "installed files differ from the spec" end
+  if M.usable_lock(spec, locked) then
+    if m.version ~= locked.version then return ("installed %s, lockfile %s"):format(m.version, locked.version) end
+    if m.integrity ~= locked.integrity then return ("installed %s integrity differs from the lockfile"):format(m.version) end
+    return nil
+  end
+  local range = range_of(spec)
+  local parsed = vim.version.parse(m.version, { strict = true })
+  if not (range and parsed and range:has(parsed)) then
+    return ("installed %s is outside the spec's version range"):format(m.version)
+  end
+  return nil
+end
+
 local function random_suffix()
   local b = vim.uv.random(6)
   return b and (b:gsub(".", function(c) return ("%02x"):format(c:byte()) end)) or tostring(vim.uv.hrtime())
 end
 
-function M.install(spec, entry, dir, cb)
+local function install_one(spec, entry, dir, cb)
   local files = spec.files or {}
   if #files == 0 then return vim.schedule(function() cb(false, "spec lists no files") end) end
   for _, f in ipairs(files) do
@@ -367,7 +396,9 @@ function M.install(spec, entry, dir, cb)
         end
         local mf = io.open(pkgdir .. "/" .. M.MARKER, "w")
         if not mf then return fail("cannot write marker") end
-        mf:write(vim.json.encode({ npm = entry.npm, version = entry.version, integrity = entry.integrity }))
+        mf:write(vim.json.encode({
+          npm = entry.npm, version = entry.version, integrity = entry.integrity, files = M.norm_files(files),
+        }))
         mf:close()
         local old
         if vim.uv.fs_lstat(dir) then
@@ -388,6 +419,35 @@ function M.install(spec, entry, dir, cb)
       end)
     end)
   end)
+end
+
+local queues = {}
+
+local function installed_as(spec, entry, dir)
+  local m = M.read_marker(dir)
+  return m ~= nil and m.npm == entry.npm and m.version == entry.version and m.integrity == entry.integrity
+    and vim.deep_equal(m.files, M.norm_files(spec.files))
+end
+
+function M.install(spec, entry, dir, cb)
+  if queues[dir] then
+    table.insert(queues[dir], { spec, entry, cb })
+    return
+  end
+  queues[dir] = {}
+  local function step(s, e, c)
+    install_one(s, e, dir, function(...)
+      local nxt = table.remove(queues[dir], 1)
+      while nxt and installed_as(nxt[1], nxt[2], dir) do
+        local done = nxt[3]
+        vim.schedule(function() done(true) end)
+        nxt = table.remove(queues[dir], 1)
+      end
+      if nxt then step(nxt[1], nxt[2], nxt[3]) else queues[dir] = nil end
+      c(...)
+    end)
+  end
+  step(spec, entry, cb)
 end
 
 return M
