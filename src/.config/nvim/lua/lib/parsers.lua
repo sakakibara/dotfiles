@@ -72,10 +72,6 @@ function M.start_for_buf(bufnr)
   if not lang then return false end
   if not pcall(vim.treesitter.start, bufnr, lang) then return false end
   pcall(function()
-    vim.wo[0][0].foldexpr   = "v:lua.vim.treesitter.foldexpr()"
-    vim.wo[0][0].foldmethod = "expr"
-  end)
-  pcall(function()
     vim.bo[bufnr].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
   end)
   return true
