@@ -10,10 +10,12 @@
 -- in definition order: a run of them that is a whole, all-new group fires as
 -- that group; the rest fire through temporary copies. Copies of Vimscript
 -- commands that use script-local names cannot run outside their script and
--- are skipped. When a load adds runtime dirs carrying ftplugin, indent or
--- syntax files for a loaded buffer's filetype whose loaders already ran,
--- those loaders run again for the buffer, followed once, in definition
--- order, by the FileType autocmds that ran after them.
+-- are skipped. When a trigger's load adds runtime dirs carrying ftplugin,
+-- indent or syntax files for the triggering buffer's filetype whose loaders
+-- already ran, those loaders run again for that buffer, followed once, in
+-- definition order, by the FileType autocmds that ran after them, then by
+-- editorconfig and modelines. Other buffers and loads by cmd, keys,
+-- VeryLazy or pack.load are left alone.
 
 local M = {}
 
@@ -251,6 +253,50 @@ function M.create(deps)
       end
     end
     run_units("FileType", units_of(picked, has_old), list, { pattern = ft, modeline = false })
+    return true
+  end
+
+  local function group_exists(name)
+    return (pcall(vim.api.nvim_get_autocmds, { group = name }))
+  end
+
+  local function reapply(buf)
+    local ec = vim.F.if_nil(vim.b[buf].editorconfig, vim.g.editorconfig, true)
+    if ec ~= false and group_exists("nvim.editorconfig") then
+      local ok, err = pcall(require("editorconfig").config, buf)
+      if not ok then vim.notify("core.pack editorconfig: " .. tostring(err), vim.log.levels.ERROR) end
+    end
+    local g = vim.api.nvim_create_augroup("core.pack.modelines", { clear = true })
+    vim.api.nvim_create_autocmd("User", { group = g, pattern = "CorePackModelines", callback = function() end })
+    exec_event("User", { group = g, pattern = "CorePackModelines", modeline = true })
+    pcall(vim.api.nvim_del_augroup_by_id, g)
+  end
+
+  local refreshing = false
+  local queued = {}
+
+  local function refresh_trigger(job)
+    if refreshing then
+      queued[#queued + 1] = job
+      return
+    end
+    refreshing = true
+    local done = {}
+    local ok, err = pcall(function()
+      while job do
+        local buf = job.buf
+        if not done[buf] and vim.api.nvim_buf_is_valid(buf) and vim.api.nvim_buf_is_loaded(buf) then
+          done[buf] = true
+          in_buf(buf, function()
+            if refresh_buffer(buf, job.dirs, job.before, job.loader_id) then reapply(buf) end
+          end)
+        end
+        job = table.remove(queued, 1)
+      end
+    end)
+    refreshing = false
+    queued = {}
+    if not ok then error(err, 0) end
   end
 
   local refreshed = {}
@@ -266,15 +312,11 @@ function M.create(deps)
         dirs[#dirs + 1] = d
       end
     end
-    if #dirs == 0 then return end
-    local trigger = args and args.event == "FileType" and args.buf or nil
-    for _, buf in ipairs(vim.api.nvim_list_bufs()) do
-      if vim.api.nvim_buf_is_loaded(buf) then
-        in_buf(buf, function()
-          refresh_buffer(buf, dirs, ft_before, buf == trigger and loader_id or nil)
-        end)
-      end
-    end
+    local buf = args.buf
+    if #dirs == 0 or not (buf and vim.api.nvim_buf_is_valid(buf)) then return end
+    refresh_trigger({
+      buf = buf, dirs = dirs, before = ft_before, loader_id = args.event == "FileType" and loader_id or nil,
+    })
   end
 
   local function register(specs)
@@ -302,7 +344,7 @@ function M.create(deps)
       if spec.lazy and spec.event then
         for _, e in ipairs(event.expand(spec.event)) do
           if e == "VeryLazy" then
-            event.on("VeryLazy", function() load_refreshing({ spec }, "event:VeryLazy") end)
+            event.on("VeryLazy", function() load_spec(spec, "event:VeryLazy") end)
           elseif e:match("^User ") then
             push(user_groups, e:sub(6), spec)
           else
@@ -324,7 +366,7 @@ function M.create(deps)
         for _, c in ipairs(cmds) do
           vim.api.nvim_create_user_command(c, function(opts)
             pcall(vim.api.nvim_del_user_command, c)
-            load_refreshing({ spec }, "cmd:" .. c)
+            load_spec(spec, "cmd:" .. c)
             local range = ""
             if opts.range == 2 then
               range = opts.line1 .. "," .. opts.line2
@@ -381,10 +423,7 @@ function M.create(deps)
     end
   end
 
-  return {
-    register = register,
-    load = function(spec, reason) load_refreshing({ spec }, reason) end,
-  }
+  return { register = register }
 end
 
 return M

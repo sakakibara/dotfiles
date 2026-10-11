@@ -685,9 +685,14 @@ T.describe("core.pack re-fires triggering event", function()
     cleanup()
   end)
 
+  local rt_shared
+
   local function rt_fixture(name, ft)
     local Install = require("core.pack.install")
-    local tmp = vim.fn.tempname()
+    local first = rt_shared == nil
+    rt_shared = rt_shared or { tmp = vim.fn.tempname(), depth = 0 }
+    rt_shared.depth = rt_shared.depth + 1
+    local tmp = rt_shared.tmp
     local root = tmp .. "/pack/coretest/opt"
     local dir = root .. "/" .. name
     vim.fn.mkdir(dir .. "/ftplugin", "p")
@@ -703,6 +708,12 @@ T.describe("core.pack re-fires triggering event", function()
     }, dir .. "/syntax/" .. ft .. ".vim")
     vim.cmd("filetype plugin indent on")
     vim.cmd("syntax on")
+    if not first then
+      return function()
+        vim.opt.rtp:remove(dir)
+        rt_shared.depth = rt_shared.depth - 1
+      end
+    end
     local prev_root, prev_pp = Install._install_root_override, vim.o.packpath
     Install._install_root_override = root
     vim.opt.packpath:prepend(tmp)
@@ -722,7 +733,13 @@ T.describe("core.pack re-fires triggering event", function()
       vim.opt.rtp:remove(dir)
       pcall(vim.api.nvim_del_augroup_by_id, user)
       vim.fn.delete(tmp, "rf")
+      rt_shared = nil
     end
+  end
+
+  local function rt_write(name, ft, lines)
+    local path = rt_shared.tmp .. "/pack/coretest/opt/" .. name .. "/ftplugin/" .. ft .. ".lua"
+    vim.fn.writefile(lines, path)
   end
 
   local function rt_buffer(ft)
@@ -763,32 +780,106 @@ T.describe("core.pack re-fires triggering event", function()
     cleanup()
   end)
 
-  T.it("a cmd-triggered load applies the plugin's runtime files to every open buffer of its filetype", function()
+  T.it("cmd and VeryLazy loads leave already open buffers alone", function()
     local pack = reset_pack()
     local cleanup = rt_fixture("rtcmd", "packrtcmd")
-    pack.setup({ specs = { { "test/rtcmd", cmd = "RtCmdLoad" } } })
-    local other = rt_buffer("packrtcmd")
+    local cleanup2 = rt_fixture("rtvl", "packrtcmd")
+    pack.setup({ specs = { { "test/rtcmd", cmd = "RtCmdLoad" }, { "test/rtvl", event = "VeryLazy" } } })
     local buf = rt_buffer("packrtcmd")
+    vim.bo[buf].shiftwidth = 2
     pcall(vim.cmd, "RtCmdLoad")
-    T.truthy(pack.loaded("rtcmd"))
-    rt_assert(buf, 4)
-    T.eq(vim.b[other].rt_ftplugin, 1)
-    T.eq(vim.bo[other].textwidth, 99)
+    require("core.event").trigger("VeryLazy")
+    T.truthy(pack.loaded("rtcmd") and pack.loaded("rtvl"))
+    T.eq(vim.b[buf].rt_ftplugin, nil)
+    T.eq({ vim.bo[buf].textwidth, vim.bo[buf].shiftwidth }, { 99, 2 })
+    T.eq(vim.g.rt_user_runs, 1)
+    local later = rt_buffer("packrtcmd")
+    T.eq(vim.b[later].rt_ftplugin, 2)
     vim.api.nvim_buf_delete(buf, { force = true })
-    vim.api.nvim_buf_delete(other, { force = true })
+    vim.api.nvim_buf_delete(later, { force = true })
+    cleanup2()
     cleanup()
   end)
 
-  T.it("a VeryLazy load applies the plugin's runtime files to an open buffer", function()
+  T.it("a lazy load keeps the triggering buffer's editorconfig and modeline settings", function()
+    if not pcall(vim.api.nvim_get_autocmds, { group = "nvim.editorconfig" }) then
+      vim.cmd("runtime plugin/editorconfig.lua")
+    end
+    local prev_ml, prev_mls = vim.o.modeline, vim.o.modelines
+    vim.o.modeline, vim.o.modelines = true, 5
+    for _, trigger in ipairs({ "ft", "event" }) do
+      local pack = reset_pack()
+      local name, ft = "rtec" .. trigger, "packrtec" .. trigger
+      local cleanup = rt_fixture(name, ft)
+      local tmp = vim.fn.tempname()
+      vim.fn.mkdir(tmp, "p")
+      vim.fn.writefile({ "root = true", "", "[*]", "indent_size = 2" }, tmp .. "/.editorconfig")
+      vim.fn.writefile({ "rtfixtureword", "vim: sw=3" }, tmp .. "/x.rtec")
+      local spec = { "test/" .. name }
+      if trigger == "ft" then spec.ft = ft else spec.event = "User RtEcLoad" end
+      rt_write(name, ft, { "vim.bo.shiftwidth = 7", "vim.bo.tabstop = 7", "vim.bo.softtabstop = 7",
+        "vim.b.rt_ftplugin = (vim.b.rt_ftplugin or 0) + 1" })
+      pack.setup({ specs = { spec } })
+      vim.cmd("edit " .. vim.fn.fnameescape(tmp .. "/x.rtec"))
+      local buf = vim.api.nvim_get_current_buf()
+      T.eq({ vim.bo[buf].shiftwidth, vim.bo[buf].tabstop }, { 3, 2 }, trigger .. " before")
+      vim.bo[buf].filetype = ft
+      if trigger == "event" then vim.api.nvim_exec_autocmds("User", { pattern = "RtEcLoad" }) end
+      T.truthy(pack.loaded(name))
+      T.eq(vim.b[buf].rt_ftplugin, 1, trigger)
+      T.eq({ vim.bo[buf].shiftwidth, vim.bo[buf].tabstop, vim.bo[buf].softtabstop, vim.bo[buf].textwidth },
+        { 3, 2, -1, 99 }, trigger)
+      vim.api.nvim_buf_delete(buf, { force = true })
+      vim.fn.delete(tmp, "rf")
+      cleanup()
+    end
+    vim.o.modeline, vim.o.modelines = prev_ml, prev_mls
+  end)
+
+  T.it("loads made by a replayed FileType handler do not start a nested refresh", function()
     local pack = reset_pack()
-    local cleanup = rt_fixture("rtvl", "packrtvl")
-    pack.setup({ specs = { { "test/rtvl", event = "VeryLazy" } } })
-    local buf = rt_buffer("packrtvl")
-    require("core.event").trigger("VeryLazy")
-    T.truthy(pack.loaded("rtvl"))
-    rt_assert(buf, 2)
+    local cleanup = rt_fixture("rtre", "packrtre")
+    local cleanup_a = rt_fixture("rtrea", "packrtre")
+    local cleanup_b = rt_fixture("rtreb", "packrtre")
+    local cleanup_c = rt_fixture("rtrec", "packrtre2")
+    local log, runs = {}, 0
+    local g = vim.api.nvim_create_augroup("RtReUser", { clear = true })
+    vim.api.nvim_create_autocmd("FileType", { group = g, pattern = "packrtre", callback = function()
+      runs = runs + 1
+      log[#log + 1] = "u" .. runs
+      if runs == 2 then
+        pack.load("rtrea")
+        pack.load("rtreb")
+      end
+      log[#log + 1] = "u" .. runs .. "-end"
+    end })
+    vim.api.nvim_create_autocmd("FileType", { group = g, pattern = "packrtre2", callback = function()
+      log[#log + 1] = "v"
+    end })
+    local buf2
+    pack.setup({ specs = {
+      { "test/rtre", ft = "packrtre" },
+      { "test/rtrea", cmd = "RtReA", config = function()
+          buf2 = vim.api.nvim_create_buf(true, false)
+          vim.bo[buf2].filetype = "packrtre2"
+        end },
+      { "test/rtreb", cmd = "RtReB" },
+      { "test/rtrec", ft = "packrtre2" },
+    } })
+    local orig, errors = vim.notify, {}
+    vim.notify = function(m, l) if l == vim.log.levels.ERROR then errors[#errors + 1] = m end end
+    local buf = rt_buffer("packrtre")
+    vim.notify = orig
+    T.eq(errors, {})
+    T.truthy(pack.loaded("rtrea") and pack.loaded("rtreb") and pack.loaded("rtrec"))
+    T.eq(runs, 2)
+    T.eq(vim.b[buf].rt_ftplugin, 1)
+    T.eq(vim.b[buf2].rt_ftplugin, 1)
+    T.eq(log, { "u1", "u1-end", "u2", "v", "u2-end", "v" })
+    vim.api.nvim_del_augroup_by_id(g)
     vim.api.nvim_buf_delete(buf, { force = true })
-    cleanup()
+    vim.api.nvim_buf_delete(buf2, { force = true })
+    cleanup_c(); cleanup_b(); cleanup_a(); cleanup()
   end)
 
   T.it("a Vimscript ++once autocmd added by a load runs exactly once", function()
