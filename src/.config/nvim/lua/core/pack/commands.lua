@@ -166,7 +166,9 @@ local function subcommands(Pack)
           names[#names + 1] = a
         end
       end
-      Install.update(specs, names, { confirm = not no_confirm, target = target })
+      Install.update(specs, names, {
+        confirm = not no_confirm, target = target, on_complete = opts.on_complete,
+      })
     end,
   }
 
@@ -196,12 +198,15 @@ local function subcommands(Pack)
   }
 
   subs.sync = {
-    desc = "Update then clean (forwards bang and -y/--yes to both)",
+    desc = "Update, then clean once the update finishes (forwards bang and -y/--yes)",
     run = function(opts)
-      local prefix = opts.bang and "Pack! " or "Pack "
-      local args = (opts.fargs and #opts.fargs > 0) and (" " .. table.concat(opts.fargs, " ")) or ""
-      vim.cmd(prefix .. "update" .. args)
-      vim.cmd(prefix .. "clean" .. args)
+      subs.update.run({
+        fargs = opts.fargs,
+        bang = opts.bang,
+        on_complete = function()
+          subs.clean.run({ fargs = opts.fargs, bang = opts.bang })
+        end,
+      })
     end,
   }
 

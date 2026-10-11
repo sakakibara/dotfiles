@@ -555,48 +555,68 @@ T.describe("core.pack.commands :Pack log", function()
 end)
 
 T.describe("core.pack.commands :Pack sync", function()
-  T.it("delegates to update then clean via vim.cmd", function()
+  local function with_install_stub(fn)
+    local Install = require("core.pack.install")
+    local real_update, real_clean = Install.update, Install.clean
+    local calls = {}
+    Install.update = function(_specs, names, opts)
+      calls[#calls + 1] = { kind = "update", names = names, opts = opts }
+    end
+    Install.clean = function(_specs, opts)
+      calls[#calls + 1] = { kind = "clean", opts = opts }
+    end
+    local ok, err = pcall(fn, calls)
+    Install.update, Install.clean = real_update, real_clean
+    if not ok then error(err) end
+  end
+
+  T.it("runs clean only after update completes", function()
     with_stubbed_command(function(get)
-      local cmds = {}
-      local orig = vim.cmd
-      -- vim.cmd can be invoked as a callable or via fields; we override the
-      -- callable form which is what the dispatcher uses.
-      vim.cmd = function(c) cmds[#cmds + 1] = tostring(c) end
-      with_ui_stub({}, function()
-        fresh_commands().setup(fake_pack())
-        local ok, err = pcall(get().callback, { fargs = { "sync" }, bang = false })
-        T.eq(ok, true, ":Pack sync must not raise: " .. tostring(err))
+      with_install_stub(function(calls)
+        with_ui_stub({}, function()
+          fresh_commands().setup(fake_pack())
+          local ok, err = pcall(get().callback, { fargs = { "sync" }, bang = false })
+          T.eq(ok, true, ":Pack sync must not raise: " .. tostring(err))
+        end)
+        T.eq(#calls, 1, "clean must wait for update")
+        T.eq(calls[1].kind, "update")
+        calls[1].opts.on_complete()
+        T.eq(#calls, 2)
+        T.eq(calls[2].kind, "clean")
       end)
-      vim.cmd = orig
-      T.eq(cmds, { "Pack update", "Pack clean" })
     end)
   end)
 
   T.it("sync -y propagates -y to inner update and clean", function()
     with_stubbed_command(function(get)
-      local cmds = {}
-      local orig = vim.cmd
-      vim.cmd = function(c) cmds[#cmds + 1] = tostring(c) end
-      with_ui_stub({}, function()
-        fresh_commands().setup(fake_pack())
-        pcall(get().callback, { fargs = { "sync", "-y" }, bang = false })
+      with_install_stub(function(calls)
+        local review_called = false
+        with_ui_stub({
+          clean_review = function() review_called = true; return { close = function() end } end,
+        }, function()
+          fresh_commands().setup(fake_pack())
+          pcall(get().callback, { fargs = { "sync", "-y" }, bang = false })
+          T.eq(calls[1].opts.confirm, false)
+          T.eq(calls[1].names, {})
+          calls[1].opts.on_complete()
+          local removed
+          calls[2].opts.on_review({ { name = "ghost" } }, function(list) removed = list end)
+          T.eq(review_called, false, "-y must skip the clean review")
+          T.eq(removed, { { name = "ghost" } })
+        end)
       end)
-      vim.cmd = orig
-      T.eq(cmds, { "Pack update -y", "Pack clean -y" })
     end)
   end)
 
-  T.it("sync! propagates bang to inner update and clean", function()
+  T.it("sync! updates to the lockfile target", function()
     with_stubbed_command(function(get)
-      local cmds = {}
-      local orig = vim.cmd
-      vim.cmd = function(c) cmds[#cmds + 1] = tostring(c) end
-      with_ui_stub({}, function()
-        fresh_commands().setup(fake_pack())
-        pcall(get().callback, { fargs = { "sync" }, bang = true })
+      with_install_stub(function(calls)
+        with_ui_stub({}, function()
+          fresh_commands().setup(fake_pack())
+          pcall(get().callback, { fargs = { "sync" }, bang = true })
+        end)
+        T.eq(calls[1].opts.target, "lockfile")
       end)
-      vim.cmd = orig
-      T.eq(cmds, { "Pack! update", "Pack! clean" })
     end)
   end)
 end)
