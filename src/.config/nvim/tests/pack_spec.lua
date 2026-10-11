@@ -801,39 +801,177 @@ T.describe("core.pack re-fires triggering event", function()
     cleanup()
   end)
 
-  T.it("a lazy load keeps the triggering buffer's editorconfig and modeline settings", function()
+  local function bl_files()
+    local files = vim.fn.tempname()
+    vim.fn.mkdir(files, "p")
+    vim.fn.writefile({ "root = true", "", "[*]", "indent_size = 2" }, files .. "/.editorconfig")
+    for _, n in ipairs({ "a.packbl", "b.packbl", "plain.txt" }) do
+      vim.fn.writefile({ "x", "vim: sw=3" }, files .. "/" .. n)
+    end
+    return files
+  end
+
+  local function bl_plugin()
+    local tmp = vim.fn.tempname()
+    local dir = tmp .. "/pack/coretest/opt/rtbl"
+    vim.fn.mkdir(dir .. "/ftplugin", "p")
+    vim.fn.writefile({ "vim.bo.shiftwidth = 7", "vim.bo.tabstop = 7", "vim.bo.softtabstop = 7",
+      "vim.b.rt_bl = (vim.b.rt_bl or 0) + 1" }, dir .. "/ftplugin/packbl.lua")
+    return tmp, dir
+  end
+
+  local function bl_opts(buf)
+    return { vim.bo[buf].shiftwidth, vim.bo[buf].tabstop, vim.bo[buf].softtabstop, vim.b[buf].rt_bl }
+  end
+
+  local function bl_run(lazy, trigger, steps)
+    local pack = reset_pack()
+    local Install = require("core.pack.install")
+    local tmp, dir = bl_plugin()
+    local files = bl_files()
+    local prev_root, prev_pp = Install._install_root_override, vim.o.packpath
+    Install._install_root_override = tmp .. "/pack/coretest/opt"
+    vim.opt.packpath:prepend(tmp)
+    local spec = { "test/rtbl" }
+    if trigger == "ft" then spec.ft = "packbl" else spec.event = trigger end
+    pack.setup({ specs = { spec } })
+    if not lazy then pack.load("rtbl") end
+    local before = vim.api.nvim_list_bufs()
+    local buf = steps(files)
+    local out = bl_opts(buf)
+    for _, b in ipairs(vim.api.nvim_list_bufs()) do
+      if not vim.tbl_contains(before, b) then pcall(vim.api.nvim_buf_delete, b, { force = true }) end
+    end
+    Install._install_root_override = prev_root
+    vim.o.packpath = prev_pp
+    vim.opt.rtp:remove(dir)
+    vim.fn.delete(tmp, "rf")
+    vim.fn.delete(files, "rf")
+    return out
+  end
+
+  local function bl_setup()
     if not pcall(vim.api.nvim_get_autocmds, { group = "nvim.editorconfig" }) then
       vim.cmd("runtime plugin/editorconfig.lua")
     end
-    local prev_ml, prev_mls = vim.o.modeline, vim.o.modelines
+    vim.filetype.add({ extension = { packbl = "packbl" } })
+    vim.cmd("filetype plugin indent on")
+    local prev = { vim.o.modeline, vim.o.modelines }
     vim.o.modeline, vim.o.modelines = true, 5
-    for _, trigger in ipairs({ "ft", "event" }) do
-      local pack = reset_pack()
-      local name, ft = "rtec" .. trigger, "packrtec" .. trigger
-      local cleanup = rt_fixture(name, ft)
-      local tmp = vim.fn.tempname()
-      vim.fn.mkdir(tmp, "p")
-      vim.fn.writefile({ "root = true", "", "[*]", "indent_size = 2" }, tmp .. "/.editorconfig")
-      vim.fn.writefile({ "rtfixtureword", "vim: sw=3" }, tmp .. "/x.rtec")
-      local spec = { "test/" .. name }
-      if trigger == "ft" then spec.ft = ft else spec.event = "User RtEcLoad" end
-      rt_write(name, ft, { "vim.bo.shiftwidth = 7", "vim.bo.tabstop = 7", "vim.bo.softtabstop = 7",
-        "vim.b.rt_ftplugin = (vim.b.rt_ftplugin or 0) + 1" })
-      pack.setup({ specs = { spec } })
-      vim.cmd("edit " .. vim.fn.fnameescape(tmp .. "/x.rtec"))
-      local buf = vim.api.nvim_get_current_buf()
-      T.eq({ vim.bo[buf].shiftwidth, vim.bo[buf].tabstop }, { 3, 2 }, trigger .. " before")
-      vim.bo[buf].filetype = ft
-      if trigger == "event" then vim.api.nvim_exec_autocmds("User", { pattern = "RtEcLoad", modeline = false }) end
-      T.truthy(pack.loaded(name))
-      T.eq(vim.b[buf].rt_ftplugin, 1, trigger)
-      T.eq({ vim.bo[buf].shiftwidth, vim.bo[buf].tabstop, vim.bo[buf].softtabstop, vim.bo[buf].textwidth },
-        { 3, 2, -1, 99 }, trigger)
-      vim.api.nvim_buf_delete(buf, { force = true })
-      vim.fn.delete(tmp, "rf")
-      cleanup()
+    return function() vim.o.modeline, vim.o.modelines = prev[1], prev[2] end
+  end
+
+  local function tick() vim.wait(20, function() return false end) end
+
+  T.it("a lazy load leaves the same options as an eager one for buffers read, created or retyped", function()
+    local restore = bl_setup()
+    local cases = {
+      { "edit", "ft", function(f) vim.cmd("edit " .. f .. "/a.packbl"); return vim.api.nvim_get_current_buf() end },
+      { "edit, loaded on BufReadPost", "BufReadPost", function(f)
+          vim.cmd("edit " .. f .. "/a.packbl"); return vim.api.nvim_get_current_buf()
+        end },
+      { "edit!", "ft", function(f)
+          vim.cmd("edit " .. f .. "/a.packbl")
+          vim.fn.writefile({ "x", "vim: sw=5" }, f .. "/a.packbl")
+          vim.cmd("edit!")
+          return vim.api.nvim_get_current_buf()
+        end },
+      { "new file", "ft", function(f) vim.cmd("edit " .. f .. "/new.packbl"); return vim.api.nvim_get_current_buf() end },
+      { "bufload", "ft", function(f)
+          local b = vim.fn.bufadd(f .. "/b.packbl"); vim.fn.bufload(b); return b
+        end },
+      { "bufload then filetype, same tick", "ft", function(f)
+          local b = vim.fn.bufadd(f .. "/plain.txt"); vim.fn.bufload(b); vim.bo[b].filetype = "packbl"; return b
+        end },
+      { "enew, lines, filetype, same tick", "ft", function()
+          vim.cmd("enew")
+          vim.api.nvim_buf_set_lines(0, 0, -1, false, { "x", "vim: sw=3" })
+          vim.bo.filetype = "packbl"
+          return vim.api.nvim_get_current_buf()
+        end },
+      { "create_buf, lines, filetype, same tick", "ft", function()
+          local b = vim.api.nvim_create_buf(true, false)
+          vim.api.nvim_buf_set_lines(b, 0, -1, false, { "x", "vim: sw=3" })
+          vim.bo[b].filetype = "packbl"
+          return b
+        end },
+      { "edit, then filetype a tick later", "ft", function(f)
+          vim.cmd("edit " .. f .. "/plain.txt"); tick(); vim.bo.filetype = "packbl"
+          return vim.api.nvim_get_current_buf()
+        end },
+      { "bufload, then filetype a tick later", "ft", function(f)
+          local b = vim.fn.bufadd(f .. "/plain.txt"); vim.fn.bufload(b); tick(); vim.bo[b].filetype = "packbl"; return b
+        end },
+      { "enew, then lines and filetype a tick later", "ft", function()
+          vim.cmd("enew"); tick()
+          vim.api.nvim_buf_set_lines(0, 0, -1, false, { "x", "vim: sw=3" })
+          vim.bo.filetype = "packbl"
+          return vim.api.nvim_get_current_buf()
+        end },
+    }
+    for _, c in ipairs(cases) do
+      local eager = bl_run(false, c[2], c[3])
+      local lazy = bl_run(true, c[2], c[3])
+      T.eq(lazy, eager, c[1])
     end
-    vim.o.modeline, vim.o.modelines = prev_ml, prev_mls
+    T.eq(bl_run(true, "ft", cases[1][3]), { 3, 2, -1, 1 }, "edit keeps the modeline and editorconfig")
+    T.eq(bl_run(true, "ft", cases[8][3]), { 7, 7, 7, 1 }, "create_buf in one tick keeps the ftplugin")
+    restore()
+  end)
+
+  T.it("a lazy load leaves the same options as an eager one for files opened at startup and by a session", function()
+    local tmp = bl_plugin()
+    local files = bl_files()
+    local setup = tmp .. "/setup.lua"
+    vim.fn.writefile({
+      "vim.opt.rtp:prepend(" .. vim.inspect(vim.fn.getcwd()) .. ")",
+      "local d = vim.fn.tempname(); vim.fn.mkdir(d, 'p')",
+      "require('core.pack.lock')._path_override = d .. '/lock.json'",
+      "require('core.pack.log')._path_override = d .. '/log.jsonl'",
+      "require('core.pack.history')._dir_override = d",
+      "require('core.pack.txn')._path_override = d .. '/txn.json'",
+      "vim.o.modeline, vim.o.modelines = true, 5",
+      "vim.filetype.add({ extension = { packbl = 'packbl' } })",
+      "require('core.pack.install')._install_root_override = " .. vim.inspect(tmp .. "/pack/coretest/opt"),
+      "vim.opt.packpath:prepend(" .. vim.inspect(tmp) .. ")",
+      "local pack = require('core.pack')",
+      "pack.setup({ specs = { { 'test/rtbl', ft = 'packbl' } } })",
+      "if vim.env.BL_EAGER then pack.load('rtbl') end",
+    }, setup)
+    local report = tmp .. "/report.lua"
+    vim.fn.writefile({
+      "local out = {}",
+      "for _, b in ipairs(vim.api.nvim_list_bufs()) do",
+      "  local n = vim.api.nvim_buf_get_name(b)",
+      "  if n:match('%.packbl$') then",
+      "    out[#out + 1] = vim.fs.basename(n) .. '=' .. table.concat({ vim.bo[b].shiftwidth, vim.bo[b].tabstop,",
+      "      vim.bo[b].softtabstop, tostring(vim.b[b].rt_bl) }, ',')",
+      "  end",
+      "end",
+      "table.sort(out)",
+      "io.stdout:write(table.concat(out, ' '))",
+      "vim.cmd('qa!')",
+    }, report)
+    local session = tmp .. "/session.vim"
+    vim.fn.writefile({ "edit " .. files .. "/a.packbl", "split " .. files .. "/b.packbl" }, session)
+    local function run(eager, args)
+      local cmd = { vim.v.progpath, "--headless", "--clean", "--cmd", "luafile " .. setup }
+      vim.list_extend(cmd, args)
+      vim.list_extend(cmd, { "-c", "luafile " .. report })
+      local r = vim.system(cmd, { text = true, env = { BL_EAGER = eager and "1" or nil } }):wait(20000)
+      return vim.trim(r.stdout or "")
+    end
+    for _, c in ipairs({
+      { "nvim file", { files .. "/a.packbl" } },
+      { "nvim -o a b", { "-o", files .. "/a.packbl", files .. "/b.packbl" } },
+      { "nvim -S session", { "-S", session } },
+    }) do
+      local eager, lazy = run(true, c[2]), run(false, c[2])
+      T.truthy(lazy:find("a.packbl=3,2,-1,1", 1, true), c[1] .. ": " .. lazy)
+      T.eq(lazy, eager, c[1])
+    end
+    vim.fn.delete(tmp, "rf")
+    vim.fn.delete(files, "rf")
   end)
 
   T.it("loads made by a replayed FileType handler do not start a nested refresh", function()

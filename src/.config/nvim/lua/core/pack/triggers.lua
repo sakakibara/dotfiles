@@ -13,8 +13,9 @@
 -- are skipped. When a trigger's load adds runtime dirs carrying ftplugin,
 -- indent or syntax files for the triggering buffer's filetype whose loaders
 -- already ran, those loaders run again for that buffer, followed once, in
--- definition order, by the FileType autocmds that ran after them, and, while
--- the buffer is still being created or read, by editorconfig and modelines.
+-- definition order, by the FileType autocmds that ran after them, and, inside
+-- the buffer's BufReadPost or BufNewFile dispatch, by editorconfig and
+-- modelines.
 -- Other buffers and loads by cmd, keys, VeryLazy or pack.load are left alone.
 
 local M = {}
@@ -275,7 +276,7 @@ function M.create(deps)
   local refreshing = false
   local queued = {}
   local refreshed = {}
-  local fresh = {}
+  local reading = {}
 
   local function run_job(job)
     local buf = job.buf
@@ -290,9 +291,13 @@ function M.create(deps)
       end
     end
     if #dirs == 0 then return end
-    in_buf(buf, function()
-      if refresh_buffer(buf, dirs, job.before, job.loader_id) and fresh[buf] then reapply(buf) end
+    local ok, err = pcall(in_buf, buf, function()
+      if refresh_buffer(buf, dirs, job.before, job.loader_id) and reading[buf] then reapply(buf) end
     end)
+    if not ok then
+      for _, d in ipairs(dirs) do got[d] = nil end
+      error(err, 0)
+    end
   end
 
   local function refresh_trigger(job)
@@ -328,13 +333,30 @@ function M.create(deps)
   local function register(specs)
     local event = require("core.event")
 
-    vim.api.nvim_create_autocmd({ "BufNew", "BufReadPre" }, {
-      group = vim.api.nvim_create_augroup("core.pack.fresh", { clear = true }),
+    local reads = vim.api.nvim_create_augroup("core.pack.reading", { clear = true })
+    local function start_read(buf, done_event)
+      reading[buf] = true
+      vim.api.nvim_create_autocmd(done_event, {
+        group = reads, buffer = buf, once = true,
+        callback = function() reading[buf] = nil end,
+      })
+    end
+    vim.api.nvim_create_autocmd("BufReadPre", {
+      group = reads,
+      callback = function(ev) start_read(ev.buf, "BufReadPost") end,
+    })
+    vim.api.nvim_create_autocmd("BufNew", {
+      group = reads,
       callback = function(ev)
-        local buf = ev.buf
-        if fresh[buf] then return end
-        fresh[buf] = true
-        vim.schedule(function() fresh[buf] = nil end)
+        local name = vim.api.nvim_buf_get_name(ev.buf)
+        if name ~= "" and not vim.uv.fs_stat(name) then start_read(ev.buf, "BufNewFile") end
+      end,
+    })
+    vim.api.nvim_create_autocmd("BufWipeout", {
+      group = reads,
+      callback = function(ev)
+        reading[ev.buf] = nil
+        refreshed[ev.buf] = nil
       end,
     })
 
