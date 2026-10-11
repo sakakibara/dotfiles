@@ -13,9 +13,9 @@
 -- are skipped. When a trigger's load adds runtime dirs carrying ftplugin,
 -- indent or syntax files for the triggering buffer's filetype whose loaders
 -- already ran, those loaders run again for that buffer, followed once, in
--- definition order, by the FileType autocmds that ran after them, then by
--- editorconfig and modelines. Other buffers and loads by cmd, keys,
--- VeryLazy or pack.load are left alone.
+-- definition order, by the FileType autocmds that ran after them, and, while
+-- the buffer is still being created or read, by editorconfig and modelines.
+-- Other buffers and loads by cmd, keys, VeryLazy or pack.load are left alone.
 
 local M = {}
 
@@ -274,6 +274,26 @@ function M.create(deps)
 
   local refreshing = false
   local queued = {}
+  local refreshed = {}
+  local fresh = {}
+
+  local function run_job(job)
+    local buf = job.buf
+    if not (vim.api.nvim_buf_is_valid(buf) and vim.api.nvim_buf_is_loaded(buf)) then return end
+    local got = refreshed[buf] or {}
+    refreshed[buf] = got
+    local dirs = {}
+    for _, d in ipairs(job.dirs) do
+      if not got[d] then
+        got[d] = true
+        dirs[#dirs + 1] = d
+      end
+    end
+    if #dirs == 0 then return end
+    in_buf(buf, function()
+      if refresh_buffer(buf, dirs, job.before, job.loader_id) and fresh[buf] then reapply(buf) end
+    end)
+  end
 
   local function refresh_trigger(job)
     if refreshing then
@@ -281,37 +301,23 @@ function M.create(deps)
       return
     end
     refreshing = true
-    local done = {}
-    local ok, err = pcall(function()
-      while job do
-        local buf = job.buf
-        if not done[buf] and vim.api.nvim_buf_is_valid(buf) and vim.api.nvim_buf_is_loaded(buf) then
-          done[buf] = true
-          in_buf(buf, function()
-            if refresh_buffer(buf, job.dirs, job.before, job.loader_id) then reapply(buf) end
-          end)
-        end
-        job = table.remove(queued, 1)
-      end
-    end)
+    local first_err
+    while job do
+      local ok, err = pcall(run_job, job)
+      if not ok and not first_err then first_err = err end
+      job = table.remove(queued, 1)
+    end
     refreshing = false
-    queued = {}
-    if not ok then error(err, 0) end
+    if first_err then
+      vim.notify("core.pack refresh: " .. tostring(first_err), vim.log.levels.ERROR)
+    end
   end
-
-  local refreshed = {}
 
   local function load_refreshing(specs, reason, args, loader_id)
     local ft_before = snapshot("FileType")
     local rtp_before = rtp_set()
     for _, s in ipairs(specs) do load_spec(s, reason) end
-    local dirs = {}
-    for _, d in ipairs(added_dirs(rtp_before)) do
-      if not refreshed[d] then
-        refreshed[d] = true
-        dirs[#dirs + 1] = d
-      end
-    end
+    local dirs = added_dirs(rtp_before)
     local buf = args.buf
     if #dirs == 0 or not (buf and vim.api.nvim_buf_is_valid(buf)) then return end
     refresh_trigger({
@@ -321,6 +327,16 @@ function M.create(deps)
 
   local function register(specs)
     local event = require("core.event")
+
+    vim.api.nvim_create_autocmd({ "BufNew", "BufReadPre" }, {
+      group = vim.api.nvim_create_augroup("core.pack.fresh", { clear = true }),
+      callback = function(ev)
+        local buf = ev.buf
+        if fresh[buf] then return end
+        fresh[buf] = true
+        vim.schedule(function() fresh[buf] = nil end)
+      end,
+    })
 
     -- Group specs by triggering event/pattern/ft. Matches lazy.nvim's design:
     -- one once=true autocmd per trigger group loads all specs registered to

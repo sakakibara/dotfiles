@@ -824,7 +824,7 @@ T.describe("core.pack re-fires triggering event", function()
       local buf = vim.api.nvim_get_current_buf()
       T.eq({ vim.bo[buf].shiftwidth, vim.bo[buf].tabstop }, { 3, 2 }, trigger .. " before")
       vim.bo[buf].filetype = ft
-      if trigger == "event" then vim.api.nvim_exec_autocmds("User", { pattern = "RtEcLoad" }) end
+      if trigger == "event" then vim.api.nvim_exec_autocmds("User", { pattern = "RtEcLoad", modeline = false }) end
       T.truthy(pack.loaded(name))
       T.eq(vim.b[buf].rt_ftplugin, 1, trigger)
       T.eq({ vim.bo[buf].shiftwidth, vim.bo[buf].tabstop, vim.bo[buf].softtabstop, vim.bo[buf].textwidth },
@@ -880,6 +880,110 @@ T.describe("core.pack re-fires triggering event", function()
     vim.api.nvim_buf_delete(buf, { force = true })
     vim.api.nvim_buf_delete(buf2, { force = true })
     cleanup_c(); cleanup_b(); cleanup_a(); cleanup()
+  end)
+
+  T.it("a load triggered by a filetype change during a refresh still refreshes that buffer", function()
+    local pack = reset_pack()
+    local cleanup = rt_fixture("rtsw1", "packsw1")
+    local cleanup2 = rt_fixture("rtsw2", "packsw2")
+    local switched = false
+    local g = vim.api.nvim_create_augroup("RtSwUser", { clear = true })
+    vim.api.nvim_create_autocmd("FileType", { group = g, pattern = "packsw1", callback = function()
+      if pack.loaded("rtsw1") and not switched then
+        switched = true
+        vim.bo.filetype = "packsw2"
+      end
+    end })
+    pack.setup({ specs = { { "test/rtsw1", event = "User RtSwGo" }, { "test/rtsw2", ft = "packsw2" } } })
+    local buf = rt_buffer("packsw1")
+    vim.api.nvim_exec_autocmds("User", { pattern = "RtSwGo" })
+    T.eq(vim.bo[buf].filetype, "packsw2")
+    T.truthy(pack.loaded("rtsw2"))
+    T.eq(vim.b[buf].rt_ftplugin, 2)
+    vim.api.nvim_del_augroup_by_id(g)
+    vim.api.nvim_buf_delete(buf, { force = true })
+    cleanup2(); cleanup()
+  end)
+
+  T.it("a refresh that throws does not drop the refreshes queued after it", function()
+    local pack = reset_pack()
+    local cleanup = rt_fixture("rtq0", "packq0")
+    local cleanup_a = rt_fixture("rtqa", "packqa")
+    local cleanup_b = rt_fixture("rtqb", "packqb")
+    local runs, a_buf, b_buf = 0, nil, nil
+    local g = vim.api.nvim_create_augroup("RtQUser", { clear = true })
+    vim.api.nvim_create_autocmd("FileType", { group = g, pattern = "packq0", callback = function()
+      runs = runs + 1
+      if runs == 2 then
+        a_buf = vim.api.nvim_create_buf(true, false)
+        vim.bo[a_buf].filetype = "packqa"
+        b_buf = vim.api.nvim_create_buf(true, false)
+        vim.bo[b_buf].filetype = "packqb"
+      end
+    end })
+    pack.setup({ specs = {
+      { "test/rtq0", event = "User RtQGo" }, { "test/rtqa", ft = "packqa" }, { "test/rtqb", ft = "packqb" },
+    } })
+    local buf = rt_buffer("packq0")
+    local orig_get, orig_notify = vim.api.nvim_get_autocmds, vim.notify
+    local errors = {}
+    vim.api.nvim_get_autocmds = function(opts)
+      local caller = debug.getinfo(2, "n")
+      if a_buf and vim.api.nvim_get_current_buf() == a_buf and caller and caller.name == "refresh_buffer" then
+        error("injected refresh failure")
+      end
+      return orig_get(opts)
+    end
+    vim.notify = function(m, l) if l == vim.log.levels.ERROR then errors[#errors + 1] = m end end
+    vim.api.nvim_exec_autocmds("User", { pattern = "RtQGo" })
+    vim.api.nvim_get_autocmds, vim.notify = orig_get, orig_notify
+    T.eq(runs, 2)
+    T.truthy(pack.loaded("rtqa") and pack.loaded("rtqb"))
+    T.eq(vim.b[b_buf].rt_ftplugin, 1)
+    T.eq(#errors, 1, vim.inspect(errors))
+    T.truthy(errors[1]:find("injected refresh failure", 1, true), errors[1])
+    vim.api.nvim_del_augroup_by_id(g)
+    for _, b in ipairs({ buf, a_buf, b_buf }) do vim.api.nvim_buf_delete(b, { force = true }) end
+    cleanup_b(); cleanup_a(); cleanup()
+  end)
+
+  T.it("a lazy load after the buffer is set up leaves its editorconfig and modeline options alone", function()
+    if not pcall(vim.api.nvim_get_autocmds, { group = "nvim.editorconfig" }) then
+      vim.cmd("runtime plugin/editorconfig.lua")
+    end
+    local prev_ml, prev_mls = vim.o.modeline, vim.o.modelines
+    vim.o.modeline, vim.o.modelines = true, 5
+    for _, trigger in ipairs({ "ft", "insert" }) do
+      local pack = reset_pack()
+      local name, ft = "rtlate" .. trigger, "packrtlate" .. trigger
+      local cleanup = rt_fixture(name, ft)
+      local tmp = vim.fn.tempname()
+      vim.fn.mkdir(tmp, "p")
+      vim.fn.writefile({ "root = true", "", "[*]", "insert_final_newline = false" }, tmp .. "/.editorconfig")
+      vim.fn.writefile({ "rtfixtureword", "vim: ts=3" }, tmp .. "/x.rtlate")
+      local spec = { "test/" .. name }
+      if trigger == "ft" then spec.ft = ft else spec.event = "InsertEnter" end
+      pack.setup({ specs = { spec } })
+      vim.cmd("edit " .. vim.fn.fnameescape(tmp .. "/x.rtlate"))
+      local buf = vim.api.nvim_get_current_buf()
+      T.eq({ vim.bo[buf].tabstop, vim.bo[buf].fixendofline }, { 3, false }, trigger .. " after open")
+      if trigger == "insert" then vim.bo[buf].filetype = ft end
+      vim.wait(20, function() return false end)
+      vim.bo[buf].tabstop = 6
+      vim.bo[buf].fixendofline = true
+      if trigger == "ft" then
+        vim.bo[buf].filetype = ft
+      else
+        vim.api.nvim_exec_autocmds("InsertEnter", { buffer = buf, modeline = false })
+      end
+      T.truthy(pack.loaded(name))
+      T.eq(vim.b[buf].rt_ftplugin, 1, trigger)
+      T.eq({ vim.bo[buf].tabstop, vim.bo[buf].fixendofline }, { 6, true }, trigger)
+      vim.api.nvim_buf_delete(buf, { force = true })
+      vim.fn.delete(tmp, "rf")
+      cleanup()
+    end
+    vim.o.modeline, vim.o.modelines = prev_ml, prev_mls
   end)
 
   T.it("a Vimscript ++once autocmd added by a load runs exactly once", function()
