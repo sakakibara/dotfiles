@@ -1,5 +1,17 @@
 vim.filetype.add({ extension = { mdx = "markdown.mdx" } })
 
+vim.api.nvim_create_user_command("MarkdownPreview", function() Lib.preview.open(0) end, { desc = "Markdown preview" })
+vim.api.nvim_create_user_command("MarkdownPreviewStop", function() Lib.preview.close(0) end, { desc = "Stop markdown preview" })
+vim.api.nvim_create_user_command("MarkdownPreviewToggle", function() Lib.preview.toggle(0) end, { desc = "Toggle markdown preview" })
+
+vim.api.nvim_create_autocmd("FileType", {
+  group = vim.api.nvim_create_augroup("LibMarkdownPreview", { clear = true }),
+  pattern = "markdown",
+  callback = function(ev)
+    vim.keymap.set("n", "<Leader>cp", function() Lib.preview.toggle(ev.buf) end, { buffer = ev.buf, desc = "Markdown preview" })
+  end,
+})
+
 return Lib.lang.setup({
   ft = { "markdown", "markdown.mdx" },
   mason = { "marksman", "prettier", "markdownlint-cli2", "markdown-toc" },
@@ -29,27 +41,6 @@ return Lib.lang.setup({
   end,
   linters = { markdown = { "markdownlint-cli2" } },
   plugins = {
-    {
-      "iamcco/markdown-preview.nvim",
-      cmd = { "MarkdownPreviewToggle", "MarkdownPreview", "MarkdownPreviewStop" },
-      ft = "markdown",
-      keys = {
-        { "<Leader>cp", "<Cmd>MarkdownPreviewToggle<CR>", ft = "markdown", desc = "Markdown preview" },
-      },
-      -- NOTE: requires `cd app && npm install` in the plugin dir on first install,
-      -- or `:call mkdp#util#install()`. Not auto-run -- `build` isn't a core.pack field.
-      config = function()
-        if vim.fn["mkdp#util#install"] and vim.fn.executable("node") == 1 then
-          local plugin_dir = vim.fn.stdpath("data") .. "/site/pack/managed/opt/markdown-preview.nvim"
-          local marker = plugin_dir .. "/app/bin/markdown-preview-" .. (vim.uv.os_uname().sysname:lower())
-          if vim.fn.glob(marker .. "*") == "" then
-            pcall(vim.fn["mkdp#util#install"])
-          end
-        end
-        vim.cmd([[do FileType]])
-      end,
-    },
-
     {
       "MeanderingProgrammer/render-markdown.nvim",
       ft = { "markdown" },
