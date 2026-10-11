@@ -10,7 +10,6 @@ return Lib.lang.setup({
     -- availability check needs an explicit binary hint (otherwise it
     -- queues forever and never enables).
     ruby_lsp = { binary = "ruby-lsp" },
-    rubocop = {},
   },
   formatters = {
     ruby = { "rubocop" },

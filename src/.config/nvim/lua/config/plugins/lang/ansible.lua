@@ -17,7 +17,6 @@ return Lib.lang.setup({
   parsers = { "yaml" },
   mason = { "ansible-language-server", "ansible-lint" },
   servers = { ansiblels = {} },
-  linters = { ["yaml.ansible"] = { "ansible_lint" } },
   plugins = {
     {
       "mfussenegger/nvim-ansible",
