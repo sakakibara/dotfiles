@@ -45,3 +45,81 @@ T.describe("lib.statusline path zones", function()
     T.truthy(s:find(home .. "ko/dir/", 1, true), "full parent path shown")
   end)
 end)
+
+T.describe("lib.statusline segment cache", function()
+  local function with_setup(fn)
+    local sl = reset_sl()
+    local ok, err = pcall(function()
+      sl.setup()
+      fn(sl)
+    end)
+    for _, g in ipairs({ "Lib.mode_color", "Lib.statusline.hl", "Lib.statusline.cache" }) do
+      pcall(vim.api.nvim_del_augroup_by_name, g)
+    end
+    if not ok then error(err, 0) end
+  end
+
+  local function scratch_file(name)
+    local buf = vim.api.nvim_create_buf(true, false)
+    vim.api.nvim_buf_set_name(buf, vim.uv.cwd() .. "/" .. name)
+    return buf
+  end
+
+  T.it("builds the path once per buffer until an invalidating event", function()
+    with_setup(function(sl)
+      local buf = scratch_file("cached-path.txt")
+      local prev = vim.api.nvim_get_current_buf()
+      vim.api.nvim_set_current_buf(buf)
+      local real = Lib.path.buf_get_name
+      local calls = 0
+      Lib.path.buf_get_name = function(...) calls = calls + 1; return real(...) end
+      local ok, err = pcall(function()
+        sl.render(); sl.render(); sl.render()
+        T.eq(calls, 1)
+        T.eq(sl.render():find(Lib.icons.status.Lock, 1, true), nil)
+        vim.bo[buf].readonly = true
+        T.truthy(sl.render():find(Lib.icons.status.Lock, 1, true), "readonly mark after OptionSet")
+        T.eq(calls, 2)
+      end)
+      Lib.path.buf_get_name = real
+      vim.api.nvim_set_current_buf(prev)
+      vim.api.nvim_buf_delete(buf, { force = true })
+      if not ok then error(err, 0) end
+    end)
+  end)
+
+  T.it("rebuilds the LSP segment for the new width after a resize", function()
+    with_setup(function(sl)
+      local buf = scratch_file("lsp-width.txt")
+      vim.cmd("tabnew")
+      vim.api.nvim_set_current_buf(buf)
+      local real = vim.lsp.get_clients
+      vim.lsp.get_clients = function() return { { name = "alpha" }, { name = "beta" } } end
+      local ok, err = pcall(function()
+        T.truthy(sl.render():find("alpha,beta", 1, true), "wide window lists names")
+        vim.cmd("vsplit")
+        vim.api.nvim_win_set_width(0, 40)
+        vim.api.nvim_exec_autocmds("VimResized", {})
+        T.truthy(sl.render():find("lsp:2", 1, true), "narrow window counts clients")
+      end)
+      vim.lsp.get_clients = real
+      vim.cmd("tabclose!")
+      vim.api.nvim_buf_delete(buf, { force = true })
+      if not ok then error(err, 0) end
+    end)
+  end)
+
+  T.it("GitSignsUpdate invalidates the buffer it names, not the current one", function()
+    with_setup(function()
+      local other = scratch_file("git-other.txt")
+      local cur = vim.api.nvim_get_current_buf()
+      vim.b[other]._sl_cache = { git = "stale" }
+      vim.b[cur]._sl_cache = { git = "current" }
+      vim.api.nvim_exec_autocmds("User", { pattern = "GitSignsUpdate", data = { buffer = other } })
+      T.eq(vim.b[other]._sl_cache.git, nil)
+      T.eq(vim.b[cur]._sl_cache.git, "current")
+      vim.b[cur]._sl_cache = nil
+      vim.api.nvim_buf_delete(other, { force = true })
+    end)
+  end)
+end)

@@ -497,8 +497,6 @@ function M.render()
   if c.bom       == nil then c.bom       = build_bom(buf) end
   if c.fmt       == nil then c.fmt       = build_fmt(buf) end
 
-  vim.b[buf]._sl_cache = c  -- write-back
-
   -- Right-side segments: listed in natural render order, each annotated
   -- with a drop priority (lower = dropped first). Essentials use priority
   -- 99 so they're never dropped.
@@ -556,9 +554,13 @@ function M.render()
   local right = table.concat(right_parts)
 
   local path_budget = win_w - left_w - strwidth(right) - 1
-  local path = build_path(buf, path_budget)
+  if c.path == nil or c.path_budget ~= path_budget then
+    c.path, c.path_budget = build_path(buf, path_budget), path_budget
+  end
 
-  return left .. path .. "%=" .. right
+  vim.b[buf]._sl_cache = c  -- write-back
+
+  return left .. c.path .. "%=" .. right
 end
 
 -- Setup
@@ -597,9 +599,29 @@ function M.setup()
      { "git", "path", "diag", "lsp", "ft", "enc", "bom", "fmt" })
   on({ "DiagnosticChanged" }, {}, { "diag" })
   on({ "LspAttach", "LspDetach" }, {}, { "lsp" })
-  on({ "User" }, { pattern = "GitSignsUpdate" }, { "git" })
   on({ "OptionSet" }, { pattern = { "fileformat", "fileencoding", "bomb", "filetype" } }, { "enc", "bom", "fmt", "ft" })
-  on({ "BufModifiedSet" }, {}, { "path" })
+  on({ "OptionSet" }, { pattern = { "readonly", "modifiable", "buftype", "filetype" } }, { "path" })
+  on({ "BufModifiedSet", "BufFilePost", "DirChanged", "FileType" }, {}, { "path" })
+  on({ "VimResized" }, {}, { "lsp" })
+
+  vim.api.nvim_create_autocmd("User", {
+    group = grp,
+    pattern = "GitSignsUpdate",
+    callback = function(args)
+      local buf = args.data and args.data.buffer
+      if buf and vim.api.nvim_buf_is_valid(buf) then invalidate(buf, "git") end
+      pcall(vim.cmd, "redrawstatus")
+    end,
+  })
+
+  vim.api.nvim_create_autocmd("WinResized", {
+    group = grp,
+    callback = function()
+      for _, win in ipairs(vim.v.event.windows or {}) do
+        if vim.api.nvim_win_is_valid(win) then invalidate(vim.api.nvim_win_get_buf(win), "lsp") end
+      end
+    end,
+  })
 
   -- Force redraw for transient states (mode glyphs, recording, search).
   -- WinResized / VimResized trigger the path-budget recomputation so the
