@@ -76,6 +76,7 @@ local function run_config(spec)
           -- before the parent is packadded, so a missing transitive rtp
           -- entry (e.g. nvim-dap-virtual-text requiring 'dap') trips this.
           package.loaded[mod] = nil
+          if not tostring(plugin):match("module '[^']+' not found") then error(plugin, 0) end
         end
       end
     end, debug.traceback)

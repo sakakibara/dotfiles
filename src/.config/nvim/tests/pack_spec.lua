@@ -73,6 +73,37 @@ T.describe("core.pack eager loading", function()
 end)
 
 T.describe("core.pack opts resolution", function()
+  local function capture_errors(fn)
+    local errors = {}
+    local orig = vim.notify
+    vim.notify = function(m, l) if l == vim.log.levels.ERROR then errors[#errors + 1] = m end end
+    local ok, err = pcall(fn)
+    vim.notify = orig
+    if not ok then error(err) end
+    return errors
+  end
+
+  T.it("a main module that raises while loading is reported", function()
+    local pack = reset_pack()
+    package.preload["core_pack_test_boom"] = function() error("kaboom at load") end
+    local errors = capture_errors(function()
+      pack.setup({ specs = { { dev = true, name = "boom", main = "core_pack_test_boom" } } })
+    end)
+    package.preload["core_pack_test_boom"] = nil
+    T.eq(#errors, 1)
+    T.truthy(errors[1]:match("config%(boom%)") and errors[1]:match("kaboom at load"))
+    T.eq(package.loaded["core_pack_test_boom"], nil)
+  end)
+
+  T.it("a plugin without a main lua module loads silently", function()
+    local pack = reset_pack()
+    local errors = capture_errors(function()
+      pack.setup({ specs = { { dev = true, name = "nolua", main = "core_pack_test_absent" } } })
+    end)
+    T.eq(errors, {})
+    T.truthy(pack.loaded("nolua"))
+  end)
+
   T.it("opts as a table is passed to config unchanged", function()
     local pack = reset_pack()
     local received
