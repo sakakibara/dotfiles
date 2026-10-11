@@ -7,5 +7,11 @@ return Lib.lang.setup({
   mason = { "astro-language-server", "prettier" },
   parsers = { "astro", "css" },
   servers = { astro = { binary = "astro-ls" } },
-  formatters = { astro = { "prettier" } },
+  formatters = { astro = { "prettier_astro" } },
+  formatters_setup = function(conform)
+    conform.formatters.prettier_astro = {
+      inherit = "prettier",
+      condition = function(_, ctx) return Lib.format.has_node_module(ctx.filename, "prettier-plugin-astro") end,
+    }
+  end,
 })

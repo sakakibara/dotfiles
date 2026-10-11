@@ -160,6 +160,13 @@ function M.info(buf)
   )
 end
 
+function M.has_node_module(path, name)
+  for dir in vim.fs.parents(path) do
+    if vim.uv.fs_stat(dir .. "/node_modules/" .. name) then return true end
+  end
+  return false
+end
+
 -- Called from vim.opt.formatexpr via options.lua.
 function M.formatexpr()
   local ok, conform = pcall(require, "conform")

@@ -23,5 +23,11 @@ return Lib.lang.setup({
       end,
     },
   },
-  formatters = { svelte = { "prettier" } },
+  formatters = { svelte = { "prettier_svelte" } },
+  formatters_setup = function(conform)
+    conform.formatters.prettier_svelte = {
+      inherit = "prettier",
+      condition = function(_, ctx) return Lib.format.has_node_module(ctx.filename, "prettier-plugin-svelte") end,
+    }
+  end,
 })
