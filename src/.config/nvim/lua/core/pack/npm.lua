@@ -2,7 +2,6 @@ local M = {}
 
 M.REGISTRY = "https://registry.npmjs.org"
 M.MARKER = ".core-pack-npm.json"
-M.DEFAULT_MIN_AGE = 7
 M.min_age = nil
 M._request = nil
 M._now = nil
@@ -36,7 +35,6 @@ end
 function M.min_age_days(spec)
   local d = spec and spec.min_age
   if d == nil then d = M.min_age end
-  if d == nil then d = M.DEFAULT_MIN_AGE end
   return d
 end
 
@@ -111,7 +109,11 @@ function M.select(doc, spec)
   end
   table.sort(cands, function(a, b) return a.parsed > b.parsed end)
   if #cands == 0 then return nil, "no version satisfies " .. tostring(spec.npm_version or "*") end
-  local min_age = M.min_age_days(spec) * DAY
+  local days = M.min_age_days(spec)
+  if days == nil then
+    return nil, "no release-age policy: set npm.min_age in core.pack setup or min_age on the spec"
+  end
+  local min_age = days * DAY
   local held
   local t = now()
   for _, c in ipairs(cands) do

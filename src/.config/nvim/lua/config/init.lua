@@ -65,6 +65,7 @@ function M.setup()
   require("core.pack").setup({
     specs   = require("config.plugins"),
     install = { colorscheme = "catppuccin" },
+    npm     = { min_age = Lib.supply_chain.release_min_age_days() },
   })
 
   Lib.colors.setup({})

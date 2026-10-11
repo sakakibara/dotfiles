@@ -141,9 +141,20 @@ T.describe("core.pack.npm resolution", function()
     Npm._now = nil
   end)
 
+  T.it("refuses to pick a version when no release-age policy is set", function()
+    local d = doc({ ["0.19.0"] = { age = 30 } })
+    Npm._now = function() return NOW end
+    Npm.min_age = nil
+    local none, err = Npm.select(d, normalize({ npm = "pkg", version = "^0.19", files = { "dist" } }))
+    T.eq(none, nil)
+    T.eq(err, "no release-age policy: set npm.min_age in core.pack setup or min_age on the spec")
+    Npm._now = nil
+  end)
+
   T.it("holds back versions younger than min_age and reports them", function()
     local d = doc({ ["0.19.0"] = { age = 30 }, ["0.19.2"] = { age = 2.5 } })
     Npm._now = function() return NOW end
+    Npm.min_age = 7
     local spec = normalize({ npm = "pkg", version = "^0.19", files = { "dist" } })
     local pick = Npm.select(d, spec)
     T.eq(pick.version, "0.19.0")
@@ -152,6 +163,7 @@ T.describe("core.pack.npm resolution", function()
     T.eq(Npm.select(d, spec).version, "0.19.2")
     Npm.min_age = nil
     T.eq(Npm.select(d, normalize({ npm = "pkg", version = "^0.19", files = { "dist" }, min_age = 2 })).version, "0.19.2")
+    Npm.min_age = 7
     local young = doc({ ["0.19.2"] = { age = 1 } })
     local none, err = Npm.select(young, spec)
     T.eq(none, nil)
@@ -438,7 +450,7 @@ T.describe("core.pack npm plugins", function()
     local I, L = fresh()
     stub(routes({ ["1.0.0"] = {} }, { ["1.0.0"] = tgz("1.0.0") }))
     local pack = require("core.pack")
-    pack.setup({ specs = { SPEC } })
+    pack.setup({ npm = { min_age = 7 }, specs = { SPEC } })
     unstub()
     local dir = I.install_dir("pkg")
     local e = L.get("pkg")
@@ -604,14 +616,14 @@ T.describe("core.pack npm plugins", function()
     local I = fresh()
     local t = tgz("1.0.0")
     stub(routes({ ["1.0.0"] = {} }, { ["1.0.0"] = t }))
-    require("core.pack").setup({ specs = { SPEC } })
+    require("core.pack").setup({ npm = { min_age = 7 }, specs = { SPEC } })
     unstub()
     T.eq(marker(I).files, { "dist" })
     package.loaded["core.pack"] = nil
     stub(routes({ ["1.0.0"] = {} }, { ["1.0.0"] = t }))
     local orig = vim.notify
     vim.notify = function() end
-    require("core.pack").setup({ specs = { { npm = "pkg", version = "^1", files = { "dist", "lib" } } } })
+    require("core.pack").setup({ npm = { min_age = 7 }, specs = { { npm = "pkg", version = "^1", files = { "dist", "lib" } } } })
     vim.notify = orig
     unstub()
     T.eq(marker(I).files, { "dist", "lib" })
@@ -627,7 +639,7 @@ T.describe("core.pack npm plugins", function()
     local f = assert(io.open(I.install_dir("pkg") .. "/" .. Npm.MARKER, "w")); f:write(vim.json.encode(m)); f:close()
     package.loaded["core.pack"] = nil
     local calls = stub({})
-    require("core.pack").setup({ specs = { SPEC } })
+    require("core.pack").setup({ npm = { min_age = 7 }, specs = { SPEC } })
     unstub()
     T.eq(calls, {})
     T.eq(marker(I).files, { "dist" })
