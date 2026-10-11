@@ -209,7 +209,7 @@ name = "zk"
 name = "zoxide"
 
 [[packages]]
-name = "d12frosted/emacs-plus/emacs-plus@30"
+name = "d12frosted/emacs-plus/emacs-plus@31"
 when = "profile=personal"
 
 [[packages]]
