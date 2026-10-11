@@ -245,13 +245,69 @@ local function run(cmd, cb)
   vim.system(cmd, { text = true }, function(r) vim.schedule(function() cb(r) end) end)
 end
 
-local function rm_rf(path, cb)
-  run({ "rm", "-rf", path }, function() cb() end)
+local function perm(st)
+  return bit.band(st.mode, 4095)
 end
 
-local function only_plain(root)
-  for name, kind in vim.fs.dir(root, { depth = math.huge }) do
-    if kind ~= "file" and kind ~= "directory" then return name end
+local function grant(path, st, bits)
+  local want = bit.bor(perm(st), bits)
+  if want == perm(st) then return true end
+  return vim.uv.fs_chmod(path, want) ~= nil
+end
+
+local function entries(dir)
+  local handle, err = vim.uv.fs_scandir(dir)
+  if not handle then return nil, err end
+  local out = {}
+  while true do
+    local name, kind, nerr = vim.uv.fs_scandir_next(handle)
+    if not name then
+      if kind then return nil, kind end
+      if nerr then return nil, nerr end
+      break
+    end
+    out[#out + 1] = name
+  end
+  return out
+end
+
+local function remove_tree(path)
+  local st = vim.uv.fs_lstat(path)
+  if not st then return true end
+  local function loosen(dir, dst)
+    grant(dir, dst, 448)
+    for _, name in ipairs(entries(dir) or {}) do
+      local p = dir .. "/" .. name
+      local est = vim.uv.fs_lstat(p)
+      if est and est.type == "directory" then loosen(p, est) end
+    end
+  end
+  if st.type == "directory" then loosen(path, st) end
+  local ok, err = pcall(vim.fs.rm, path, { recursive = true, force = true })
+  if ok and not vim.uv.fs_lstat(path) then return true end
+  return false, tostring(err or "still present")
+end
+
+local function plain_tree(root)
+  local stack = { "" }
+  while #stack > 0 do
+    local rel = table.remove(stack)
+    local names, err = entries(rel == "" and root or root .. "/" .. rel)
+    if not names then return ("cannot scan %s: %s"):format(rel == "" and "." or rel, tostring(err)) end
+    for _, name in ipairs(names) do
+      local r = rel == "" and name or rel .. "/" .. name
+      local p = root .. "/" .. r
+      local st = vim.uv.fs_lstat(p)
+      if not st then return "cannot stat " .. r end
+      if st.type == "directory" then
+        if not grant(p, st, 448) then return "cannot open " .. r end
+        stack[#stack + 1] = r
+      elseif st.type == "file" then
+        if not grant(p, st, 384) then return "cannot open " .. r end
+      else
+        return "tarball entry is not a regular file or directory: " .. r
+      end
+    end
   end
   return nil
 end
@@ -291,7 +347,8 @@ function M.install(spec, entry, dir, cb)
   vim.fn.mkdir(work .. "/stage", "p")
   local tgz = work .. "/package.tgz"
   local function fail(msg)
-    rm_rf(work, function() cb(false, msg) end)
+    local ok, err = remove_tree(work)
+    cb(false, ok and msg or ("%s; could not remove %s: %s"):format(msg, work, err))
   end
   request(entry.tarball, { outpath = tgz }, function(err)
     if err then return fail("download: " .. vim.trim(tostring(err))) end
@@ -303,11 +360,11 @@ function M.install(spec, entry, dir, cb)
       run(cmd, function(r)
         if r.code ~= 0 then return fail("extract: " .. vim.trim(r.stderr or ("exit " .. r.code))) end
         local pkgdir = work .. "/stage/package"
+        local odd = plain_tree(work .. "/stage")
+        if odd then return fail(odd) end
         for _, f in ipairs(files) do
           if not vim.uv.fs_lstat(pkgdir .. "/" .. f:gsub("/+$", "")) then return fail("missing in tarball: " .. f) end
         end
-        local odd = only_plain(work .. "/stage")
-        if odd then return fail("tarball entry is not a regular file or directory: " .. odd) end
         local mf = io.open(pkgdir .. "/" .. M.MARKER, "w")
         if not mf then return fail("cannot write marker") end
         mf:write(vim.json.encode({ npm = entry.npm, version = entry.version, integrity = entry.integrity }))
@@ -323,7 +380,11 @@ function M.install(spec, entry, dir, cb)
           if old then vim.uv.fs_rename(old, dir) end
           return fail("move new install: " .. tostring(rerr))
         end
-        rm_rf(work, function() cb(true) end)
+        local cok, cerr = remove_tree(work)
+        if not cok then
+          vim.notify(("core.pack: could not remove %s: %s"):format(work, cerr), vim.log.levels.WARN)
+        end
+        cb(true)
       end)
     end)
   end)

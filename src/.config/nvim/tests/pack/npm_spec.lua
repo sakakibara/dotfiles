@@ -84,6 +84,33 @@ local function fixture_tgz(version)
   return tgz, integrity
 end
 
+local function tar_entry(name, mode, typeflag, body, link)
+  body = body or ""
+  local function oct(n, w) return ("%0" .. (w - 1) .. "o"):format(n) .. "\0" end
+  local function pad(str, w) return str .. ("\0"):rep(w - #str) end
+  local h = pad(name, 100) .. oct(mode, 8) .. oct(0, 8) .. oct(0, 8) .. oct(#body, 12) .. oct(NOW, 12)
+    .. "        " .. typeflag .. pad(link or "", 100) .. "ustar\0" .. "00" .. ("\0"):rep(247)
+  local sum = 0
+  for i = 1, #h do sum = sum + h:byte(i) end
+  h = h:sub(1, 148) .. ("%06o"):format(sum) .. "\0 " .. h:sub(157)
+  return h .. body .. ("\0"):rep((512 - #body % 512) % 512)
+end
+
+local function crafted_tgz(entries)
+  local parts = {}
+  for _, e in ipairs(entries) do parts[#parts + 1] = tar_entry(e[1], e[2], e[3], e[4], e[5]) end
+  parts[#parts + 1] = ("\0"):rep(1024)
+  local r = vim.system({ "gzip", "-c", "-n" }, { stdin = table.concat(parts) }):wait()
+  assert(r.code == 0, r.stderr)
+  local tgz = vim.fn.tempname() .. ".tgz"
+  local f = assert(io.open(tgz, "wb")); f:write(r.stdout); f:close()
+  local integrity
+  local done = false
+  Npm.sha512(tgz, function(got) integrity = got; done = true end)
+  vim.wait(10000, function() return done end, 10)
+  return tgz, integrity
+end
+
 T.describe("core.pack.npm resolution", function()
   T.it("picks the highest version in range and skips prereleases", function()
     local d = doc({ ["0.18.9"] = {}, ["0.19.0"] = {}, ["0.19.2"] = {}, ["0.19.3-rc.1"] = {}, ["0.20.0"] = {} })
@@ -271,6 +298,47 @@ T.describe("core.pack.npm install", function()
     T.eq(Npm.installed_version(dir), "1.1.0")
     T.eq(vim.fn.readfile(dir .. "/dist/a.js"), { "var v = '1.1.0';" })
     T.eq(vim.fn.readdir(base), { "pkg" })
+  end)
+
+  T.it("refuses a link hidden in an unreadable directory and leaves nothing behind", function()
+    local tgz, integrity = crafted_tgz({
+      { "package/", 493, "5" },
+      { "package/dist/", 493, "5" },
+      { "package/dist/a.js", 420, "0", "a\n" },
+      { "package/dist/z/", 0, "5" },
+      { "package/dist/z/l", 420, "2", nil, "/etc/passwd" },
+    })
+    local base = root()
+    local url = "https://registry.npmjs.org/pkg/-/pkg-1.0.0.tgz"
+    stub({ [url] = tgz })
+    local ok, err = wait(function(cb)
+      Npm.install({ npm = "pkg", files = { "dist" } }, { npm = "pkg", version = "1.0.0", tarball = url, integrity = integrity }, base .. "/pkg", cb)
+    end)
+    unstub()
+    T.eq(ok, false)
+    T.truthy(tostring(err):find("not a regular file or directory: package/dist/z/l", 1, true), err)
+    T.eq(vim.fn.readdir(base), {})
+  end)
+
+  T.it("opens up unreadable directories and files so the install can be read and removed", function()
+    local tgz, integrity = crafted_tgz({
+      { "package/", 493, "5" },
+      { "package/dist/", 0, "5" },
+      { "package/dist/z/", 0, "5" },
+      { "package/dist/z/a.js", 0, "0", "a\n" },
+    })
+    local base = root()
+    local url = "https://registry.npmjs.org/pkg/-/pkg-1.0.0.tgz"
+    stub({ [url] = tgz })
+    local ok, err = wait(function(cb)
+      Npm.install({ npm = "pkg", files = { "dist" } }, { npm = "pkg", version = "1.0.0", tarball = url, integrity = integrity }, base .. "/pkg", cb)
+    end)
+    unstub()
+    T.eq({ ok, err }, { true, nil })
+    T.eq(vim.fn.readfile(base .. "/pkg/dist/z/a.js"), { "a" })
+    T.eq(vim.fn.readdir(base), { "pkg" })
+    vim.fs.rm(base, { recursive = true })
+    T.eq(vim.uv.fs_lstat(base), nil)
   end)
 
   T.it("refuses a listed path the tarball does not have", function()
