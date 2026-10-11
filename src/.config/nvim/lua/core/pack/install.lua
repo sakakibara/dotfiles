@@ -926,13 +926,16 @@ M.update = function(specs, names, opts)
         if h then notices[#notices + 1] = { name = t.name, kind = "held", text = Npm.held_text(h) } end
         if not res then
           if not held then notices[#notices + 1] = { name = t.name, kind = "error", text = err } end
-        elseif res.entry.version ~= installed then
+        elseif Npm.newer(res.entry.version, installed) then
           local blocked = Npm.provenance_change(locked, res.entry.provenance)
           if blocked then
             notices[#notices + 1] = { name = t.name, kind = "blocked", text = res.entry.version .. ": " .. blocked }
           else
             add(res.entry)
           end
+        elseif Npm.newer(installed, res.entry.version) and not (h and h.version == installed) then
+          notices[#notices + 1] = { name = t.name, kind = "held",
+            text = ("held: installed %s is newer than %s, the newest eligible"):format(installed, res.entry.version) }
         end
       end
     end

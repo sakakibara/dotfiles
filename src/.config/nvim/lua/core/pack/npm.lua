@@ -69,6 +69,15 @@ local function range_of(spec)
   return vim.version.range("*")
 end
 
+function M.newer(a, b)
+  if type(a) ~= "string" then return false end
+  if type(b) ~= "string" then return true end
+  local pa = vim.version.parse(a, { strict = true })
+  local pb = vim.version.parse(b, { strict = true })
+  if not (pa and pb) then return a ~= b end
+  return pb < pa
+end
+
 function M.usable_lock(spec, entry)
   if type(entry) ~= "table" or entry.npm ~= spec.npm or type(entry.version) ~= "string"
     or type(entry.tarball) ~= "string" or type(entry.integrity) ~= "string" then

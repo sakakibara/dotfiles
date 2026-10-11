@@ -598,6 +598,37 @@ T.describe("core.pack npm plugins", function()
     T.eq(marker(I).files, { "dist", "lib" })
   end)
 
+  T.it("update never offers a downgrade and reports a newer locked version as held", function()
+    local I, L = fresh()
+    local spec = normalize(SPEC)
+    local t12 = tgz("1.2.0")
+    stub(routes({ ["1.1.0"] = { age = 30 }, ["1.2.0"] = { age = 1 } }, { ["1.2.0"] = t12 }))
+    Npm.min_age = 0
+    async(function(cb) I.install_missing({ spec }, { on_complete = cb }) end)
+    Npm.min_age = nil
+    unstub()
+    T.eq(L.get("pkg").version, "1.2.0")
+    local function update(versions)
+      stub(routes(versions, {}))
+      local warns, infos = {}, {}
+      local orig = vim.notify
+      vim.notify = function(m, l)
+        if l == vim.log.levels.WARN then warns[#warns + 1] = m else infos[#infos + 1] = m end
+      end
+      async(function(cb) I.update({ spec }, { "pkg" }, { confirm = false, open_window = false, on_complete = cb }) end)
+      vim.notify = orig
+      unstub()
+      return table.concat(warns, "\n"), table.concat(infos, "\n")
+    end
+    local warns, infos = update({ ["1.1.0"] = { age = 30 }, ["1.2.0"] = { age = 1 } })
+    T.eq(L.get("pkg").version, "1.2.0")
+    T.eq(marker(I).version, "1.2.0")
+    T.truthy(warns:find("pkg: held: 1.2.0 1d old, needs 7d", 1, true), warns)
+    T.truthy(infos:find("nothing to update", 1, true), infos)
+    warns = update({ ["1.1.0"] = { age = 30 } })
+    T.eq(marker(I).version, "1.2.0")
+    T.truthy(warns:find("pkg: held: installed 1.2.0 is newer than 1.1.0, the newest eligible", 1, true), warns)
+  end)
 end)
 
 T.describe("core.pack.lock nested entries", function()
