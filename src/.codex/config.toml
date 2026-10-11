@@ -1,6 +1,7 @@
 # mox: own tui.keymap.global
 # mox: own tui.keymap.composer
 # mox: own tui.keymap.editor
+# mox: own sandbox_workspace_write.writable_roots
 # mox: check "scripts/check/codex-config"
 # mox: when tool=codex
 [tui.keymap.global]
@@ -29,3 +30,7 @@ delete_forward_word = "alt-d"
 kill_line_start = "ctrl-u"
 kill_line_end = "ctrl-k"
 yank = "ctrl-y"
+# mox: when tool=holt
+[sandbox_workspace_write]
+writable_roots = ["<secret:cmd:holt config | sed -n 's/^code_root = //p'>", "<secret:cmd:holt config | sed -n 's/^synced_root = //p'>"]
+# mox: end
