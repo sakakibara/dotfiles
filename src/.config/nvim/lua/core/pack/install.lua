@@ -17,7 +17,7 @@ M._install_root_override = nil  -- tests
 
 local function install_root()
   if M._install_root_override then return M._install_root_override end
-  return vim.fn.stdpath("data") .. "/site/pack/core/opt"
+  return vim.fn.stdpath("data") .. "/site/pack/managed/opt"
 end
 
 function M.install_dir(name)

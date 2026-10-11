@@ -43,6 +43,12 @@ local function async(fn)
 end
 
 T.describe("core.pack.install", function()
+  T.it("installs into its own pack namespace, not vim.pack's", function()
+    package.loaded["core.pack.install"] = nil
+    local I = require("core.pack.install")
+    T.eq(I.install_dir("x"), vim.fn.stdpath("data") .. "/site/pack/managed/opt/x")
+  end)
+
   T.it("install_missing skips already-installed plugins", function()
     local I, L = fresh()
     local remote = make_remote()

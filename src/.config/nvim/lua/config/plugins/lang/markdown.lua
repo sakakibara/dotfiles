@@ -40,7 +40,7 @@ return Lib.lang.setup({
       -- or `:call mkdp#util#install()`. Not auto-run -- `build` isn't a core.pack field.
       config = function()
         if vim.fn["mkdp#util#install"] and vim.fn.executable("node") == 1 then
-          local plugin_dir = vim.fn.stdpath("data") .. "/site/pack/core/opt/markdown-preview.nvim"
+          local plugin_dir = vim.fn.stdpath("data") .. "/site/pack/managed/opt/markdown-preview.nvim"
           local marker = plugin_dir .. "/app/bin/markdown-preview-" .. (vim.uv.os_uname().sysname:lower())
           if vim.fn.glob(marker .. "*") == "" then
             pcall(vim.fn["mkdp#util#install"])

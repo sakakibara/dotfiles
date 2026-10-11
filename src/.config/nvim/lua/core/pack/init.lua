@@ -95,7 +95,7 @@ end
 
 local function packadd(spec)
   if spec.dev then return end  -- dev plugins: assume on rtp already or skip for tests
-  -- Invariant: spec.name matches the install directory under pack/core/opt/<name>.
+  -- Invariant: spec.name matches the install directory under pack/managed/opt/<name>.
   require("core.profile").span("packadd:" .. spec.name, "packadd", function()
     local ok, err = pcall(vim.cmd, "packadd " .. spec.name)
     if not ok then
