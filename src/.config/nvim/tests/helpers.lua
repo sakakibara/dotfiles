@@ -11,10 +11,10 @@ function M.it(name, fn)
   local ok, err = xpcall(fn, debug.traceback)
   if ok then
     M._passes = M._passes + 1
-    print("  ✓ " .. name)
+    print("  ok   " .. name)
   else
     table.insert(M._fails, { name = name, err = err })
-    print("  ✗ " .. name)
+    print("  FAIL " .. name)
     for line in tostring(err):gmatch("[^\n]+") do print("      " .. line) end
   end
 end
