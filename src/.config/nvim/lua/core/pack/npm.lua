@@ -40,16 +40,21 @@ function M.min_age_days(spec)
   return d
 end
 
-local function iso_to_time(s)
+local function days_from_civil(y, m, d)
+  if m <= 2 then y = y - 1 end
+  local era = math.floor(y / 400)
+  local yoe = y - era * 400
+  local doy = math.floor((153 * ((m + 9) % 12) + 2) / 5) + d - 1
+  local doe = yoe * 365 + math.floor(yoe / 4) - math.floor(yoe / 100) + doy
+  return era * 146097 + doe - 719468
+end
+
+function M.iso_to_time(s)
   if type(s) ~= "string" then return nil end
   local y, mo, d, h, mi, sec = s:match("^(%d+)%-(%d+)%-(%d+)T(%d+):(%d+):(%d+)")
   if not y then return nil end
-  local t = os.time({ year = tonumber(y), month = tonumber(mo), day = tonumber(d),
-    hour = tonumber(h), min = tonumber(mi), sec = tonumber(sec), isdst = false })
-  local utc = os.date("!*t", t)
-  local loc = os.date("*t", t)
-  utc.isdst = loc.isdst
-  return t + (t - os.time(utc))
+  return days_from_civil(tonumber(y), tonumber(mo), tonumber(d)) * DAY
+    + tonumber(h) * 3600 + tonumber(mi) * 60 + tonumber(sec)
 end
 
 function M.format_age(seconds)
@@ -97,7 +102,7 @@ function M.select(doc, spec)
   local held
   local t = now()
   for _, c in ipairs(cands) do
-    local published = iso_to_time(doc.time and doc.time[c.v])
+    local published = M.iso_to_time(doc.time and doc.time[c.v])
     local age = published and (t - published) or nil
     if min_age <= 0 or (age and age >= min_age) then
       return { version = c.v, meta = doc.versions[c.v], held = held }

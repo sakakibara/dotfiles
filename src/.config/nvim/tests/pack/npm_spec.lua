@@ -116,6 +116,21 @@ T.describe("core.pack.npm resolution", function()
     Npm._now = nil
   end)
 
+  T.it("reads registry publish times as UTC in any local time zone", function()
+    local script = vim.fn.tempname() .. ".lua"
+    vim.fn.writefile({
+      "vim.opt.rtp:prepend(" .. vim.inspect(vim.fn.getcwd()) .. ")",
+      "local N = require('core.pack.npm')",
+      "io.stdout:write(N.iso_to_time('2026-07-01T12:00:00.000Z'), ' ', N.iso_to_time('2026-01-15T03:04:05Z'))",
+    }, script)
+    for _, tz in ipairs({ "America/New_York", "Asia/Tokyo", "UTC" }) do
+      local r = vim.system({ vim.v.progpath, "--headless", "--clean", "-l", script }, { env = { TZ = tz }, text = true })
+        :wait(10000)
+      T.eq(vim.trim(r.stdout or ""), "1782907200 1768446245", tz)
+    end
+    vim.fn.delete(script)
+  end)
+
   T.it("records SLSA provenance from the attestations endpoint", function()
     local d = doc({ ["1.0.0"] = { attest = true } })
     stub({
