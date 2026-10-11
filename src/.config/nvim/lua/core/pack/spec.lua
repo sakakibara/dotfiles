@@ -9,6 +9,20 @@ local ALLOWED_FIELDS = {
   auto = true,
 }
 
+local function is_range(s)
+  s = vim.trim(s)
+  if s == "*" or s:match("^[%^~<>=]") or s:match("%s%-%s") then return true end
+  local wildcard = false
+  for _, seg in ipairs(vim.split(s, ".", { plain = true })) do
+    if seg:match("^[xX%*]$") then
+      wildcard = true
+    elseif not seg:match("^%d+$") then
+      return false
+    end
+  end
+  return wildcard
+end
+
 function M.normalize(spec)
   if type(spec) == "string" then spec = { spec } end
   if type(spec) ~= "table" then error("spec must be a table, got " .. type(spec)) end
@@ -37,12 +51,11 @@ function M.normalize(spec)
   if lazy == nil then lazy = has_trigger ~= nil end
 
   local version = spec.version
+  if type(version) == "string" and is_range(version) then
+    version = vim.version.range(version) or version
+  end
   if version == nil and type(spec.branch) == "string" then
     version = spec.branch
-  end
-  if type(version) == "string" and version:match("[%*x%^~]") then
-    local stripped = version:gsub("[%*x%^~]", ""):gsub("%.%.+", "."):gsub("^%.", ""):gsub("%.$", "")
-    version = vim.version.range(stripped)
   end
 
   return {

@@ -220,3 +220,52 @@ T.describe("core.pack.spec.resolve", function()
     T.truthy(warnings[1]:match("conflicting version"))
   end)
 end)
+
+T.describe("core.pack.spec.normalize: version", function()
+  T.it("a branch containing x stays a branch name", function()
+    local Spec = reset_spec()
+    local s = Spec.normalize({ dev = true, name = "p", branch = "regexp" })
+    T.eq(s.version, "regexp")
+    T.eq(s.branch, "regexp")
+  end)
+
+  T.it("a branch that looks like a range is not parsed as one", function()
+    local Spec = reset_spec()
+    local s = Spec.normalize({ dev = true, name = "p", branch = "1.x" })
+    T.eq(s.version, "1.x")
+  end)
+
+  T.it("a tag name containing x stays a string", function()
+    local Spec = reset_spec()
+    T.eq(Spec.normalize(F.with_version("p", "next")).version, "next")
+  end)
+
+  T.it("caret range keeps its operator", function()
+    local Spec = reset_spec()
+    local v = Spec.normalize(F.with_version("p", "^1.2")).version
+    T.eq(type(v), "table")
+    T.truthy(v:has("1.3.0"), "^1.2 should include 1.3.0")
+    T.eq(v:has("2.0.0"), false, "^1.2 should exclude 2.0.0")
+    T.eq(v:has("1.1.0"), false, "^1.2 should exclude 1.1.0")
+  end)
+
+  T.it("tilde range keeps its operator", function()
+    local Spec = reset_spec()
+    local v = Spec.normalize(F.with_version("p", "~1.2")).version
+    T.truthy(v:has("1.2.5"))
+    T.eq(v:has("1.3.0"), false)
+  end)
+
+  T.it("wildcard segments parse as ranges", function()
+    local Spec = reset_spec()
+    local v = Spec.normalize(F.with_version("p", "1.x")).version
+    T.truthy(v:has("1.9.0"))
+    T.eq(v:has("2.0.0"), false)
+  end)
+
+  T.it("a sha or exact tag stays a string", function()
+    local Spec = reset_spec()
+    T.eq(Spec.normalize(F.with_version("p", "abc1234")).version, "abc1234")
+    T.eq(Spec.normalize(F.with_version("p", "v1.2.3")).version, "v1.2.3")
+  end)
+end)
