@@ -3,6 +3,7 @@ local M = {}
 local Spec = require("core.pack.spec")
 
 M._specs = {}       -- { [name] = normalized_spec }
+M._inactive = {}
 M._loaded = {}      -- { [name] = true }
 M._opts = {}        -- { [name] = merged_opts }
 M._on_load = {}     -- { [name] = { fn, ... } }
@@ -220,6 +221,7 @@ function M.setup(cfg)
   local specs = cfg.specs or {}
 
   M._specs = {}
+  M._inactive = {}
   M._loaded = {}
   M._opts = {}
   -- NOTE: do NOT reset M._on_load here. Plugin spec files call
@@ -235,7 +237,11 @@ function M.setup(cfg)
   end
   local ordered = {}
   for _, spec in ipairs(resolved) do
-    if spec.enabled and (spec.cond == nil or (type(spec.cond) == "function" and spec.cond()) or spec.cond == true) then
+    local active = spec.enabled
+      and (spec.cond == nil or (type(spec.cond) == "function" and spec.cond()) or spec.cond == true)
+    if spec.enabled and not active then
+      M._inactive[spec.name] = spec
+    elseif active then
       M._specs[spec.name] = spec
       M._opts[spec.name] = spec.opts
       ordered[#ordered + 1] = spec

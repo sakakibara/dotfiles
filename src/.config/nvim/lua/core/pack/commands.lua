@@ -179,6 +179,7 @@ local function subcommands(Pack)
       local UI = require("core.pack.ui")
       local specs = {}
       for _, s in pairs(Pack._specs) do specs[#specs + 1] = s end
+      for _, s in pairs(Pack._inactive) do specs[#specs + 1] = s end
       local skip_review = false
       for _, a in ipairs(opts.fargs or {}) do
         if a == "-y" or a == "--yes" then skip_review = true end

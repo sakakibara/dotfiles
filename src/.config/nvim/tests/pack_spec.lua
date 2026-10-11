@@ -13,6 +13,19 @@ T.describe("core.pack validation", function()
     T.eq(ok, false)
   end)
 
+  T.it("records an enabled spec whose cond is false as inactive, not active", function()
+    local pack = reset_pack()
+    pack.setup({ specs = {
+      { dev = true, name = "cond-off", cond = false },
+      { dev = true, name = "cond-fn-off", cond = function() return false end },
+      { dev = true, name = "disabled", enabled = false, cond = false },
+    } })
+    T.eq(pack.has("cond-off"), false)
+    T.truthy(pack._inactive["cond-off"])
+    T.truthy(pack._inactive["cond-fn-off"])
+    T.eq(pack._inactive["disabled"], nil)
+  end)
+
   T.it("expands github shorthand into src + name", function()
     local pack = reset_pack()
     pack.setup({ specs = { { "user/plugin-x", dev = true, lazy = true, event = "BufReadPre" } } })

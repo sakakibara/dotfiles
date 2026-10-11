@@ -25,6 +25,7 @@ local function fake_pack()
       ["plugin-b"] = { name = "plugin-b", priority = 50 },
     },
     _loaded = { ["plugin-a"] = true },
+    _inactive = { ["plugin-off"] = { name = "plugin-off", priority = 50 } },
   }
   function p.has(n)    return p._specs[n] ~= nil end
   function p.loaded(n) return p._loaded[n] == true end
@@ -281,6 +282,22 @@ local function capture_notifies(fn)
 end
 
 T.describe("core.pack.commands :Pack clean", function()
+  T.it("keeps plugins whose spec exists but whose cond is false", function()
+    with_stubbed_command(function(get)
+      local Install = require("core.pack.install")
+      local orig_clean = Install.clean
+      local kept = {}
+      Install.clean = function(specs) for _, s in ipairs(specs) do kept[#kept + 1] = s.name end end
+      with_ui_stub({}, function()
+        fresh_commands().setup(fake_pack())
+        get().callback({ fargs = { "clean" }, bang = false })
+      end)
+      Install.clean = orig_clean
+      table.sort(kept)
+      T.eq(kept, { "plugin-a", "plugin-b", "plugin-off" })
+    end)
+  end)
+
   T.it("on_review fires UI.clean_review whose on_apply forwards to do_remove", function()
     with_stubbed_command(function(get)
       local Install = require("core.pack.install")
