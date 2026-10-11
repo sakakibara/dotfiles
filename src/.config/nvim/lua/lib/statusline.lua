@@ -187,11 +187,7 @@ local function buf_path_name(buf) return Lib.path.buf_get_name(buf) end
 -- we break cwd into parent + name so the three zones don't duplicate.
 local function split_path_zones(abs)
   local cwd  = vim.uv.cwd() or ""
-  local home = vim.env.HOME or ""
-  local function tilde(p)
-    if home ~= "" and p:sub(1, #home) == home then return "~" .. p:sub(#home + 1) end
-    return p
-  end
+  local tilde = Lib.path.replace_home
 
   local is_dir = abs:sub(-1) == "/"
   local stripped = is_dir and abs:sub(1, -2) or abs
