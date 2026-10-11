@@ -13,6 +13,7 @@ M._load_reason = {} -- { [name] = { reason = "...", ts_ns = ..., parent = "..." 
 -- helpers) but needs to be referenced earlier by the keymaps stub callback.
 -- Closure-captured by reference -- assignment below populates the upvalue.
 local load_spec
+local triggers
 
 local function _norm_modname(s)
   return s:lower()
@@ -109,7 +110,7 @@ end
 -- (forward-declared at the top), so the stub fired on a lazy-trigger key
 -- press calls into load_spec once it's been assigned below.
 local Keymaps = require("core.pack.keymaps").create({
-  load_spec = function(spec) return load_spec(spec) end,
+  load_spec = function(spec, reason) return triggers.load(spec, reason) end,
 })
 
 local _loading = {}  -- cycle-detection guard: names currently mid-load
@@ -145,7 +146,7 @@ load_spec = function(spec, reason)
 end
 
 
-local triggers = require("core.pack.triggers").create({
+triggers = require("core.pack.triggers").create({
   load_spec = load_spec,
   install_spec_stubs = Keymaps.install_spec_stubs,
 })
@@ -416,7 +417,7 @@ end
 function M.load(name)
   local spec = M._specs[name]
   if not spec then return end
-  load_spec(spec, "manual")
+  triggers.load(spec, "manual")
 end
 
 function M.has(name)    return M._specs[name] ~= nil end

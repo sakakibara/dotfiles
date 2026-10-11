@@ -685,6 +685,112 @@ T.describe("core.pack re-fires triggering event", function()
     cleanup()
   end)
 
+  local function rt_fixture(name, ft)
+    local Install = require("core.pack.install")
+    local tmp = vim.fn.tempname()
+    local root = tmp .. "/pack/coretest/opt"
+    local dir = root .. "/" .. name
+    vim.fn.mkdir(dir .. "/ftplugin", "p")
+    vim.fn.mkdir(dir .. "/syntax", "p")
+    vim.fn.writefile({
+      "vim.bo.textwidth = 7",
+      "vim.b.rt_ftplugin = (vim.b.rt_ftplugin or 0) + 1",
+    }, dir .. "/ftplugin/" .. ft .. ".lua")
+    vim.fn.writefile({
+      "syntax keyword RtFixtureWord rtfixtureword",
+      "let b:rt_syntax = get(b:, 'rt_syntax', 0) + 1",
+      "let b:current_syntax = '" .. ft .. "'",
+    }, dir .. "/syntax/" .. ft .. ".vim")
+    vim.cmd("filetype plugin indent on")
+    vim.cmd("syntax on")
+    local prev_root, prev_pp = Install._install_root_override, vim.o.packpath
+    Install._install_root_override = root
+    vim.opt.packpath:prepend(tmp)
+    local user = vim.api.nvim_create_augroup("RtFixtureUser", { clear = true })
+    vim.g.rt_user_runs = 0
+    vim.api.nvim_create_autocmd("FileType", {
+      group = user,
+      pattern = ft,
+      callback = function()
+        vim.bo.textwidth = 99
+        vim.g.rt_user_runs = vim.g.rt_user_runs + 1
+      end,
+    })
+    return function()
+      Install._install_root_override = prev_root
+      vim.o.packpath = prev_pp
+      vim.opt.rtp:remove(dir)
+      pcall(vim.api.nvim_del_augroup_by_id, user)
+      vim.fn.delete(tmp, "rf")
+    end
+  end
+
+  local function rt_buffer(ft)
+    local buf = vim.api.nvim_create_buf(true, false)
+    vim.api.nvim_set_current_buf(buf)
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "rtfixtureword" })
+    vim.bo[buf].filetype = ft
+    return buf
+  end
+
+  local function rt_assert(buf, user_runs)
+    T.eq(vim.b[buf].rt_ftplugin, 1)
+    T.eq(vim.bo[buf].textwidth, 99)
+    T.eq(vim.g.rt_user_runs, user_runs)
+    T.eq(vim.b[buf].rt_syntax, 1)
+    T.eq(vim.fn.synIDattr(vim.fn.synID(1, 1, 0), "name"), "RtFixtureWord")
+  end
+
+  T.it("an ft-triggered load applies the plugin's syntax and keeps earlier FileType settings", function()
+    local pack = reset_pack()
+    local cleanup = rt_fixture("rtft", "packrtft")
+    pack.setup({ specs = { { "test/rtft", ft = "packrtft" } } })
+    local buf = rt_buffer("packrtft")
+    rt_assert(buf, 2)
+    vim.api.nvim_buf_delete(buf, { force = true })
+    cleanup()
+  end)
+
+  T.it("an event-triggered load applies the plugin's syntax and keeps FileType settings", function()
+    local pack = reset_pack()
+    local cleanup = rt_fixture("rtev", "packrtev")
+    pack.setup({ specs = { { "test/rtev", event = "User RtEvLoad" } } })
+    local buf = rt_buffer("packrtev")
+    T.eq(vim.bo[buf].textwidth, 99)
+    vim.api.nvim_exec_autocmds("User", { pattern = "RtEvLoad" })
+    rt_assert(buf, 2)
+    vim.api.nvim_buf_delete(buf, { force = true })
+    cleanup()
+  end)
+
+  T.it("a cmd-triggered load applies the plugin's runtime files to every open buffer of its filetype", function()
+    local pack = reset_pack()
+    local cleanup = rt_fixture("rtcmd", "packrtcmd")
+    pack.setup({ specs = { { "test/rtcmd", cmd = "RtCmdLoad" } } })
+    local other = rt_buffer("packrtcmd")
+    local buf = rt_buffer("packrtcmd")
+    pcall(vim.cmd, "RtCmdLoad")
+    T.truthy(pack.loaded("rtcmd"))
+    rt_assert(buf, 4)
+    T.eq(vim.b[other].rt_ftplugin, 1)
+    T.eq(vim.bo[other].textwidth, 99)
+    vim.api.nvim_buf_delete(buf, { force = true })
+    vim.api.nvim_buf_delete(other, { force = true })
+    cleanup()
+  end)
+
+  T.it("a VeryLazy load applies the plugin's runtime files to an open buffer", function()
+    local pack = reset_pack()
+    local cleanup = rt_fixture("rtvl", "packrtvl")
+    pack.setup({ specs = { { "test/rtvl", event = "VeryLazy" } } })
+    local buf = rt_buffer("packrtvl")
+    require("core.event").trigger("VeryLazy")
+    T.truthy(pack.loaded("rtvl"))
+    rt_assert(buf, 2)
+    vim.api.nvim_buf_delete(buf, { force = true })
+    cleanup()
+  end)
+
   T.it("a Vimscript ++once autocmd added by a load runs exactly once", function()
     local pack = reset_pack()
     vim.g.pack_vim_once = 0

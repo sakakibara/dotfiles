@@ -10,9 +10,10 @@
 -- in definition order: a run of them that is a whole, all-new group fires as
 -- that group; the rest fire through temporary copies. Copies of Vimscript
 -- commands that use script-local names cannot run outside their script and
--- are skipped. When the buffer's ftplugin, indent or syntax loaders already
--- ran for its filetype and the load added runtime dirs carrying files for
--- it, those loaders run again for the buffer.
+-- are skipped. When a load adds runtime dirs carrying ftplugin, indent or
+-- syntax files for a loaded buffer's filetype whose loaders already ran,
+-- those loaders run again for the buffer, followed once, in definition
+-- order, by the FileType autocmds that ran after them.
 
 local M = {}
 
@@ -41,6 +42,39 @@ function M.create(deps)
     return counts
   end
 
+  local function units_of(picked, has_old)
+    local first, last = {}, {}
+    for i, a in ipairs(picked) do
+      if a.group then
+        first[a.group] = first[a.group] or i
+        last[a.group] = i
+      end
+    end
+    local function contiguous(g)
+      for j = first[g], last[g] do
+        if picked[j].group ~= g then return false end
+      end
+      return true
+    end
+    local units, i = {}, 1
+    while i <= #picked do
+      local g = picked[i].group
+      if g and not has_old[g] and first[g] == i and contiguous(g) then
+        units[#units + 1] = { group = g }
+        i = last[g] + 1
+      else
+        local u = units[#units]
+        if not (u and u.copies) then
+          u = { copies = {} }
+          units[#units + 1] = u
+        end
+        u.copies[#u.copies + 1] = picked[i]
+        i = i + 1
+      end
+    end
+    return units
+  end
+
   local function added_since(event, before)
     local list = vim.api.nvim_get_autocmds({ event = event })
     local seen, new, has_old = {}, {}, {}
@@ -53,36 +87,7 @@ function M.create(deps)
         has_old[a.group] = true
       end
     end
-    local first, last = {}, {}
-    for i, a in ipairs(new) do
-      if a.group then
-        first[a.group] = first[a.group] or i
-        last[a.group] = i
-      end
-    end
-    local function contiguous(g)
-      for j = first[g], last[g] do
-        if new[j].group ~= g then return false end
-      end
-      return true
-    end
-    local units, i = {}, 1
-    while i <= #new do
-      local g = new[i].group
-      if g and not has_old[g] and first[g] == i and contiguous(g) then
-        units[#units + 1] = { group = g }
-        i = last[g] + 1
-      else
-        local u = units[#units]
-        if not (u and u.copies) then
-          u = { copies = {} }
-          units[#units + 1] = u
-        end
-        u.copies[#u.copies + 1] = new[i]
-        i = i + 1
-      end
-    end
-    return units, list
+    return units_of(new, has_old), list
   end
 
   local function same_slot(a, b)
@@ -138,6 +143,20 @@ function M.create(deps)
     end
   end
 
+  local function run_units(event, units, list, base)
+    for _, u in ipairs(units) do
+      if u.group then
+        exec_event(event, vim.tbl_extend("force", base, { group = u.group }))
+      else
+        copies = copies + 1
+        local tmp = vim.api.nvim_create_augroup("core.pack.refire." .. copies, { clear = true })
+        for _, a in ipairs(u.copies) do copy_autocmd(event, a, tmp, list) end
+        exec_event(event, vim.tbl_extend("force", base, { group = tmp }))
+        pcall(vim.api.nvim_del_augroup_by_id, tmp)
+      end
+    end
+  end
+
   local function fire_added(event, args, before)
     local units, list = added_since(event, before)
     if #units == 0 then return end
@@ -146,19 +165,7 @@ function M.create(deps)
       data = args.data,
       modeline = false,
     }
-    in_buf(args.buf, function()
-      for _, u in ipairs(units) do
-        if u.group then
-          exec_event(event, vim.tbl_extend("force", base, { group = u.group }))
-        else
-          copies = copies + 1
-          local tmp = vim.api.nvim_create_augroup("core.pack.refire." .. copies, { clear = true })
-          for _, a in ipairs(u.copies) do copy_autocmd(event, a, tmp, list) end
-          exec_event(event, vim.tbl_extend("force", base, { group = tmp }))
-          pcall(vim.api.nvim_del_augroup_by_id, tmp)
-        end
-      end
-    end)
+    in_buf(args.buf, function() run_units(event, units, list, base) end)
   end
 
   local function rtp_set()
@@ -191,42 +198,83 @@ function M.create(deps)
     return false
   end
 
-  local function ran_before(group, loader_id)
-    local ok, list = pcall(vim.api.nvim_get_autocmds, { event = "FileType" })
-    if not ok then return false end
-    local gpos, mine
-    for i, a in ipairs(list) do
-      if a.group_name == group and not gpos then gpos = i end
-      if a.id == loader_id then mine = i end
-    end
-    return gpos ~= nil and (mine == nil or gpos < mine)
+  local LOADERS = {
+    { group = "filetypeplugin", kind = "ftplugin" },
+    { group = "filetypeindent", kind = "indent" },
+    { group = "syntaxset", kind = "syntax" },
+  }
+  local LOADER_GROUPS = {}
+  for _, l in ipairs(LOADERS) do LOADER_GROUPS[l.group] = true end
+
+  local function matches(a, buf, ft)
+    if a.buflocal then return a.buffer == buf end
+    local ok, re = pcall(vim.regex, vim.fn.glob2regpat(a.pattern or "*"))
+    return ok and re:match_str(ft) ~= nil
   end
 
-  local function group_exists(name)
-    return (pcall(vim.api.nvim_get_autocmds, { group = name }))
-  end
-
-  local function refresh_filetype(event, args, loader_id, dirs)
-    if #dirs == 0 then return end
-    local buf = (args.buf and vim.api.nvim_buf_is_valid(args.buf)) and args.buf or vim.api.nvim_get_current_buf()
+  local function refresh_buffer(buf, dirs, before, loader_id)
     local ft = vim.bo[buf].filetype
     if ft == "" then return end
-    local function already(group)
-      if not group_exists(group) then return false end
-      return event ~= "FileType" or ran_before(group, loader_id)
+    local list = vim.api.nvim_get_autocmds({ event = "FileType" })
+    local stop = #list
+    if loader_id then
+      for i, a in ipairs(list) do
+        if a.id == loader_id then stop = i - 1; break end
+      end
     end
-    in_buf(buf, function()
-      for _, pair in ipairs({ { "filetypeplugin", "ftplugin" }, { "filetypeindent", "indent" } }) do
-        if already(pair[1]) and carries(dirs, pair[2], ft) then
-          exec_event("FileType", { group = pair[1], pattern = ft, modeline = false })
+    local rerun, start = {}, nil
+    for _, l in ipairs(LOADERS) do
+      for i = 1, stop do
+        if list[i].group_name == l.group then
+          if carries(dirs, l.kind, ft) then
+            rerun[l.group] = true
+            start = math.min(start or i, i)
+          end
+          break
         end
       end
-      local syn = vim.bo[buf].syntax
-      local names = syn:upper() == "ON" and ft or syn
-      if syn ~= "" and syn:upper() ~= "OFF" and already("syntaxset") and carries(dirs, "syntax", names) then
-        exec_event("Syntax", { group = "syntaxset", pattern = syn, modeline = false })
+    end
+    if not start then return end
+    local seen, picked, has_old = {}, {}, {}
+    for i, a in ipairs(list) do
+      local k = autocmd_key(a)
+      seen[k] = (seen[k] or 0) + 1
+      if matches(a, buf, ft) then
+        local g = a.group_name
+        local ran = i >= start and i <= stop and seen[k] <= (before[k] or 0) and not a.once
+          and g ~= "core.pack.triggers" and (rerun[g] or not LOADER_GROUPS[g])
+        if ran then
+          picked[#picked + 1] = a
+        elseif a.group then
+          has_old[a.group] = true
+        end
       end
-    end)
+    end
+    run_units("FileType", units_of(picked, has_old), list, { pattern = ft, modeline = false })
+  end
+
+  local refreshed = {}
+
+  local function load_refreshing(specs, reason, args, loader_id)
+    local ft_before = snapshot("FileType")
+    local rtp_before = rtp_set()
+    for _, s in ipairs(specs) do load_spec(s, reason) end
+    local dirs = {}
+    for _, d in ipairs(added_dirs(rtp_before)) do
+      if not refreshed[d] then
+        refreshed[d] = true
+        dirs[#dirs + 1] = d
+      end
+    end
+    if #dirs == 0 then return end
+    local trigger = args and args.event == "FileType" and args.buf or nil
+    for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+      if vim.api.nvim_buf_is_loaded(buf) then
+        in_buf(buf, function()
+          refresh_buffer(buf, dirs, ft_before, buf == trigger and loader_id or nil)
+        end)
+      end
+    end
   end
 
   local function register(specs)
@@ -254,7 +302,7 @@ function M.create(deps)
       if spec.lazy and spec.event then
         for _, e in ipairs(event.expand(spec.event)) do
           if e == "VeryLazy" then
-            event.on("VeryLazy", function() load_spec(spec, "event:VeryLazy") end)
+            event.on("VeryLazy", function() load_refreshing({ spec }, "event:VeryLazy") end)
           elseif e:match("^User ") then
             push(user_groups, e:sub(6), spec)
           else
@@ -276,7 +324,7 @@ function M.create(deps)
         for _, c in ipairs(cmds) do
           vim.api.nvim_create_user_command(c, function(opts)
             pcall(vim.api.nvim_del_user_command, c)
-            load_spec(spec, "cmd:" .. c)
+            load_refreshing({ spec }, "cmd:" .. c)
             local range = ""
             if opts.range == 2 then
               range = opts.line1 .. "," .. opts.line2
@@ -313,9 +361,7 @@ function M.create(deps)
         if done then return true end
         done = true
         local before = snapshot(args.event)
-        local rtp_before = rtp_set()
-        for _, s in ipairs(group.specs) do load_spec(s, reason) end
-        refresh_filetype(args.event, args, id, added_dirs(rtp_before))
+        load_refreshing(group.specs, reason, args, id)
         fire_added(args.event, args, before)
         return true
       end
@@ -335,7 +381,10 @@ function M.create(deps)
     end
   end
 
-  return { register = register }
+  return {
+    register = register,
+    load = function(spec, reason) load_refreshing({ spec }, reason) end,
+  }
 end
 
 return M
