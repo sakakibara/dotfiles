@@ -1,6 +1,7 @@
 // mox: disown model
 // mox: disown autoMode
 // mox: disown feedbackDrafts
+// mox: disown permissions
 {
   "attribution": {
     "commit": "",
