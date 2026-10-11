@@ -405,6 +405,8 @@ local function apply_pending_body(pending, opts)
   end
   History.snapshot()
   Txn.begin(pending)
+  local prev_lock = {}
+  for _, p in ipairs(pending) do prev_lock[p.spec.name] = vim.deepcopy(Lock.get(p.spec.name)) end
 
   if opts.fidget then opts.fidget:set_status("core.pack", ("applying 0/%d"):format(#pending)) end
   local total = #pending
@@ -494,11 +496,17 @@ local function apply_pending_body(pending, opts)
       if not results[i].ok then
         local co = await(Git.checkout_sha, p.dir, p.from)
         if co.ok then
-          Lock.set(p.spec.name, {
+          local entry = {
             src = p.spec.src,
             rev = p.from,
             version = type(p.spec.version) == "string" and p.spec.version or nil,
-          })
+          }
+          local prev = prev_lock[p.spec.name]
+          if prev and prev.rev == p.from then
+            entry.tag_name = prev.tag_name
+            entry.tag_sha  = prev.tag_sha
+          end
+          Lock.set(p.spec.name, entry)
           await(M.run_build, p.spec, p.dir, { fidget = opts.fidget })
           reverted[#reverted + 1] = { name = p.spec.name, err = results[i].err }
         else

@@ -318,6 +318,27 @@ T.describe("core.pack.install", function()
     T.truthy(notified:match("demo.nvim"), "notification should name the reverted plugin")
   end)
 
+  T.it("a smoke revert restores the previous lock entry's tag record", function()
+    local I, L = fresh()
+    local remote = make_remote()
+    vim.fn.mkdir(remote .. "/lua/demo", "p")
+    vim.fn.writefile({ "return {}" }, remote .. "/lua/demo/init.lua")
+    sh({ "git", "-C", remote, "add", "." })
+    sh({ "git", "-C", remote, "commit", "-q", "-m", "valid module" })
+    local spec = { name = "demo.nvim", src = "file://" .. remote }
+    async(function(cb) I.install_missing({ spec }, { on_complete = cb }) end)
+    local rev_a = L.get("demo.nvim").rev
+    L.set("demo.nvim", { src = spec.src, rev = rev_a, tag_name = "v1.2.3", tag_sha = rev_a })
+    vim.fn.writefile({ "return { broken syntax" }, remote .. "/lua/demo/init.lua")
+    sh({ "git", "-C", remote, "commit", "-aq", "-m", "broken" })
+    local orig = vim.notify
+    vim.notify = function() end
+    async(function(cb) I.update({ spec }, { "demo.nvim" }, { confirm = false, on_complete = cb }) end)
+    vim.notify = orig
+    local e = L.get("demo.nvim")
+    T.eq({ e.rev, e.tag_name, e.tag_sha }, { rev_a, "v1.2.3", rev_a })
+  end)
+
   T.it("a failed smoke revert keeps the new rev in the lockfile and reports it", function()
     local I, L = fresh()
     local remote = make_remote()
