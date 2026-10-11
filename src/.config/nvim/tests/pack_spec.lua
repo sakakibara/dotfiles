@@ -260,6 +260,47 @@ T.describe("core.pack lazy triggers", function()
     vim.cmd("FakeCmd")
     T.truthy(loaded)
   end)
+
+  T.it("cmd stub replays args, bang, range and mods exactly", function()
+    local pack = reset_pack()
+    local got
+    pack.setup({
+      specs = { { dev = true, name = "lazy-cmd-args", cmd = "FakeArgCmd",
+                  config = function()
+                    vim.api.nvim_create_user_command("FakeArgCmd", function(o)
+                      got = { args = o.args, fargs = o.fargs, bang = o.bang,
+                              line1 = o.line1, line2 = o.line2, range = o.range,
+                              silent = o.smods.silent, vertical = o.smods.vertical }
+                    end, { nargs = 1, bang = true, range = true })
+                  end } },
+    })
+    vim.cmd("enew")
+    vim.api.nvim_buf_set_lines(0, 0, -1, false, { "a", "b", "c", "d" })
+    vim.cmd([[silent vertical 2,3FakeArgCmd! one\ two three]])
+    T.eq(got, {
+      args = [[one\ two three]], fargs = { [[one\ two three]] }, bang = true,
+      line1 = 2, line2 = 3, range = 2, silent = true, vertical = true,
+    })
+    vim.cmd("bwipe!")
+  end)
+
+  T.it("cmd stub replays a count command's count", function()
+    local pack = reset_pack()
+    local got
+    pack.setup({
+      specs = { { dev = true, name = "lazy-cmd-count", cmd = "FakeCountCmd",
+                  config = function()
+                    vim.api.nvim_create_user_command("FakeCountCmd", function(o)
+                      got = o.count
+                    end, { count = 1 })
+                  end } },
+    })
+    vim.cmd("enew")
+    vim.api.nvim_buf_set_lines(0, 0, -1, false, { "a", "b", "c", "d", "e", "f", "g" })
+    vim.cmd("5FakeCountCmd")
+    T.eq(got, 5)
+    vim.cmd("bwipe!")
+  end)
 end)
 
 T.describe("core.pack deps + on_load", function()

@@ -113,14 +113,14 @@ function M.create(deps)
           vim.api.nvim_create_user_command(c, function(opts)
             pcall(vim.api.nvim_del_user_command, c)
             load_spec(spec, "cmd:" .. c)
-            vim.api.nvim_cmd({
-              cmd = c,
-              bang = opts.bang,
-              args = opts.fargs,
-              range = opts.range > 0 and { opts.line1, opts.line2 } or nil,
-              count = opts.count >= 0 and opts.count or nil,
-              mods = opts.smods,
-            }, {})
+            local range = ""
+            if opts.range == 2 then
+              range = opts.line1 .. "," .. opts.line2
+            elseif opts.range == 1 then
+              range = tostring(opts.line1)
+            end
+            vim.cmd(("%s %s%s%s %s"):format(
+              opts.mods, range, c, opts.bang and "!" or "", opts.args))
           end, { bang = true, nargs = "*", range = true, desc = "Lazy: " .. spec.name })
         end
       end
