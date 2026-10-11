@@ -13,9 +13,13 @@ local plugins = Lib.lang.setup({
           return require("omnisharp_extended").handler(...)
         end,
       },
-      enable_roslyn_analyzers = true,
-      organize_imports_on_format = true,
-      enable_import_completion = true,
+      settings = {
+        FormattingOptions = { OrganizeImports = true },
+        RoslynExtensionsOptions = {
+          EnableAnalyzersSupport = true,
+          EnableImportCompletion = true,
+        },
+      },
       -- Omnisharp-extended "Goto Definition" keymap.
       on_attach = function(args, _)
         vim.keymap.set("n", "gd", function()
