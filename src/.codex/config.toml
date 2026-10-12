@@ -2,8 +2,14 @@
 # mox: own tui.keymap.composer
 # mox: own tui.keymap.editor
 # mox: own sandbox_workspace_write.writable_roots
+# mox: own sandbox_mode
+# mox: own approval_policy
+# mox: own approvals_reviewer
 # mox: check "scripts/check/codex-config"
 # mox: when tool=codex
+sandbox_mode = "workspace-write"
+approval_policy = "on-request"
+approvals_reviewer = "auto_review"
 [tui.keymap.global]
 open_transcript = "ctrl-shift-t"
 open_external_editor = "ctrl-shift-g"
