@@ -4,13 +4,15 @@ command -v jq >/dev/null 2>&1 || exit 0
 
 input=$(cat)
 
-IFS=$'\t' read -r model dir ctx added removed <<<"$(
+IFS=$'\t' read -r model dir ctx added removed fast effort <<<"$(
   jq -r '[
     (.model.display_name // "?"),
     (.workspace.current_dir // .cwd // "?"),
     ((.context_window.used_percentage // 0) | floor),
     (.cost.total_lines_added // 0),
-    (.cost.total_lines_removed // 0)
+    (.cost.total_lines_removed // 0),
+    (if .fast_mode == true then "fast" else "-" end),
+    (.effort.level // "")
   ] | @tsv' <<<"$input" 2>/dev/null
 )"
 [ -n "$model" ] || exit 0
@@ -71,7 +73,10 @@ fi
 
 left_segs=()
 [ "${AGENT_SANDBOX:-}" = 1 ] && left_segs+=("$(printf '\033[33m[sbx]\033[0m')")
-left_segs+=("$(printf '\033[36m%s\033[0m' "$model")")
+model_seg=$(printf '\033[36m%s\033[0m' "$model")
+[ -n "$effort" ] && model_seg="$model_seg$(printf ' \033[2m%s\033[0m' "$effort")"
+[ "$fast" = fast ] && model_seg="$model_seg$(printf ' \033[33mfast\033[0m')"
+left_segs+=("$model_seg")
 left_segs+=("$loc_seg")
 
 branch=$(git -C "$dir" symbolic-ref --short HEAD 2>/dev/null \
