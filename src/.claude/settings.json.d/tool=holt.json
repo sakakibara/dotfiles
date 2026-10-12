@@ -1,0 +1,5 @@
+{
+  "permissions": {
+    "additionalDirectories": ["<secret:cmd:holt config | sed -n 's/^code_root = //p'>", "<secret:cmd:holt config | sed -n 's/^synced_root = //p'>"]
+  }
+}
