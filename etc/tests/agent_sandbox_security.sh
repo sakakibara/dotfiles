@@ -551,7 +551,18 @@ assert keymap["editor"]["move_left"] == "ctrl-b"
 assert keymap["editor"]["delete_backward"] == ["backspace", "ctrl-h"]
 assert keymap["editor"]["delete_backward_word"] == "ctrl-w"
 assert keymap["editor"]["kill_line_start"] == "ctrl-u"
-assert set(config) == {"tui"}, "codex source defines content outside the owned tables"
+assert config["sandbox_mode"] == "workspace-write"
+assert config["approval_policy"] == "on-request"
+assert config["approvals_reviewer"] == "auto_review"
+assert config["sandbox_workspace_write"] == {
+    "writable_roots": [
+        "<secret:cmd:holt config | sed -n 's/^code_root = //p'>",
+        "<secret:cmd:holt config | sed -n 's/^synced_root = //p'>",
+    ],
+}
+assert set(config) == {
+    "tui", "sandbox_mode", "approval_policy", "approvals_reviewer", "sandbox_workspace_write",
+}, "codex source defines content outside the owned settings"
 PY
 
 check_dir="$work/check-candidate"
