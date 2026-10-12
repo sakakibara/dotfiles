@@ -1,4 +1,5 @@
 # mox: own tui.keymap.global
+# mox: own tui.keymap.pager
 # mox: own tui.keymap.composer
 # mox: own tui.keymap.editor
 # mox: own sandbox_workspace_write.writable_roots
@@ -14,28 +15,12 @@ approvals_reviewer = "auto_review"
 open_transcript = "ctrl-shift-t"
 open_external_editor = "ctrl-shift-g"
 copy = "ctrl-shift-o"
-clear_terminal = "ctrl-l"
+[tui.keymap.pager]
+close_transcript = ["ctrl-t", "ctrl-shift-t"]
 [tui.keymap.composer]
 submit = ["enter", "ctrl-j", "ctrl-m"]
-history_search_previous = "ctrl-r"
-history_search_next = "ctrl-s"
 [tui.keymap.editor]
 insert_newline = ["shift-enter", "alt-enter", "ctrl-shift-j"]
-move_left = ["left", "ctrl-b"]
-move_right = ["right", "ctrl-f"]
-move_up = ["up", "ctrl-p"]
-move_down = ["down", "ctrl-n"]
-move_word_left = ["alt-left", "alt-b"]
-move_word_right = ["alt-right", "alt-f"]
-move_line_start = ["home", "ctrl-a"]
-move_line_end = ["end", "ctrl-e"]
-delete_backward = ["backspace", "ctrl-h"]
-delete_forward = ["delete", "ctrl-d"]
-delete_backward_word = "ctrl-w"
-delete_forward_word = "alt-d"
-kill_line_start = "ctrl-u"
-kill_line_end = "ctrl-k"
-yank = "ctrl-y"
 # mox: when tool=holt
 [sandbox_workspace_write]
 writable_roots = ["<secret:cmd:holt config | sed -n 's/^code_root = //p'>", "<secret:cmd:holt config | sed -n 's/^synced_root = //p'>"]
