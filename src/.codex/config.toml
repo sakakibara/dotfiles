@@ -1,5 +1,6 @@
 # mox: own tui.keymap.global
 # mox: own tui.keymap.pager
+# mox: own tui.status_line
 # mox: own tui.keymap.composer
 # mox: own tui.keymap.editor
 # mox: own sandbox_workspace_write.writable_roots
@@ -11,6 +12,8 @@
 sandbox_mode = "workspace-write"
 approval_policy = "on-request"
 approvals_reviewer = "auto_review"
+[tui]
+status_line = ["model-with-reasoning", "project-name", "git-branch", "context-used", "five-hour-limit", "weekly-limit"]
 [tui.keymap.global]
 open_transcript = "ctrl-shift-t"
 open_external_editor = "ctrl-shift-g"
