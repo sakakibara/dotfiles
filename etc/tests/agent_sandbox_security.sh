@@ -547,10 +547,10 @@ config = tomllib.loads(body.decode())
 keymap = config["tui"]["keymap"]
 assert keymap["global"]["open_transcript"] == "ctrl-shift-t"
 assert keymap["composer"]["submit"] == ["enter", "ctrl-j", "ctrl-m"]
-assert keymap["editor"]["move_left"] == "ctrl-b"
-assert keymap["editor"]["delete_backward"] == ["backspace", "ctrl-h"]
-assert keymap["editor"]["delete_backward_word"] == "ctrl-w"
-assert keymap["editor"]["kill_line_start"] == "ctrl-u"
+assert keymap["global"]["open_external_editor"] == "ctrl-shift-g"
+assert keymap["global"]["copy"] == "ctrl-shift-o"
+assert keymap["pager"] == {"close_transcript": ["ctrl-t", "ctrl-shift-t"]}
+assert keymap["editor"] == {"insert_newline": ["shift-enter", "alt-enter", "ctrl-shift-j"]}
 assert config["sandbox_mode"] == "workspace-write"
 assert config["approval_policy"] == "on-request"
 assert config["approvals_reviewer"] == "auto_review"
