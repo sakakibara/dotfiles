@@ -238,6 +238,10 @@ name = "claude-code"
 kind = "cask"
 
 [[packages]]
+name = "codex"
+kind = "cask"
+
+[[packages]]
 name = "discord"
 kind = "cask"
 when = "profile=personal"

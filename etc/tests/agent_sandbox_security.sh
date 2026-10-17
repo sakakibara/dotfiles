@@ -554,6 +554,7 @@ assert keymap["editor"] == {"insert_newline": ["shift-enter", "alt-enter", "ctrl
 assert config["sandbox_mode"] == "workspace-write"
 assert config["approval_policy"] == "on-request"
 assert config["approvals_reviewer"] == "auto_review"
+assert config["check_for_update_on_startup"] is False
 assert config["sandbox_workspace_write"] == {
     "writable_roots": [
         "<secret:cmd:holt config | sed -n 's/^code_root = //p'>",
@@ -561,7 +562,8 @@ assert config["sandbox_workspace_write"] == {
     ],
 }
 assert set(config) == {
-    "tui", "sandbox_mode", "approval_policy", "approvals_reviewer", "sandbox_workspace_write",
+    "tui", "sandbox_mode", "approval_policy", "approvals_reviewer",
+    "check_for_update_on_startup", "sandbox_workspace_write",
 }, "codex source defines content outside the owned settings"
 PY
 

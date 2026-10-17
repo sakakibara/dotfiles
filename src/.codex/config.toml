@@ -7,11 +7,13 @@
 # mox: own sandbox_mode
 # mox: own approval_policy
 # mox: own approvals_reviewer
+# mox: own check_for_update_on_startup
 # mox: check "scripts/check/codex-config"
 # mox: when tool=codex
 sandbox_mode = "workspace-write"
 approval_policy = "on-request"
 approvals_reviewer = "auto_review"
+check_for_update_on_startup = false
 [tui]
 status_line = ["model-with-reasoning", "project-name", "git-branch", "context-used", "five-hour-limit", "weekly-limit"]
 [tui.keymap.global]
