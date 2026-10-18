@@ -102,8 +102,15 @@ printf 'all mox exports composed cleanly (personal, personal with 1Password, and
 # parseable as the target format and is skipped.
 _is_partial_target() {
   local src="$repo/src/$1"
-  [[ -f "$src" ]] && head -n 64 "$src" 2>/dev/null \
-    | grep -qE '^(#|//|--|;)[[:space:]]*mox: (own|disown)( |$)'
+  if [[ -f "$src" ]] && head -n 64 "$src" 2>/dev/null \
+    | grep -qE '^(#|//|--|;)[[:space:]]*mox: (own|disown)( |$)'; then
+    return 0
+  fi
+  [[ -f "$repo/.mox/attributes.toml" ]] && awk -v want="[\"$1\"]" '
+    /^\[/ { cur = $0; next }
+    cur == want && /^(own|disown)[[:space:]]*=/ { found = 1 }
+    END { exit !found }
+  ' "$repo/.mox/attributes.toml"
 }
 
 _check_composed() {
