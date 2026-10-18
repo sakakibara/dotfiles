@@ -52,6 +52,7 @@
     "src/.agents/skills/correctness-campaign/agents/openai.yaml",
     "src/.agents/skills/published-compatibility/SKILL.md",
     "src/.agents/skills/published-compatibility/agents/openai.yaml",
+    "src/.agents/skills/published-compatibility/references/evidence.md",
     "src/.agents/skills/release-discipline/SKILL.md",
     "src/.agents/skills/release-discipline/agents/openai.yaml",
     "src/.agents/skills/review-pull-request/SKILL.md",
