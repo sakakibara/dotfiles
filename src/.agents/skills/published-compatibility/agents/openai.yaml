@@ -1,0 +1,4 @@
+interface:
+  display_name: "Published Compatibility"
+  short_description: "Apply compatibility rules for published projects"
+  default_prompt: "Use $published-compatibility to classify and carry out this change to a published project."

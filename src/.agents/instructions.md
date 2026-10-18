@@ -128,7 +128,7 @@ When a change removes the last known caller of a declaration, do not delete it m
 
 ### No compatibility shims or vendored fallbacks
 
-When extracting a module into its own dep, refactoring an API, or replacing one approach with another, make the change clean. No `pcall(require, "x")` around a fallback inline implementation; no "if new API do A, else B" bridging that lives forever. If a dep is required, make it required; if an API changed, change all the callers. Rip out the old path entirely - no deprecated leftovers, no "kept for compat" branch, zero backward-compat unless the user asks for it.
+When extracting a module, refactoring an API, or replacing one approach with another, make the change clean: change every caller you control, make a required dependency required, and remove the old path - no copied fallback implementation of a required dependency (say, behind `pcall(require, "x")`), no "if new API do A, else B" bridge, no deprecated leftovers. The user's own repos are callers you control, including ones that consume a published project; adapt them in their pin-bump commit. Compatibility code is justified only for callers you don't control - a published project's surface always has them, whoever the known consumers are - only in the forms "Published compatibility" and its skill allow, and each piece names the release, version, date, or range change that deletes it (for a reader of an older persisted format: the release that stops supporting that format). An optional integration with a project you don't require (an icon or picker plugin) is not a shim: detect it, use it, or do without - never a copied implementation. Anything else needs the user's explicit request.
 
 ### Bound resource-consumption bugs in tests
 
@@ -178,7 +178,7 @@ Comments tell WHAT the code does, not HOW; a wrong or stale comment is worse tha
 
 - **Header (function/block):** brief WHAT - purpose, contract, side effects, gotchas. Skip when the name + signature already say it.
 - **Inline:** WHY only, when non-obvious - hardware quirks, subtle invariants, workarounds for specific bugs, surprising behavior. Never narrate WHAT the next line does; the well-named line is the WHAT.
-- **Never:** line-by-line narration; bookkeeping ("called from X", "added for Y", "see ticket #123"); compat/migration narrative ("X was Y before", "moved from foo to bar", "kept as opt-in for..."); vague TODOs without concrete action + rationale; decorative ASCII art. The diff and commit message hold history; source/comments/docs state the current shape and why, timeless - pre- and post-release alike.
+- **Never:** line-by-line narration; bookkeeping ("called from X", "added for Y", "see ticket #123"); compat/migration narrative ("X was Y before", "moved from foo to bar", "kept as opt-in for..."); vague TODOs without concrete action + rationale; decorative ASCII art. The diff and commit message hold history; source/comments/docs state the current shape and why, timeless - pre- and post-release alike. Exception: a one-line deletion marker on compatibility code that "Published compatibility" allows (`-- nvim 0.10: delete when 0.10 leaves the range`).
 
 For section separators inside a code file, invoke the `code-section-markers` skill.
 
@@ -245,6 +245,17 @@ Some of the user's public repos (plugins, libraries, tools, configs) are extract
 - No "extracted from <other-project>" narrative or origin story
 - No references to siblings that exist in the monorepo but not in the extracted repo
 - No "see also <other-personal-repo>" cross-links
+
+### Published compatibility
+
+A published project - library, plugin, grammar, or a tool's CLI and files - keeps these promises. Load the `published-compatibility` skill before changing anything it exports, documents, writes to disk, or prints for scripts; it defines surface per ecosystem and the exact procedures. On published surface its stages are part of the change, not scope creep.
+
+- **Breaking** means removing or renaming surface, changing documented behavior or a default, rejecting input that used to be accepted, or changing machine-readable output (documented formats, output meant for scripts, exit codes, return values, files other programs read) - even as a fix that matches the docs. Internal state may change without breaking only while older data still reads correctly. Some additions break too (see the skill). Do not make a break the user did not ask for; propose it, and prefer a route that needs no deprecation when one exists (an opt-in flag, a new option) - never a second name for the same thing.
+- **Versions: semver as Cargo reads it.** Here a minor bump is 0.y.z -> 0.(y+1).0 before 1.0 and x.y.z -> x.(y+1).0 from 1.0; a patch bump changes z only. Before 1.0 a break needs a minor bump (at 0.0.z, the break goes to 0.1.0) and a patch never breaks; from 1.0, a major. Additions may take a patch bump before 1.0 and need a minor bump from 1.0. A security fix that must break ships in a patch only with the user's agreement. In a repo with conventional commit subjects (90% or more of recent subjects, the commit hook's threshold), every breaking commit is marked `!` (`feat!:`) - lazy.nvim flags exactly that for users tracking `main` - and a release also lists the break in its CHANGELOG and notes. A project without releases (no tags) treats `main` as the contract and uses conventional commit subjects; moving a repo to them is the user's call.
+- **Deprecate; never alias silently.** Warning (the old name works and warns; not a break), then an error naming the replacement (the break), then deletion; each stage lasts at least one release and one month (three months without releases), and its message names the next stage. Zig cannot warn: the old name becomes a `@compileError` naming the new one. Grammar renames ship as plain breaks. The stages apply even when the user asked for the rename and even when the only known consumer is the user's own repo; skipping them needs the user's explicit say-so.
+- **Toolchain range:** declared, oldest and newest tested in CI (or locally, without CI), README claiming no more. In-range compat code lives in one module (plus the build script where its API differs), carries its deletion trigger, and is never removed as cleanup. Raising the minimum takes a minor bump, never a patch, and is not a break unless the ecosystem says otherwise (npm: major); mark its commit `!` where the repo uses conventional subjects. Every range change, and every stop to accepting an old format or release, is the user's decision; a declared range counts as chosen and stays compliant until the user changes it.
+- **Persisted formats carry a version** (unversioned data is version 1). Older data is read (preferred), kept apart and reported once, or refused with the upgrade step - the user picks which; newer data is refused; nothing is misread.
+- **Published consumers pin** a tested tag or revision and bump it in the commit that adapts; a personal config follows its lockfile.
 
 ## User context
 
