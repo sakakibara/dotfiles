@@ -316,10 +316,6 @@ name = "orbstack"
 kind = "cask"
 
 [[packages]]
-name = "scroll-reverser"
-kind = "cask"
-
-[[packages]]
 name = "steam"
 kind = "cask"
 when = "profile=personal"
