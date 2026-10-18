@@ -1,11 +1,3 @@
-// mox: own attribution
-// mox: own hooks
-// mox: own enabledPlugins
-// mox: own extraKnownMarketplaces
-// mox: own statusLine
-// mox: own tui
-// mox: own agentPushNotifEnabled
-// mox: own permissions.additionalDirectories
 {
   "attribution": {
     "commit": "",

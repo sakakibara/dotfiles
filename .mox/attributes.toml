@@ -4,6 +4,9 @@ symlink = true
 [".claude/hooks"]
 symlink = true
 
+[".claude/settings.json"]
+own = ["attribution", "hooks", "enabledPlugins", "extraKnownMarketplaces", "statusLine", "tui", "agentPushNotifEnabled", "permissions.additionalDirectories"]
+
 [".claude/skills"]
 symlink = true
 
