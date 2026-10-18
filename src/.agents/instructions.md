@@ -228,7 +228,7 @@ Distinguish "verification wasn't run" from "no runnable verification exists": a 
 
 ### Land only through CI
 
-In the user's repos that have the `repo-workflow` setup, a branch that releases receives commits only by fast-forward to a SHA whose `ci-ok` passed: run the local checks, commit, and with the landing yes push to the target's `ci/<target>` staging branch and fast-forward the target once `ci-ok` passes. Never use GitHub's merge buttons for the user's own commits; they drop the user's signatures. Other repos keep their own flow. Use the `repo-workflow` skill for landing, release branches, rulesets, the CI standard, PRs, bringing a repo in, and the upkeep report.
+In the user's repos that have the `repo-workflow` setup, a branch that releases receives commits only by fast-forward to a SHA whose `ci-ok` passed: on a local topic branch (local main only mirrors origin main), run the local checks, commit, and with the landing yes push to the target's `ci/<target>` staging branch and fast-forward the target once `ci-ok` passes. Never use GitHub's merge buttons for the user's own commits; they drop the user's signatures. Other repos keep their own flow. Use the `repo-workflow` skill for landing, release branches, rulesets, the CI standard, PRs, bringing a repo in, and the upkeep report.
 
 Once the user's private `upkeep` repo exists, check its status date at the start of a session that will push, land, or work in a published project (`repo-workflow`).
 
