@@ -222,6 +222,8 @@ Check the target repo's convention with `git log -10 --format='%B'` BEFORE compo
 
 `gh` is a PATH shim that picks the GitHub account from the repo at `$PWD` (remote-URL routing to `github.account`); outside a repo it falls back to gh's active account. Create the local repo and its `origin` remote first, then run gh there. Never "fix" an account mismatch with `gh auth switch`.
 
+After creating a GitHub repository, watch it at All Activity in the same step - `gh api -X PUT repos/<owner>/<repo>/subscription -F subscribed=true -F ignored=false` - and confirm the response shows `subscribed` true. GitHub no longer auto-watches new repositories, so without this, issues and PRs opened there notify no one.
+
 ## Public / published repos
 
 ### No LICENSE section in README
