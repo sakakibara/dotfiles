@@ -46,7 +46,7 @@ Run at least two independent adversarial reviews for core-invariant work:
 - Soundness lens: construct counterexamples, invalid states, miscompiles, leaks, races, and boundary violations.
 - Coherence lens: find contradictions, stale definitions, incomplete propagation, and consumer mismatches.
 
-Tell reviewers to refute the paper, cite quoted content, and distinguish verified defects from hypotheses. Amend until the paper is one clean, decision-complete body.
+Tell reviewers to refute the paper, cite quoted content, and distinguish verified defects from hypotheses. Amend until the paper is one clean, decision-complete body. When each round adds about as many edge cases as it closes, fix the verified defects, add a closing rule that decides the remaining class, and end paper review; the post-change review still runs.
 
 ## Implement through gates
 
@@ -85,4 +85,4 @@ Do not declare completion from confidence, a green narrow suite, or a clean pre-
 - Rewrite durable documentation as one current body.
 - Record exact verification evidence and known exceptions.
 - Produce a `session-handoff` if any work, decision, or risk remains in flight.
-- Keep outward-facing actions behind fresh explicit consent.
+- Keep outward-facing actions behind fresh explicit consent (a landing yes counts, as the consent non-negotiable defines it).

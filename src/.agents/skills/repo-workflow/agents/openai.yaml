@@ -1,0 +1,4 @@
+interface:
+  display_name: "Repo Workflow"
+  short_description: "Land changes only through CI"
+  default_prompt: "Use $repo-workflow to land this change or set up this repo."
