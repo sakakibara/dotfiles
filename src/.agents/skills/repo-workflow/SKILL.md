@@ -99,18 +99,18 @@ CI runs on the PR (its `ci-ok` there does not count for landing). Review with `r
 
 ## The upkeep report
 
-Once the user's private `upkeep` repo exists, on the account that owns their published repos (`gh repo view <account>/upkeep`, run from inside one of those repos so the `gh` shim picks that account; until then skip this section): it runs one scheduled workflow daily, off the hour (private repos are exempt from the 60-day schedule pause; it uses a few of the account's free private minutes, Linux runners only). It lists the user's public, non-fork, non-archived repos and, for each, opens one issue per finding - labeled with the repo's name, the label created if missing - and closes it when resolved:
+Each account that owns the user's published repos has a private `upkeep` repo holding its projects' process state (`published-compatibility`, "State in upkeep"); clone it with `holt repo get <account>/upkeep`, propose creating it if it does not exist, and run `gh` for it from inside one of that account's repos so the `gh` shim picks the account. It runs one scheduled workflow daily, off the hour (private repos are exempt from the 60-day schedule pause; it uses a few of the account's free private minutes, Linux runners only). It lists the account's public, non-fork, non-archived repos and, for each, opens one issue per finding - labeled with the repo's name, the label created if missing - and closes it when resolved:
 
 - main's toolchain behind the latest stable, or a compatible toolchain's newest stable above the range's newest tested: Zig from `https://ziglang.org/download/index.json` (Zig is on Codeberg; GitHub cannot see its releases), Neovim and tree-sitter from their latest non-prerelease release;
 - a pin of another of the user's projects behind that project's latest release;
-- a README Compatibility item past its due or review date;
+- an entry in any `projects/` file whose `due`, `review`, or `raise again` date is on or before the run date, whatever the repo's state;
 - an issue or PR from a person without a reply from the user for 3 days (overdue at 7);
 - `ci-ok` not `success` (failing or absent) on the tip of a branch that releases, or a workflow disabled;
 - any API error, or a repo the run could not read, as an item of its own.
 
 Its first run proves it can read every listed repo with `GITHUB_TOKEN`; if it cannot, it uses a fine-grained read-only token limited to public repositories and warns 30 days before that token expires. A status issue, labeled `status`, holds the last run's date in its title. The run exits nonzero on any API error, a failed issue write included, so GitHub's failure email reaches the user. Security reports are not polled: the user watches every owned repo with all activity and email, which delivers them.
 
-At the start of a session that will push, land, or work in a published project, check the status issue's date: more than 2 days old means the checker stopped or its runs were dropped - tell the user. At the start of work in a published project, read its open `upkeep` issues (`gh issue list -R <owner>/upkeep --label <repo>`) and treat them as overdue items (`published-compatibility`, "State in the README"). Inside agent-sandbox, queue both for the host session.
+At the start of a session that will push, land, or work in a published project, pull the upkeep clone (when it is writable) and check the status issue's date: more than 2 days old, or no status issue once the checker workflow exists, means the checker stopped or its runs were dropped - tell the user; before the workflow exists, say once per session that it is not built yet. At the start of work in a published project, read its upkeep file and its open `upkeep` issues (`gh issue list -R <owner>/upkeep --label <repo>`) and treat them as overdue items (`published-compatibility`, "State in upkeep"). Inside agent-sandbox, queue all of these for the host session.
 
 ## Bringing a repo in
 
