@@ -85,7 +85,7 @@ A check that guards an outward action is chained with `&&` (never `;`), quotes i
 
 ### Messages to people stand alone
 
-Issue and PR replies, release notes, and anything else other people read make sense without this session's context, use no terms the reader has not been shown (terms the project's README defines are fine), and sound like a person. Show the draft to the user before posting.
+Issue and PR replies, release notes, and anything else other people read make sense without this session's context, use no terms the reader has not been shown (terms the project's README defines are fine), and sound like a person. Cite a rule as the project's only where the project publishes it (README, CONTRIBUTING, rulesets); the user's agent instructions bind your own work, not contributors. Show the draft to the user before posting.
 
 ### Write the right amount
 
