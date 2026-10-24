@@ -169,10 +169,17 @@ check reject "$plain" "a trailing period" \
   "Fix the thing."
 check reject "$conv"  "a bare subject where the repository uses prefixes" \
   "Change the thing"
+# an attribution trailer is not a body: crediting a co-author must not depend on style
+check reject "$plain" "a body ahead of a co-author trailer where the repository writes subject-only" \
+  "Fix the thing" "" "An explanatory body." "" "Co-authored-by: A Person <a@example.test>"
 
 # legitimate messages must pass - over-blocking is the worse failure
 check accept "$plain" "a plain subject" \
   "Fix the thing properly"
+check accept "$plain" "a co-author trailer where the repository writes subject-only" \
+  "Fix the thing (#12)" "" "Co-authored-by: A Person <a@example.test>"
+check accept "$plain" "a sign-off where the repository writes subject-only" \
+  "Fix the thing" "" "Signed-off-by: A Person <a@example.test>"
 check accept "$conv"  "a conventional subject in a conventional repository" \
   "feat: change the thing again"
 check accept "$young" "anything in a repository with no settled convention" \

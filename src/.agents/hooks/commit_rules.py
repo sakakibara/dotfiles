@@ -65,6 +65,8 @@ OVERCLAIM = re.compile(
     r"\b(fastest|blazing|bulletproof|production[- ]ready|world[- ]class"
     r"|seamless|performant)\b", re.I)
 
+# Credit for a person, which a repository's body style must not decide.
+ATTRIBUTION = re.compile(r"^(?:Co-authored-by|Signed-off-by):\s*\S.*<[^<>\s]+>\s*$", re.I)
 SCISSORS = re.compile(r"^#\s*-+\s*>8\s*-+", re.M)
 # Messages git composes from history (merges, reverts, autosquash) are another
 # author's text: only the trailer rule applies; the derived rules stand down.
@@ -90,6 +92,13 @@ def split_message(text):
     return subject, body
 
 
+def without_attribution(body):
+    """Body paragraphs with a trailing paragraph of attribution trailers dropped."""
+    if body and all(ATTRIBUTION.match(l) for l in body[-1].splitlines()):
+        return body[:-1]
+    return body
+
+
 def history(cdir=None):
     try:
         raw = subprocess.run(
@@ -103,7 +112,8 @@ def history(cdir=None):
         if not chunk.strip("\n"):
             continue
         subject, _, body = chunk.lstrip("\n").partition("\x00")
-        entries.append((subject, body.strip()))
+        rest = without_attribution([p.strip() for p in body.strip().split("\n\n") if p.strip()])
+        entries.append((subject, "\n\n".join(rest)))
     return entries
 
 
@@ -233,6 +243,7 @@ def check(text, cdir=None):
                           if not AGENT_TRAILER.search(l)).strip()
                 for part in body) if p]
 
+    body = without_attribution(body)
     entries = history(cdir)
     if len(entries) >= MIN_SAMPLE and not generated:
         found += derived(subject, body, entries)
