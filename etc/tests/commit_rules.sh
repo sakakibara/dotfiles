@@ -172,6 +172,12 @@ check reject "$conv"  "a bare subject where the repository uses prefixes" \
 # an attribution trailer is not a body: crediting a co-author must not depend on style
 check reject "$plain" "a body ahead of a co-author trailer where the repository writes subject-only" \
   "Fix the thing" "" "An explanatory body." "" "Co-authored-by: A Person <a@example.test>"
+check reject "$plain" "prose dressed as trailers where the repository writes subject-only" \
+  "Fix the thing" "" "Co-authored-by: This rewrites the parser to avoid recursion <x>" "Signed-off-by: and also changes the default timeout <y>"
+check reject "$plain" "a Codex co-author trailer" \
+  "Fix the thing" "" "Co-authored-by: Codex <codex@openai.com>"
+check reject "$plain" "a Copilot co-author trailer" \
+  "Fix the thing" "" "Co-authored-by: Copilot <175728472+Copilot@users.noreply.github.com>"
 
 # legitimate messages must pass - over-blocking is the worse failure
 check accept "$plain" "a plain subject" \

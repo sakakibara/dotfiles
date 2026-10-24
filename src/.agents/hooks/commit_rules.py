@@ -22,7 +22,7 @@ BODY_MAX = 0.25       # bodies rarer than this means subject-only
 
 CONVENTIONAL = re.compile(r"^[a-z]+(\([^)]*\))?!?: .")
 AGENT_TRAILER = re.compile(
-    r"^\s*(?:Claude-Session:|Co-Authored-By:\s*Claude\b|Assisted-By:\s*Claude\b)"
+    r"^\s*(?:Claude-Session:|(?:Co-Authored-By|Assisted-By):\s*(?:Claude|Codex|Copilot|ChatGPT|Cursor|Gemini)\b)"
     r"|Generated with .{0,20}Claude Code",
     re.M | re.I)
 SESSION_LABEL = re.compile(
@@ -66,7 +66,8 @@ OVERCLAIM = re.compile(
     r"|seamless|performant)\b", re.I)
 
 # Credit for a person, which a repository's body style must not decide.
-ATTRIBUTION = re.compile(r"^(?:Co-authored-by|Signed-off-by):\s*\S.*<[^<>\s]+>\s*$", re.I)
+ATTRIBUTION = re.compile(
+    r"^(?:Co-authored-by|Signed-off-by):[ \t]*[^<>\s][^<>\n]{0,60}?[ \t]*<[^<>\s@]+@[^<>\s]+>\s*$", re.I)
 SCISSORS = re.compile(r"^#\s*-+\s*>8\s*-+", re.M)
 # Messages git composes from history (merges, reverts, autosquash) are another
 # author's text: only the trailer rule applies; the derived rules stand down.
@@ -233,7 +234,8 @@ def check(text, cdir=None):
         if not allowed:
             found.append(
                 "a commit never carries an agent trailer (Claude-Session, "
-                "Co-Authored-By: Claude, \"Generated with ... Claude Code\"); "
+                "an agent's Co-Authored-By such as Claude or Codex, "
+                "\"Generated with ... Claude Code\"); "
                 "drop it. A repository that genuinely wants it opts in via its "
                 "own .claude/settings.local.json: "
                 "{\"attribution\": {\"sessionUrl\": true}}")
