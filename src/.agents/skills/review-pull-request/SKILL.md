@@ -9,14 +9,14 @@ description: Run an evidence-driven, security-aware pull-request review from ini
 
 1. Resolve the exact PR head, base, and current merge-base. Record the head identity used for every later command.
 2. Read the full diff before executing PR-controlled code. Inspect executable changes, dependencies, lockfiles, compiler or test plugins, build files, lifecycle hooks, fixtures, and CI helpers for abuse.
-3. Treat unfamiliar code as untrusted. Execute it in a separate disposable environment with no agent state, credentials, signing sockets, or unrelated host mounts, and with network disabled unless a verified test requires it. Use `agent-sandbox run-untrusted -- COMMAND` when available. The agent's own authenticated container is not this execution boundary.
+3. Treat PR-controlled code as untrusted, however familiar it has become, through landing. Execute it in a separate disposable environment with no agent state, credentials, signing sockets, or unrelated host mounts, and with network disabled unless a verified test requires it. Use `agent-sandbox run-untrusted -- COMMAND` when available. The agent's own authenticated container is not this execution boundary.
 4. Report the security and supply-chain assessment separately from implementation quality. An absence of malicious behavior does not establish correctness.
 
 ## Map the change
 
 - Read the full diff and relevant surrounding source, not only highlighted hunks.
 - Write down affected invariants, execution paths, public consumers, and compatibility obligations for correctness-critical changes.
-- Audit every relevant surface: public API, naming and ergonomics, compatibility, implementation, edge cases, tests, diagnostics, documentation, changelog, and dependent PRs.
+- Audit every relevant surface: public API, naming and ergonomics, compatibility, implementation, edge cases, tests, diagnostics, documentation, changelog, dependent PRs, and provenance (code copied or vendored from elsewhere keeps its notice under a license compatible with the project's).
 - Treat published names and ergonomics as correctness concerns because they become compatibility obligations.
 
 ## Verify behavior and integration
@@ -35,7 +35,7 @@ For load-bearing API or semantic changes, use independent adversarial review. As
 
 ## Draft and audit feedback
 
-- Thank the contributor and keep the tone constructive, confident, and evidence-based.
+- Thank the contributor and keep the tone constructive, confident, and evidence-based. Praise names a concrete, verified property (what it handles, what tests it adds); when changes were required, say so plainly.
 - Explain why every required change is required. Distinguish required cleanup from optional suggestions; low severity does not mean optional, and labels such as "minor" must not imply otherwise.
 - Consolidate verified findings after the audit so the contributor receives one stable target instead of avoidable drip-fed comments.
 - Audit the actual draft for technical accuracy, current line anchors, readability, tone, and posting-script safety.
