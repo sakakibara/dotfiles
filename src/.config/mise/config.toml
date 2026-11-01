@@ -6,6 +6,7 @@ php = "latest"
 zig = "latest"
 usage = "latest"
 rust = "latest"
+uv = "latest"
 
 [settings]
 experimental = true
