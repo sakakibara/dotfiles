@@ -157,8 +157,18 @@ def generate(st):
     # The child must not run these hooks again or rename this pane's workspace,
     # and carries no system prompt, tools, settings, MCP servers or thinking, so
     # a call costs a few hundred input tokens rather than tens of thousands.
-    env = {k: v for k, v in os.environ.items() if not k.startswith("HERDR_")}
+    # It runs only on the claude.ai subscription login: every variable that
+    # would switch it to an API key, another endpoint or a cloud provider is
+    # dropped, and without that login there is no call at all.
+    env = {k: v for k, v in os.environ.items()
+           if not k.startswith(("HERDR_", "ANTHROPIC_", "CLAUDE_CODE_USE_"))}
     env["MAX_THINKING_TOKENS"] = "0"
+    status = subprocess.run([exe, "auth", "status"], capture_output=True, text=True,
+                            env=env, timeout=30, stdin=subprocess.DEVNULL)
+    auth = json.loads(status.stdout) if status.returncode == 0 else {}
+    if not auth.get("loggedIn") or auth.get("authMethod") != "claude.ai" \
+            or auth.get("apiProvider") != "firstParty":
+        return None
     prompt = PROMPT + context
     for _ in range(2):
         done = subprocess.run(
