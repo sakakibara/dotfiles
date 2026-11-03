@@ -40,6 +40,17 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$HOME/.agents/hooks/herdr-workspace-label.py\" claude",
+            "timeout": 10
+          }
+        ]
+      }
     ]
   },
   "enabledPlugins": {

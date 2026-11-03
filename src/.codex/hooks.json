@@ -31,6 +31,17 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$HOME/.agents/hooks/herdr-workspace-label.py\" codex",
+            "timeout": 10
+          }
+        ]
+      }
     ]
   }
 }

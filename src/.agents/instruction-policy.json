@@ -43,6 +43,7 @@
     "src/.agents/hooks/commit_rules.py",
     "src/.agents/hooks/git-stage-guard.py",
     "src/.agents/hooks/herdr-agent-state.sh",
+    "src/.agents/hooks/herdr-workspace-label.py",
     "src/.agents/hooks/instruction-audit.py",
     "src/.agents/hooks/instruction-trust-guard.sh",
     "src/.agents/instruction-policy.json",
