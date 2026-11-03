@@ -37,7 +37,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$HOME/.agents/hooks/herdr-workspace-label.py\" codex",
+            "command": "python3 \"$HOME/.agents/hooks/agent-session-name.py\" stop codex",
             "timeout": 10
           }
         ]

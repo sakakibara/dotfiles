@@ -41,12 +41,23 @@
         ]
       }
     ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$HOME/.agents/hooks/agent-session-name.py\" prompt claude",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$HOME/.agents/hooks/herdr-workspace-label.py\" claude",
+            "command": "python3 \"$HOME/.agents/hooks/agent-session-name.py\" stop claude",
             "timeout": 10
           }
         ]
