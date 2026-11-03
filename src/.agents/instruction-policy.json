@@ -35,6 +35,7 @@
     "etc/sandbox/entrypoint.sh",
     "etc/tests/agent-instructions.sh",
     "etc/tests/agent_sandbox_security.sh",
+    "etc/tests/agent_session_name.sh",
     "etc/tests/commit_rules.sh",
     "etc/tests/stage_guard.sh",
     "scripts/check/codex-config",

@@ -14,22 +14,28 @@ prompt  Claude UserPromptSubmit hook. Hands a newly generated name to Claude
         Code as the session title.
 
 A title set with /rename wins over the generated one. The workspace is
-renamed only while its label is herdr's default (the directory name) or the
-name this script last set for the same session, so a name typed by hand, or
-one another session set, is kept. When generation fails the agent's own title
-is used. Every error ends the hook silently; it never blocks the agent.
+renamed only while its label is herdr's default (the directory name), the
+name this script last set for the same session, or a name set from a pane
+that has since closed or no longer runs an agent; a name typed by hand, or
+one a live session in the same workspace set, is kept. When generation fails
+the agent's own title is used. State older than STATE_DAYS is dropped. Every
+error ends the hook silently; it never blocks the agent.
 """
+import contextlib
+import fcntl
 import hashlib
 import json
 import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
 NEW_PROMPTS = 5
 MAX_NAME = 12
+STATE_DAYS = 30
 
 STATE = Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local" / "state") / "agent-session-name"
 
@@ -55,9 +61,19 @@ def load(path, default):
 
 def save(path, data):
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(path.name + ".tmp")
-    tmp.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
-    tmp.replace(path)
+    with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=path.parent,
+                                     prefix=path.name, delete=False) as tmp:
+        json.dump(data, tmp, ensure_ascii=False)
+    os.replace(tmp.name, path)
+
+
+@contextlib.contextmanager
+def locked(path):
+    """Serialize read-modify-write of path across the hooks of all sessions."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path.with_name(path.name + ".flock"), "w") as handle:
+        fcntl.flock(handle, fcntl.LOCK_EX)
+        yield
 
 
 def session_file(session):
@@ -135,7 +151,11 @@ def read_new(agent, path, st):
 def codex_own_title(session):
     home = Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex")
     title = None
-    with open(home / "session_index.jsonl", encoding="utf-8", errors="replace") as handle:
+    try:
+        handle = open(home / "session_index.jsonl", encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+    with handle:
         for line in handle:
             if session in line:
                 try:
@@ -207,15 +227,31 @@ def rename_workspace(name, session, hook):
         return
     # Workspace IDs are scoped to one herdr server, so key the records by socket.
     path = STATE / f"workspaces-{hashlib.sha256(socket_path.encode()).hexdigest()[:16]}.json"
-    records = load(path, {})
-    record = records.get(workspace_id) or {}
-    defaults = {Path(p).name for p in (pane.get("cwd"), hook.get("cwd")) if p}
-    owned = record.get("session") == session and record.get("label") == label
-    if label not in defaults and not owned:
-        return
-    if herdr("workspace", "rename", workspace_id, name) is not None:
-        records[workspace_id] = {"session": session, "label": name}
-        save(path, records)
+    with locked(path):
+        records = load(path, {})
+        record = records.get(workspace_id) or {}
+        defaults = {Path(p).name for p in (pane.get("cwd"), hook.get("cwd")) if p}
+        ours = record.get("label") == label
+        if label not in defaults and not (ours and (record.get("session") == session
+                                                    or owner_gone(record, workspace_id))):
+            return
+        if herdr("workspace", "rename", workspace_id, name) is not None:
+            records[workspace_id] = {"session": session, "pane": pane_id, "label": name}
+            save(path, records)
+
+
+def owner_gone(record, workspace_id):
+    """True when the pane that named the workspace closed or runs no agent."""
+    owner = record.get("pane")
+    if not owner:
+        return False
+    panes = (herdr("pane", "list") or {}).get("panes")
+    if panes is None:
+        return False
+    for pane in panes:
+        if pane.get("pane_id") == owner:
+            return pane.get("workspace_id") != workspace_id or not pane.get("agent")
+    return True
 
 
 def update(agent, hook, session):
@@ -244,11 +280,25 @@ def update(agent, hook, session):
         elif not st.get("name") or st.get("prompts", 0) - st.get("named_at", 0) >= NEW_PROMPTS:
             st["name"] = generate(st) or st.get("name") or st.get("own")
             st["named_at"] = st.get("prompts", 0)
-        save(path, st)
+        with locked(path):
+            # `prompt` may have recorded a title handed over since st was read.
+            st["applied"] = load(path, {}).get("applied", st.get("applied"))
+            save(path, st)
         if st.get("name"):
             rename_workspace(st["name"], session, hook)
+        prune()
     finally:
         lock.unlink(missing_ok=True)
+
+
+def prune():
+    cutoff = time.time() - STATE_DAYS * 86400
+    for path in STATE.glob("sessions/*"):
+        try:
+            if path.stat().st_mtime < cutoff:
+                path.unlink()
+        except OSError:
+            pass
 
 
 def main():
@@ -268,13 +318,15 @@ def main():
         update(agent, hook, session)
     elif mode == "prompt" and agent == "claude":
         path = session_file(session)
-        st = load(path, {})
-        name = st.get("name")
-        if name and name != st.get("applied") and name != st.get("custom"):
+        with locked(path):
+            st = load(path, {})
+            name = st.get("name")
+            if not name or name in (st.get("applied"), st.get("custom")):
+                return
             st["applied"] = name
             save(path, st)
-            print(json.dumps({"hookSpecificOutput": {
-                "hookEventName": "UserPromptSubmit", "sessionTitle": name}}, ensure_ascii=False))
+        print(json.dumps({"hookSpecificOutput": {
+            "hookEventName": "UserPromptSubmit", "sessionTitle": name}}, ensure_ascii=False))
 
 
 if __name__ == "__main__":
