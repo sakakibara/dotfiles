@@ -76,6 +76,17 @@ check reject "$plain" "a subject broken across lines" \
   "Fix the thing" "  and the rest"
 check reject "$plain" "a session-private label" \
   "Land phase-2 of the rewrite"
+check reject "$plain" "a subject over 72 columns" \
+  "Name each herdr workspace after the title of the session working in it, keeping"
+check accept "$plain" "a subject of exactly 72 columns" \
+  "$(printf 'Change the thing %.0s' 1 2 3 4)$(printf 'x%.0s' 1 2 3 4)"
+wide=$'\xe5\x90\x8d'  # one wide character, two columns
+check reject "$plain" "a subject of wide characters over 72 columns" \
+  "Add $(printf "${wide}%.0s" $(seq 35))"
+check accept "$plain" "a subject of wide characters within 72 columns" \
+  "Add $(printf "${wide}%.0s" $(seq 34))"
+check accept "$plain" "a merge subject over 72 columns" \
+  "Merge branch 'a-very-long-topic-branch-name-that-runs-well-past-the-subject-limit'"
 # The banned characters are spelled as byte escapes so this file itself
 # stays ASCII while the fixtures still carry the real thing.
 em_dash=$'\xe2\x80\x94'

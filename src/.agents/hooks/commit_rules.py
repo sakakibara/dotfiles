@@ -4,21 +4,24 @@ Style rules are derived from the target repository's own history, never
 configured here, and a rule applies only where that history is overwhelmingly
 consistent - a mixed history means the project has no convention to enforce.
 
-Three rules are absolute rather than derived. A subject is one line, because git
-defines it that way and a wrapped shell string silently turns the overflow into
-a body. A message carries no session-private label. And a message carries no
-agent trailer, unless the repository opts back in through its own .claude
-settings - the same file that enables it in the harness.
+Three rules are absolute rather than derived. A subject is one line of at most
+SUBJECT_MAX columns, because git defines it as one line, a wrapped shell string
+silently turns the overflow into a body, and a history of long subjects is no
+convention worth copying. A message carries no session-private label. And a
+message carries no agent trailer, unless the repository opts back in through
+its own .claude settings - the same file that enables it in the harness.
 """
 import json
 import os
 import re
 import subprocess
+import unicodedata
 
 SAMPLE = 200          # commits inspected
 MIN_SAMPLE = 20       # below this a repository has no convention yet
 STRONG = 0.9          # a rule applies only above this share
 BODY_MAX = 0.25       # bodies rarer than this means subject-only
+SUBJECT_MAX = 72      # columns; a wide character takes two
 
 CONVENTIONAL = re.compile(r"^[a-z]+(\([^)]*\))?!?: .")
 AGENT_TRAILER = re.compile(
@@ -118,6 +121,10 @@ def history(cdir=None):
     return entries
 
 
+def columns(text):
+    return sum(2 if unicodedata.east_asian_width(c) in "WF" else 1 for c in text)
+
+
 def share(entries, predicate):
     return sum(1 for e in entries if predicate(e)) / len(entries)
 
@@ -208,6 +215,11 @@ def check(text, cdir=None):
             "the subject and turns the rest into a body. Write it as one line "
             "- a wrapped shell string leaks its newline and indent into the "
             "message")
+    elif not generated and columns(subject) > SUBJECT_MAX:
+        found.append(
+            f"the subject is {columns(subject)} columns; keep it to "
+            f"{SUBJECT_MAX} (a wide character counts two). Say what the commit "
+            f"does, and leave out the why rather than packing it in")
 
     for ch, name in NON_ASCII_PUNCT.items():
         if ch in judged:
